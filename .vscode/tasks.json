@@ -1,0 +1,37 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "optimized build",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "run",
+                "--rm", 
+                "-v", 
+                "\"${PWD}\":/code",
+                "--mount",
+                "type=volume,source=\"$(basename \"${PWD}\")_cache\",target=/code/target",
+                "--mount", 
+                 "type=volume,source=registry_cache,target=/usr/local/cargo/registry",
+                "cosmwasm/rust-optimizer:0.10.3"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/contract-template"
+            }
+        },
+        {
+            "label": "start local terra",
+            "type": "shell",
+            "command": "docker-compose",
+            "args": [
+                "up"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/localterra"
+            }
+        }
+    ]
+}
