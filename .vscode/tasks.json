@@ -9,18 +9,21 @@
             "command": "docker",
             "args": [
                 "run",
-                "--rm", 
-                "-v", 
+                "--rm",
+                "-v",
                 "\"${PWD}\":/code",
                 "--mount",
                 "type=volume,source=\"$(basename \"${PWD}\")_cache\",target=/code/target",
-                "--mount", 
-                 "type=volume,source=registry_cache,target=/usr/local/cargo/registry",
+                "--mount",
+                "type=volume,source=registry_cache,target=/usr/local/cargo/registry",
                 "cosmwasm/rust-optimizer:0.10.3"
             ],
             "options": {
                 "cwd": "${workspaceFolder}/contract-template"
-            }
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
         },
         {
             "label": "start local terra",
