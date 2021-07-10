@@ -35,8 +35,10 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
 
 # install go
 #RUN sudo snap install --classic --channel=1.15/stable go 
-RUN cd /tmp && wget https://golang.org/dl/go1.15.5.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.15.5.linux-amd64.tar.gz && rm go1.15.5.linux-amd64.tar.gz
-ENV PATH=$PATH:/usr/local/go/bin
+RUN cd /tmp && wget https://golang.org/dl/go1.16.5.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.16.5.linux-amd64.tar.gz
+ENV PATH=$PATH:/usr/local/go/bin:/home/$USERNAME/go/bin
+ENV GOPATH=/home/$USERNAME/go
+ENV GOBIN=/usr/local/go/bin
 RUN chown -R $USERNAME /usr/local/go
 
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && apt-get install -y nodejs
