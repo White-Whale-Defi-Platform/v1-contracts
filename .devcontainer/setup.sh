@@ -14,5 +14,5 @@ fi
 
 # install terra core
 if [ ! -d "core" ]; then
-    git clone https://github.com/terra-project/core && cd core && make install
+    git clone https://github.com/terra-project/core && cd core && git checkout feature/mempool-oracle-priority && make install
 fi
