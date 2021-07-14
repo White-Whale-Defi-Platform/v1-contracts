@@ -1,2 +1,0 @@
-29e35ce8698e1dafb2fc00faf0cff0e0f073156d0e9d61b29570f0239cad597c  contract_template.wasm
-451aa87a8f78661f1775f85a71a29fa948bef030cf5b3f80744561a10796f80c  test_contract.wasm
