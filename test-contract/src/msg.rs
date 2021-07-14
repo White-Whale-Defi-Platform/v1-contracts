@@ -71,7 +71,8 @@ pub struct InitMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
-    Trade { amount: Coin },
+    AbovePeg { amount: Coin, luna_price: Coin },
+    BelowPeg { amount: Coin, luna_price: Coin },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

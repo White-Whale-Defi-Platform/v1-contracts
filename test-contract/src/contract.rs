@@ -30,41 +30,75 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     match msg {
-        HandleMsg::Trade { amount } => try_trade(deps, env, amount)
+        HandleMsg::AbovePeg { amount, luna_price } => try_arb_below_peg(deps, env, amount, luna_price),
+        HandleMsg::BelowPeg { amount, luna_price } => try_arb_below_peg(deps, env, amount, luna_price)
     }
 }
 
-pub fn try_trade<S: Storage, A: Api, Q: Querier>(
-    _deps: &mut Extern<S, A, Q>,
-    env: Env,
-    amount: Coin,
-) -> StdResult<HandleResponse<TerraMsgWrapper>> {
-
-    let ask_denom = "uluna".to_string();
+pub fn create_terraswap_msg(
+    offer_denom: String
+) -> PairMsg {
     let offer = Asset{
-        info: AssetInfo::NativeToken{ denom: ask_denom.clone() },
+        info: AssetInfo::NativeToken{ denom: offer_denom.clone() },
         amount: Uint128(5000)
     };
-    let terraswap_msg = PairMsg::Swap{
+    PairMsg::Swap{
         offer_asset: offer,
         belief_price: None,
         max_spread: None,
         to: None,
-    };
-    let csm_terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    }
+}
+
+pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
+    _deps: &mut Extern<S, A, Q>,
+    env: Env,
+    amount: Coin,
+    _luna_price: Coin,
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+
+    let ask_denom = "uluna".to_string();
+
+    let swap_msg = create_swap_msg(
+        env.contract.address,
+        amount.clone(),
+        ask_denom.clone(),
+    );
+    let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: HumanAddr::from(LUNA_UST_PAIR.clone()),
         send: vec![Coin{ denom: ask_denom.clone(), amount: Uint128(5000)}],
-        msg: to_binary(&terraswap_msg)?,
+        msg: to_binary(&create_terraswap_msg(ask_denom.clone()))?,
+    });
+
+    Ok(HandleResponse {
+        messages: vec![swap_msg, terraswap_msg],
+        log: vec![],
+        data: None,
+    })
+}
+
+pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
+    _deps: &mut Extern<S, A, Q>,
+    env: Env,
+    amount: Coin,
+    luna_price: Coin,
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+
+    let ask_denom = "uusd".to_string();
+    let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: HumanAddr::from(LUNA_UST_PAIR.clone()),
+        send: vec![amount.clone()],
+        msg: to_binary(&create_terraswap_msg(ask_denom.clone()))?,
     });
 
     let swap_msg = create_swap_msg(
         env.contract.address,
-        amount,
-        ask_denom,
+        Coin{denom: "uluna".to_string(), amount: amount.amount.clone().multiply_ratio(1u128, luna_price.amount.0)},
+        ask_denom.clone(),
     );
 
     Ok(HandleResponse {
-        messages: vec![swap_msg, csm_terraswap_msg],
+        messages: vec![terraswap_msg, swap_msg],
         log: vec![],
         data: None,
     })
