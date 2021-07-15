@@ -90,11 +90,11 @@ pub enum QueryMsg {
 // }
 
 pub fn create_terraswap_msg(
-    offer_denom: String
+    offer: Coin
 ) -> PairMsg {
     let offer = Asset{
-        info: AssetInfo::NativeToken{ denom: offer_denom.clone() },
-        amount: Uint128(5000)
+        info: AssetInfo::NativeToken{ denom: offer.denom.clone() },
+        amount: offer.amount
     };
     PairMsg::Swap{
         offer_asset: offer,

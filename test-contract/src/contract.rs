@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     to_binary, Api, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse, HumanAddr, InitResponse, Querier, StdError,
-    StdResult, Storage, WasmMsg, Uint128
+    StdResult, Storage, WasmMsg, Uint128, Decimal
 };
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 
@@ -32,11 +32,15 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     }
 }
 
+pub fn to_luna(usd: Coin, luna_price: Coin) -> Coin {
+    Coin{ denom: "uusd".to_string(), amount: usd.amount.clone().multiply_ratio(1u128, luna_price.amount.0) }
+}
+
 pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     _deps: &mut Extern<S, A, Q>,
     env: Env,
     amount: Coin,
-    _luna_price: Coin,
+    luna_price: Coin,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
 
     let ask_denom = "uluna".to_string();
@@ -46,10 +50,11 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
         amount.clone(),
         ask_denom.clone(),
     );
+    let offer_coin = Coin{ denom: ask_denom.clone(), amount: amount.amount * Decimal::from_ratio(Uint128(1000000), luna_price.amount)};
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: HumanAddr::from(LUNA_UST_PAIR.clone()),
-        send: vec![Coin{ denom: ask_denom.clone(), amount: Uint128(5000)}],
-        msg: to_binary(&create_terraswap_msg(ask_denom.clone()))?,
+        send: vec![offer_coin.clone()],
+        msg: to_binary(&create_terraswap_msg(offer_coin.clone()))?,
     });
 
     Ok(HandleResponse {
@@ -66,17 +71,19 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     luna_price: Coin,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
 
-    let ask_denom = "uusd".to_string();
+    let ask_denom = "uluna".to_string();
+
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: HumanAddr::from(LUNA_UST_PAIR.clone()),
         send: vec![amount.clone()],
-        msg: to_binary(&create_terraswap_msg(ask_denom.clone()))?,
+        msg: to_binary(&create_terraswap_msg(amount.clone()))?,
     });
 
+    let offer_coin = Coin{ denom: ask_denom.clone(), amount: amount.amount * Decimal::from_ratio(Uint128(1000000), luna_price.amount)};
     let swap_msg = create_swap_msg(
         env.contract.address,
-        Coin{denom: "uluna".to_string(), amount: amount.amount.clone().multiply_ratio(1u128, luna_price.amount.0)},
-        ask_denom.clone(),
+        offer_coin,
+        amount.denom,
     );
 
     Ok(HandleResponse {
