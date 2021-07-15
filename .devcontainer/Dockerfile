@@ -34,7 +34,6 @@ RUN SNIPPET="export PROMPT_COMMAND='history -a' && export HISTFILE=/commandhisto
     && echo $SNIPPET >> "/home/$USERNAME/.zshrc"
 
 # install go
-#RUN sudo snap install --classic --channel=1.15/stable go 
 RUN cd /tmp && wget https://golang.org/dl/go1.16.5.linux-amd64.tar.gz && rm -rf /usr/local/go && tar -C /usr/local -xzf go1.16.5.linux-amd64.tar.gz
 ENV PATH=$PATH:/usr/local/go/bin:/home/$USERNAME/go/bin
 ENV GOPATH=/home/$USERNAME/go
@@ -43,6 +42,8 @@ RUN chown -R $USERNAME /usr/local/go
 
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && apt-get install -y nodejs
 RUN curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list && apt-get update && apt-get install -y yarn
+
+RUN python3 -m pip install terra_sdk
 
 # install rust
 USER $USERNAME
