@@ -4,10 +4,7 @@ use cosmwasm_std::{
 };
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 
-use crate::pair::{HandleMsg as PairMsg};
-use crate::asset::{Asset, AssetInfo};
-
-use crate::msg::{HandleMsg, InitMsg, QueryMsg};
+use crate::msg::{HandleMsg, InitMsg, QueryMsg, create_terraswap_msg};
 use crate::state::{config, State, LUNA_UST_PAIR};
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
@@ -30,23 +27,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
     msg: HandleMsg,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     match msg {
-        HandleMsg::AbovePeg { amount, luna_price } => try_arb_below_peg(deps, env, amount, luna_price),
+        HandleMsg::AbovePeg { amount, luna_price } => try_arb_above_peg(deps, env, amount, luna_price),
         HandleMsg::BelowPeg { amount, luna_price } => try_arb_below_peg(deps, env, amount, luna_price)
-    }
-}
-
-pub fn create_terraswap_msg(
-    offer_denom: String
-) -> PairMsg {
-    let offer = Asset{
-        info: AssetInfo::NativeToken{ denom: offer_denom.clone() },
-        amount: Uint128(5000)
-    };
-    PairMsg::Swap{
-        offer_asset: offer,
-        belief_price: None,
-        max_spread: None,
-        to: None,
     }
 }
 
@@ -115,7 +97,8 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
-    use cosmwasm_std::{coins, from_binary, StdError};
+    use cosmwasm_std::{coins};
+    use terra_cosmwasm::TerraRoute;
 
     #[test]
     fn proper_initialization() {
@@ -127,5 +110,63 @@ mod tests {
         // we can just call .unwrap() to assert this was a success
         let res = init(&mut deps, env, msg).unwrap();
         assert_eq!(0, res.messages.len());
+    }
+
+    #[test]
+    fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_msg() {
+        let mut deps = mock_dependencies(20, &[]);
+
+        let msg = HandleMsg::BelowPeg {
+            amount: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
+            luna_price: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)}
+        };
+        let env = mock_env("creator", &coins(1000, "earth"));
+
+        // we can just call .unwrap() to assert this was a success
+        let res = handle(&mut deps, env, msg).unwrap();
+        assert_eq!(2, res.messages.len());
+        let first_msg = res.messages[0].clone();
+        match first_msg {
+            CosmosMsg::Bank(_bank_msg) => assert_eq!(true, false),
+            CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
+            CosmosMsg::Staking(_staking_msg) => assert_eq!(true, false),
+            CosmosMsg::Wasm(_wasm_msg) => assert_eq!(true, false)
+        }
+        let second_msg = res.messages[1].clone();
+        match second_msg {
+            CosmosMsg::Bank(_bank_msg) => assert_eq!(true, false),
+            CosmosMsg::Custom(_t) => assert_eq!(true, false),
+            CosmosMsg::Staking(_staking_msg) => assert_eq!(true, false),
+            CosmosMsg::Wasm(_wasm_msg) => {}
+        }
+    }
+
+    #[test]
+    fn when_given_an_above_peg_msg_then_handle_returns_first_a_terraswap_then_a_mint_msg() {
+        let mut deps = mock_dependencies(20, &[]);
+
+        let msg = HandleMsg::AbovePeg {
+            amount: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
+            luna_price: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)}
+        };
+        let env = mock_env("creator", &coins(1000, "earth"));
+
+        // we can just call .unwrap() to assert this was a success
+        let res = handle(&mut deps, env, msg).unwrap();
+        assert_eq!(2, res.messages.len());
+        let first_msg = res.messages[0].clone();
+        match first_msg {
+            CosmosMsg::Bank(_bank_msg) => assert_eq!(true, false),
+            CosmosMsg::Custom(_t) => assert_eq!(true, false),
+            CosmosMsg::Staking(_staking_msg) => assert_eq!(true, false),
+            CosmosMsg::Wasm(_wasm_msg) => {}
+        }
+        let second_msg = res.messages[1].clone();
+        match second_msg {
+            CosmosMsg::Bank(_bank_msg) => assert_eq!(true, false),
+            CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
+            CosmosMsg::Staking(_staking_msg) => assert_eq!(true, false),
+            CosmosMsg::Wasm(_wasm_msg) => assert_eq!(true, false)
+        }
     }
 }

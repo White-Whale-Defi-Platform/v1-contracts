@@ -2,7 +2,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use cosmwasm_std::{from_binary, to_binary,  AllBalanceResponse, Api, BalanceResponse, Binary, BankQuery, Coin, Extern, HumanAddr, Querier, QueryRequest, StdResult, Storage, Uint128, WasmQuery};
 use cosmwasm_storage::to_length_prefixed;
-use crate::asset::AssetInfo;
+
+use crate::pair::{HandleMsg as PairMsg};
+use crate::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AssertMinimumReceive {
@@ -86,3 +88,18 @@ pub enum QueryMsg {
 // pub struct CountResponse {
 //     pub count: i32,
 // }
+
+pub fn create_terraswap_msg(
+    offer_denom: String
+) -> PairMsg {
+    let offer = Asset{
+        info: AssetInfo::NativeToken{ denom: offer_denom.clone() },
+        amount: Uint128(5000)
+    };
+    PairMsg::Swap{
+        offer_asset: offer,
+        belief_price: None,
+        max_spread: None,
+        to: None,
+    }
+}
