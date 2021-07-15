@@ -8,7 +8,7 @@ from terra_sdk.core.wasm import MsgStoreCode, MsgInstantiateContract, MsgExecute
 client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004")
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
 deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
-std_fee = StdFee(4000000, "10000000uusd")
+std_fee = StdFee(4000000, "1000000uusd")
 
 
 def send_msg(msg):

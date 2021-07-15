@@ -6,7 +6,7 @@ from terra_sdk.core.wasm import MsgExecuteContract
 client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004")
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
 deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
-std_fee = StdFee(4000000, "10000000uusd")
+std_fee = StdFee(4000000, "1000000uusd")
 
 
 def send_msg(msg):
@@ -23,9 +23,9 @@ def execute_contract(contract_addr: str, execute_msg):
     )
     return send_msg(msg)
 
-contract_address = "terra1w9e7vw5syfrufc3ja8d46zrx9hzsz5apnx6e3v"
+contract_address = "terra1kdphzxjcfcej2a98gz4fhwx26c3qe7calwcvj4"
 result = execute_contract(contract_addr=contract_address, execute_msg={
-    "below_peg": {
+    "above_peg": {
         "amount": {
             "denom": "uusd",
             "amount": "50000"
