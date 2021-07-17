@@ -10,7 +10,6 @@ from pool_arb_bot import Arbbot, TERRASWAP_UST_CONFIG
 from loop import execute_loop
 
 
-
 def main():
     client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004")
     mnemonic = "<ADD_TEST_ACCOUNT_MNEMONIC>"
@@ -22,4 +21,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
