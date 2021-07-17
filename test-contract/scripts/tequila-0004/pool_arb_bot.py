@@ -1,5 +1,4 @@
 from datetime import datetime
-from attr import dataclass
 
 from terra_sdk.client.lcd import LCDClient, Wallet
 from terra_sdk.core.auth.data.tx import StdFee
@@ -8,6 +7,7 @@ from terra_sdk.core.market import MsgSwap
 from terra_sdk.core.wasm import MsgExecuteContract
 
 from query import get_market_swap_rate, get_terraswap_rate, get_tobin_tax
+from terraswap import TerraswapConfig
 
 MILLION = 1000000
 
@@ -15,18 +15,8 @@ COMMISSION=0.003
 LUNA_DENOM="uluna"
 
 
-@dataclass
-class TerraswapConfig:
-    contract_address: str = "",
-    denom: str = ""
-
-
-TERRASWAP_UST_CONFIG = TerraswapConfig(contract_address='terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff', denom='uusd')
-TERRASWAP_KRT_CONFIG = TerraswapConfig(contract_address='terra1rfzwcdhhu502xws6r5pxw4hx8c6vms772d6vyu', denom='ukrw')
-
-
 class Arbbot:
-    def __init__(self, client: LCDClient, wallet: Wallet, config: TerraswapConfig, trade_amount: int = MILLION) -> None:
+    def __init__(self, client: LCDClient, wallet: Wallet, config: TerraswapConfig, trade_amount: int = 100*MILLION) -> None:
         self.denom: str = config.denom
         self.pool_address = config.contract_address
         self.client: LCDClient = client
@@ -41,7 +31,7 @@ class Arbbot:
         return 0.002
 
     def substract_fees(self, amount):
-        return amount- Coin.from_str(self.fee).amount
+        return amount - Coin.from_str(self.fee).amount
 
     def try_arb_above(self) -> None:
         offer_amount = self.trade_amount

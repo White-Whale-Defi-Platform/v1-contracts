@@ -6,7 +6,8 @@ from terra_sdk.key.mnemonic import MnemonicKey
 import pathlib
 import sys
 sys.path.append(pathlib.Path(__file__).parent.resolve())
-from pool_arb_bot import Arbbot, TERRASWAP_UST_CONFIG
+from pool_arb_bot import Arbbot
+from terraswap import TERRASWAP_UST_CONFIG
 from loop import execute_loop
 
 

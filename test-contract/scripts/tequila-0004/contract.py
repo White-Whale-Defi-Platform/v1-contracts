@@ -5,6 +5,13 @@ from terra_sdk.core.auth import StdFee
 from terra_sdk.core.bank import MsgSend
 from terra_sdk.core.wasm import MsgStoreCode, MsgInstantiateContract, MsgExecuteContract
 
+import pathlib
+import sys
+sys.path.append(pathlib.Path(__file__).parent.resolve())
+
+from terraswap import TERRASWAP_UST_CONFIG
+
+
 client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004")
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
 deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
@@ -49,8 +56,12 @@ def execute_contract(contract_addr: str, execute_msg):
     return send_msg(msg)
 
 
+print("store contract")
 code_id = store_contract(contract_name="test_contract")
-contract_address = instantiate_contract(code_id=code_id, init_msg={})
+print("instantiate contract")
+contract_address = instantiate_contract(code_id=code_id, init_msg={
+    "pool_address": TERRASWAP_UST_CONFIG.contract_address
+})
 print(f'instantiated {contract_address}')
 send_to_contract(contract_addr=contract_address)
 print(f'sent funds')
