@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    to_binary, Api, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier, StdError,
+    to_binary, Api, BankMsg, Binary, Coin, CosmosMsg, Env, Extern, HandleResponse, InitResponse, Querier, StdError,
     StdResult, Storage, WasmMsg, Uint128, Decimal
 };
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
@@ -29,7 +29,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     match msg {
         HandleMsg::AbovePeg { amount, luna_price } => try_arb_above_peg(deps, env, amount, luna_price),
-        HandleMsg::BelowPeg { amount, luna_price } => try_arb_below_peg(deps, env, amount, luna_price)
+        HandleMsg::BelowPeg { amount, luna_price } => try_arb_below_peg(deps, env, amount, luna_price),
+        HandleMsg::Receive{ amount } => try_send_funds(env, amount)
     }
 }
 
@@ -91,6 +92,23 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
 
     Ok(HandleResponse {
         messages: vec![terraswap_msg, swap_msg],
+        log: vec![],
+        data: None,
+    })
+}
+
+pub fn try_send_funds(
+    env: Env,
+    amount: Coin,
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    let msg = CosmosMsg::Bank(BankMsg::Send{
+        from_address: env.contract.address,
+        to_address: env.message.sender,
+        amount: vec![amount]
+    });
+
+    Ok(HandleResponse {
+        messages: vec![msg],
         log: vec![],
         data: None,
     })

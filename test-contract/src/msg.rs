@@ -77,6 +77,7 @@ pub struct InitMsg {
 pub enum HandleMsg {
     AbovePeg { amount: Coin, luna_price: Coin },
     BelowPeg { amount: Coin, luna_price: Coin },
+    Receive { amount: Coin },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
