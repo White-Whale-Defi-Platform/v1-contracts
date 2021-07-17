@@ -9,7 +9,7 @@ import pathlib
 import sys
 sys.path.append(pathlib.Path(__file__).parent.resolve())
 
-from terraswap import TERRASWAP_UST_CONFIG
+from poolconfig import TERRASWAP_UST_CONFIG
 
 
 client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004")

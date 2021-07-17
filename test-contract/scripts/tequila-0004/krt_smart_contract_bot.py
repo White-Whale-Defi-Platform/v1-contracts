@@ -6,17 +6,21 @@ from terra_sdk.key.mnemonic import MnemonicKey
 import pathlib
 import sys
 sys.path.append(pathlib.Path(__file__).parent.resolve())
-from pool_arb_bot import Arbbot, BotMessages
-from poolconfig import TERRASWAP_UST_CONFIG
+from pool_arb_bot import Arbbot, MILLION, SmartContractMessages
+from terraswap import TERRASWAP_KRT_CONFIG
 from loop import execute_loop
 
 
 def main():
     client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004")
-    mnemonic = 'main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic'
+    mnemonic = '<ADD_TEST_ACCOUNT_MNEMONIC>'
     deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
 
-    bot = Arbbot(client=client, wallet=deployer, config=TERRASWAP_UST_CONFIG, get_messages=BotMessages)
+    config = TERRASWAP_KRT_CONFIG
+    print(config.contract_address)
+    bot = Arbbot(client=client, wallet=deployer, config=config, get_messages=SmartContractMessages)
+    bot.trade_amount = 200000*MILLION
+    bot.fee = "400000000" + config.denom
     execute_loop(op=bot, sleep_time=timedelta(seconds=3))
 
 
