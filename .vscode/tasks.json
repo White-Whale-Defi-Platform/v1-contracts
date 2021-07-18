@@ -46,6 +46,27 @@
             "problemMatcher": []
         },
         {
+            "label": "optimized build (vesting-contract)",
+            "type": "shell",
+            "command": "docker",
+            "args": [
+                "run",
+                "--rm",
+                "-v",
+                "\"${PWD}\":/code",
+                "--mount",
+                "type=volume,source=\"$(basename \"${PWD}\")_cache\",target=/code/target",
+                "--mount",
+                "type=volume,source=registry_cache,target=/usr/local/cargo/registry",
+                "cosmwasm/rust-optimizer:0.10.3"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}/vesting-contract"
+            },
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
             "label": "optimized build (router)",
             "type": "shell",
             "command": "docker",
