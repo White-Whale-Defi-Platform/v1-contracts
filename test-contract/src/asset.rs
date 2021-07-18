@@ -329,3 +329,45 @@ impl PairInfoRaw {
         ])
     }
 }
+
+// We define a custom struct for each query response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct SingleInfo {
+    pub asset_info: AssetInfo,
+    pub contract_addr: HumanAddr,
+    pub liquidity_token: HumanAddr,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct SingleInfoRaw {
+    pub asset_info: AssetInfoRaw,
+    pub contract_addr: CanonicalAddr,
+    pub liquidity_token: CanonicalAddr,
+}
+
+impl SingleInfoRaw {
+    pub fn to_normal<S: Storage, A: Api, Q: Querier>(
+        &self,
+        deps: &Extern<S, A, Q>,
+    ) -> StdResult<SingleInfo> {
+        Ok(SingleInfo {
+            liquidity_token: deps.api.human_address(&self.liquidity_token)?,
+            contract_addr: deps.api.human_address(&self.contract_addr)?,
+            asset_info: self.asset_info.to_normal(&deps)?,
+        })
+    }
+
+    pub fn query_pools<S: Storage, A: Api, Q: Querier>(
+        &self,
+        deps: &Extern<S, A, Q>,
+        contract_addr: &HumanAddr,
+    ) -> StdResult<Asset> {
+        let info: AssetInfo = self.asset_info.to_normal(deps)?;
+        Ok(
+            Asset {
+                amount: info.query_pool(deps, contract_addr)?,
+                info: info,
+            },
+        )
+    }
+}

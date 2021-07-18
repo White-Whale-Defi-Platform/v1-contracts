@@ -2,6 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use cosmwasm_std::{from_binary, to_binary,  AllBalanceResponse, Api, BalanceResponse, Binary, BankQuery, Coin, Extern, HumanAddr, Querier, QueryRequest, StdResult, Storage, Uint128, WasmQuery};
 use cosmwasm_storage::to_length_prefixed;
+use cw20::Cw20ReceiveMsg;
 
 use crate::pair::{HandleMsg as PairMsg};
 use crate::asset::{Asset, AssetInfo};
@@ -69,21 +70,39 @@ pub fn query_token_balance<S: Storage, A: Api, Q: Querier>(
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
-    pub pool_address: HumanAddr
+    pub pool_address: HumanAddr,
+    pub asset_info: AssetInfo,
+    /// Token contract code id for initialization
+    pub token_code_id: u64
+    // Hook for post initalization
+    // pub init_hook: Option<InitHook>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
+    Receive(Cw20ReceiveMsg),
     AbovePeg { amount: Coin, luna_price: Coin },
     BelowPeg { amount: Coin, luna_price: Coin },
-    Receive { amount: Coin },
+    PostInitialize{},
+    ProvideLiquidity {
+        asset: Asset
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    Asset{},
+    Pool{}
     // GetCount returns the current count as a json-encoded number
+}
+
+// We define a custom struct for each query response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct PoolResponse {
+    pub asset: Asset,
+    pub total_share: Uint128,
 }
 
 // // We define a custom struct for each query response

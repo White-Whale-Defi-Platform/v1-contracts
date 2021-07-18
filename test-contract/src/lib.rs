@@ -6,6 +6,7 @@ pub mod msg;
 pub mod pair;
 pub mod querier;
 pub mod state;
+pub mod token;
 
 #[cfg(target_arch = "wasm32")]
 mod wasm {
