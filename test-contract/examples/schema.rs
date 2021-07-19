@@ -3,8 +3,9 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use contract_template::msg::{CountResponse, HandleMsg, InitMsg, QueryMsg};
-use contract_template::state::State;
+use test_contract::asset::SingleInfo;
+use test_contract::msg::{PoolResponse, HandleMsg, InitMsg, QueryMsg};
+use test_contract::state::State;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -16,5 +17,6 @@ fn main() {
     export_schema(&schema_for!(HandleMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(State), &out_dir);
-    export_schema(&schema_for!(CountResponse), &out_dir);
+    export_schema(&schema_for!(PoolResponse), &out_dir);
+    export_schema(&schema_for!(SingleInfo), &out_dir);
 }
