@@ -375,12 +375,18 @@ mod tests {
 
         // we can just call .unwrap() to assert this was a success
         let res = init(&mut deps, env, msg).unwrap();
-        assert_eq!(0, res.messages.len());
+        assert_eq!(1, res.messages.len());
     }
 
     #[test]
     fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_msg() {
         let mut deps = mock_dependencies(20, &[]);
+
+        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() } };
+        let env = mock_env("creator", &coins(1000, "earth"));
+
+        // we can just call .unwrap() to assert this was a success
+        let _res = init(&mut deps, env, msg).unwrap();
 
         let msg = HandleMsg::BelowPeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
@@ -393,16 +399,16 @@ mod tests {
         assert_eq!(2, res.messages.len());
         let first_msg = res.messages[0].clone();
         match first_msg {
-            CosmosMsg::Bank(_bank_msg) => assert_eq!(true, false),
+            CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
             CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
-            CosmosMsg::Staking(_staking_msg) => assert_eq!(true, false),
-            CosmosMsg::Wasm(_wasm_msg) => assert_eq!(true, false)
+            CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
+            CosmosMsg::Wasm(_wasm_msg) => panic!("unexpected")
         }
         let second_msg = res.messages[1].clone();
         match second_msg {
-            CosmosMsg::Bank(_bank_msg) => assert_eq!(true, false),
-            CosmosMsg::Custom(_t) => assert_eq!(true, false),
-            CosmosMsg::Staking(_staking_msg) => assert_eq!(true, false),
+            CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
+            CosmosMsg::Custom(_t) => panic!("unexpected"),
+            CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
             CosmosMsg::Wasm(_wasm_msg) => {}
         }
     }
@@ -410,6 +416,12 @@ mod tests {
     #[test]
     fn when_given_an_above_peg_msg_then_handle_returns_first_a_terraswap_then_a_mint_msg() {
         let mut deps = mock_dependencies(20, &[]);
+
+        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() } };
+        let env = mock_env("creator", &coins(1000, "earth"));
+
+        // we can just call .unwrap() to assert this was a success
+        let _res = init(&mut deps, env, msg).unwrap();
 
         let msg = HandleMsg::AbovePeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
@@ -422,17 +434,17 @@ mod tests {
         assert_eq!(2, res.messages.len());
         let first_msg = res.messages[0].clone();
         match first_msg {
-            CosmosMsg::Bank(_bank_msg) => assert_eq!(true, false),
-            CosmosMsg::Custom(_t) => assert_eq!(true, false),
-            CosmosMsg::Staking(_staking_msg) => assert_eq!(true, false),
+            CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
+            CosmosMsg::Custom(_t) => panic!("unexpected"),
+            CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
             CosmosMsg::Wasm(_wasm_msg) => {}
         }
         let second_msg = res.messages[1].clone();
         match second_msg {
-            CosmosMsg::Bank(_bank_msg) => assert_eq!(true, false),
+            CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
             CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
-            CosmosMsg::Staking(_staking_msg) => assert_eq!(true, false),
-            CosmosMsg::Wasm(_wasm_msg) => assert_eq!(true, false)
+            CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
+            CosmosMsg::Wasm(_wasm_msg) => panic!("unexpected")
         }
     }
 }
