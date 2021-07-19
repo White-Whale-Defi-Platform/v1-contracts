@@ -105,12 +105,6 @@ pub struct PoolResponse {
     pub total_share: Uint128,
 }
 
-// // We define a custom struct for each query response
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// pub struct CountResponse {
-//     pub count: i32,
-// }
-
 pub fn create_terraswap_msg(
     offer: Coin
 ) -> PairMsg {
