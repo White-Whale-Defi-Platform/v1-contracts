@@ -6,8 +6,8 @@ use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 
 use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 
-use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg};
-use crate::state::{config, State, LUNA_DENOM, read_lp_info, store_lp_info};
+use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg, AnchorMsg};
+use crate::state::{config, State, LUNA_DENOM, read_lp_info, store_lp_info, AUST, ANCHOR};
 use crate::asset::{Asset, AssetInfo, SingleInfo, SingleInfoRaw};
 use crate::hook::InitHook;
 use crate::token::InitMsg as TokenInitMsg;
@@ -79,7 +79,9 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::AbovePeg { amount, luna_price } => try_arb_above_peg(deps, env, amount, luna_price),
         HandleMsg::BelowPeg { amount, luna_price } => try_arb_below_peg(deps, env, amount, luna_price),
         HandleMsg::PostInitialize{ } => try_post_initialize(deps, env),
-        HandleMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, env, asset)
+        HandleMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, env, asset),
+        HandleMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, env, amount),
+        HandleMsg::AnchorWithdraw{ amount } => try_withdrawal_from_anchor(deps, env, amount),
     }
 }
 
@@ -322,6 +324,47 @@ pub fn try_provide_liquidity<S: Storage, A: Api, Q: Querier>(
     }));
     Ok(response)
 }
+
+pub fn try_deposit_to_anchor<S: Storage, A: Api, Q: Querier>(
+    _deps: &mut Extern<S, A, Q>,
+    _env: Env,
+    amount: Coin
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    if amount.denom != "uusd" {
+        return Err(StdError::generic_err("Wrong currency. Only US (denom: uusd) is supported."));
+    }
+
+    let mut response = HandleResponse::default();
+    response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: HumanAddr::from(ANCHOR),
+        msg: to_binary(&AnchorMsg::DepositStable{})?,
+        send: vec![amount]
+    }));
+
+    Ok(response)
+}
+
+pub fn try_withdrawal_from_anchor<S: Storage, A: Api, Q: Querier>(
+    _deps: &mut Extern<S, A, Q>,
+    _env: Env,
+    amount: Uint128
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    let mut response = HandleResponse::default();
+    response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: HumanAddr::from(AUST),
+        msg: to_binary(
+            &AnchorMsg::Send{
+                contract: HumanAddr::from(ANCHOR),
+                amount: amount,
+                msg: to_binary(&AnchorMsg::RedeemStable{})?
+            }
+        )?,
+        send: vec![]
+    }));
+
+    Ok(response)
+}
+
 
 pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,

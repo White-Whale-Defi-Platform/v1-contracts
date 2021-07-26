@@ -80,6 +80,15 @@ pub struct InitMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub enum AnchorMsg {
+    DepositStable{},
+    RedeemStable{},
+    Send{ contract: HumanAddr, amount: Uint128, msg: Binary }
+}
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
     Receive(Cw20ReceiveMsg),
     AbovePeg { amount: Coin, luna_price: Coin },
@@ -88,6 +97,8 @@ pub enum HandleMsg {
     ProvideLiquidity {
         asset: Asset
     },
+    AnchorDeposit{ amount: Coin },
+    AnchorWithdraw{ amount: Uint128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
