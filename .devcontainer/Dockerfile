@@ -43,7 +43,7 @@ RUN chown -R $USERNAME /usr/local/go
 RUN curl -sL https://deb.nodesource.com/setup_14.x | bash - && apt-get install -y nodejs
 RUN curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - && echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list && apt-get update && apt-get install -y yarn
 
-RUN python3 -m pip install terra_sdk
+RUN python3 -m pip install terra_sdk requests
 
 # install rust
 USER $USERNAME
