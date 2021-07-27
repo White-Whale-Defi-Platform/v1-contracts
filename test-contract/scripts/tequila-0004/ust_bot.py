@@ -6,17 +6,19 @@ from terra_sdk.key.mnemonic import MnemonicKey
 import pathlib
 import sys
 sys.path.append(pathlib.Path(__file__).parent.resolve())
-from pool_arb_bot import Arbbot, BotMessages
+from pool_arb_bot import get_arbbot
 from poolconfig import TERRASWAP_UST_CONFIG
 from loop import execute_loop
+from util import get_gas_prices
 
 
 def main():
-    client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004")
+    client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004", 
+                       gas_prices=get_gas_prices(), gas_adjustment="1.1")
     mnemonic = 'main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic'
     deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
 
-    bot = Arbbot(client=client, wallet=deployer, config=TERRASWAP_UST_CONFIG, get_messages=BotMessages)
+    bot = get_arbbot(client=client, wallet=deployer, config=TERRASWAP_UST_CONFIG, get_gas_prices=get_gas_prices)
     execute_loop(op=bot, sleep_time=timedelta(seconds=3))
 
 
