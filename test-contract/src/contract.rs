@@ -21,6 +21,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<InitResponse> {
     let state = State {
         owner: deps.api.canonical_address(&env.message.sender)?,
+        trader: deps.api.canonical_address(&env.message.sender)?,
         pool_address: deps.api.canonical_address(&msg.pool_address)?,
     };
 
@@ -175,6 +176,10 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     amount: Coin,
     luna_price: Coin,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    let state = config(&mut deps.storage).load()?;
+    if deps.api.canonical_address(&env.message.sender)? != state.trader {
+        return Err(StdError::generic_err("Unauthorized."));
+    }
 
     let ask_denom = LUNA_DENOM.to_string();
 
@@ -183,7 +188,6 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
         amount.clone(),
         ask_denom.clone(),
     );
-    let state = config(&mut deps.storage).load()?;
     let offer_coin = Coin{ denom: ask_denom.clone(), amount: amount.amount * Decimal::from_ratio(Uint128(1000000), luna_price.amount)};
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
@@ -204,10 +208,13 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     amount: Coin,
     luna_price: Coin,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    let state = config(&mut deps.storage).load()?;
+    if deps.api.canonical_address(&env.message.sender)? != state.trader {
+        return Err(StdError::generic_err("Unauthorized."));
+    }
 
     let ask_denom = LUNA_DENOM.to_string();
 
-    let state = config(&mut deps.storage).load()?;
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![amount.clone()],
@@ -326,12 +333,17 @@ pub fn try_provide_liquidity<S: Storage, A: Api, Q: Querier>(
 }
 
 pub fn try_deposit_to_anchor<S: Storage, A: Api, Q: Querier>(
-    _deps: &mut Extern<S, A, Q>,
-    _env: Env,
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
     amount: Coin
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     if amount.denom != "uusd" {
-        return Err(StdError::generic_err("Wrong currency. Only US (denom: uusd) is supported."));
+        return Err(StdError::generic_err("Wrong currency. Only UST (denom: uusd) is supported."));
+    }
+
+    let state = config(&mut deps.storage).load()?;
+    if deps.api.canonical_address(&env.message.sender)? != state.trader {
+        return Err(StdError::generic_err("Unauthorized."));
     }
 
     let mut response = HandleResponse::default();
@@ -345,10 +357,15 @@ pub fn try_deposit_to_anchor<S: Storage, A: Api, Q: Querier>(
 }
 
 pub fn try_withdrawal_from_anchor<S: Storage, A: Api, Q: Querier>(
-    _deps: &mut Extern<S, A, Q>,
-    _env: Env,
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
     amount: Uint128
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    let state = config(&mut deps.storage).load()?;
+    if deps.api.canonical_address(&env.message.sender)? != state.trader {
+        return Err(StdError::generic_err("Unauthorized."));
+    }
+
     let mut response = HandleResponse::default();
     response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
         contract_addr: HumanAddr::from(AUST),
