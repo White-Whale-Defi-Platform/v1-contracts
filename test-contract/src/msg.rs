@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{from_binary, to_binary,  AllBalanceResponse, Api, BalanceResponse, Binary, BankQuery, Coin, Extern, HumanAddr, Querier, QueryRequest, StdResult, Storage, Uint128, WasmQuery};
+use cosmwasm_std::{from_binary, to_binary,  AllBalanceResponse, Api, BalanceResponse, Binary, BankQuery, Coin, Decimal, Extern, HumanAddr, Querier, QueryRequest, StdResult, Storage, Uint128, WasmQuery};
 use cosmwasm_storage::to_length_prefixed;
 use cw20::Cw20ReceiveMsg;
 
@@ -91,8 +91,8 @@ pub enum AnchorMsg {
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
     Receive(Cw20ReceiveMsg),
-    AbovePeg { amount: Coin, luna_price: Coin },
-    BelowPeg { amount: Coin, luna_price: Coin },
+    AbovePeg { amount: Coin, luna_price: Coin, residual_luna: Uint128 },
+    BelowPeg { amount: Coin, luna_price: Coin, residual_luna: Uint128 },
     PostInitialize{},
     ProvideLiquidity {
         asset: Asset
@@ -117,7 +117,8 @@ pub struct PoolResponse {
 }
 
 pub fn create_terraswap_msg(
-    offer: Coin
+    offer: Coin,
+    belief_price: Decimal
 ) -> PairMsg {
     let offer = Asset{
         info: AssetInfo::NativeToken{ denom: offer.denom.clone() },
@@ -125,8 +126,26 @@ pub fn create_terraswap_msg(
     };
     PairMsg::Swap{
         offer_asset: offer,
-        belief_price: None,
-        max_spread: None,
+        belief_price: Some(belief_price),
+        max_spread: Some(Decimal::from_ratio(Uint128(1), Uint128(100))),
         to: None,
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Message {
+    AssertLimitOrder{ offer_coin: Coin, ask_denom: String, minimum_receive: Uint128 },
+}
+
+pub fn create_assert_limit_order_msg(
+    offer_coin: Coin,
+    ask_denom: String,
+    minimum_receive: Uint128
+) -> Message {
+    Message::AssertLimitOrder{
+        offer_coin: offer_coin,
+        ask_denom: ask_denom,
+        minimum_receive: minimum_receive * Decimal::from_ratio(Uint128(99), Uint128(100))
     }
 }

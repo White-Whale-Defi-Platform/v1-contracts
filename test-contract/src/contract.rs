@@ -6,8 +6,8 @@ use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 
 use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 
-use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg, AnchorMsg};
-use crate::state::{config, State, LUNA_DENOM, read_lp_info, store_lp_info, AUST, ANCHOR};
+use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg, create_assert_limit_order_msg, AnchorMsg};
+use crate::state::{config, State, LUNA_DENOM, read_lp_info, store_lp_info, AUST, ANCHOR, BURN_MINT_CONTRACT};
 use crate::asset::{Asset, AssetInfo, SingleInfo, SingleInfoRaw};
 use crate::hook::InitHook;
 use crate::token::InitMsg as TokenInitMsg;
@@ -77,8 +77,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     match msg {
         HandleMsg::Receive(msg) => receive_cw20(deps, env, msg),
-        HandleMsg::AbovePeg { amount, luna_price } => try_arb_above_peg(deps, env, amount, luna_price),
-        HandleMsg::BelowPeg { amount, luna_price } => try_arb_below_peg(deps, env, amount, luna_price),
+        HandleMsg::AbovePeg { amount, luna_price, residual_luna } => try_arb_above_peg(deps, env, amount, luna_price, residual_luna),
+        HandleMsg::BelowPeg { amount, luna_price, residual_luna } => try_arb_below_peg(deps, env, amount, luna_price, residual_luna),
         HandleMsg::PostInitialize{ } => try_post_initialize(deps, env),
         HandleMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, env, asset),
         HandleMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, env, amount),
@@ -175,6 +175,7 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     env: Env,
     amount: Coin,
     luna_price: Coin,
+    residual_luna: Uint128
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config(&mut deps.storage).load()?;
     if deps.api.canonical_address(&env.message.sender)? != state.trader {
@@ -183,16 +184,22 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
 
     let ask_denom = LUNA_DENOM.to_string();
 
+    let expected_luna_amount = amount.amount * Decimal::from_ratio(Uint128(1000000), luna_price.amount);
+    // let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    //     contract_addr: HumanAddr::from(BURN_MINT_CONTRACT),
+    //     send: vec![],
+    //     msg: to_binary(&create_assert_limit_order_msg(amount.clone(), ask_denom.clone(), expected_luna_amount))?,
+    // });
     let swap_msg = create_swap_msg(
         env.contract.address,
         amount.clone(),
         ask_denom.clone(),
     );
-    let offer_coin = Coin{ denom: ask_denom.clone(), amount: amount.amount * Decimal::from_ratio(Uint128(1000000), luna_price.amount)};
+    let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + expected_luna_amount};
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![offer_coin.clone()],
-        msg: to_binary(&create_terraswap_msg(offer_coin.clone()))?,
+        msg: to_binary(&create_terraswap_msg(offer_coin.clone(), Decimal::from_ratio(luna_price.amount, Uint128(1000000))))?,
     });
 
     Ok(HandleResponse {
@@ -207,6 +214,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     env: Env,
     amount: Coin,
     luna_price: Coin,
+    residual_luna: Uint128
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config(&mut deps.storage).load()?;
     if deps.api.canonical_address(&env.message.sender)? != state.trader {
@@ -218,10 +226,16 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![amount.clone()],
-        msg: to_binary(&create_terraswap_msg(amount.clone()))?,
+        msg: to_binary(&create_terraswap_msg(amount.clone(), Decimal::from_ratio(luna_price.amount, Uint128(1000000))))?,
     });
 
-    let offer_coin = Coin{ denom: ask_denom.clone(), amount: amount.amount * Decimal::from_ratio(Uint128(1000000), luna_price.amount)};
+    let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_price.amount)};
+    // let min_stable_amount = amount.amount;
+    // let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    //     contract_addr: HumanAddr::from(BURN_MINT_CONTRACT),
+    //     send: vec![],
+    //     msg: to_binary(&create_assert_limit_order_msg(offer_coin.clone(), amount.denom.clone(), min_stable_amount))?,
+    // });
     let swap_msg = create_swap_msg(
         env.contract.address,
         offer_coin,
