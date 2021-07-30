@@ -20,7 +20,8 @@ def main():
 
     contract_address = "terra1ky5hkd0jwn8t76n85wkzmywa7qzrgrh50g4s5x"
     # contract_address = "terra1ezhgrm50vj3g0635t8s2y7em8n0e9frhpr8q63"
-    bot = get_arbbot(client=client, wallet=deployer, config=TERRASWAP_UST_CONFIG, contract_address=contract_address, get_gas_prices=get_gas_prices)
+    contract_address = "terra17fvgcyj0n92px30xt0qdhmnhjmuj6wyuya9tzd"
+    bot = get_arbbot(client=client, wallet=deployer, config=TERRASWAP_UST_CONFIG, contract_address=contract_address, sender=Sender(client=client, wallet=deployer, get_gas_prices=get_gas_prices))
     execute_loop(op=bot, sleep_time=timedelta(seconds=1))
 
 

@@ -9,7 +9,8 @@ async def loop(op, sleep_time: timedelta, recover_time: timedelta = timedelta(se
     while True:
         try:
             op()
-        except (aiohttp.client_exceptions.ClientConnectorError, terra_sdk.exceptions.LCDResponseError):
+        except (aiohttp.client_exceptions.ClientConnectorError, terra_sdk.exceptions.LCDResponseError) as exc:
+            print(f'err {type(exc)}: {exc}')
             await asyncio.sleep(recover_time.total_seconds())
         await asyncio.sleep(sleep_time.total_seconds())
 

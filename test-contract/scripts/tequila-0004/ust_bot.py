@@ -18,7 +18,7 @@ def main():
     mnemonic = 'main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic'
     deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
 
-    bot = get_arbbot(client=client, wallet=deployer, config=TERRASWAP_UST_CONFIG, get_gas_prices=get_gas_prices)
+    bot = get_arbbot(client=client, wallet=deployer, config=TERRASWAP_UST_CONFIG, sender=Sender(client=client, wallet=deployer, get_gas_prices=get_gas_prices))
     execute_loop(op=bot, sleep_time=timedelta(seconds=3))
 
 
