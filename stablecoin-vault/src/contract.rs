@@ -301,13 +301,13 @@ pub fn try_post_initialize<S: Storage, A: Api, Q: Querier>(
 }
 
 pub fn compute_total_deposits<S: Storage, A: Api, Q: Querier>(
-    deps: &mut Extern<S, A, Q>,
-    contract_address: &HumanAddr,
+    deps: &Extern<S, A, Q>,
     info: &PoolInfoRaw
 ) -> StdResult<Uint128> {
     // assert slippage tolerance
     // assert_slippage_tolerance(&slippage_tolerance, &deposits, &pools)?;
 
+    let contract_address = deps.api.human_address(&info.contract_addr)?;
     let ust_info = info.asset_infos[0].to_normal(deps)?;
     let ust_amount = match ust_info {
         AssetInfo::Token{..} => Uint128(0),
@@ -340,7 +340,7 @@ pub fn try_provide_liquidity<S: Storage, A: Api, Q: Querier>(
 
     let deposit: Uint128 = asset.amount;
     let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
-    let total_deposits_in_ust: Uint128 = (compute_total_deposits(deps, &env.contract.address, &info)? - deposit)?;
+    let total_deposits_in_ust: Uint128 = (compute_total_deposits(deps, &info)? - deposit)?;
 
     let liquidity_token = deps.api.human_address(&info.liquidity_token)?;
     let total_share = query_supply(&deps, &liquidity_token)?;
@@ -443,8 +443,11 @@ pub fn try_query_pool<S: Storage, A: Api, Q: Querier>(
     let total_share: Uint128 =
         query_supply(&deps, &deps.api.human_address(&info.liquidity_token)?)?;
 
+    let total_deposits_in_ust = compute_total_deposits(deps, &info)?;
+
     let resp = PoolResponse {
         assets,
+        total_deposits_in_ust,
         total_share,
     };
 

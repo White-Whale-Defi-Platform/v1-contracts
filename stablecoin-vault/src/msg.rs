@@ -113,6 +113,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolResponse {
     pub assets: [Asset; 3],
+    pub total_deposits_in_ust: Uint128,
     pub total_share: Uint128,
 }
 
