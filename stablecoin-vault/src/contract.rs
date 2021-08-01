@@ -11,7 +11,7 @@ use crate::state::{config, State, LUNA_DENOM, read_pool_info, store_pool_info, A
 use crate::asset::{Asset, AssetInfo, PoolInfo, PoolInfoRaw};
 use crate::hook::InitHook;
 use crate::token::InitMsg as TokenInitMsg;
-use crate::querier::{query_balance, query_token_balance, query_supply, query_aust_exchange_rate};
+use crate::querier::{query_balance, query_token_balance, query_supply, query_aust_exchange_rate, query_luna_price};
 use crate::pair::Cw20HookMsg;
 use std::str::FromStr;
 
@@ -308,14 +308,20 @@ pub fn compute_total_deposits<S: Storage, A: Api, Q: Querier>(
     // assert_slippage_tolerance(&slippage_tolerance, &deposits, &pools)?;
 
     let contract_address = deps.api.human_address(&info.contract_addr)?;
-    let ust_info = info.asset_infos[0].to_normal(deps)?;
-    let ust_amount = match ust_info {
-        AssetInfo::Token{..} => Uint128(0),
-        AssetInfo::NativeToken{denom} => query_balance(deps, &contract_address, denom)?
+    let stable_info = info.asset_infos[0].to_normal(deps)?;
+    let stable_denom = match stable_info {
+        AssetInfo::Token{..} => String::default(),
+        AssetInfo::NativeToken{denom} => denom
     };
+    let stable_amount = query_balance(deps, &contract_address, stable_denom.clone())?;
 
-    // let luna_info = info.asset_infos[1].to_normal(deps)?;
-
+    let luna_info = info.asset_infos[1].to_normal(deps)?;
+    let luna_amount = match luna_info {
+        AssetInfo::Token{..} => Uint128(0),
+        AssetInfo::NativeToken{denom} => query_balance(deps, &contract_address, denom)?,
+    };
+    let luna_price = query_luna_price(deps, stable_denom)?;
+    let luna_value_in_stable = luna_amount * luna_price;
 
     let aust_info = info.asset_infos[2].to_normal(deps)?;
     let aust_amount = match aust_info {
@@ -324,10 +330,10 @@ pub fn compute_total_deposits<S: Storage, A: Api, Q: Querier>(
     };
 
     let epoch_state_response = query_aust_exchange_rate(deps)?;
-    let aust_exchange_rate= Decimal::from_str(&epoch_state_response.exchange_rate.to_string())?;
+    let aust_exchange_rate = Decimal::from_str(&epoch_state_response.exchange_rate.to_string())?;
     let aust_value_in_ust = aust_exchange_rate*aust_amount;
 
-    let total_deposits_in_ust = ust_amount + aust_value_in_ust;
+    let total_deposits_in_ust = stable_amount + luna_value_in_stable + aust_value_in_ust;
     Ok(total_deposits_in_ust)
 }
 
@@ -414,7 +420,6 @@ pub fn try_withdrawal_from_anchor<S: Storage, A: Api, Q: Querier>(
 
     Ok(response)
 }
-
 
 pub fn query<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,

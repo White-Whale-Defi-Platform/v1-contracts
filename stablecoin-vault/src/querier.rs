@@ -4,15 +4,22 @@ use serde::{Deserialize, Serialize};
 use crate::asset::{Asset, AssetInfo, PairInfo};
 use crate::factory::QueryMsg as FactoryQueryMsg;
 use crate::pair::{QueryMsg as PairQueryMsg, ReverseSimulationResponse, SimulationResponse};
-use crate::state::ANCHOR;
+use crate::state::{ANCHOR};
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
-    from_binary, to_binary, AllBalanceResponse, Api, BalanceResponse, BankQuery, Binary, Coin,
+    from_binary, to_binary, AllBalanceResponse, Api, BalanceResponse, BankQuery, Binary, Coin, Decimal,
     Extern, HumanAddr, Querier, QueryRequest, StdResult, Storage, Uint128, WasmQuery,
 };
 use cosmwasm_storage::to_length_prefixed;
 use cw20::TokenInfoResponse;
+use terra_cosmwasm::TerraQuerier;
+
+pub fn from_micro(
+    amount: Uint128
+) -> Decimal {
+    Decimal::from_ratio(amount, Uint128(1000000))
+}
 
 
 pub fn query_balance<S: Storage, A: Api, Q: Querier>(
@@ -53,6 +60,15 @@ pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
             distributed_interest: None,
         })?,
     }))
+}
+
+pub fn query_luna_price<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    offer_denom: String
+) -> StdResult<Decimal> {
+    let querier = TerraQuerier::new(&deps.querier);
+    let response = querier.query_swap(Coin{ denom: offer_denom, amount: Uint128(1000000) }, "uluna")?;
+    Ok(from_micro(response.receive.amount))
 }
 
 pub fn query_all_balances<S: Storage, A: Api, Q: Querier>(
