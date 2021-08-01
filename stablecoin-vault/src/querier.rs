@@ -1,8 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::asset::{Asset, AssetInfo, PairInfo};
-use crate::factory::QueryMsg as FactoryQueryMsg;
+use crate::asset::{Asset};
 use crate::pair::{QueryMsg as PairQueryMsg, ReverseSimulationResponse, SimulationResponse};
 use crate::state::{ANCHOR};
 
@@ -123,19 +122,6 @@ fn concat(namespace: &[u8], key: &[u8]) -> Vec<u8> {
     let mut k = namespace.to_vec();
     k.extend_from_slice(key);
     k
-}
-
-pub fn query_pair_info<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    factory_contract: &HumanAddr,
-    asset_infos: &[AssetInfo; 2],
-) -> StdResult<PairInfo> {
-    deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: factory_contract.clone(),
-        msg: to_binary(&FactoryQueryMsg::Pair {
-            asset_infos: asset_infos.clone(),
-        })?,
-    }))
 }
 
 pub fn simulate<S: Storage, A: Api, Q: Querier>(

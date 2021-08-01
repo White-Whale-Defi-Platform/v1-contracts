@@ -38,9 +38,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
             AssetInfo::Token{ contract_addr: HumanAddr::from(AUST) }.to_raw(&deps)?
         ],
     };
-
     store_pool_info(&mut deps.storage, &pool_info)?;
-
 
     // Create LP token
     let messages: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Instantiate {

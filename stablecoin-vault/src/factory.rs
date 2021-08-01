@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::asset::{AssetInfo, PairInfo};
+use crate::asset::{AssetInfo};
 use crate::hook::InitHook;
 use cosmwasm_std::HumanAddr;
 
@@ -57,9 +57,3 @@ pub struct ConfigResponse {
 /// We currently take no arguments for migrations
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MigrateMsg {}
-
-// We define a custom struct for each query response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct PairsResponse {
-    pub pairs: Vec<PairInfo>,
-}
