@@ -63,10 +63,10 @@ pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
 
 pub fn query_luna_price<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
-    offer_denom: String
+    ask_denom: String
 ) -> StdResult<Decimal> {
     let querier = TerraQuerier::new(&deps.querier);
-    let response = querier.query_swap(Coin{ denom: offer_denom, amount: Uint128(1000000) }, "uluna")?;
+    let response = querier.query_swap(Coin{ denom: "uluna".to_string(), amount: Uint128(1000000) }, ask_denom)?;
     Ok(from_micro(response.receive.amount))
 }
 
