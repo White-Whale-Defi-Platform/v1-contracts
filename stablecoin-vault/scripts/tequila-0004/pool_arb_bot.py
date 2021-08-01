@@ -87,7 +87,7 @@ class AnchorModel:
         self.deposit_profit_margin_ratio: float = 0.5
 
     def aust_ust_exchange_rate(self) -> float:
-        return float(self.sign_and_send.client.wasm.contract_query(self.anchor_contract, {"state": {}})["prev_exchange_rate"])
+        return float(self.sign_and_send.client.wasm.contract_query(self.anchor_contract, {"epoch_state": {}})["exchange_rate"])
 
     def deposit(self, sender: str, contract: str):
         ust_balance = self.balances.uusd(contract)

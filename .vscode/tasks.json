@@ -25,7 +25,7 @@
             "problemMatcher": []
         },
         {
-            "label": "optimized build (test-contract)",
+            "label": "optimized build (stablecoin-vault)",
             "type": "shell",
             "command": "docker",
             "args": [
@@ -40,7 +40,7 @@
                 "cosmwasm/rust-optimizer:0.10.3"
             ],
             "options": {
-                "cwd": "${workspaceFolder}/test-contract"
+                "cwd": "${workspaceFolder}/stablecoin-vault"
             },
             "group": "build",
             "problemMatcher": []

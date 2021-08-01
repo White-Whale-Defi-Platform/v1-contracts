@@ -7,12 +7,14 @@ use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 
 use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg, create_assert_limit_order_msg, AnchorMsg};
-use crate::state::{config, State, LUNA_DENOM, read_lp_info, store_lp_info, AUST, ANCHOR, BURN_MINT_CONTRACT};
-use crate::asset::{Asset, AssetInfo, SingleInfo, SingleInfoRaw};
+use crate::state::{config, State, LUNA_DENOM, read_pool_info, store_pool_info, AUST, ANCHOR, BURN_MINT_CONTRACT};
+use crate::asset::{Asset, AssetInfo, PoolInfo, PoolInfoRaw};
 use crate::hook::InitHook;
 use crate::token::InitMsg as TokenInitMsg;
-use crate::querier::query_supply;
+use crate::querier::{query_balance, query_token_balance, query_supply, query_aust_exchange_rate};
 use crate::pair::Cw20HookMsg;
+use std::str::FromStr;
+
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -27,13 +29,18 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
 
     config(&mut deps.storage).save(&state)?;
 
-    let pair_info: &SingleInfoRaw = &SingleInfoRaw {
+    let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: deps.api.canonical_address(&env.contract.address)?,
         liquidity_token: CanonicalAddr::default(),
-        asset_info: msg.asset_info.to_raw(&deps)?,
+        asset_infos: [
+            msg.asset_info.to_raw(&deps)?,
+            AssetInfo::NativeToken{ denom: LUNA_DENOM.to_string()}.to_raw(&deps)?,
+            AssetInfo::Token{ contract_addr: HumanAddr::from(AUST) }.to_raw(&deps)?
+        ],
     };
 
-    store_lp_info(&mut deps.storage, &pair_info)?;
+    store_pool_info(&mut deps.storage, &pool_info)?;
+
 
     // Create LP token
     let messages: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Instantiate {
@@ -96,10 +103,11 @@ pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
     sender: HumanAddr,
     amount: Uint128,
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
-    let info: SingleInfoRaw = read_lp_info(&deps.storage)?;
+    let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
     let liquidity_addr: HumanAddr = deps.api.human_address(&info.liquidity_token)?;
 
-    let pool: Asset = info.query_pools(&deps, &env.contract.address)?;
+    // FIX
+    let pool: Asset = info.query_pools(&deps, &env.contract.address)?[0].clone();
     let total_share: Uint128 = query_supply(&deps, &liquidity_addr)?;
 
     let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
@@ -157,7 +165,7 @@ pub fn receive_cw20<S: Storage, A: Api, Q: Querier>(
                 Err(StdError::generic_err("no swaps can be performed in this pool"))
             }
             Cw20HookMsg::WithdrawLiquidity {} => {
-                let config: SingleInfoRaw = read_lp_info(&deps.storage)?;
+                let config: PoolInfoRaw = read_pool_info(&deps.storage)?;
                 if deps.api.canonical_address(&env.message.sender)? != config.liquidity_token {
                     return Err(StdError::unauthorized());
                 }
@@ -270,16 +278,16 @@ pub fn try_post_initialize<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
-    let config: SingleInfoRaw = read_lp_info(&deps.storage)?;
+    let config: PoolInfoRaw = read_pool_info(&deps.storage)?;
 
     // permission check
     if config.liquidity_token != CanonicalAddr::default() {
         return Err(StdError::unauthorized());
     }
 
-    store_lp_info(
+    store_pool_info(
         &mut deps.storage,
-        &SingleInfoRaw {
+        &PoolInfoRaw {
             liquidity_token: deps.api.canonical_address(&env.message.sender)?,
             ..config
         },
@@ -292,6 +300,37 @@ pub fn try_post_initialize<S: Storage, A: Api, Q: Querier>(
     })
 }
 
+pub fn compute_total_deposits<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    contract_address: &HumanAddr,
+    info: &PoolInfoRaw
+) -> StdResult<Uint128> {
+    // assert slippage tolerance
+    // assert_slippage_tolerance(&slippage_tolerance, &deposits, &pools)?;
+
+    let ust_info = info.asset_infos[0].to_normal(deps)?;
+    let ust_amount = match ust_info {
+        AssetInfo::Token{..} => Uint128(0),
+        AssetInfo::NativeToken{denom} => query_balance(deps, &contract_address, denom)?
+    };
+
+    // let luna_info = info.asset_infos[1].to_normal(deps)?;
+
+
+    let aust_info = info.asset_infos[2].to_normal(deps)?;
+    let aust_amount = match aust_info {
+        AssetInfo::Token{contract_addr} => query_token_balance(deps, &contract_addr, &contract_address)?,
+        AssetInfo::NativeToken{..} => Uint128(0)
+    };
+
+    let epoch_state_response = query_aust_exchange_rate(deps)?;
+    let aust_exchange_rate= Decimal::from_str(&epoch_state_response.exchange_rate.to_string())?;
+    let aust_value_in_ust = aust_exchange_rate*aust_amount;
+
+    let total_deposits_in_ust = ust_amount + aust_value_in_ust;
+    Ok(total_deposits_in_ust)
+}
+
 pub fn try_provide_liquidity<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -299,31 +338,9 @@ pub fn try_provide_liquidity<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     asset.assert_sent_native_token_balance(&env)?;
 
-    let info: SingleInfoRaw = read_lp_info(&deps.storage)?;
-    let mut pool: Asset = info.query_pools(deps, &env.contract.address)?;
     let deposit: Uint128 = asset.amount;
-
-    let mut response = HandleResponse::<TerraMsgWrapper>::default();
-
-    // If the pool is token contract, then we need to execute TransferFrom msg to receive funds
-    if let AssetInfo::Token { contract_addr, .. } = &pool.info {
-        response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.clone(),
-            msg: to_binary(&Cw20HandleMsg::TransferFrom {
-                owner: env.message.sender.clone(),
-                recipient: env.contract.address.clone(),
-                amount: deposit,
-            })?,
-            send: vec![],
-        }));
-    } else {
-        // If the asset is native token, balance is already increased
-        // To calculated properly we should subtract user deposit from the pool
-        pool.amount = (pool.amount - deposit)?;
-    }
-
-    // assert slippage tolerance
-    // assert_slippage_tolerance(&slippage_tolerance, &deposits, &pools)?;
+    let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
+    let total_deposits_in_ust: Uint128 = (compute_total_deposits(deps, &env.contract.address, &info)? - deposit)?;
 
     let liquidity_token = deps.api.human_address(&info.liquidity_token)?;
     let total_share = query_supply(&deps, &liquidity_token)?;
@@ -331,9 +348,11 @@ pub fn try_provide_liquidity<S: Storage, A: Api, Q: Querier>(
         // Initial share = collateral amount
         deposit
     } else {
-        deposit.multiply_ratio(total_share, pool.amount)
+        deposit.multiply_ratio(total_share, total_deposits_in_ust)
     };
 
+
+    let mut response = HandleResponse::<TerraMsgWrapper>::default();
     // mint LP token to sender
     response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&info.liquidity_token)?,
@@ -409,23 +428,23 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 
 pub fn try_query_asset<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>
-) -> StdResult<SingleInfo> {
+) -> StdResult<PoolInfo> {
 
-    let info: SingleInfoRaw = read_lp_info(&deps.storage)?;
+    let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
     info.to_normal(&deps)
 }
 
 pub fn try_query_pool<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>
 ) -> StdResult<PoolResponse> {
-    let info: SingleInfoRaw = read_lp_info(&deps.storage)?;
+    let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
     let contract_addr = deps.api.human_address(&info.contract_addr)?;
-    let asset: Asset = info.query_pools(&deps, &contract_addr)?;
+    let assets: [Asset; 3] = info.query_pools(&deps, &contract_addr)?;
     let total_share: Uint128 =
         query_supply(&deps, &deps.api.human_address(&info.liquidity_token)?)?;
 
     let resp = PoolResponse {
-        asset,
+        assets,
         total_share,
     };
 
@@ -464,7 +483,8 @@ mod tests {
 
         let msg = HandleMsg::BelowPeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
-            luna_price: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)}
+            luna_price: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
+            residual_luna: Uint128(0),
         };
         let env = mock_env("creator", &coins(1000, "earth"));
 
@@ -499,7 +519,8 @@ mod tests {
 
         let msg = HandleMsg::AbovePeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
-            luna_price: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)}
+            luna_price: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
+            residual_luna: Uint128(0),
         };
         let env = mock_env("creator", &coins(1000, "earth"));
 

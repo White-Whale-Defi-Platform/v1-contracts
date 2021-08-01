@@ -1,13 +1,19 @@
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
 use crate::asset::{Asset, AssetInfo, PairInfo};
 use crate::factory::QueryMsg as FactoryQueryMsg;
 use crate::pair::{QueryMsg as PairQueryMsg, ReverseSimulationResponse, SimulationResponse};
+use crate::state::ANCHOR;
 
+use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
     from_binary, to_binary, AllBalanceResponse, Api, BalanceResponse, BankQuery, Binary, Coin,
     Extern, HumanAddr, Querier, QueryRequest, StdResult, Storage, Uint128, WasmQuery,
 };
 use cosmwasm_storage::to_length_prefixed;
 use cw20::TokenInfoResponse;
+
 
 pub fn query_balance<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
@@ -20,6 +26,33 @@ pub fn query_balance<S: Storage, A: Api, Q: Querier>(
         denom,
     }))?;
     Ok(balance.amount.amount)
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AnchorQuery {
+    EpochState {
+        block_height: Option<u64>,
+        distributed_interest: Option<Uint256>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct EpochStateResponse {
+    pub exchange_rate: Decimal256,
+    pub aterra_supply: Uint256,
+}
+
+pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+) -> StdResult<EpochStateResponse> {
+    deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: HumanAddr::from(ANCHOR),
+        msg: to_binary(&AnchorQuery::EpochState {
+            block_height: None,
+            distributed_interest: Some(Uint256::from(0u64)),
+        })?,
+    }))
 }
 
 pub fn query_all_balances<S: Storage, A: Api, Q: Querier>(

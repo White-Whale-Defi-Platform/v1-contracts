@@ -16,7 +16,7 @@ from util import get_gas_prices
 def main():
     client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004", 
                        gas_prices=get_gas_prices(), gas_adjustment="1.1")
-    mnemonic = "<ADD_TEST_ACCOUNT_MNEMONIC>"
+    mnemonic = 'main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic'
     deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
 
     config = TERRASWAP_KRT_CONFIG

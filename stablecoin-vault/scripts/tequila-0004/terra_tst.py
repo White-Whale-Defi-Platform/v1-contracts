@@ -1,5 +1,6 @@
 import terra_sdk
 from terra_sdk.client.lcd import LCDClient
+from terra_sdk.core.coins import Coins
 from terra_sdk.key.mnemonic import MnemonicKey
 from terra_sdk.core.auth import StdFee
 from terra_sdk.core.wasm import MsgExecuteContract
@@ -21,6 +22,7 @@ def main():
 	bank = terra_sdk.client.lcd.api.bank.BankAPI(terra)
 	balance = bank.balance(address)
 	print(f'account balance: {balance}')
+	print(terra.oracle.parameters())
 
 	min_receive = "130665"
 	execute_msg = {
@@ -49,25 +51,53 @@ def main():
 	}
 
 	tx = wallet.create_and_sign_tx(
-	    msgs=[MsgExecuteContract(
-			address,
-			contract_address,
-			execute_msg
-	    ),
-	    MsgSwap(
-			address,
-			Coin('uusd', 1000000),
-			'uluna'
-	    ),
-	    MsgExecuteContract(
-			address,
-			terraswap_address,
-			execute_terraswap_msg,
-			[Coin.from_str(min_receive + "uluna")]
-	    )],
+	    msgs=[
+			# MsgExecuteContract(
+			# 	address,
+			# 	contract_address,
+			# 	execute_msg
+			# ),
+			MsgSwap(
+				address,
+				Coin('uusd', 1000000),
+				'uluna'
+			),
+			MsgExecuteContract(
+				address,
+				terraswap_address,
+				execute_terraswap_msg,
+				[Coin.from_str(min_receive + "uluna")]
+			)
+		],
 	    memo="test transaction!",
 	    fee=StdFee(400000, "120000uusd")
 	)
+	estimated_fee = terra.tx.estimate_fee(tx)
+	tx = wallet.create_and_sign_tx(
+	    msgs=[
+			# MsgExecuteContract(
+			# 	address,
+			# 	contract_address,
+			# 	execute_msg
+			# ),
+			MsgSwap(
+				address,
+				Coin('uusd', 1000000),
+				'uluna'
+			),
+			MsgExecuteContract(
+				address,
+				terraswap_address,
+				execute_terraswap_msg,
+				[Coin.from_str(min_receive + "uluna")]
+			)
+		],
+	    memo="test transaction!",
+	    fee=StdFee(estimated_fee.gas, "40000uusd")
+	)
+#	tx.fee.gas = estimated_fee.gas
+	# tx.fee.amount = Coins([Coin(denom="uusd", amount=tx.fee.gas)])
+	print(f"estimated fee: {estimated_fee}")
 	print('===')
 	result = terra.tx.broadcast(tx)
 	print(result)

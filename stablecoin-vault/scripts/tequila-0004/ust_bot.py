@@ -9,6 +9,7 @@ sys.path.append(pathlib.Path(__file__).parent.resolve())
 from pool_arb_bot import get_arbbot
 from poolconfig import TERRASWAP_UST_CONFIG
 from loop import execute_loop
+from sender import Sender
 from util import get_gas_prices
 
 
@@ -19,6 +20,7 @@ def main():
     deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
 
     bot = get_arbbot(client=client, wallet=deployer, config=TERRASWAP_UST_CONFIG, sender=Sender(client=client, wallet=deployer, get_gas_prices=get_gas_prices))
+    bot.profitability_check.profit_margin = -0.005
     execute_loop(op=bot, sleep_time=timedelta(seconds=3))
 
 

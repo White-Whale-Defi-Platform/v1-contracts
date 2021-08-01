@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{CanonicalAddr, StdResult, Storage};
 use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
 
-use crate::asset::SingleInfoRaw;
+use crate::asset::PoolInfoRaw;
 
 pub static CONFIG_KEY: &[u8] = b"config";
 static KEY_PAIR_INFO: &[u8] = b"asset_info";
@@ -33,11 +33,11 @@ pub fn config_read<S: Storage>(storage: &S) -> ReadonlySingleton<S, State> {
 }
 
 
-pub fn store_lp_info<S: Storage>(storage: &mut S, data: &SingleInfoRaw) -> StdResult<()> {
+pub fn store_pool_info<S: Storage>(storage: &mut S, data: &PoolInfoRaw) -> StdResult<()> {
     Singleton::new(storage, KEY_PAIR_INFO).save(data)
 }
 
-pub fn read_lp_info<S: Storage>(storage: &S) -> StdResult<SingleInfoRaw> {
+pub fn read_pool_info<S: Storage>(storage: &S) -> StdResult<PoolInfoRaw> {
     ReadonlySingleton::new(storage, KEY_PAIR_INFO).load()
 }
 

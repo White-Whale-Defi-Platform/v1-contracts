@@ -112,7 +112,7 @@ pub enum QueryMsg {
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolResponse {
-    pub asset: Asset,
+    pub assets: [Asset; 3],
     pub total_share: Uint128,
 }
 

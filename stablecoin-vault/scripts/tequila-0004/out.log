@@ -1,0 +1,177 @@
+===
+time: 2021-07-26 18:58:32.805427
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0246079924242424
+simulated profit: 2.4355467171717216%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:58:37.961240
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0246079924242424
+simulated profit: 2.4355467171717216%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:58:42.821524
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0246079924242424
+simulated profit: 2.4355467171717216%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:58:47.777134
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0206151515151516
+simulated profit: 2.0362626262626193%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:58:52.975608
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0206151515151516
+simulated profit: 2.0362626262626193%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:58:57.821504
+no bluna funds
+offer amount: 79200000
+swap rate: 1.020585037878788
+simulated profit: 2.0332512626262567%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:59:01.865305
+no bluna funds
+offer amount: 79200000
+swap rate: 1.020585037878788
+simulated profit: 2.0332512626262567%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:59:06.825385
+no bluna funds
+offer amount: 79200000
+swap rate: 1.020585037878788
+simulated profit: 2.0332512626262567%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:59:12.337705
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0206295328282828
+simulated profit: 2.0377007575757666%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:59:16.413391
+no bluna funds
+Traceback (most recent call last):
+  File "bluna_bot_col_4.py", line 28, in <module>
+    main()
+  File "bluna_bot_col_4.py", line 24, in main
+    execute_loop(op=bot, sleep_time=timedelta(seconds=3))
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/loop.py", line 16, in execute_loop
+    asyncio.get_event_loop().run_until_complete(loop(op=op, sleep_time=sleep_time))
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 64, in run_until_complete
+    self._run_once()
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 100, in _run_once
+    handle._run()
+  File "/usr/lib/python3.8/asyncio/events.py", line 81, in _run
+    self._context.run(self._callback, *self._args)
+  File "/usr/lib/python3.8/asyncio/tasks.py", line 360, in __wakeup
+    self.__step()
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 169, in step
+    step_orig(task, exc)
+  File "/usr/lib/python3.8/asyncio/tasks.py", line 280, in __step
+    result = coro.send(None)
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/loop.py", line 9, in loop
+    op()
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/bluna_swap_bot.py", line 138, in __call__
+    self.try_luna_to_bluna_swap()
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/bluna_swap_bot.py", line 91, in try_luna_to_bluna_swap
+    terraswap_luna_to_bluna = get_terraswap_rate(client=self.client, offer=NativeToken(denom=LUNA_DENOM), amount=offer_amount, pool_address=self.pool_address)
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/query.py", line 50, in get_terraswap_rate
+    result = client.wasm.contract_query(pool_address, get_terraswap_simulation_msg(offer=offer, amount=amount))
+  File "/usr/local/lib/python3.8/dist-packages/terra_sdk/client/lcd/api/_base.py", line 29, in decorator
+    return instance._run_sync(async_call(instance, *args, **kwargs))
+  File "/usr/local/lib/python3.8/dist-packages/terra_sdk/client/lcd/api/_base.py", line 13, in _run_sync
+    return self._c.loop.run_until_complete(coroutine)
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 64, in run_until_complete
+    self._run_once()
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 87, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.8/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
+KeyboardInterrupt
+Task exception was never retrieved
+future: <Task finished name='Task-7' coro=<loop() done, defined at /workspaces/contracts/test-contract/scripts/tequila-0004/loop.py:6> exception=KeyboardInterrupt()>
+Traceback (most recent call last):
+  File "bluna_bot_col_4.py", line 28, in <module>
+    main()
+  File "bluna_bot_col_4.py", line 24, in main
+    execute_loop(op=bot, sleep_time=timedelta(seconds=3))
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/loop.py", line 16, in execute_loop
+    asyncio.get_event_loop().run_until_complete(loop(op=op, sleep_time=sleep_time))
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 64, in run_until_complete
+    self._run_once()
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 100, in _run_once
+    handle._run()
+  File "/usr/lib/python3.8/asyncio/events.py", line 81, in _run
+    self._context.run(self._callback, *self._args)
+  File "/usr/lib/python3.8/asyncio/tasks.py", line 360, in __wakeup
+    self.__step()
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 169, in step
+    step_orig(task, exc)
+  File "/usr/lib/python3.8/asyncio/tasks.py", line 280, in __step
+    result = coro.send(None)
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/loop.py", line 9, in loop
+    op()
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/bluna_swap_bot.py", line 138, in __call__
+    self.try_luna_to_bluna_swap()
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/bluna_swap_bot.py", line 91, in try_luna_to_bluna_swap
+    terraswap_luna_to_bluna = get_terraswap_rate(client=self.client, offer=NativeToken(denom=LUNA_DENOM), amount=offer_amount, pool_address=self.pool_address)
+  File "/workspaces/contracts/test-contract/scripts/tequila-0004/query.py", line 50, in get_terraswap_rate
+    result = client.wasm.contract_query(pool_address, get_terraswap_simulation_msg(offer=offer, amount=amount))
+  File "/usr/local/lib/python3.8/dist-packages/terra_sdk/client/lcd/api/_base.py", line 29, in decorator
+    return instance._run_sync(async_call(instance, *args, **kwargs))
+  File "/usr/local/lib/python3.8/dist-packages/terra_sdk/client/lcd/api/_base.py", line 13, in _run_sync
+    return self._c.loop.run_until_complete(coroutine)
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 64, in run_until_complete
+    self._run_once()
+  File "/usr/local/lib/python3.8/dist-packages/nest_asyncio.py", line 87, in _run_once
+    event_list = self._selector.select(timeout)
+  File "/usr/lib/python3.8/selectors.py", line 468, in select
+    fd_event_list = self._selector.poll(timeout, max_ev)
+KeyboardInterrupt
+===
+time: 2021-07-26 18:59:45.188477
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0206295328282828
+simulated profit: 2.0377007575757666%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:59:50.589713
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0206295328282828
+simulated profit: 2.0377007575757666%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
+===
+time: 2021-07-26 18:59:54.780556
+no bluna funds
+offer amount: 79200000
+swap rate: 1.0206295328282828
+simulated profit: 2.0377007575757666%
+No arb opportunity from luna to bluna
+overall arb opportunities = 0
