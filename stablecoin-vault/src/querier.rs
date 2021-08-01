@@ -50,7 +50,7 @@ pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
         contract_addr: HumanAddr::from(ANCHOR),
         msg: to_binary(&AnchorQuery::EpochState {
             block_height: None,
-            distributed_interest: Some(Uint256::from(0u64)),
+            distributed_interest: None,
         })?,
     }))
 }
