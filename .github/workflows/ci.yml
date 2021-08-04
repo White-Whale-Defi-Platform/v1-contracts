@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Run tests for stablecoin-vault
-        working-directory: ${{runner.workspace}}/stablecoin-vault
+        working-directory: $GITHUB_WORKSPACE/stablecoin-vault
         run: |
           cargo update
           cargo unit-test
