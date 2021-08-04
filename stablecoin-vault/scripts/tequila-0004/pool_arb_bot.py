@@ -55,7 +55,7 @@ class Balances:
     def __init__(self, client: LCDClient, aust_contract: str) -> None:
         self._client: LCDClient = client
         self._aust_contract: str = aust_contract
-
+        self._anchor_contract: str = 'terra15dwd5mj8v59wpj0wvt233mf5efdff808c5tkal'  # tequila-0004
     def uaust(self, contract_address: str) -> int:
         return int(self._client.wasm.contract_query(self._aust_contract, {
             "balance": {"address": contract_address}
@@ -73,12 +73,14 @@ class Balances:
         except KeyError:
             return 0
 
+    def aust_ust_exchange_rate(self) -> float:
+        return float(self._client.wasm.contract_query(self._anchor_contract, {"epoch_state": {}})["exchange_rate"])
+
 
 class AnchorModel:
     def __init__(self, sign_and_send: Sender, balances: Balances, max_deposit_ratio: float = 0.9) -> None:
         self.sign_and_send: Sender = sign_and_send
         self.balances: Balances = balances
-        self.anchor_contract: str = 'terra15dwd5mj8v59wpj0wvt233mf5efdff808c5tkal'  # tequila-0004
         self.aust_contract: str = 'terra1ajt556dpzvjwl0kl5tzku3fc3p3knkg9mkv8jl'  # tequila-0004
         self.max_deposit_ratio: float = max_deposit_ratio
         assert(0 < max_deposit_ratio < 1)
@@ -86,15 +88,12 @@ class AnchorModel:
         self.min_withdrawal: int = 50*MILLION
         self.deposit_profit_margin_ratio: float = 0.5
 
-    def aust_ust_exchange_rate(self) -> float:
-        return float(self.sign_and_send.client.wasm.contract_query(self.anchor_contract, {"epoch_state": {}})["exchange_rate"])
-
     def deposit(self, sender: str, contract: str):
         ust_balance = self.balances.uusd(contract)
         print(f'uusd={ust_balance}')
         aust_balance = self.balances.uaust(contract)
         print(f'aust={aust_balance}')
-        exchange_rate = self.aust_ust_exchange_rate()
+        exchange_rate = self.balances.aust_ust_exchange_rate()
         print(f'rate={exchange_rate}')
         aust_value_in_ust = aust_balance * exchange_rate
         print(f'overall: {ust_balance + aust_value_in_ust}')
@@ -113,17 +112,6 @@ class AnchorModel:
 
         msg = anchor_deposit_msg(
             sender=sender, contract=contract, amount=deposit_amount)
-        return self.sign_and_send(msgs=[msg])
-
-    def withdraw(self, sender: str, contract: str):
-        aust_balance = self.balances.uaust(contract)
-        print(f'withdraw {aust_balance}')
-        if aust_balance < self.min_withdrawal:
-            print('insufficient funds for withdrawal')
-            return
-
-        msg = anchor_withdrawal_msg(
-            sender=sender, contract=contract, amount=aust_balance)
         return self.sign_and_send(msgs=[msg])
 
 
@@ -153,15 +141,15 @@ class Arbbot:
     def __init__(self, client: LCDClient, wallet: Wallet, config: PoolConfig, msg_sender, sender: Sender, trade_amount: int = 95*MILLION, contract_address=None) -> None:
         self.denom: str = config.token.denom
         self.pool_address: str = config.contract_address
-        self.contract_address: str = contract_address if contract_address else wallet.key.acc_address # self.pool_address
+        self.contract_address: str = contract_address if contract_address else wallet.key.acc_address
         self.client: LCDClient = client
         self.wallet: Wallet = wallet
         self._sign_and_send: Sender = sender
         self.counter: int = 0
         self.trade_amount = trade_amount
-        self.fee: str = StdFee(gas=30000, amount="37000" + self.denom)
+        self.fee: StdFee = StdFee(gas=80000, amount="80000" + self.denom)
         self.msg_sender = msg_sender
-        self.profitability_check: ProfitabilityCheck = ProfitabilityCheck(profit_margin=0.001)
+        self.profitability_check: ProfitabilityCheck = ProfitabilityCheck(profit_margin=0.0015)
         self.withdraw_profit_margin_ratio: float = 3.0
         self.deposit_profit_margin_ratio: float = 0.5
         self.aust_contract: str = 'terra1ajt556dpzvjwl0kl5tzku3fc3p3knkg9mkv8jl'  # tequila-0004
@@ -177,14 +165,14 @@ class Arbbot:
         return amount - self.fee.amount[self.denom].amount
 
     def get_min_offer_amount(self):
-        address = self.contract_address if self.contract_address else self.wallet.key.acc_address
-        print(f'min {address}')
-        return int(min(self.trade_amount, self._balances.uusd(address))*0.99) - MILLION
+        return int(min(self.trade_amount, self._balances.uusd(self.contract_address))*0.99) - MILLION
 
     def get_max_offer_amount(self):
-        address = self.contract_address if self.contract_address else self.wallet.key.acc_address
-        print(f'max {address}')
-        return int(self._balances.uusd(address)*0.99) - MILLION
+        uust_amount = self._balances.uusd(self.contract_address)
+        uaust_amount = self._balances.uaust(self.contract_address)
+        uaust_uust_rate = self._balances.aust_ust_exchange_rate()
+        sum = uust_amount + uaust_amount * uaust_uust_rate
+        return int(sum*0.99) - MILLION
 
     def try_arb_above(self) -> ArbResult:
         offer_amount = self.get_min_offer_amount()
@@ -208,13 +196,14 @@ class Arbbot:
             self.counter = self.counter + 1
             print(" >>> Found arb opportunity above peg")
 
+        uaust_withdraw_amount = 0
         if self.profitability_check.profit_ratio > 1 + self.withdraw_profit_margin_ratio*self.get_profit_margin():
-            self.msg_sender.withdraw_from_anchor()
+            uaust_withdraw_amount = self._balances.uaust(self.contract_address)
             offer_amount = self.get_max_offer_amount()
 
         print(f'offer {offer_amount}')
         msgs = self.msg_sender.above_peg(
-            offer_amount=offer_amount, luna_to_stable=terra_luna_to_stable, stable_to_luna=int(0.98*terraswap_stable_to_luna))
+            offer_amount=offer_amount, luna_to_stable=terra_luna_to_stable, stable_to_luna=terraswap_stable_to_luna, uaust_withdraw_amount=uaust_withdraw_amount)
         self.sign_and_send(msgs=msgs)
         return ArbResult.Success
 
@@ -238,13 +227,14 @@ class Arbbot:
             self.counter = self.counter + 1
             print(" >>> Found arb opportunity below peg")
 
+        uaust_withdraw_amount = 0
         if self.profitability_check.profit_ratio > 1 + self.withdraw_profit_margin_ratio*self.get_profit_margin():
-            self.msg_sender.withdraw_from_anchor()
+            uaust_withdraw_amount = self._balances.uaust(self.contract_address)
             offer_amount = self.get_max_offer_amount()
 
         print(f'offer {offer_amount}')
         msgs = self.msg_sender.below_peg(
-            offer_amount=offer_amount, luna_to_stable=terraswap_luna_to_stable, stable_to_luna=terra_stable_to_luna)
+            offer_amount=offer_amount, luna_to_stable=terraswap_luna_to_stable, stable_to_luna=terra_stable_to_luna, uaust_withdraw_amount=uaust_withdraw_amount)
         self.sign_and_send(msgs=msgs)
         return ArbResult.Success
 
@@ -270,7 +260,7 @@ class BotMessages:
         self.contract: str = contract
         self.denom: str = denom
 
-    def above_peg(self, offer_amount: int, luna_to_stable: int, stable_to_luna: int):
+    def above_peg(self, offer_amount: int, luna_to_stable: int, stable_to_luna: int, uaust_withdraw_amount: int):
         terraswap_msg = {
             "swap": {
                 "offer_asset": {
@@ -293,19 +283,20 @@ class BotMessages:
             ),
             MsgSwap(
                 trader=self.sender,
-                offer_coin=Coin(LUNA_DENOM, stable_to_luna),
+                offer_coin=Coin(LUNA_DENOM, int(0.995*stable_to_luna)),
                 ask_denom=self.denom
             ),
         ]
 
-    def below_peg(self, offer_amount: int, luna_to_stable: int, stable_to_luna: int):
+    def below_peg(self, offer_amount: int, luna_to_stable: int, stable_to_luna: int, uaust_withdraw_amount: int):
+        luna_offer_amount = int(0.995*stable_to_luna)
         terraswap_msg = {
             "swap": {
                 "offer_asset": {
                     "info": {
                         "native_token": {"denom": LUNA_DENOM}
                     },
-                    "amount": str(stable_to_luna)
+                    "amount": str(luna_offer_amount)
                 },
                 "belief_price": str(int(float(luna_to_stable)/stable_to_luna*MILLION)),
                 "max_spread": "0.01"
@@ -321,16 +312,12 @@ class BotMessages:
                 sender=self.sender,
                 contract=self.contract,
                 execute_msg=terraswap_msg,
-                coins=[Coin.from_str(str(stable_to_luna) + LUNA_DENOM)]
+                coins=[Coin.from_str(str(luna_offer_amount) + LUNA_DENOM)]
             ),
         ]
 
     def deposit_to_anchor(self):
         print('not implemented')
-
-    def withdraw_from_anchor(self):
-        print('not implemented')
-
 
 class SmartContractMessages:
     def __init__(self, sender: str, contract: str, denom: str, anchor: AnchorModel) -> None:
@@ -339,20 +326,14 @@ class SmartContractMessages:
         self.denom: str = denom
         self.anchor: AnchorModel = anchor
 
-    def _get_msg(self, direction: str, offer_amount: int, luna_to_stable: int, stable_to_luna: int):
-        residual_luna = self.anchor.balances.uluna(self.contract)
-        print(f'residual luna: {residual_luna}')
+    def _get_msg(self, direction: str, offer_amount: int, uaust_withdraw_amount: int):
         msg = {
             direction: {
                 "amount": {
                     "denom": self.denom,
                     "amount": str(offer_amount)
                 },
-                "luna_price": {
-                    "denom": self.denom,
-                    "amount": str(int(float(luna_to_stable)/stable_to_luna*MILLION))
-                },
-                "residual_luna": str(residual_luna)
+                "uaust_withdraw_amount": str(uaust_withdraw_amount)
             }
         }
         return [
@@ -363,19 +344,15 @@ class SmartContractMessages:
             ),
         ]
 
-    def above_peg(self, offer_amount: int, luna_to_stable: int, stable_to_luna: int):
-        return self._get_msg("above_peg", offer_amount, luna_to_stable, stable_to_luna)
+    def above_peg(self, offer_amount: int, luna_to_stable: int, stable_to_luna: int, uaust_withdraw_amount: int):
+        return self._get_msg("above_peg", offer_amount, uaust_withdraw_amount)
 
-    def below_peg(self, offer_amount: int, luna_to_stable: int, stable_to_luna: int):
-        return self._get_msg("below_peg", offer_amount, luna_to_stable, stable_to_luna)
+    def below_peg(self, offer_amount: int, luna_to_stable: int, stable_to_luna: int, uaust_withdraw_amount: int):
+        return self._get_msg("below_peg", offer_amount, uaust_withdraw_amount)
 
     def deposit_to_anchor(self):
         print(f'deposit')
         self.anchor.deposit(sender=self.sender, contract=self.contract)
-
-    def withdraw_from_anchor(self):
-        print(f'withdraw')
-        self.anchor.withdraw(sender=self.sender, contract=self.contract)
 
 
 def get_arbbot(client: LCDClient, wallet: Wallet, config: PoolConfig, sender: Sender, trade_amount: int = 95*MILLION, contract_address=None) -> Arbbot:
