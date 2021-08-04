@@ -1,9 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::asset::{Asset};
+use crate::asset::{Asset, AssetInfo};
 use crate::pair::{QueryMsg as PairQueryMsg, ReverseSimulationResponse, SimulationResponse};
-use crate::state::{ANCHOR};
+use crate::state::{ANCHOR, LUNA_DENOM};
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
@@ -61,13 +61,33 @@ pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
     }))
 }
 
+pub fn query_luna_price_on_terraswap<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>,
+    pool_address: HumanAddr,
+) -> StdResult<Uint128> {
+    let response: SimulationResponse = deps.querier.query(
+        &QueryRequest::Wasm(WasmQuery::Smart{
+            contract_addr: pool_address,
+            msg: to_binary(&PairQueryMsg::Simulation{
+                offer_asset: Asset{
+                    info: AssetInfo::NativeToken{ denom: LUNA_DENOM.to_string() },
+                    amount: Uint128(1000000),
+                }
+            })?
+        })
+    )?;
+
+    Ok(response.return_amount)
+}
+
+
 pub fn query_luna_price<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     ask_denom: String
-) -> StdResult<Decimal> {
+) -> StdResult<Uint128> {
     let querier = TerraQuerier::new(&deps.querier);
     let response = querier.query_swap(Coin{ denom: "uluna".to_string(), amount: Uint128(1000000) }, ask_denom)?;
-    Ok(from_micro(response.receive.amount))
+    Ok(response.receive.amount)
 }
 
 pub fn query_all_balances<S: Storage, A: Api, Q: Querier>(

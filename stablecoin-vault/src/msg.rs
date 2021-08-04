@@ -91,14 +91,13 @@ pub enum AnchorMsg {
 #[serde(rename_all = "snake_case")]
 pub enum HandleMsg {
     Receive(Cw20ReceiveMsg),
-    AbovePeg { amount: Coin, luna_price: Coin, residual_luna: Uint128 },
-    BelowPeg { amount: Coin, luna_price: Coin, residual_luna: Uint128 },
+    AbovePeg { amount: Coin, uaust_withdraw_amount: Uint128 },
+    BelowPeg { amount: Coin, uaust_withdraw_amount: Uint128 },
     PostInitialize{},
     ProvideLiquidity {
         asset: Asset
     },
-    AnchorDeposit{ amount: Coin },
-    AnchorWithdraw{ amount: Uint128 },
+    AnchorDeposit{ amount: Coin }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
