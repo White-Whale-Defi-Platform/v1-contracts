@@ -12,39 +12,33 @@ on:
 
 jobs:
   lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@v2
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
-        with:
-          rust-version: stable
-          components: clippy
-      - name: Build | Lint
-        run: cargo clippy
-  compile:
-    name: Compile
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@v2
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
-        with:
-          rust-version: stable
-      - name: Build | Compile
-        run: cargo check
+    # name: Lint
+    # runs-on: ubuntu-latest
+    # steps:
+    #   - name: Setup | Checkout
+    #     uses: actions/checkout@v2
+    #   - name: Setup | Rust
+    #     uses: ATiltedTree/setup-rust@v1
+    #     with:
+    #       rust-version: stable
+    #       components: clippy
+    #   - name: Build | Lint
+    #     run: cargo clippy
+  # compile:
+  #   name: Compile
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Setup | Checkout
+  #       uses: actions/checkout@v2
+  #     - name: Setup | Rust
+  #       uses: ATiltedTree/setup-rust@v1
+  #       with:
+  #         rust-version: stable
+  #     - name: Build | Compile
+  #       run: cargo check
   test:
     name: Test
-    matrix:
-      strategy:
-        os:
-        - ubuntu-latest
-        - windows-latest
-        - macOS-latest
-    runs-on: ${{ matrix.os }}
+    runs-on:  ubuntu-latest
     needs: [compile]
     steps:
       - name: Setup | Checkout
