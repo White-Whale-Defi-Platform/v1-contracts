@@ -7,7 +7,7 @@ import pathlib
 import sys
 sys.path.append(pathlib.Path(__file__).parent.resolve())
 from pool_arb_bot import MILLION, get_arbbot
-from poolconfig import TERRASWAP_KRT_CONFIG
+from config import get_tequila_config as get_config
 from loop import execute_loop
 from sender import Sender
 from util import get_gas_prices
@@ -19,7 +19,7 @@ def main():
     mnemonic = 'main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic'
     deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
 
-    config = TERRASWAP_KRT_CONFIG
+    config = get_config("KRT")
     print(config.contract_address)
     bot = get_arbbot(client=client, wallet=deployer, config=config, sender=Sender(client=client, wallet=deployer, get_gas_prices=get_gas_prices))
     bot.trade_amount = 200000*MILLION

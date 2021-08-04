@@ -8,12 +8,13 @@ from terra_sdk.core.market import MsgSwap
 from terra_sdk.core.wasm import MsgExecuteContract
 
 from query import get_market_swap_rate, get_terraswap_rate, NativeToken
-from poolconfig import PoolConfig
+from config import Config
 from sender import Sender
 
 MILLION = 1000000
 
 LUNA_DENOM = "uluna"
+UST_DENOM = "uusd"
 
 
 class ArbResult(Enum):
@@ -52,12 +53,13 @@ def anchor_withdrawal_msg(sender: str, contract: str, amount: int):
 
 
 class Balances:
-    def __init__(self, client: LCDClient, aust_contract: str) -> None:
+    def __init__(self, client: LCDClient, aust_contract: str, anchor_contract: str) -> None:
         self._client: LCDClient = client
-        self._aust_contract: str = aust_contract
-        self._anchor_contract: str = 'terra15dwd5mj8v59wpj0wvt233mf5efdff808c5tkal'  # tequila-0004
+        self.aust_contract: str = aust_contract
+        self.anchor_contract: str = anchor_contract
+
     def uaust(self, contract_address: str) -> int:
-        return int(self._client.wasm.contract_query(self._aust_contract, {
+        return int(self._client.wasm.contract_query(self.aust_contract, {
             "balance": {"address": contract_address}
         })["balance"])
 
@@ -74,14 +76,26 @@ class Balances:
             return 0
 
     def aust_ust_exchange_rate(self) -> float:
-        return float(self._client.wasm.contract_query(self._anchor_contract, {"epoch_state": {}})["exchange_rate"])
+        return float(self._client.wasm.contract_query(self.anchor_contract, {"epoch_state": {}})["exchange_rate"])
+
+    def luna_ust_exchange_rate(self) -> float:
+        return self._client.market.swap_rate(Coin(LUNA_DENOM, MILLION), UST_DENOM).amount/MILLION
+
+    def get_balance_in_uusd(self, contract_address: str) -> float:
+        uust = self.uusd(contract_address)
+        uaust = self.uaust(contract_address)
+        uluna = self.uluna(contract_address)
+
+        aust_ust = self.aust_ust_exchange_rate()
+        luna_ust = self.luna_ust_exchange_rate()
+
+        return uust + uaust * aust_ust + uluna * luna_ust
 
 
 class AnchorModel:
     def __init__(self, sign_and_send: Sender, balances: Balances, max_deposit_ratio: float = 0.9) -> None:
         self.sign_and_send: Sender = sign_and_send
         self.balances: Balances = balances
-        self.aust_contract: str = 'terra1ajt556dpzvjwl0kl5tzku3fc3p3knkg9mkv8jl'  # tequila-0004
         self.max_deposit_ratio: float = max_deposit_ratio
         assert(0 < max_deposit_ratio < 1)
         self.fee: str = "85000uusd"
@@ -91,20 +105,17 @@ class AnchorModel:
     def deposit(self, sender: str, contract: str):
         ust_balance = self.balances.uusd(contract)
         print(f'uusd={ust_balance}')
-        aust_balance = self.balances.uaust(contract)
-        print(f'aust={aust_balance}')
-        exchange_rate = self.balances.aust_ust_exchange_rate()
-        print(f'rate={exchange_rate}')
-        aust_value_in_ust = aust_balance * exchange_rate
-        print(f'overall: {ust_balance + aust_value_in_ust}')
-        if ust_balance < 1.5*(1-self.max_deposit_ratio)*(ust_balance + aust_value_in_ust):
+
+        total_deposit = self.balances.get_balance_in_uusd(contract)
+        if ust_balance < 1.5*(1-self.max_deposit_ratio)*total_deposit:
             print('low ust balance -> skipping deposit')
             return
-        ust_balance += aust_value_in_ust
-        print(f'uusd total={ust_balance}')
+        print(f'uusd total={total_deposit}')
 
+        uaust = self.balances.uaust(contract)
+        aust_value_in_ust = uaust * self.balances.aust_ust_exchange_rate()
         deposit_amount = int(
-            ust_balance*self.max_deposit_ratio - aust_value_in_ust) - MILLION
+            total_deposit*self.max_deposit_ratio - aust_value_in_ust) - MILLION
         print(f'deposit {deposit_amount}')
         if deposit_amount <= 0:
             print('insufficient funds for anchor deposit')
@@ -138,9 +149,9 @@ class ProfitabilityCheck:
         return self.__profit_ratio > 1 + self.profit_margin
 
 class Arbbot:
-    def __init__(self, client: LCDClient, wallet: Wallet, config: PoolConfig, msg_sender, sender: Sender, trade_amount: int = 95*MILLION, contract_address=None) -> None:
-        self.denom: str = config.token.denom
-        self.pool_address: str = config.contract_address
+    def __init__(self, client: LCDClient, wallet: Wallet, config: Config, msg_sender, sender: Sender, trade_amount: int = 95*MILLION, contract_address=None) -> None:
+        self.denom: str = config.poolconfig.token.denom
+        self.pool_address: str = config.poolconfig.contract_address
         self.contract_address: str = contract_address if contract_address else wallet.key.acc_address
         self.client: LCDClient = client
         self.wallet: Wallet = wallet
@@ -152,9 +163,8 @@ class Arbbot:
         self.profitability_check: ProfitabilityCheck = ProfitabilityCheck(profit_margin=0.0015)
         self.withdraw_profit_margin_ratio: float = 3.0
         self.deposit_profit_margin_ratio: float = 0.5
-        self.aust_contract: str = 'terra1ajt556dpzvjwl0kl5tzku3fc3p3knkg9mkv8jl'  # tequila-0004
         self._balances: Balances = Balances(
-            client=self.client, aust_contract=self.aust_contract)
+            client=self.client, aust_contract=config.aust_address, anchor_contract=config.anchor_money_market_address)
         self.last_gas_update: datetime = datetime.now(tz=timezone.utc)
         self.gas_update_period: timedelta = timedelta(minutes=10)
 
@@ -244,6 +254,8 @@ class Arbbot:
     def __call__(self) -> None:
         print("===")
         print(f'time: {datetime.now()}')
+        print(f'contract: {self.contract_address}')
+        print(f'uust: {self.client.bank.balance(self.contract_address)}')
         above_result = self.try_arb_above()
         below_result = self.try_arb_below()
         if above_result == ArbResult.NoOpportunity and below_result == ArbResult.NoOpportunity:
@@ -355,12 +367,14 @@ class SmartContractMessages:
         self.anchor.deposit(sender=self.sender, contract=self.contract)
 
 
-def get_arbbot(client: LCDClient, wallet: Wallet, config: PoolConfig, sender: Sender, trade_amount: int = 95*MILLION, contract_address=None) -> Arbbot:
+def get_arbbot(client: LCDClient, wallet: Wallet, config: Config, sender: Sender, trade_amount: int = 95*MILLION, contract_address=None) -> Arbbot:
     if contract_address:
-        balances = Balances(client=client, aust_contract='terra1ajt556dpzvjwl0kl5tzku3fc3p3knkg9mkv8jl') # tequila-0004
+        balances = Balances(client=client, aust_contract=config.aust_address, anchor_contract=config.anchor_money_market_address) # tequila-0004
         anchor = AnchorModel(sign_and_send=sender, balances=balances)
-        msg_sender = SmartContractMessages(sender=wallet.key.acc_address, contract=contract_address, denom=config.token.denom, anchor=anchor)
+        msg_sender = SmartContractMessages(sender=wallet.key.acc_address, contract=contract_address, denom=config.poolconfig.token.denom, anchor=anchor)
         return Arbbot(client=client, wallet=wallet, config=config, msg_sender=msg_sender, trade_amount=trade_amount, contract_address=contract_address, sender=sender)
     
-    msg_sender = BotMessages(sender=wallet.key.acc_address, contract=config.contract_address, denom=config.token.denom)
+    print(f'get bot messages')
+    msg_sender = BotMessages(sender=wallet.key.acc_address, contract=config.poolconfig.contract_address, denom=config.poolconfig.token.denom)
+    print(f'get bot')
     return Arbbot(client=client, wallet=wallet, config=config, msg_sender=msg_sender, trade_amount=trade_amount, sender=sender)
