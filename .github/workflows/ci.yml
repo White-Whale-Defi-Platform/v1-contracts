@@ -30,5 +30,6 @@ jobs:
       - name: Run tests for stablecoin-vault
         working-directory: $GITHUB_WORKSPACE/stablecoin-vault
         run: |
+          ls
           cargo update
           cargo unit-test
