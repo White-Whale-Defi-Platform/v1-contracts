@@ -3,16 +3,18 @@ use cosmwasm_std::{
     StdResult, Storage, WasmMsg, Uint128, Decimal
 };
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
+use terraswap::asset::{Asset, AssetInfo};
+use terraswap::pair::Cw20HookMsg;
+use terraswap::querier::{query_balance, query_token_balance, query_supply};
+use terraswap::hook::InitHook;
+use terraswap::token::InitMsg as TokenInitMsg;
 
 use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 
 use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg, create_assert_limit_order_msg, AnchorMsg};
 use crate::state::{config, State, LUNA_DENOM, read_pool_info, store_pool_info, AUST, ANCHOR, BURN_MINT_CONTRACT};
-use crate::asset::{Asset, AssetInfo, PoolInfo, PoolInfoRaw};
-use crate::hook::InitHook;
-use crate::token::InitMsg as TokenInitMsg;
-use crate::querier::{query_balance, query_token_balance, query_supply, query_aust_exchange_rate, query_luna_price, query_luna_price_on_terraswap, from_micro};
-use crate::pair::Cw20HookMsg;
+use crate::pool_info::{PoolInfo, PoolInfoRaw};
+use crate::querier::{query_aust_exchange_rate, query_luna_price, query_luna_price_on_terraswap, from_micro};
 use std::str::FromStr;
 
 

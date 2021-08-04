@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{CanonicalAddr, StdResult, Storage};
 use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
 
-use crate::asset::PoolInfoRaw;
+use crate::pool_info::PoolInfoRaw;
 
 pub static CONFIG_KEY: &[u8] = b"config";
 static KEY_PAIR_INFO: &[u8] = b"asset_info";
