@@ -11,25 +11,51 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
-
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
-
-      - name: Setup
-        run: |
-          rustup default stable
-          rustup target add wasm32-unknown-unknown
-          rustup component add rust-analysis --toolchain stable-x86_64-unknown-linux-gnu
-          rustup component add rust-src --toolchain stable-x86_64-unknown-linux-gnu
-          rustup component add rls --toolchain stable-x86_64-unknown-linux-gnu
-          cargo install cargo-generate --features vendored-openssl
-
-      - name: Run tests for stablecoin-vault
-        working-directory: $GITHUB_WORKSPACE/stablecoin-vault
-        run: |
-          ls
-          cargo update
-          cargo unit-test
+      - name: Setup | Checkout
+        uses: actions/checkout@v2
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: stable
+          components: clippy
+      - name: Build | Lint
+        run: cargo clippy
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v2
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: stable
+      - name: Build | Compile
+        run: cargo check
+  test:
+    name: Test
+    matrix:
+      strategy:
+        os:
+        - ubuntu-latest
+        - windows-latest
+        - macOS-latest
+        rust:
+          - stable
+    runs-on: ${{ matrix.os }}
+    needs: [compile]
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v2
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: ${{ matrix.rust }}
+      - name: Run cargo update
+        run: cargo update
+      - name: Build | Compile
+        run: cargo unit-test
