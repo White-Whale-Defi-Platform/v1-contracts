@@ -56,7 +56,6 @@ pub enum HandleMsg {
 pub enum QueryMsg {
     Asset{},
     Pool{}
-    // GetCount returns the current count as a json-encoded number
 }
 
 // We define a custom struct for each query response

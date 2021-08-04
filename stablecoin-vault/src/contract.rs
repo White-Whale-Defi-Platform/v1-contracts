@@ -401,9 +401,6 @@ pub fn compute_total_deposits<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     info: &PoolInfoRaw
 ) -> StdResult<Uint128> {
-    // assert slippage tolerance
-    // assert_slippage_tolerance(&slippage_tolerance, &deposits, &pools)?;
-
     let contract_address = deps.api.human_address(&info.contract_addr)?;
     let stable_info = info.asset_infos[0].to_normal(deps)?;
     let stable_denom = match stable_info {
