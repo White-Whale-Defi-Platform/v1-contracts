@@ -1,6 +1,5 @@
 pub mod asset;
 pub mod contract;
-pub mod factory;
 pub mod hook;
 pub mod msg;
 pub mod pair;
