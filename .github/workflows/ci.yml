@@ -35,8 +35,10 @@ jobs:
         with:
           rust-version: stable
       - name: Run cargo update
+        working_dir: ${{runner.workspace}}/stablecoin-vault
         run: cargo update
       - name: Build | Compile
+        working_dir: ${{runner.workspace}}/stablecoin-vault
         run: cargo check
   test:
     name: Test
@@ -50,5 +52,6 @@ jobs:
         with:
           rust-version: stable
       - name: Build | Compile
+        working_dir: ${{runner.workspace}}/stablecoin-vault
         run: cargo unit-test
 
