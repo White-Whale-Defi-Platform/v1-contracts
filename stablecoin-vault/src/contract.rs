@@ -27,6 +27,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         owner: deps.api.canonical_address(&env.message.sender)?,
         trader: deps.api.canonical_address(&env.message.sender)?,
         pool_address: deps.api.canonical_address(&msg.pool_address)?,
+        slippage: msg.slippage
     };
 
     config(&mut deps.storage).save(&state)?;
@@ -289,13 +290,14 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     });
 
     let residual_luna = query_balance(&deps, &env.contract.address, LUNA_DENOM.to_string())?;
-    let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price)};
-    // let min_stable_amount = amount.amount;
-    // let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-    //     contract_addr: HumanAddr::from(BURN_MINT_CONTRACT),
-    //     send: vec![],
-    //     msg: to_binary(&create_assert_limit_order_msg(offer_coin.clone(), amount.denom.clone(), min_stable_amount))?,
-    // });
+    let slippage_ratio = Decimal::from_ratio((Uint128(100) - Uint128(100) * state.slippage)?, Uint128(100));
+    let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price) * slippage_ratio};
+    let min_stable_amount = amount.amount;
+    let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: HumanAddr::from(BURN_MINT_CONTRACT),
+        send: vec![],
+        msg: to_binary(&create_assert_limit_order_msg(offer_coin.clone(), amount.denom.clone(), min_stable_amount))?,
+    });
     let swap_msg = create_swap_msg(
         env.contract.address,
         offer_coin,
@@ -316,6 +318,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
             send: vec![]
         }));  
     }
+    response.messages.push(assert_limit_order_msg);
     response.messages.push(terraswap_msg);
     response.messages.push(swap_msg);
 
@@ -526,13 +529,13 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::{coins, HumanAddr, Uint128};
     use terra_cosmwasm::TerraRoute;
-    use crate::asset::AssetInfo;
+    use terraswap::asset::AssetInfo;
 
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies(20, &[]);
 
-        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() } };
+        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, slippage: Decimal::percent(1u64)  };
         let env = mock_env("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -544,7 +547,7 @@ mod tests {
     fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_msg() {
         let mut deps = mock_dependencies(20, &[]);
 
-        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() } };
+        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, slippage: Decimal::percent(1u64)  };
         let env = mock_env("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -579,7 +582,7 @@ mod tests {
     fn when_given_an_above_peg_msg_then_handle_returns_first_a_terraswap_then_a_mint_msg() {
         let mut deps = mock_dependencies(20, &[]);
 
-        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() } };
+        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, slippage: Decimal::percent(1u64) };
         let env = mock_env("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success

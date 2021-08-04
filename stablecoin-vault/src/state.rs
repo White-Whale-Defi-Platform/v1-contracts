@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{CanonicalAddr, StdResult, Storage};
+use cosmwasm_std::{CanonicalAddr, Decimal, StdResult, Storage};
 use cosmwasm_storage::{singleton, singleton_read, ReadonlySingleton, Singleton};
 
 use crate::pool_info::PoolInfoRaw;
@@ -22,6 +22,7 @@ pub struct State {
     pub owner: CanonicalAddr,
     pub trader: CanonicalAddr,
     pub pool_address: CanonicalAddr,
+    pub slippage: Decimal,
 }
 
 pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, State> {

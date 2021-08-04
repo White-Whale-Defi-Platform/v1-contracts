@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Binary, Coin, Decimal, HumanAddr,Uint128};
+use cosmwasm_std::{Binary, Coin, Decimal, HumanAddr, Uint128};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::{HandleMsg as PairMsg};
 use cw20::Cw20ReceiveMsg;
@@ -18,6 +18,7 @@ pub struct AssertMinimumReceive {
 pub struct InitMsg {
     pub pool_address: HumanAddr,
     pub asset_info: AssetInfo,
+    pub slippage: Decimal,
     /// Token contract code id for initialization
     pub token_code_id: u64
     // Hook for post initalization
