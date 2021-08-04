@@ -24,18 +24,20 @@ jobs:
     #       components: clippy
     #   - name: Build | Lint
     #     run: cargo clippy
-  # compile:
-  #   name: Compile
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Setup | Checkout
-  #       uses: actions/checkout@v2
-  #     - name: Setup | Rust
-  #       uses: ATiltedTree/setup-rust@v1
-  #       with:
-  #         rust-version: stable
-  #     - name: Build | Compile
-  #       run: cargo check
+  compile:
+    name: Compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v2
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: stable
+      - name: Run cargo update
+        run: cargo update
+      - name: Build | Compile
+        run: cargo check
   test:
     name: Test
     runs-on:  ubuntu-latest
@@ -47,8 +49,6 @@ jobs:
         uses: ATiltedTree/setup-rust@v1
         with:
           rust-version: stable
-      - name: Run cargo update
-        run: cargo update
       - name: Build | Compile
         run: cargo unit-test
 
