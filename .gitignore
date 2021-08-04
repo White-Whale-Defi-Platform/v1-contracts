@@ -13,3 +13,6 @@ Cargo.lock
 
 **/artifacts/**
 **/__pycache__/**
+
+**/*bot_col_4.py
+*_bak
