@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::{QueryMsg as PairQueryMsg, SimulationResponse};
-use crate::state::{ANCHOR, LUNA_DENOM};
+use crate::state::{config_read, LUNA_DENOM};
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
@@ -34,10 +34,11 @@ pub struct EpochStateResponse {
 }
 
 pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+    deps: &Extern<S, A, Q>
 ) -> StdResult<EpochStateResponse> {
+    let state = config_read(&deps.storage).load()?;
     deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: HumanAddr::from(ANCHOR),
+        contract_addr: deps.api.human_address(&state.anchor_money_market_address)?,
         msg: to_binary(&AnchorQuery::EpochState {
             block_height: None,
             distributed_interest: None,

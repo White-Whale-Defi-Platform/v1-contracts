@@ -17,6 +17,9 @@ pub struct AssertMinimumReceive {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
     pub pool_address: HumanAddr,
+    pub anchor_money_market_address: HumanAddr,
+    pub aust_address: HumanAddr,
+    pub seignorage_address: HumanAddr,
     pub asset_info: AssetInfo,
     pub slippage: Decimal,
     /// Token contract code id for initialization
@@ -40,11 +43,12 @@ pub enum HandleMsg {
     Receive(Cw20ReceiveMsg),
     AbovePeg { amount: Coin, uaust_withdraw_amount: Uint128 },
     BelowPeg { amount: Coin, uaust_withdraw_amount: Uint128 },
-    PostInitialize{},
+    PostInitialize {},
     ProvideLiquidity {
         asset: Asset
     },
-    AnchorDeposit{ amount: Coin }
+    AnchorDeposit { amount: Coin },
+    SetSlippage { slippage: Decimal }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

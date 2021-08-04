@@ -1,10 +1,9 @@
 pub mod pool_info;
 pub mod contract;
-//pub mod hook;
 pub mod msg;
 pub mod querier;
 pub mod state;
-//pub mod token;
+pub mod mock;
 
 #[cfg(target_arch = "wasm32")]
 mod wasm {

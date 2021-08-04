@@ -19,3 +19,7 @@ TERRASWAP_KRT_CONFIG = PoolConfig(contract_address='terra1rfzwcdhhu502xws6r5pxw4
 
 TERRASWAP_UST_CONFIG_COL_4 = PoolConfig(contract_address='terra1tndcaqxkpc5ce9qee5ggqf430mr2z3pefe5wj6', token=NativeToken('uusd'))
 TERRASWAP_KRT_CONFIG_COL_4 = PoolConfig(contract_address='terra1zw0kfxrxgrs5l087mjm79hcmj3y8z6tljuhpmc', token=NativeToken('ukrw'))
+
+TEQUILA_AUST = "terra1ajt556dpzvjwl0kl5tzku3fc3p3knkg9mkv8jl"
+TEQUILA_ANCHOR_MONEY_MARKET = "terra15dwd5mj8v59wpj0wvt233mf5efdff808c5tkal"
+TEQUILA_SEIGNORAGE = "terra1z3sf42ywpuhxdh78rr5vyqxpaxa0dx657x5trs"

@@ -13,6 +13,8 @@ import pathlib
 import sys
 sys.path.append(pathlib.Path(__file__).parent.resolve())
 
+from poolconfig import TEQUILA_AUST as AUST, TEQUILA_ANCHOR_MONEY_MARKET as ANCHOR_MONEY_MARKET, TEQUILA_SEIGNORAGE as SEIGNORAGE
+
 client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004", gas_prices=Coins(requests.get("https://tequila-fcd.terra.dev/v1/txs/gas_prices").json()))
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
 deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
@@ -79,6 +81,10 @@ contract_address = instantiate_contract(code_id=code_id, init_msg={
     "asset_info": {
         "native_token": { "denom": "uusd" }
     },
+    "aust_address": AUST,
+    "anchor_money_market_address": ANCHOR_MONEY_MARKET,
+    "seignorage_address": SEIGNORAGE,
+    "slippage": "0.01",
     "token_code_id": 6429
 })
 print(f'instantiated {contract_address}')

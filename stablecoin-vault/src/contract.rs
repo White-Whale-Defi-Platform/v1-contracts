@@ -12,7 +12,7 @@ use terraswap::token::InitMsg as TokenInitMsg;
 use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 
 use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg, create_assert_limit_order_msg, AnchorMsg};
-use crate::state::{config, State, LUNA_DENOM, read_pool_info, store_pool_info, AUST, ANCHOR, BURN_MINT_CONTRACT};
+use crate::state::{config, config_read, State, LUNA_DENOM, read_pool_info, store_pool_info};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_aust_exchange_rate, query_luna_price, query_luna_price_on_terraswap, from_micro};
 use std::str::FromStr;
@@ -27,6 +27,9 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         owner: deps.api.canonical_address(&env.message.sender)?,
         trader: deps.api.canonical_address(&env.message.sender)?,
         pool_address: deps.api.canonical_address(&msg.pool_address)?,
+        anchor_money_market_address: deps.api.canonical_address(&msg.anchor_money_market_address)?,
+        aust_address: deps.api.canonical_address(&msg.aust_address)?,
+        seignorage_address: deps.api.canonical_address(&msg.seignorage_address)?,
         slippage: msg.slippage
     };
 
@@ -38,7 +41,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         asset_infos: [
             msg.asset_info.to_raw(&deps)?,
             AssetInfo::NativeToken{ denom: LUNA_DENOM.to_string()}.to_raw(&deps)?,
-            AssetInfo::Token{ contract_addr: HumanAddr::from(AUST) }.to_raw(&deps)?
+            AssetInfo::Token{ contract_addr: msg.aust_address }.to_raw(&deps)?
         ],
     };
     store_pool_info(&mut deps.storage, &pool_info)?;
@@ -89,7 +92,8 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::BelowPeg { amount, uaust_withdraw_amount } => try_arb_below_peg(deps, env, amount, uaust_withdraw_amount),
         HandleMsg::PostInitialize{ } => try_post_initialize(deps, env),
         HandleMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, env, asset),
-        HandleMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, env, amount)
+        HandleMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, env, amount),
+        HandleMsg::SetSlippage{ slippage } => set_slippage(deps, env, slippage),
     }
 }
 
@@ -129,19 +133,21 @@ pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
     };
     // withdraw from anchor if necessary
     // TODO: Improve
+    let state = config_read(&deps.storage).load()?;
+    let aust_contract = deps.api.human_address(&state.aust_address)?;
     let stable_balance: Uint128 = query_balance(&deps, &env.contract.address, get_stable_denom(&deps)?)?;
     if refund_asset.amount*Decimal::from_ratio(Uint128(50), Uint128(1)) > stable_balance {
-        let uaust_amount: Uint128 = query_token_balance(&deps, &HumanAddr::from(AUST), &env.contract.address)?;
+        let uaust_amount: Uint128 = query_token_balance(&deps, &aust_contract, &env.contract.address)?;
         let uaust_exchange_rate_response = query_aust_exchange_rate(&deps)?;
         let uaust_ust_rate = Decimal::from_str(&uaust_exchange_rate_response.exchange_rate.to_string())?;
         let uaust_amount_in_uust = uaust_amount * uaust_ust_rate;
         // TODO: Improve
         if uaust_amount_in_uust > Uint128(10 * 1000000) || amount == total_share {
             response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
-                contract_addr: HumanAddr::from(AUST),
+                contract_addr: aust_contract,
                 msg: to_binary(
                     &AnchorMsg::Send{
-                        contract: HumanAddr::from(ANCHOR),
+                        contract: deps.api.human_address(&state.anchor_money_market_address)?,
                         amount: uaust_amount,
                         msg: to_binary(&AnchorMsg::RedeemStable{})?
                     }
@@ -224,7 +230,7 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config(&mut deps.storage).load()?;
     if deps.api.canonical_address(&env.message.sender)? != state.trader {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(StdError::unauthorized());
     }
 
     let ask_denom = LUNA_DENOM.to_string();
@@ -253,10 +259,10 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     let mut response = HandleResponse::default();
     if uaust_withdraw_amount > Uint128::zero() {
         response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
-            contract_addr: HumanAddr::from(AUST),
+            contract_addr: deps.api.human_address(&state.aust_address)?,
             msg: to_binary(
                 &AnchorMsg::Send{
-                    contract: HumanAddr::from(ANCHOR),
+                    contract: deps.api.human_address(&state.anchor_money_market_address)?,
                     amount: uaust_withdraw_amount,
                     msg: to_binary(&AnchorMsg::RedeemStable{})?
                 }
@@ -278,7 +284,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
     let state = config(&mut deps.storage).load()?;
     if deps.api.canonical_address(&env.message.sender)? != state.trader {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(StdError::unauthorized());
     }
     let ask_denom = LUNA_DENOM.to_string();
     let luna_pool_price = query_luna_price_on_terraswap(deps, deps.api.human_address(&state.pool_address)?)?;
@@ -294,7 +300,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price) * slippage_ratio};
     let min_stable_amount = amount.amount;
     let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: HumanAddr::from(BURN_MINT_CONTRACT),
+        contract_addr: deps.api.human_address(&state.seignorage_address)?,
         send: vec![],
         msg: to_binary(&create_assert_limit_order_msg(offer_coin.clone(), amount.denom.clone(), min_stable_amount))?,
     });
@@ -307,10 +313,10 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     let mut response = HandleResponse::default();
     if uaust_withdraw_amount > Uint128::zero() {
         response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
-            contract_addr: HumanAddr::from(AUST),
+            contract_addr: deps.api.human_address(&state.aust_address)?,
             msg: to_binary(
                 &AnchorMsg::Send{
-                    contract: HumanAddr::from(ANCHOR),
+                    contract: deps.api.human_address(&state.anchor_money_market_address)?,
                     amount: uaust_withdraw_amount,
                     msg: to_binary(&AnchorMsg::RedeemStable{})?
                 }
@@ -477,12 +483,26 @@ pub fn try_deposit_to_anchor<S: Storage, A: Api, Q: Querier>(
 
     let mut response = HandleResponse::default();
     response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: HumanAddr::from(ANCHOR),
+        contract_addr: deps.api.human_address(&state.anchor_money_market_address)?,
         msg: to_binary(&AnchorMsg::DepositStable{})?,
         send: vec![amount]
     }));
 
     Ok(response)
+}
+
+pub fn set_slippage<S: Storage, A: Api, Q: Querier>(
+    deps: &mut Extern<S, A, Q>,
+    env: Env,
+    slippage: Decimal
+) -> StdResult<HandleResponse<TerraMsgWrapper>> {
+    let mut state = config(&mut deps.storage).load()?;
+    if deps.api.canonical_address(&env.message.sender)? != state.owner {
+        return Err(StdError::unauthorized());
+    }
+    state.slippage = slippage;
+    config(&mut deps.storage).save(&state)?;
+    Ok(HandleResponse::default())
 }
 
 pub fn query<S: Storage, A: Api, Q: Querier>(
@@ -526,16 +546,27 @@ pub fn try_query_pool<S: Storage, A: Api, Q: Querier>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env};
+    use crate::mock::{mock_dependencies, mock_env};
     use cosmwasm_std::{coins, HumanAddr, Uint128};
     use terra_cosmwasm::TerraRoute;
     use terraswap::asset::AssetInfo;
+
+    fn get_test_init_msg() -> InitMsg {
+        InitMsg { 
+            pool_address: HumanAddr::from("test_pool"),
+            anchor_money_market_address: HumanAddr::from("test_mm"),
+            aust_address: HumanAddr::from("test_aust"),
+            seignorage_address: HumanAddr::from("test_seignorage"),
+            asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, 
+            slippage: Decimal::percent(1u64), token_code_id: 0u64
+        }
+    }
 
     #[test]
     fn proper_initialization() {
         let mut deps = mock_dependencies(20, &[]);
 
-        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, slippage: Decimal::percent(1u64)  };
+        let msg = get_test_init_msg();
         let env = mock_env("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -544,14 +575,36 @@ mod tests {
     }
 
     #[test]
-    fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_msg() {
+    fn proper_set_slippage() {
         let mut deps = mock_dependencies(20, &[]);
 
-        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, slippage: Decimal::percent(1u64)  };
+        let init_msg = get_test_init_msg();
         let env = mock_env("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
-        let _res = init(&mut deps, env, msg).unwrap();
+        let res = init(&mut deps, env.clone(), init_msg).unwrap();
+        assert_eq!(1, res.messages.len());
+
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.slippage, Decimal::percent(1u64));
+
+        let msg = HandleMsg::SetSlippage {
+            slippage: Decimal::one()
+        };
+        let _res = handle(&mut deps, env, msg).unwrap();
+        let state = config_read(&deps.storage).load().unwrap();
+        assert_eq!(state.slippage, Decimal::one());
+    }
+
+    #[test]
+    fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_msg() {
+        let mut deps = mock_dependencies(20, &[]);
+
+        let init_msg = get_test_init_msg();
+        let env = mock_env("creator", &coins(1000, "earth"));
+
+        // we can just call .unwrap() to assert this was a success
+        let _res = init(&mut deps, env, init_msg).unwrap();
 
         let msg = HandleMsg::BelowPeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
@@ -582,11 +635,11 @@ mod tests {
     fn when_given_an_above_peg_msg_then_handle_returns_first_a_terraswap_then_a_mint_msg() {
         let mut deps = mock_dependencies(20, &[]);
 
-        let msg = InitMsg { pool_address: HumanAddr::from("test pool"), token_code_id: 0u64, asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, slippage: Decimal::percent(1u64) };
+        let init_msg = get_test_init_msg();
         let env = mock_env("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
-        let _res = init(&mut deps, env, msg).unwrap();
+        let _res = init(&mut deps, env, init_msg).unwrap();
 
         let msg = HandleMsg::AbovePeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128(1000000)},
@@ -596,7 +649,7 @@ mod tests {
 
         // we can just call .unwrap() to assert this was a success
         let res = handle(&mut deps, env, msg).unwrap();
-        assert_eq!(2, res.messages.len());
+        assert_eq!(3, res.messages.len());
         let first_msg = res.messages[0].clone();
         match first_msg {
             CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
@@ -606,6 +659,13 @@ mod tests {
         }
         let second_msg = res.messages[1].clone();
         match second_msg {
+            CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
+            CosmosMsg::Custom(_t) => panic!("unexpected"),
+            CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
+            CosmosMsg::Wasm(_wasm_msg) => {}
+        }
+        let third_msg = res.messages[2].clone();
+        match third_msg {
             CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
             CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
             CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
