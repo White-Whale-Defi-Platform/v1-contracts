@@ -24,7 +24,7 @@ jobs:
           components: clippy
       - name: Build | Lint
         working-directory: ./stablecoin-vault
-        run: cargo clippy
+        run: cargo clippy -- -D warnings
   compile:
     name: Compile
     runs-on: ubuntu-latest
