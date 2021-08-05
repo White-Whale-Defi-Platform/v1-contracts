@@ -30,6 +30,9 @@ jobs:
   compile:
     name: Compile
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts/stablecoin-vault
     steps:
       - name: Setup | Checkout
         uses: actions/checkout@v2
@@ -45,6 +48,9 @@ jobs:
     name: Test
     runs-on:  ubuntu-latest
     needs: [compile]
+    defaults:
+      run:
+        working-directory: contracts/stablecoin-vault
     steps:
       - name: Setup | Checkout
         uses: actions/checkout@v2
