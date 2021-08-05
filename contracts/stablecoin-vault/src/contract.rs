@@ -507,12 +507,12 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Asset{} => to_binary(&try_query_asset(deps)?),
+        QueryMsg::Config{} => to_binary(&try_query_config(deps)?),
         QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?)
     }
 }
 
-pub fn try_query_asset<S: Storage, A: Api, Q: Querier>(
+pub fn try_query_config<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>
 ) -> StdResult<PoolInfo> {
 
