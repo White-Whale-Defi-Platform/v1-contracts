@@ -1,0 +1,9 @@
+#!/bin/bash
+
+set -e
+
+cd stablecoin-vault
+cargo update
+cargo clippy -- -D warnings
+cargo unit-test
+cd -
