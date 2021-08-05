@@ -324,8 +324,8 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
             send: vec![]
         }));  
     }
-    response.messages.push(assert_limit_order_msg);
     response.messages.push(terraswap_msg);
+    response.messages.push(assert_limit_order_msg);
     response.messages.push(swap_msg);
 
     Ok(response)
