@@ -525,9 +525,9 @@ pub fn try_query_pool<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<PoolResponse> {
     let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
     let contract_addr = deps.api.human_address(&info.contract_addr)?;
-    let assets: [Asset; 3] = info.query_pools(&deps, &contract_addr)?;
+    let assets: [Asset; 3] = info.query_pools(deps, &contract_addr)?;
     let total_share: Uint128 =
-        query_supply(&deps, &deps.api.human_address(&info.liquidity_token)?)?;
+        query_supply(deps, &deps.api.human_address(&info.liquidity_token)?)?;
 
     let total_deposits_in_ust = compute_total_deposits(deps, &info)?;
 
