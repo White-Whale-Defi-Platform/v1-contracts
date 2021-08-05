@@ -11,19 +11,20 @@ on:
   workflow_dispatch:
 
 jobs:
-  # lint:
-    # name: Lint
-    # runs-on: ubuntu-latest
-    # steps:
-    #   - name: Setup | Checkout
-    #     uses: actions/checkout@v2
-    #   - name: Setup | Rust
-    #     uses: ATiltedTree/setup-rust@v1
-    #     with:
-    #       rust-version: stable
-    #       components: clippy
-    #   - name: Build | Lint
-    #     run: cargo clippy
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v2
+      - name: Setup | Rust
+        uses: ATiltedTree/setup-rust@v1
+        with:
+          rust-version: stable
+          components: clippy
+      - name: Build | Lint
+        working-directory: ./stablecoin-vault
+        run: cargo clippy
   compile:
     name: Compile
     runs-on: ubuntu-latest
@@ -34,7 +35,7 @@ jobs:
         uses: ATiltedTree/setup-rust@v1
         with:
           rust-version: stable
-      - name: Run cargo update
+      - name: Dependencies | Compile
         working-directory: ./stablecoin-vault
         run: cargo update
       - name: Build | Compile
@@ -51,7 +52,7 @@ jobs:
         uses: ATiltedTree/setup-rust@v1
         with:
           rust-version: stable
-      - name: Build | Compile
+      - name: Unit Test | Test
         working-directory: ./stablecoin-vault
         run: cargo unit-test
 
