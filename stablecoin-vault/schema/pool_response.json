@@ -1,43 +1,44 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InitMsg",
+  "title": "PoolResponse",
   "type": "object",
   "required": [
-    "anchor_money_market_address",
-    "asset_info",
-    "aust_address",
-    "pool_address",
-    "seignorage_address",
-    "slippage",
-    "token_code_id"
+    "assets",
+    "total_deposits_in_ust",
+    "total_share"
   ],
   "properties": {
-    "anchor_money_market_address": {
-      "$ref": "#/definitions/HumanAddr"
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Asset"
+      },
+      "maxItems": 3,
+      "minItems": 3
     },
-    "asset_info": {
-      "$ref": "#/definitions/AssetInfo"
+    "total_deposits_in_ust": {
+      "$ref": "#/definitions/Uint128"
     },
-    "aust_address": {
-      "$ref": "#/definitions/HumanAddr"
-    },
-    "pool_address": {
-      "$ref": "#/definitions/HumanAddr"
-    },
-    "seignorage_address": {
-      "$ref": "#/definitions/HumanAddr"
-    },
-    "slippage": {
-      "$ref": "#/definitions/Decimal"
-    },
-    "token_code_id": {
-      "description": "Token contract code id for initialization",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+    "total_share": {
+      "$ref": "#/definitions/Uint128"
     }
   },
   "definitions": {
+    "Asset": {
+      "type": "object",
+      "required": [
+        "amount",
+        "info"
+      ],
+      "properties": {
+        "amount": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "info": {
+          "$ref": "#/definitions/AssetInfo"
+        }
+      }
+    },
     "AssetInfo": {
       "anyOf": [
         {
@@ -80,11 +81,10 @@
         }
       ]
     },
-    "Decimal": {
-      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+    "HumanAddr": {
       "type": "string"
     },
-    "HumanAddr": {
+    "Uint128": {
       "type": "string"
     }
   }

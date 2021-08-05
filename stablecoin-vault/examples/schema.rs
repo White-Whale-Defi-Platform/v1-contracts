@@ -3,9 +3,9 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use test_contract::asset::SingleInfo;
-use test_contract::msg::{PoolResponse, HandleMsg, InitMsg, QueryMsg};
-use test_contract::state::State;
+use stablecoin_vault::pool_info::PoolInfo;
+use stablecoin_vault::msg::{PoolResponse, HandleMsg, InitMsg, QueryMsg};
+use stablecoin_vault::state::State;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -18,5 +18,5 @@ fn main() {
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(State), &out_dir);
     export_schema(&schema_for!(PoolResponse), &out_dir);
-    export_schema(&schema_for!(SingleInfo), &out_dir);
+    export_schema(&schema_for!(PoolInfo), &out_dir);
 }

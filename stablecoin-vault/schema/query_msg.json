@@ -5,10 +5,21 @@
     {
       "type": "object",
       "required": [
-        "get_count"
+        "asset"
       ],
       "properties": {
-        "get_count": {
+        "asset": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "pool"
+      ],
+      "properties": {
+        "pool": {
           "type": "object"
         }
       }

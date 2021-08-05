@@ -55,3 +55,6 @@ jobs:
       - name: Unit Test | Test
         working-directory: ./stablecoin-vault
         run: cargo unit-test
+      - name: Schema | Test
+        working-directory: ./stablecoin-vault
+        run: cargo schema
