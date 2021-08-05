@@ -2,7 +2,7 @@
 
 set -e
 
-cd stablecoin-vault
+cd contracts/stablecoin-vault
 cargo update
 cargo clippy -- -D warnings
 cargo unit-test

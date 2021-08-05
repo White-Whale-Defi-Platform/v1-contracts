@@ -14,6 +14,9 @@ jobs:
   lint:
     name: Lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts/stablecoin-vault
     steps:
       - name: Setup | Checkout
         uses: actions/checkout@v2
@@ -23,7 +26,6 @@ jobs:
           rust-version: 1.53.0
           components: clippy
       - name: Build | Lint
-        working-directory: ./stablecoin-vault
         run: cargo clippy -- -D warnings
   compile:
     name: Compile
@@ -36,10 +38,8 @@ jobs:
         with:
           rust-version: stable
       - name: Dependencies | Compile
-        working-directory: ./stablecoin-vault
         run: cargo update
       - name: Build | Compile
-        working-directory: ./stablecoin-vault
         run: cargo check
   test:
     name: Test
@@ -53,8 +53,6 @@ jobs:
         with:
           rust-version: 1.53.0
       - name: Unit Test | Test
-        working-directory: ./stablecoin-vault
         run: cargo unit-test
       - name: Schema | Test
-        working-directory: ./stablecoin-vault
         run: cargo schema
