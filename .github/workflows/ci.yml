@@ -55,4 +55,3 @@ jobs:
       - name: Unit Test | Test
         working-directory: ./stablecoin-vault
         run: cargo unit-test
-

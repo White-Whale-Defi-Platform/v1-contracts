@@ -39,12 +39,12 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         contract_addr: deps.api.canonical_address(&env.contract.address)?,
         liquidity_token: CanonicalAddr::default(),
         asset_infos: [
-            msg.asset_info.to_raw(&deps)?,
-            AssetInfo::NativeToken{ denom: LUNA_DENOM.to_string()}.to_raw(&deps)?,
-            AssetInfo::Token{ contract_addr: msg.aust_address }.to_raw(&deps)?
+            msg.asset_info.to_raw(deps)?,
+            AssetInfo::NativeToken{ denom: LUNA_DENOM.to_string()}.to_raw(deps)?,
+            AssetInfo::Token{ contract_addr: msg.aust_address }.to_raw(deps)?
         ],
     };
-    store_pool_info(&mut deps.storage, &pool_info)?;
+    store_pool_info(&mut deps.storage, pool_info)?;
 
     // Create LP token
     let messages: Vec<CosmosMsg> = vec![CosmosMsg::Wasm(WasmMsg::Instantiate {
@@ -110,12 +110,12 @@ pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
     let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
     let liquidity_addr: HumanAddr = deps.api.human_address(&info.liquidity_token)?;
 
-    let total_share: Uint128 = query_supply(&deps, &liquidity_addr)?;
-    let total_deposits: Uint128 = compute_total_deposits(&deps, &info)?;
+    let total_share: Uint128 = query_supply(deps, &liquidity_addr)?;
+    let total_deposits: Uint128 = compute_total_deposits(deps, &info)?;
 
     let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
     let refund_asset: Asset = Asset{
-        info: AssetInfo::NativeToken{ denom: get_stable_denom(&deps)? },
+        info: AssetInfo::NativeToken{ denom: get_stable_denom(deps)? },
         amount: total_deposits * share_ratio
     };
 
@@ -135,10 +135,10 @@ pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
     // TODO: Improve
     let state = config_read(&deps.storage).load()?;
     let aust_contract = deps.api.human_address(&state.aust_address)?;
-    let stable_balance: Uint128 = query_balance(&deps, &env.contract.address, get_stable_denom(&deps)?)?;
+    let stable_balance: Uint128 = query_balance(deps, &env.contract.address, get_stable_denom(deps)?)?;
     if refund_asset.amount*Decimal::from_ratio(Uint128(50), Uint128(1)) > stable_balance {
-        let uaust_amount: Uint128 = query_token_balance(&deps, &aust_contract, &env.contract.address)?;
-        let uaust_exchange_rate_response = query_aust_exchange_rate(&deps)?;
+        let uaust_amount: Uint128 = query_token_balance(deps, &aust_contract, &env.contract.address)?;
+        let uaust_exchange_rate_response = query_aust_exchange_rate(deps)?;
         let uaust_ust_rate = Decimal::from_str(&uaust_exchange_rate_response.exchange_rate.to_string())?;
         let uaust_amount_in_uust = uaust_amount * uaust_ust_rate;
         // TODO: Improve
@@ -248,7 +248,7 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
         amount,
         ask_denom.clone(),
     );
-    let residual_luna = query_balance(&deps, &env.contract.address, LUNA_DENOM.to_string())?;
+    let residual_luna = query_balance(deps, &env.contract.address, LUNA_DENOM.to_string())?;
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount};
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
@@ -295,7 +295,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
         msg: to_binary(&create_terraswap_msg(amount.clone(), from_micro(luna_pool_price)))?,
     });
 
-    let residual_luna = query_balance(&deps, &env.contract.address, LUNA_DENOM.to_string())?;
+    let residual_luna = query_balance(deps, &env.contract.address, LUNA_DENOM.to_string())?;
     let slippage_ratio = Decimal::from_ratio((Uint128(100) - Uint128(100) * state.slippage)?, Uint128(100));
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price) * slippage_ratio};
     let min_stable_amount = amount.amount;
@@ -443,7 +443,7 @@ pub fn try_provide_liquidity<S: Storage, A: Api, Q: Querier>(
     let total_deposits_in_ust: Uint128 = (compute_total_deposits(deps, &info)? - deposit)?;
 
     let liquidity_token = deps.api.human_address(&info.liquidity_token)?;
-    let total_share = query_supply(&deps, &liquidity_token)?;
+    let total_share = query_supply(deps, &liquidity_token)?;
     let share = if total_share == Uint128::zero() {
         // Initial share = collateral amount
         deposit
@@ -517,7 +517,7 @@ pub fn try_query_asset<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<PoolInfo> {
 
     let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
-    info.to_normal(&deps)
+    info.to_normal(deps)
 }
 
 pub fn try_query_pool<S: Storage, A: Api, Q: Querier>(

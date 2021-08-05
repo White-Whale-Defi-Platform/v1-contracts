@@ -31,9 +31,9 @@ impl PoolInfoRaw {
             liquidity_token: deps.api.human_address(&self.liquidity_token)?,
             contract_addr: deps.api.human_address(&self.contract_addr)?,
             asset_infos: [
-                self.asset_infos[0].to_normal(&deps)?,
-                self.asset_infos[1].to_normal(&deps)?,
-                self.asset_infos[2].to_normal(&deps)?,
+                self.asset_infos[0].to_normal(deps)?,
+                self.asset_infos[1].to_normal(deps)?,
+                self.asset_infos[2].to_normal(deps)?,
             ],
         })
     }
