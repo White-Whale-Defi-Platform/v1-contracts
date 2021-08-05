@@ -20,7 +20,7 @@ jobs:
       - name: Setup | Rust
         uses: ATiltedTree/setup-rust@v1
         with:
-          rust-version: stable
+          rust-version: 1.53.0
           components: clippy
       - name: Build | Lint
         working-directory: ./stablecoin-vault
@@ -51,7 +51,7 @@ jobs:
       - name: Setup | Rust
         uses: ATiltedTree/setup-rust@v1
         with:
-          rust-version: stable
+          rust-version: 1.53.0
       - name: Unit Test | Test
         working-directory: ./stablecoin-vault
         run: cargo unit-test
