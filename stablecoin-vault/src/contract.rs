@@ -160,7 +160,7 @@ pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
     let refund_msg = match &refund_asset.info {
         AssetInfo::Token { contract_addr } => CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_addr.clone(),
-            msg: to_binary(&Cw20HandleMsg::Transfer { recipient: sender, amount: amount })?,
+            msg: to_binary(&Cw20HandleMsg::Transfer { recipient: sender, amount })?,
             send: vec![],
         }),
         AssetInfo::NativeToken { .. } => CosmosMsg::Bank(BankMsg::Send {
@@ -245,15 +245,15 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     // });
     let swap_msg = create_swap_msg(
         env.contract.address.clone(),
-        amount.clone(),
+        amount,
         ask_denom.clone(),
     );
     let residual_luna = query_balance(&deps, &env.contract.address, LUNA_DENOM.to_string())?;
-    let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + expected_luna_amount};
+    let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount};
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![offer_coin.clone()],
-        msg: to_binary(&create_terraswap_msg(offer_coin.clone(), from_micro(luna_pool_price)))?,
+        msg: to_binary(&create_terraswap_msg(offer_coin, from_micro(luna_pool_price)))?,
     });
 
     let mut response = HandleResponse::default();
@@ -297,7 +297,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
 
     let residual_luna = query_balance(&deps, &env.contract.address, LUNA_DENOM.to_string())?;
     let slippage_ratio = Decimal::from_ratio((Uint128(100) - Uint128(100) * state.slippage)?, Uint128(100));
-    let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price) * slippage_ratio};
+    let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price) * slippage_ratio};
     let min_stable_amount = amount.amount;
     let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.seignorage_address)?,
@@ -374,28 +374,28 @@ pub fn try_post_initialize<S: Storage, A: Api, Q: Querier>(
     })
 }
 
-const COMMISSION_RATE: &str = "0.003";
-fn compute_swap(
-    offer_pool: Uint128,
-    ask_pool: Uint128,
-    offer_amount: Uint128,
-) -> StdResult<(Uint128, Uint128, Uint128)> {
-    // offer => ask
-    // ask_amount = (ask_pool - cp / (offer_pool + offer_amount)) * (1 - commission_rate)
-    let cp = Uint128(offer_pool.u128() * ask_pool.u128());
-    let return_amount = (ask_pool - cp.multiply_ratio(1u128, offer_pool + offer_amount))?;
+// const COMMISSION_RATE: &str = "0.003";
+// fn compute_swap(
+//     offer_pool: Uint128,
+//     ask_pool: Uint128,
+//     offer_amount: Uint128,
+// ) -> StdResult<(Uint128, Uint128, Uint128)> {
+//     // offer => ask
+//     // ask_amount = (ask_pool - cp / (offer_pool + offer_amount)) * (1 - commission_rate)
+//     let cp = Uint128(offer_pool.u128() * ask_pool.u128());
+//     let return_amount = (ask_pool - cp.multiply_ratio(1u128, offer_pool + offer_amount))?;
 
-    // calculate spread & commission
-    let spread_amount: Uint128 = (offer_amount * Decimal::from_ratio(ask_pool, offer_pool)
-        - return_amount)
-        .unwrap_or_else(|_| Uint128::zero());
-    let commission_amount: Uint128 = return_amount * Decimal::from_str(&COMMISSION_RATE).unwrap();
+//     // calculate spread & commission
+//     let spread_amount: Uint128 = (offer_amount * Decimal::from_ratio(ask_pool, offer_pool)
+//         - return_amount)
+//         .unwrap_or_else(|_| Uint128::zero());
+//     let commission_amount: Uint128 = return_amount * Decimal::from_str(&COMMISSION_RATE).unwrap();
 
-    // commission will be absorbed to pool
-    let return_amount: Uint128 = (return_amount - commission_amount).unwrap();
+//     // commission will be absorbed to pool
+//     let return_amount: Uint128 = (return_amount - commission_amount).unwrap();
 
-    Ok((return_amount, spread_amount, commission_amount))
-}
+//     Ok((return_amount, spread_amount, commission_amount))
+// }
 
 pub fn compute_total_deposits<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,

@@ -94,8 +94,8 @@ pub fn create_assert_limit_order_msg(
     minimum_receive: Uint128
 ) -> Message {
     Message::AssertLimitOrder{
-        offer_coin: offer_coin,
-        ask_denom: ask_denom,
+        offer_coin,
+        ask_denom,
         minimum_receive: minimum_receive * Decimal::from_ratio(Uint128(99), Uint128(100))
     }
 }
