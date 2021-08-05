@@ -1,4 +1,5 @@
-Copyright 2021 Lars Lubkoll <lars.lubkoll@posteo.de>
+CW20-Base: A reference implementation for fungible token on CosmWasm
+Copyright (C) 2020 Confio OÜ
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

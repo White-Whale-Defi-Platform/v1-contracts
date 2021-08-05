@@ -1,5 +1,5 @@
 
-name: Stablecoin Vault
+name: Vesting Contract
 
 on:
   push:
@@ -12,22 +12,22 @@ on:
 
 defaults:
   run:
-    working-directory: contracts/stablecoin-vault
+    working-directory: contracts/vesting
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@v2
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
-        with:
-          rust-version: 1.53.0
-          components: clippy
-      - name: Build | Lint
-        run: cargo clippy -- -D warnings
+  # lint:
+  #   name: Lint
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Setup | Checkout
+  #       uses: actions/checkout@v2
+  #     - name: Setup | Rust
+  #       uses: ATiltedTree/setup-rust@v1
+  #       with:
+  #         rust-version: 1.53.0
+  #         components: clippy
+  #     - name: Build | Lint
+  #       run: cargo clippy -- -D warnings
   compile:
     name: Compile
     runs-on: ubuntu-latest

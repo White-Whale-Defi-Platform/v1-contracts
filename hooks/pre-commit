@@ -8,3 +8,10 @@ cargo clippy -- -D warnings
 cargo unit-test
 cargo schema
 cd -
+
+cd contracts/vesting
+cargo update
+# cargo clippy -- -D warnings
+cargo unit-test
+cargo schema
+cd -
