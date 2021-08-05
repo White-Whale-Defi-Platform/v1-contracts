@@ -34,6 +34,9 @@ jobs:
         uses: ATiltedTree/setup-rust@v1
         with:
           rust-version: stable
+      - name: Run cargo update
+        working-directory:
+        run: cd stablecoin-vault && cargo update && cd -
       - name: Build | Compile
         working-directory: ${{runner.workspace}}/stablecoin-vault
         run: cargo check
