@@ -14,7 +14,7 @@ use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg, create_assert_limit_order_msg, AnchorMsg};
 use crate::state::{config, config_read, State, LUNA_DENOM, read_pool_info, store_pool_info};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::querier::{query_aust_exchange_rate, query_luna_price, query_luna_price_on_terraswap, from_micro};
+use crate::querier::{query_aust_exchange_rate, query_market_price, query_luna_price_on_terraswap, from_micro};
 use std::str::FromStr;
 
 
@@ -222,6 +222,11 @@ pub fn get_stable_denom<S: Storage, A: Api, Q: Querier>(
     Ok(stable_denom)
 }
 
+pub fn get_slippage_ratio(slippage: Decimal) -> StdResult<Decimal> {
+    Ok(Decimal::from_ratio((Uint128(100) - Uint128(100) * slippage)?, Uint128(100)))
+}
+
+
 pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -236,8 +241,10 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     let ask_denom = LUNA_DENOM.to_string();
 
     let luna_pool_price = query_luna_price_on_terraswap(deps, deps.api.human_address(&state.pool_address)?, amount.amount)?;
+    let slippage_ratio = get_slippage_ratio(state.slippage)?;
+    let expected_luna_amount = query_market_price(deps, amount.clone(), LUNA_DENOM.to_string())? * slippage_ratio;
 
-    let expected_luna_amount = amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price);
+    // let expected_luna_amount = amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price);
     // let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
     //     contract_addr: HumanAddr::from(BURN_MINT_CONTRACT),
     //     send: vec![],
@@ -296,7 +303,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     });
 
     let residual_luna = query_balance(deps, &env.contract.address, LUNA_DENOM.to_string())?;
-    let slippage_ratio = Decimal::from_ratio((Uint128(100) - Uint128(100) * state.slippage)?, Uint128(100));
+    let slippage_ratio = get_slippage_ratio(state.slippage)?;
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price) * slippage_ratio};
     let min_stable_amount = amount.amount;
     let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -414,7 +421,7 @@ pub fn compute_total_deposits<S: Storage, A: Api, Q: Querier>(
         AssetInfo::Token{..} => Uint128(0),
         AssetInfo::NativeToken{denom} => query_balance(deps, &contract_address, denom)?,
     };
-    let luna_price = from_micro(query_luna_price(deps, stable_denom)?);
+    let luna_price = from_micro(query_market_price(deps, Coin{ denom: LUNA_DENOM.to_string(), amount: Uint128(1000000)}, stable_denom)?);
     let luna_value_in_stable = luna_amount * luna_price;
 
     let aust_info = info.asset_infos[2].to_normal(deps)?;

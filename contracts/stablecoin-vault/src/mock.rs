@@ -11,6 +11,9 @@ use cosmwasm_std::{
 };
 
 use terraswap::pair::SimulationResponse;
+use terra_cosmwasm::SwapResponse;
+
+use crate::state::LUNA_DENOM;
 
 pub const MOCK_CONTRACT_ADDR: &str = "cosmos2contract";
 
@@ -142,7 +145,8 @@ pub struct MockQuerier {
     /// always errors by default. Update it via `with_custom_handler`.
     ///
     /// Use box to avoid the need of another generic type
-    custom_handler: Box<dyn for<'a> Fn(&'a Empty) -> MockQuerierCustomHandlerResult>,
+    // custom_handler: Box<dyn for<'a> Fn(&'a Empty) -> MockQuerierCustomHandlerResult>,
+    custom: FakeMarketQuerier
 }
 
 impl MockQuerier {
@@ -151,13 +155,14 @@ impl MockQuerier {
             bank: BankQuerier::new(balances),
             staking: StakingQuerier::default(),
             wasm: DummyQuerier { pool_address: HumanAddr::from("test_pool") },
+            custom: FakeMarketQuerier { },
             // strange argument notation suggested as a workaround here: https://github.com/rust-lang/rust/issues/41078#issuecomment-294296365
-            custom_handler: Box::from(|_: &_| -> MockQuerierCustomHandlerResult {
-                Ok(Ok(Binary::from(vec![0u8])))
-                // Err(SystemError::UnsupportedRequest {
-                //     kind: "custom".to_string(),
-                // })
-            }),
+            // custom_handler: Box::from(|_: &_| -> MockQuerierCustomHandlerResult {
+            //     Ok(Ok(Binary::from(vec![0u8])))
+            //     // Err(SystemError::UnsupportedRequest {
+            //     //     kind: "custom".to_string(),
+            //     // })
+            // }),
         }
     }
 
@@ -208,7 +213,7 @@ impl MockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Bank(bank_query) => self.bank.query(bank_query),
-            QueryRequest::Custom(custom_query) => (*self.custom_handler)(custom_query),
+            QueryRequest::Custom(custom_query) => self.custom.query(custom_query),
             QueryRequest::Staking(staking_query) => self.staking.query(staking_query),
             QueryRequest::Wasm(msg) => self.wasm.query(msg),
         }
@@ -217,7 +222,7 @@ impl MockQuerier {
 
 #[derive(Clone, Default)]
 struct DummyQuerier {
-    pool_address: HumanAddr
+    pool_address: HumanAddr,
 }
 
 impl DummyQuerier {
@@ -243,6 +248,20 @@ impl DummyQuerier {
             WasmQuery::Raw{..} => Ok(Ok(Binary::from(vec![0u8]))),
             WasmQuery::Smart{contract_addr, ..} => self.process_smart_query(contract_addr),
         }
+    }
+}
+
+
+#[derive(Clone, Default)]
+struct FakeMarketQuerier {
+}
+
+impl FakeMarketQuerier {
+    fn query(&self, _request: &Empty) -> QuerierResult {
+        let binary_response = to_binary(&SwapResponse{
+            receive: Coin{denom: LUNA_DENOM.to_string(), amount: Uint128(1000000)}
+        });
+        Ok(Ok(binary_response.unwrap()))
     }
 }
 

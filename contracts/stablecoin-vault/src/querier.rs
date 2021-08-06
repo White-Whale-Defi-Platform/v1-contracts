@@ -67,11 +67,12 @@ pub fn query_luna_price_on_terraswap<S: Storage, A: Api, Q: Querier>(
 }
 
 
-pub fn query_luna_price<S: Storage, A: Api, Q: Querier>(
+pub fn query_market_price<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
+    offer_coin: Coin,
     ask_denom: String
 ) -> StdResult<Uint128> {
     let querier = TerraQuerier::new(&deps.querier);
-    let response = querier.query_swap(Coin{ denom: "uluna".to_string(), amount: Uint128(1000000) }, ask_denom)?;
+    let response = querier.query_swap(offer_coin, ask_denom)?;
     Ok(response.receive.amount)
 }
