@@ -49,6 +49,7 @@ pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
 pub fn query_luna_price_on_terraswap<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>,
     pool_address: HumanAddr,
+    amount: Uint128
 ) -> StdResult<Uint128> {
     let response: SimulationResponse = deps.querier.query(
         &QueryRequest::Wasm(WasmQuery::Smart{
@@ -56,7 +57,7 @@ pub fn query_luna_price_on_terraswap<S: Storage, A: Api, Q: Querier>(
             msg: to_binary(&PairQueryMsg::Simulation{
                 offer_asset: Asset{
                     info: AssetInfo::NativeToken{ denom: LUNA_DENOM.to_string() },
-                    amount: Uint128(1000000),
+                    amount,
                 }
             })?
         })

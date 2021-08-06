@@ -235,7 +235,7 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
 
     let ask_denom = LUNA_DENOM.to_string();
 
-    let luna_pool_price = query_luna_price_on_terraswap(deps, deps.api.human_address(&state.pool_address)?)?;
+    let luna_pool_price = query_luna_price_on_terraswap(deps, deps.api.human_address(&state.pool_address)?, amount.amount)?;
 
     let expected_luna_amount = amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price);
     // let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -287,7 +287,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
         return Err(StdError::unauthorized());
     }
     let ask_denom = LUNA_DENOM.to_string();
-    let luna_pool_price = query_luna_price_on_terraswap(deps, deps.api.human_address(&state.pool_address)?)?;
+    let luna_pool_price = query_luna_price_on_terraswap(deps, deps.api.human_address(&state.pool_address)?, amount.amount)?;
 
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
