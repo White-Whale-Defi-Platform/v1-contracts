@@ -2,7 +2,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Binary, Coin, Decimal, HumanAddr, Uint128};
 use terraswap::asset::{Asset, AssetInfo};
-use terraswap::pair::{HandleMsg as PairMsg};
 use cw20::Cw20ReceiveMsg;
 
 
@@ -64,22 +63,6 @@ pub struct PoolResponse {
     pub assets: [Asset; 3],
     pub total_deposits_in_ust: Uint128,
     pub total_share: Uint128,
-}
-
-pub fn create_terraswap_msg(
-    offer: Coin,
-    belief_price: Decimal
-) -> PairMsg {
-    let offer = Asset{
-        info: AssetInfo::NativeToken{ denom: offer.denom.clone() },
-        amount: offer.amount
-    };
-    PairMsg::Swap{
-        offer_asset: offer,
-        belief_price: Some(belief_price),
-        max_spread: Some(Decimal::from_ratio(Uint128(1), Uint128(100))),
-        to: None,
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

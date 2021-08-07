@@ -11,12 +11,19 @@ use terraswap::token::InitMsg as TokenInitMsg;
 
 use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 
-use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, create_terraswap_msg, create_assert_limit_order_msg, AnchorMsg};
+use white_whale::msg::create_terraswap_msg;
+use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
+
+use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, AnchorMsg};
 use crate::state::{config, config_read, State, LUNA_DENOM, read_pool_info, store_pool_info};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::querier::{query_aust_exchange_rate, query_market_price, query_luna_price_on_terraswap, from_micro};
+use crate::querier::{query_aust_exchange_rate, query_market_price, from_micro};
 use std::str::FromStr;
 
+
+pub fn to_luna(coin: Coin, luna_price: Coin) -> Coin {
+    Coin{ denom: coin.denom, amount: coin.amount.clone().multiply_ratio(1u128, luna_price.amount.0) }
+}
 
 pub fn init<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
@@ -96,11 +103,6 @@ pub fn handle<S: Storage, A: Api, Q: Querier>(
         HandleMsg::SetSlippage{ slippage } => set_slippage(deps, env, slippage),
     }
 }
-
-pub fn to_luna(coin: Coin, luna_price: Coin) -> Coin {
-    Coin{ denom: coin.denom, amount: coin.amount.clone().multiply_ratio(1u128, luna_price.amount.0) }
-}
-
 pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
     deps: &mut Extern<S, A, Q>,
     env: Env,
@@ -240,9 +242,9 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
 
     let ask_denom = LUNA_DENOM.to_string();
 
-    let luna_pool_price = query_luna_price_on_terraswap(deps, deps.api.human_address(&state.pool_address)?, amount.amount)?;
     let slippage_ratio = get_slippage_ratio(state.slippage)?;
     let expected_luna_amount = query_market_price(deps, amount.clone(), LUNA_DENOM.to_string())? * slippage_ratio;
+    let luna_pool_price = simulate_terraswap_swap(deps, deps.api.human_address(&state.pool_address)?, Coin{denom: LUNA_DENOM.to_string(), amount: expected_luna_amount})?;
 
     // let expected_luna_amount = amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price);
     // let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -294,23 +296,24 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
         return Err(StdError::unauthorized());
     }
     let ask_denom = LUNA_DENOM.to_string();
-    let luna_pool_price = query_luna_price_on_terraswap(deps, deps.api.human_address(&state.pool_address)?, amount.amount)?;
+    let expected_luna_amount = simulate_terraswap_swap(deps, deps.api.human_address(&state.pool_address)?, amount.clone())?;
+    let luna_pool_price = Decimal::from_ratio(amount.amount, expected_luna_amount);
 
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![amount.clone()],
-        msg: to_binary(&create_terraswap_msg(amount.clone(), from_micro(luna_pool_price)))?,
+        msg: to_binary(&create_terraswap_msg(amount.clone(), luna_pool_price))?,
     });
 
     let residual_luna = query_balance(deps, &env.contract.address, LUNA_DENOM.to_string())?;
     let slippage_ratio = get_slippage_ratio(state.slippage)?;
-    let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + amount.amount * Decimal::from_ratio(Uint128(1000000), luna_pool_price) * slippage_ratio};
-    let min_stable_amount = amount.amount;
-    let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.human_address(&state.seignorage_address)?,
-        send: vec![],
-        msg: to_binary(&create_assert_limit_order_msg(offer_coin.clone(), amount.denom.clone(), min_stable_amount))?,
-    });
+    let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount * slippage_ratio};
+    // let min_stable_amount = amount.amount;
+    // let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    //     contract_addr: deps.api.human_address(&state.seignorage_address)?,
+    //     send: vec![],
+    //     msg: to_binary(&create_assert_limit_order_msg(offer_coin.clone(), amount.denom.clone(), min_stable_amount))?,
+    // });
     let swap_msg = create_swap_msg(
         env.contract.address,
         offer_coin,
@@ -332,7 +335,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
         }));  
     }
     response.messages.push(terraswap_msg);
-    response.messages.push(assert_limit_order_msg);
+    // response.messages.push(assert_limit_order_msg);
     response.messages.push(swap_msg);
 
     Ok(response)
@@ -653,7 +656,7 @@ mod tests {
 
         // we can just call .unwrap() to assert this was a success
         let res = handle(&mut deps, env, msg).unwrap();
-        assert_eq!(3, res.messages.len());
+        assert_eq!(2, res.messages.len());
         let first_msg = res.messages[0].clone();
         match first_msg {
             CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
@@ -661,14 +664,14 @@ mod tests {
             CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
             CosmosMsg::Wasm(_wasm_msg) => {}
         }
-        let second_msg = res.messages[1].clone();
-        match second_msg {
-            CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
-            CosmosMsg::Custom(_t) => panic!("unexpected"),
-            CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
-            CosmosMsg::Wasm(_wasm_msg) => {}
-        }
-        let third_msg = res.messages[2].clone();
+        // let second_msg = res.messages[1].clone();
+        // match second_msg {
+        //     CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
+        //     CosmosMsg::Custom(_t) => panic!("unexpected"),
+        //     CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
+        //     CosmosMsg::Wasm(_wasm_msg) => {}
+        // }
+        let third_msg = res.messages[1].clone();
         match third_msg {
             CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
             CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
