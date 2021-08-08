@@ -13,7 +13,7 @@ import pathlib
 import sys
 sys.path.append(pathlib.Path(__file__).parent.resolve())
 
-from config import tequila_config as config
+from config import get_tequila_config as get_config
 
 client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004", gas_prices=Coins(requests.get("https://tequila-fcd.terra.dev/v1/txs/gas_prices").json()))
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
@@ -71,6 +71,7 @@ def execute_contract(contract_addr: str, execute_msg, coins=None):
     return send_msg(msg)
 
 
+config = get_config("UST")
 print("store contract")
 code_id = store_contract(contract_name="stablecoin_vault")
 print(f"stored {code_id} {type(code_id)}")

@@ -1,7 +1,16 @@
 from dataclasses import dataclass
 from typing import Union
 
-from query import Token, NativeToken
+
+@dataclass
+class NativeToken:
+    denom: str = ''
+
+
+@dataclass
+class Token:
+    contract_addr: str = ''
+
 
 @dataclass
 class PoolConfig:
