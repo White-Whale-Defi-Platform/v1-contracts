@@ -22,9 +22,3 @@ cosmwasm-storage = { version = "0.10.1", features = ["iterator"] }
 schemars = "0.7"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "1.1.0"
-
-[profile.dev]
-overflow-checks = true
-
-[profile.release]
-overflow-checks = true
