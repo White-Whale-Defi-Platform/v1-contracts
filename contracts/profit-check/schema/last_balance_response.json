@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LastBalanceResponse",
+  "type": "object",
+  "required": [
+    "last_balance"
+  ],
+  "properties": {
+    "last_balance": {
+      "$ref": "#/definitions/Uint128"
+    }
+  },
+  "definitions": {
+    "Uint128": {
+      "type": "string"
+    }
+  }
+}

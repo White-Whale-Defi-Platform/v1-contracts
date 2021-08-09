@@ -1,0 +1,31 @@
+[package]
+name = "profit-check"
+version = "0.1.0"
+authors = ["White Whale"]
+edition = "2018"
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "profit_check.wasm",
+  "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+
+[dependencies]
+cosmwasm-std = { version = "0.10.1" }
+cosmwasm-storage = { version = "0.10.1" }
+schemars = "0.7"
+serde = { version = "1.0.103", default-features = false, features = ["derive"] }
+terraswap = "1.1.0"
+white-whale = { version = "1.0.0", path = "../../packages/white_whale" }
+
+[dev-dependencies]
+cosmwasm-schema = { version = "0.10.1" }

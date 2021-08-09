@@ -19,6 +19,7 @@ pub struct InitMsg {
     pub anchor_money_market_address: HumanAddr,
     pub aust_address: HumanAddr,
     pub seignorage_address: HumanAddr,
+    pub profit_check_address: HumanAddr,
     pub asset_info: AssetInfo,
     pub slippage: Decimal,
     /// Token contract code id for initialization

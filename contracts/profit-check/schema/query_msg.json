@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "QueryMsg",
+  "anyOf": [
+    {
+      "type": "object",
+      "required": [
+        "last_balance"
+      ],
+      "properties": {
+        "last_balance": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "vault"
+      ],
+      "properties": {
+        "vault": {
+          "type": "object"
+        }
+      }
+    }
+  ]
+}

@@ -7,6 +7,7 @@
     "asset_info",
     "aust_address",
     "pool_address",
+    "profit_check_address",
     "seignorage_address",
     "slippage",
     "token_code_id"
@@ -22,6 +23,9 @@
       "$ref": "#/definitions/HumanAddr"
     },
     "pool_address": {
+      "$ref": "#/definitions/HumanAddr"
+    },
+    "profit_check_address": {
       "$ref": "#/definitions/HumanAddr"
     },
     "seignorage_address": {

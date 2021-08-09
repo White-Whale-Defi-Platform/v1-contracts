@@ -7,6 +7,7 @@
     "aust_address",
     "owner",
     "pool_address",
+    "profit_check_address",
     "seignorage_address",
     "slippage",
     "trader"
@@ -22,6 +23,9 @@
       "$ref": "#/definitions/CanonicalAddr"
     },
     "pool_address": {
+      "$ref": "#/definitions/CanonicalAddr"
+    },
+    "profit_check_address": {
       "$ref": "#/definitions/CanonicalAddr"
     },
     "seignorage_address": {

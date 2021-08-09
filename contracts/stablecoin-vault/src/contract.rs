@@ -13,6 +13,7 @@ use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 
 use white_whale::msg::create_terraswap_msg;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
+use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
 
 use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, AnchorMsg};
 use crate::state::{config, config_read, State, LUNA_DENOM, read_pool_info, store_pool_info};
@@ -37,6 +38,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         anchor_money_market_address: deps.api.canonical_address(&msg.anchor_money_market_address)?,
         aust_address: deps.api.canonical_address(&msg.aust_address)?,
         seignorage_address: deps.api.canonical_address(&msg.seignorage_address)?,
+        profit_check_address: deps.api.canonical_address(&msg.profit_check_address)?,
         slippage: msg.slippage
     };
 
@@ -279,8 +281,22 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
             send: vec![]
         }));  
     }
+    response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: deps.api.human_address(&state.profit_check_address)?,
+        msg: to_binary(
+            &ProfitCheckMsg::BeforeTrade{}
+        )?,
+        send: vec![]
+    }));
     response.messages.push(swap_msg);
     response.messages.push(terraswap_msg);
+    response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: deps.api.human_address(&state.profit_check_address)?,
+        msg: to_binary(
+            &ProfitCheckMsg::AfterTrade{}
+        )?,
+        send: vec![]
+    }));
 
     Ok(response)
 }
@@ -334,9 +350,23 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
             send: vec![]
         }));  
     }
+    response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: deps.api.human_address(&state.profit_check_address)?,
+        msg: to_binary(
+            &ProfitCheckMsg::BeforeTrade{}
+        )?,
+        send: vec![]
+    }));
     response.messages.push(terraswap_msg);
     // response.messages.push(assert_limit_order_msg);
     response.messages.push(swap_msg);
+    response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: deps.api.human_address(&state.profit_check_address)?,
+        msg: to_binary(
+            &ProfitCheckMsg::AfterTrade{}
+        )?,
+        send: vec![]
+    }));
 
     Ok(response)
 }
@@ -564,6 +594,7 @@ mod tests {
             anchor_money_market_address: HumanAddr::from("test_mm"),
             aust_address: HumanAddr::from("test_aust"),
             seignorage_address: HumanAddr::from("test_seignorage"),
+            profit_check_address: HumanAddr::from("test_profit_check"),
             asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, 
             slippage: Decimal::percent(1u64), token_code_id: 0u64
         }
@@ -621,15 +652,15 @@ mod tests {
 
         // we can just call .unwrap() to assert this was a success
         let res = handle(&mut deps, env, msg).unwrap();
-        assert_eq!(2, res.messages.len());
-        let first_msg = res.messages[0].clone();
+        assert_eq!(4, res.messages.len());
+        let first_msg = res.messages[1].clone();
         match first_msg {
             CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
             CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
             CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
             CosmosMsg::Wasm(_wasm_msg) => panic!("unexpected")
         }
-        let second_msg = res.messages[1].clone();
+        let second_msg = res.messages[2].clone();
         match second_msg {
             CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
             CosmosMsg::Custom(_t) => panic!("unexpected"),
@@ -656,8 +687,8 @@ mod tests {
 
         // we can just call .unwrap() to assert this was a success
         let res = handle(&mut deps, env, msg).unwrap();
-        assert_eq!(2, res.messages.len());
-        let first_msg = res.messages[0].clone();
+        assert_eq!(4, res.messages.len());
+        let first_msg = res.messages[1].clone();
         match first_msg {
             CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
             CosmosMsg::Custom(_t) => panic!("unexpected"),
@@ -671,7 +702,7 @@ mod tests {
         //     CosmosMsg::Staking(_staking_msg) => panic!("unexpected"),
         //     CosmosMsg::Wasm(_wasm_msg) => {}
         // }
-        let third_msg = res.messages[1].clone();
+        let third_msg = res.messages[2].clone();
         match third_msg {
             CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
             CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
