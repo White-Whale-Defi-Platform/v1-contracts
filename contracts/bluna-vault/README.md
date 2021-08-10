@@ -1,4 +1,4 @@
-# stablecoin-vault
+# bluna-vault
 
 Commands:
  - build: `cargo wasm`
