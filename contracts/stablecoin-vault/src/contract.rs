@@ -15,7 +15,7 @@ use white_whale::msg::create_terraswap_msg;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
 
-use crate::msg::{HandleMsg, InitMsg, QueryMsg, PoolResponse, AnchorMsg};
+use crate::msg::{HandleMsg, InitMsg, QueryMsg, SlippageResponse, PoolResponse, AnchorMsg};
 use crate::state::{config, config_read, State, LUNA_DENOM, read_pool_info, store_pool_info};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_aust_exchange_rate, query_market_price, from_micro};
@@ -157,7 +157,7 @@ pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
                     }
                 )?,
                 send: vec![]
-            }));  
+            }));
         }
     }
 
@@ -261,10 +261,11 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     );
     let residual_luna = query_balance(deps, &env.contract.address, LUNA_DENOM.to_string())?;
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount};
+    let max_spread = Some(Decimal::from_ratio((Uint128(1000000000) - Uint128(1000000000)*state.slippage)?, Uint128(1000000000)));
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![offer_coin.clone()],
-        msg: to_binary(&create_terraswap_msg(offer_coin, from_micro(luna_pool_price)))?,
+        msg: to_binary(&create_terraswap_msg(offer_coin, from_micro(luna_pool_price), max_spread))?,
     });
 
     let mut response = HandleResponse::default();
@@ -279,7 +280,7 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
                 }
             )?,
             send: vec![]
-        }));  
+        }));
     }
     response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
         contract_addr: deps.api.human_address(&state.profit_check_address)?,
@@ -315,10 +316,11 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     let expected_luna_amount = simulate_terraswap_swap(deps, deps.api.human_address(&state.pool_address)?, amount.clone())?;
     let luna_pool_price = Decimal::from_ratio(amount.amount, expected_luna_amount);
 
+    let max_spread = Some(Decimal::from_ratio((Uint128(1000000000) - Uint128(1000000000)*state.slippage)?, Uint128(1000000000)));
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![amount.clone()],
-        msg: to_binary(&create_terraswap_msg(amount.clone(), luna_pool_price))?,
+        msg: to_binary(&create_terraswap_msg(amount.clone(), luna_pool_price, max_spread))?,
     });
 
     let residual_luna = query_balance(deps, &env.contract.address, LUNA_DENOM.to_string())?;
@@ -348,7 +350,7 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
                 }
             )?,
             send: vec![]
-        }));  
+        }));
     }
     response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
         contract_addr: deps.api.human_address(&state.profit_check_address)?,
@@ -548,14 +550,14 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
 ) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config{} => to_binary(&try_query_config(deps)?),
-        QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?)
+        QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?),
+        QueryMsg::Slippage{} => to_binary(&try_query_slippage(deps)?)
     }
 }
 
 pub fn try_query_config<S: Storage, A: Api, Q: Querier>(
     deps: &Extern<S, A, Q>
 ) -> StdResult<PoolInfo> {
-
     let info: PoolInfoRaw = read_pool_info(&deps.storage)?;
     info.to_normal(deps)
 }
@@ -580,6 +582,14 @@ pub fn try_query_pool<S: Storage, A: Api, Q: Querier>(
     Ok(resp)
 }
 
+pub fn try_query_slippage<S: Storage, A: Api, Q: Querier>(
+    deps: &Extern<S, A, Q>
+) -> StdResult<SlippageResponse> {
+    let state = config_read(&deps.storage).load()?;
+    Ok(SlippageResponse{ slippage: state.slippage })
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -589,13 +599,13 @@ mod tests {
     use terraswap::asset::AssetInfo;
 
     fn get_test_init_msg() -> InitMsg {
-        InitMsg { 
+        InitMsg {
             pool_address: HumanAddr::from("test_pool"),
             anchor_money_market_address: HumanAddr::from("test_mm"),
             aust_address: HumanAddr::from("test_aust"),
             seignorage_address: HumanAddr::from("test_seignorage"),
             profit_check_address: HumanAddr::from("test_profit_check"),
-            asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() }, 
+            asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() },
             slippage: Decimal::percent(1u64), token_code_id: 0u64
         }
     }

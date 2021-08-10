@@ -23,6 +23,17 @@
           "type": "object"
         }
       }
+    },
+    {
+      "type": "object",
+      "required": [
+        "slippage"
+      ],
+      "properties": {
+        "slippage": {
+          "type": "object"
+        }
+      }
     }
   ]
 }

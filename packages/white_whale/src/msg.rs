@@ -1,11 +1,12 @@
-use cosmwasm_std::{Coin, Decimal, Uint128};
+use cosmwasm_std::{Coin, Decimal};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::HandleMsg;
 
 
 pub fn create_terraswap_msg(
     offer: Coin,
-    belief_price: Decimal
+    belief_price: Decimal,
+    max_spread: Option<Decimal>
 ) -> HandleMsg {
     let offer = Asset{
         info: AssetInfo::NativeToken{ denom: offer.denom.clone() },
@@ -14,7 +15,7 @@ pub fn create_terraswap_msg(
     HandleMsg::Swap{
         offer_asset: offer,
         belief_price: Some(belief_price),
-        max_spread: Some(Decimal::from_ratio(Uint128(1), Uint128(100))),
+        max_spread,
         to: None,
     }
 }

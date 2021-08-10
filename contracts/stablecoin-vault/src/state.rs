@@ -20,7 +20,7 @@ pub struct State {
     pub aust_address: CanonicalAddr,
     pub seignorage_address: CanonicalAddr,
     pub profit_check_address: CanonicalAddr,
-    pub slippage: Decimal,
+    pub slippage: Decimal
 }
 
 pub fn config<S: Storage>(storage: &mut S) -> Singleton<S, State> {
@@ -39,4 +39,3 @@ pub fn store_pool_info<S: Storage>(storage: &mut S, data: &PoolInfoRaw) -> StdRe
 pub fn read_pool_info<S: Storage>(storage: &S) -> StdResult<PoolInfoRaw> {
     ReadonlySingleton::new(storage, KEY_PAIR_INFO).load()
 }
-
