@@ -11,11 +11,11 @@ use terraswap::token::InitMsg as TokenInitMsg;
 
 use cw20::{Cw20HandleMsg, Cw20ReceiveMsg, MinterResponse};
 
-use white_whale::msg::create_terraswap_msg;
+use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg};
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
 
-use crate::msg::{HandleMsg, InitMsg, QueryMsg, SlippageResponse, PoolResponse, AnchorMsg};
+use crate::msg::{HandleMsg, InitMsg, PoolResponse};
 use crate::state::{config, config_read, State, LUNA_DENOM, read_pool_info, store_pool_info};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_aust_exchange_rate, query_market_price, from_micro};
@@ -39,7 +39,6 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
         aust_address: deps.api.canonical_address(&msg.aust_address)?,
         seignorage_address: deps.api.canonical_address(&msg.seignorage_address)?,
         profit_check_address: deps.api.canonical_address(&msg.profit_check_address)?,
-        slippage: msg.slippage
     };
 
     config(&mut deps.storage).save(&state)?;
@@ -47,6 +46,7 @@ pub fn init<S: Storage, A: Api, Q: Querier>(
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: deps.api.canonical_address(&env.contract.address)?,
         liquidity_token: CanonicalAddr::default(),
+        slippage: msg.slippage,
         asset_infos: [
             msg.asset_info.to_raw(deps)?,
             AssetInfo::NativeToken{ denom: LUNA_DENOM.to_string()}.to_raw(deps)?,
@@ -150,10 +150,10 @@ pub fn try_withdraw_liquidity<S: Storage, A: Api, Q: Querier>(
             response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
                 contract_addr: aust_contract,
                 msg: to_binary(
-                    &AnchorMsg::Send{
+                    &Cw20HandleMsg::Send{
                         contract: deps.api.human_address(&state.anchor_money_market_address)?,
                         amount: uaust_amount,
-                        msg: to_binary(&AnchorMsg::RedeemStable{})?
+                        msg: Some(to_binary(&AnchorMsg::RedeemStable{})?)
                     }
                 )?,
                 send: vec![]
@@ -244,7 +244,8 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
 
     let ask_denom = LUNA_DENOM.to_string();
 
-    let slippage_ratio = get_slippage_ratio(state.slippage)?;
+    let slippage = (read_pool_info(&deps.storage)?).slippage;
+    let slippage_ratio = get_slippage_ratio(slippage)?;
     let expected_luna_amount = query_market_price(deps, amount.clone(), LUNA_DENOM.to_string())? * slippage_ratio;
     let luna_pool_price = simulate_terraswap_swap(deps, deps.api.human_address(&state.pool_address)?, Coin{denom: LUNA_DENOM.to_string(), amount: expected_luna_amount})?;
 
@@ -261,11 +262,10 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
     );
     let residual_luna = query_balance(deps, &env.contract.address, LUNA_DENOM.to_string())?;
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount};
-    let max_spread = Some(Decimal::from_ratio((Uint128(1000000000) - Uint128(1000000000)*state.slippage)?, Uint128(1000000000)));
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![offer_coin.clone()],
-        msg: to_binary(&create_terraswap_msg(offer_coin, from_micro(luna_pool_price), max_spread))?,
+        msg: to_binary(&create_terraswap_msg(offer_coin, Decimal::from_ratio(luna_pool_price, expected_luna_amount), Some(slippage)))?,
     });
 
     let mut response = HandleResponse::default();
@@ -273,10 +273,10 @@ pub fn try_arb_below_peg<S: Storage, A: Api, Q: Querier>(
         response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
             contract_addr: deps.api.human_address(&state.aust_address)?,
             msg: to_binary(
-                &AnchorMsg::Send{
+                &Cw20HandleMsg::Send{
                     contract: deps.api.human_address(&state.anchor_money_market_address)?,
                     amount: uaust_withdraw_amount,
-                    msg: to_binary(&AnchorMsg::RedeemStable{})?
+                    msg: Some(to_binary(&AnchorMsg::RedeemStable{})?)
                 }
             )?,
             send: vec![]
@@ -315,16 +315,16 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
     let ask_denom = LUNA_DENOM.to_string();
     let expected_luna_amount = simulate_terraswap_swap(deps, deps.api.human_address(&state.pool_address)?, amount.clone())?;
     let luna_pool_price = Decimal::from_ratio(amount.amount, expected_luna_amount);
+    let slippage = (read_pool_info(&deps.storage)?).slippage;
 
-    let max_spread = Some(Decimal::from_ratio((Uint128(1000000000) - Uint128(1000000000)*state.slippage)?, Uint128(1000000000)));
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.human_address(&state.pool_address)?,
         send: vec![amount.clone()],
-        msg: to_binary(&create_terraswap_msg(amount.clone(), luna_pool_price, max_spread))?,
+        msg: to_binary(&create_terraswap_msg(amount.clone(), luna_pool_price, Some(slippage)))?,
     });
 
     let residual_luna = query_balance(deps, &env.contract.address, LUNA_DENOM.to_string())?;
-    let slippage_ratio = get_slippage_ratio(state.slippage)?;
+    let slippage_ratio = get_slippage_ratio(slippage)?;
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount * slippage_ratio};
     // let min_stable_amount = amount.amount;
     // let assert_limit_order_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -343,10 +343,10 @@ pub fn try_arb_above_peg<S: Storage, A: Api, Q: Querier>(
         response.messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
             contract_addr: deps.api.human_address(&state.aust_address)?,
             msg: to_binary(
-                &AnchorMsg::Send{
+                &Cw20HandleMsg::Send{
                     contract: deps.api.human_address(&state.anchor_money_market_address)?,
                     amount: uaust_withdraw_amount,
-                    msg: to_binary(&AnchorMsg::RedeemStable{})?
+                    msg: Some(to_binary(&AnchorMsg::RedeemStable{})?)
                 }
             )?,
             send: vec![]
@@ -535,12 +535,13 @@ pub fn set_slippage<S: Storage, A: Api, Q: Querier>(
     env: Env,
     slippage: Decimal
 ) -> StdResult<HandleResponse<TerraMsgWrapper>> {
-    let mut state = config(&mut deps.storage).load()?;
+    let state = config(&mut deps.storage).load()?;
     if deps.api.canonical_address(&env.message.sender)? != state.owner {
         return Err(StdError::unauthorized());
     }
-    state.slippage = slippage;
-    config(&mut deps.storage).save(&state)?;
+    let mut info = read_pool_info(&deps.storage)?;
+    info.slippage = slippage;
+    store_pool_info(&mut deps.storage, &info)?;
     Ok(HandleResponse::default())
 }
 
@@ -551,7 +552,6 @@ pub fn query<S: Storage, A: Api, Q: Querier>(
     match msg {
         QueryMsg::Config{} => to_binary(&try_query_config(deps)?),
         QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?),
-        QueryMsg::Slippage{} => to_binary(&try_query_slippage(deps)?)
     }
 }
 
@@ -580,13 +580,6 @@ pub fn try_query_pool<S: Storage, A: Api, Q: Querier>(
     };
 
     Ok(resp)
-}
-
-pub fn try_query_slippage<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>
-) -> StdResult<SlippageResponse> {
-    let state = config_read(&deps.storage).load()?;
-    Ok(SlippageResponse{ slippage: state.slippage })
 }
 
 
@@ -633,14 +626,14 @@ mod tests {
         let res = init(&mut deps, env.clone(), init_msg).unwrap();
         assert_eq!(1, res.messages.len());
 
-        let state = config_read(&deps.storage).load().unwrap();
+        let state = read_pool_info(&deps.storage).unwrap();
         assert_eq!(state.slippage, Decimal::percent(1u64));
 
         let msg = HandleMsg::SetSlippage {
             slippage: Decimal::one()
         };
         let _res = handle(&mut deps, env, msg).unwrap();
-        let state = config_read(&deps.storage).load().unwrap();
+        let state = read_pool_info(&deps.storage).unwrap();
         assert_eq!(state.slippage, Decimal::one());
     }
 

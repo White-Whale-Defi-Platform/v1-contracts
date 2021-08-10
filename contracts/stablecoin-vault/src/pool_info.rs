@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{
-    Api, CanonicalAddr, Extern, HumanAddr,
+    Api, CanonicalAddr, Decimal, Extern, HumanAddr,
     Querier, StdResult, Storage,
 };
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
@@ -13,6 +13,7 @@ pub struct PoolInfo {
     pub asset_infos: [AssetInfo; 3],
     pub contract_addr: HumanAddr,
     pub liquidity_token: HumanAddr,
+    pub slippage: Decimal,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -20,6 +21,7 @@ pub struct PoolInfoRaw {
     pub asset_infos: [AssetInfoRaw; 3],
     pub contract_addr: CanonicalAddr,
     pub liquidity_token: CanonicalAddr,
+    pub slippage: Decimal,
 }
 
 impl PoolInfoRaw {
@@ -30,6 +32,7 @@ impl PoolInfoRaw {
         Ok(PoolInfo {
             liquidity_token: deps.api.human_address(&self.liquidity_token)?,
             contract_addr: deps.api.human_address(&self.contract_addr)?,
+            slippage: self.slippage,
             asset_infos: [
                 self.asset_infos[0].to_normal(deps)?,
                 self.asset_infos[1].to_normal(deps)?,
@@ -62,4 +65,3 @@ impl PoolInfoRaw {
         ])
     }
 }
-

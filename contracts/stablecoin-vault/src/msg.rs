@@ -1,6 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Binary, Coin, Decimal, HumanAddr, Uint128};
+use cosmwasm_std::{Coin, Decimal, HumanAddr, Uint128};
 use terraswap::asset::{Asset, AssetInfo};
 use cw20::Cw20ReceiveMsg;
 
@@ -28,14 +28,6 @@ pub struct InitMsg {
     // pub init_hook: Option<InitHook>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum AnchorMsg {
-    DepositStable{},
-    RedeemStable{},
-    Send{ contract: HumanAddr, amount: Uint128, msg: Binary }
-}
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -51,27 +43,12 @@ pub enum HandleMsg {
     SetSlippage { slippage: Decimal }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    Config{},
-    Pool{},
-    Slippage{}
-}
-
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolResponse {
     pub assets: [Asset; 3],
     pub total_deposits_in_ust: Uint128,
     pub total_share: Uint128,
-}
-
-
-// We define a custom struct for each query response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct SlippageResponse {
-    pub slippage: Decimal
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
