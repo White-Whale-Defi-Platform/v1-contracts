@@ -3,20 +3,20 @@ use terraswap::pair::{QueryMsg as PairQueryMsg, SimulationResponse};
 use crate::state::{LUNA_DENOM};
 
 use cosmwasm_std::{
-    to_binary, Api,  Coin, Decimal,
-    Extern, HumanAddr, Querier, QueryRequest, StdResult, Storage, Uint128, WasmQuery,
+    to_binary, Coin, Decimal,
+    Deps, QueryRequest, StdResult, Uint128, WasmQuery,
 };
 use terra_cosmwasm::TerraQuerier;
 
 pub fn from_micro(
     amount: Uint128
 ) -> Decimal {
-    Decimal::from_ratio(amount, Uint128(1000000))
+    Decimal::from_ratio(amount, Uint128::from(1000000u64))
 }
 
-pub fn query_luna_price_on_terraswap<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    pool_address: HumanAddr,
+pub fn query_luna_price_on_terraswap(
+    deps: Deps,
+    pool_address: String,
     amount: Uint128
 ) -> StdResult<Uint128> {
     let response: SimulationResponse = deps.querier.query(
@@ -35,8 +35,8 @@ pub fn query_luna_price_on_terraswap<S: Storage, A: Api, Q: Querier>(
 }
 
 
-pub fn query_market_price<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn query_market_price(
+    deps: Deps,
     offer_coin: Coin,
     ask_denom: String
 ) -> StdResult<Uint128> {
