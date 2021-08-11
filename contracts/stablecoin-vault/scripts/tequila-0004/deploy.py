@@ -59,48 +59,137 @@ def instantiate_contract(code_id: str, init_msg) -> str:
 
 def execute_contract(contract_addr: str, execute_msg, coins=None):
     msg = MsgExecuteContract(
-        sender=deployer.key.acc_address, 
-        contract=contract_addr, 
+        sender=deployer.key.acc_address,
+        contract=contract_addr,
         execute_msg=execute_msg,
         coins=coins
     ) if coins else MsgExecuteContract(
-        sender=deployer.key.acc_address, 
-        contract=contract_addr, 
+        sender=deployer.key.acc_address,
+        contract=contract_addr,
         execute_msg=execute_msg
-    ) 
+    )
     return send_msg(msg)
 
+def deploy(config, profit_check_address):
+    # store profit check contract
+    # print("store contract")
+    # code_id = store_contract(contract_name="profit_check")
+    # print(f"stored {code_id} {type(code_id)}")
+
+    # print("instantiate contract")
+    # profit_check_address = instantiate_contract(code_id=code_id, init_msg={
+    #     "vault_address": deployer.key.acc_address,
+    #     "denom": "uusd"
+    # })
+    # print(f'instantiated profit check {profit_check_address}')
+
+    # store stablecoin vault contract
+    print("store contract")
+    code_id = store_contract(contract_name="stablecoin_vault")
+    print(f"stored {code_id} {type(code_id)}")
+
+    print("instantiate contract")
+    contract_address = instantiate_contract(code_id=code_id, init_msg={
+        "pool_address": "terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff",
+        "asset_info": {
+            "native_token": { "denom": "uusd" }
+        },
+        "aust_address": config.aust_address,
+        "anchor_money_market_address": config.anchor_money_market_address,
+        "seignorage_address": config.seignorage_address,
+        "profit_check_address": profit_check_address,
+        "slippage": "0.01",
+        "token_code_id": 148
+    })
+    print(f'instantiated {contract_address}')
+
+    # # configure stablecoin vault as vault in profit_check
+    # result = execute_contract(contract_addr=profit_check_address, execute_msg={
+    #     "set_vault": {
+    #         "vault_address": contract_address
+    #     }
+    # })
+    # print(result)
+
+
+    return contract_address, profit_check_address
 
 config = get_config("UST")
-print("store contract")
-code_id = store_contract(contract_name="stablecoin_vault")
-print(f"stored {code_id} {type(code_id)}")
+# print(client.chain_id)
+profit_check_address = "terra14pun48dstc4pndkpg55gxlw8n5904rzler0j9z"
+deploy(config, profit_check_address)
+if True:
+    exit()
 
-print("instantiate contract")
-contract_address = instantiate_contract(code_id=code_id, init_msg={
-    "pool_address": "terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff",
-    "asset_info": {
-        "native_token": { "denom": "uusd" }
-    },
-    "aust_address": config.aust_address,
-    "anchor_money_market_address": config.money_market_address,
-    "seignorage_address": config.seignorage_address,
-    "slippage": "0.01",
-    "token_code_id": 6429
-})
-print(f'instantiated {contract_address}')
-# contract_address = "terra17fvgcyj0n92px30xt0qdhmnhjmuj6wyuya9tzd"
-
+# # result = client.wasm.contract_query(contract_address, {
+# #     "pool": {}
+# # })
+# # print(result)
+contract_address = "terra1y2e2qdgkysnl3z020lkzdsxdkkc6wwqd4r5u6f"
+# contract_address, profit_check_address = deploy(config, profit_check_address)
 result = client.wasm.contract_query(contract_address, {
-    "asset": {}
+    "config": {}
 })
 lp_token_address = result["liquidity_token"]
-print(result)
 
-result = client.wasm.contract_query(contract_address, {
-    "pool": {}
+# result = client.wasm.contract_query(contract_address, {
+#     "last_balance": {}
+# })
+# print(result)
+
+# result = client.wasm.contract_query(contract_address, {
+#     "vault": {}
+# })
+# print(result)
+
+
+result = client.wasm.contract_query(profit_check_address, {
+    "vault_address": {}
 })
 print(result)
+
+result = execute_contract(contract_addr=profit_check_address, execute_msg={
+    "set_vault": {
+        "vault_address": contract_address
+    }
+})
+print(result)
+
+result = client.wasm.contract_query(profit_check_address, {
+    "vault_address": {}
+})
+print(result)
+
+# result = execute_contract(contract_addr=profit_check_address, execute_msg={
+#     "set_vault": {
+#         "vault_address": contract_address
+#     }
+# })
+# print(result)
+
+# result = client.wasm.contract_query(contract_address, {
+#     "slippage": {}
+# })
+# print(result)
+
+# result = execute_contract(contract_addr=contract_address, execute_msg={
+#     "set_slippage": {
+#         "slippage": "0.005"
+#     }
+# })
+# print(result)
+
+# result = client.wasm.contract_query(contract_address, {
+#     "slippage": {}
+# })
+# print(result)
+
+# result = client.wasm.contract_query(profit_check_address, {
+#     "vault": {}
+# })
+# print(result)
+
+# contract_address = "terra17fvgcyj0n92px30xt0qdhmnhjmuj6wyuya9tzd"
 
 # result = client.wasm.contract_query("terra15dwd5mj8v59wpj0wvt233mf5efdff808c5tkal", {
 #     "state": {}
@@ -118,28 +207,29 @@ result = client.wasm.contract_query(lp_token_address, {
     }
 })
 print(result)
-lp_balance = result["balance"]
+lp_balance = int(int(result["balance"])-1)
+print(f'lp {lp_balance}')
 
 # result = client.treasury.tax_rate()
 # print(f'tax = {result}')
 
-amount = 5*1000*1000
-result = execute_contract(contract_addr=contract_address, execute_msg={
-    "provide_liquidity": {
-        "asset": {
-            "info": {
-                "native_token": { "denom": "uusd" }
-            },
-            "amount": str(amount)
-        }
-    }
-}, coins=str(amount) + "uusd")
-print(result)
+# amount = 1100*1000*1000
+# result = execute_contract(contract_addr=contract_address, execute_msg={
+#     "provide_liquidity": {
+#         "asset": {
+#             "info": {
+#                 "native_token": { "denom": "uusd" }
+#             },
+#             "amount": str(amount)
+#         }
+#     }
+# }, coins=str(amount) + "uusd")
+# print(result)
 
-result = client.wasm.contract_query(contract_address, {
-    "pool": {}
-})
-print(result)
+# result = client.wasm.contract_query(contract_address, {
+#     "pool": {}
+# })
+# print(result)
 
 result = client.wasm.contract_query(lp_token_address, {
     "balance": {
@@ -153,49 +243,49 @@ print(result)
 # res = requests.get("https://fcd.terra.dev/v1/txs/gas_prices")
 # client.gas_prices = Coins(res.json())
 
-result = execute_contract(contract_addr=contract_address, execute_msg={
-    "anchor_deposit": {
-        "amount": {
-            "denom": "uusd",
-            "amount": str(int(amount/2))
-        }
-    }
-})
-print(result)
+# result = execute_contract(contract_addr=contract_address, execute_msg={
+#     "anchor_deposit": {
+#         "amount": {
+#             "denom": "uusd",
+#             "amount": str(int(amount/2))
+#         }
+#     }
+# })
+# print(result)
 
-result = execute_contract(contract_addr=contract_address, execute_msg={
-    "provide_liquidity": {
-        "asset": {
-            "info": {
-                "native_token": { "denom": "uusd" }
-            },
-            "amount": str(amount)
-        }
-    }
-}, coins=str(amount) + "uusd")
-print(result)
+# result = execute_contract(contract_addr=contract_address, execute_msg={
+#     "provide_liquidity": {
+#         "asset": {
+#             "info": {
+#                 "native_token": { "denom": "uusd" }
+#             },
+#             "amount": str(amount)
+#         }
+#     }
+# }, coins=str(amount) + "uusd")
+# print(result)
 
 # msg = base64.b64encode(bytes(json.dumps({"withdraw_liquidity": {}}), 'ascii')).decode()
 # result = execute_contract(contract_addr=lp_token_address, execute_msg={
 #     "send": {
 #         "contract": contract_address,
-#         "amount": lp_balance,
+#         "amount": str(lp_balance),
 #         "msg": msg
 #     }
 # })
 # print(result)
 
-result = client.wasm.contract_query(contract_address, {
-    "pool": {}
-})
-print(result)
+# result = client.wasm.contract_query(contract_address, {
+#     "pool": {}
+# })
+# print(result)
 
-result = client.wasm.contract_query(lp_token_address, {
-    "balance": {
-        "address": deployer.key.acc_address
-    }
-})
-print(result)
+# result = client.wasm.contract_query(lp_token_address, {
+#     "balance": {
+#         "address": deployer.key.acc_address
+#     }
+# })
+# print(result)
 
 # # result = client.wasm.contract_query(lp_token_address, {
 # #     "token_info": {}
