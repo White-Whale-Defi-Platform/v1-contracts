@@ -11,11 +11,6 @@
       "type": "string"
     },
     "vault_address": {
-      "$ref": "#/definitions/HumanAddr"
-    }
-  },
-  "definitions": {
-    "HumanAddr": {
       "type": "string"
     }
   }
