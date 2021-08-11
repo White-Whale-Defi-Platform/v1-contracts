@@ -11,7 +11,8 @@
         "last_balance": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -22,7 +23,8 @@
         "vault": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     }
   ]
 }

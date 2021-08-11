@@ -1,10 +1,10 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{HumanAddr, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
-    pub vault_address: HumanAddr,
+    pub vault_address: String,
     pub denom: String,
 }
 
@@ -13,7 +13,7 @@ pub struct InitMsg {
 pub enum HandleMsg {
     BeforeTrade {},
     AfterTrade {},
-    SetVault{ vault_address: HumanAddr },
+    SetVault{ vault_address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -30,5 +30,5 @@ pub struct LastBalanceResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct VaultResponse {
-    pub vault_address: HumanAddr,
+    pub vault_address: Addr,
 }

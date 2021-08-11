@@ -11,7 +11,8 @@
         "before_trade": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -22,7 +23,8 @@
         "after_trade": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     },
     {
       "type": "object",
@@ -37,16 +39,12 @@
           ],
           "properties": {
             "vault_address": {
-              "$ref": "#/definitions/HumanAddr"
+              "type": "string"
             }
           }
         }
-      }
+      },
+      "additionalProperties": false
     }
-  ],
-  "definitions": {
-    "HumanAddr": {
-      "type": "string"
-    }
-  }
+  ]
 }

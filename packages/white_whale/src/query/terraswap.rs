@@ -1,16 +1,16 @@
-use cosmwasm_std::{to_binary, Api, Coin, Extern, HumanAddr, StdResult, Storage, Querier, QueryRequest, Uint128, WasmQuery};
+use cosmwasm_std::{to_binary, Addr, Coin, Deps, StdResult, QueryRequest, Uint128, WasmQuery};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::{QueryMsg, SimulationResponse};
 
 
-pub fn simulate_swap<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
-    pool_address: HumanAddr,
+pub fn simulate_swap(
+    deps: Deps,
+    pool_address: Addr,
     offer_coin: Coin
 ) -> StdResult<Uint128> {
     let response: SimulationResponse = deps.querier.query(
         &QueryRequest::Wasm(WasmQuery::Smart{
-            contract_addr: pool_address,
+            contract_addr: pool_address.to_string(),
             msg: to_binary(&QueryMsg::Simulation{
                 offer_asset: Asset{
                     info: AssetInfo::NativeToken{ denom: offer_coin.denom },

@@ -1,8 +1,8 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Coin, Decimal, HumanAddr};
+use cosmwasm_std::{Addr, Coin, Decimal};
 use terraswap::asset::{Asset, AssetInfo};
-use terraswap::pair::HandleMsg;
+use terraswap::pair::ExecuteMsg as HandleMsg;
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -22,7 +22,7 @@ pub enum AnchorMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BLunaMsg {
-    Bond { validator: HumanAddr },
+    Bond { validator: Addr },
     Unbond { },
     WithdrawUnbonded { }
 }
