@@ -1,19 +1,19 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::state::{config_read};
+use crate::state::STATE;
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
-    to_binary, Api,  Coin, Decimal,
-    Extern, Querier, QueryRequest, StdResult, Storage, Uint128, WasmQuery,
+    to_binary,  Coin, Decimal, Deps,
+    QueryRequest, StdResult, Uint128, WasmQuery,
 };
 use terra_cosmwasm::TerraQuerier;
 
 pub fn from_micro(
     amount: Uint128
 ) -> Decimal {
-    Decimal::from_ratio(amount, Uint128(1000000))
+    Decimal::from_ratio(amount, Uint128::from(1000000u64))
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -31,12 +31,12 @@ pub struct EpochStateResponse {
     pub aterra_supply: Uint256,
 }
 
-pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>
+pub fn query_aust_exchange_rate(
+    deps: Deps
 ) -> StdResult<EpochStateResponse> {
-    let state = config_read(&deps.storage).load()?;
+    let state = STATE.load(deps.storage)?;
     deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: deps.api.human_address(&state.anchor_money_market_address)?,
+        contract_addr:state.anchor_money_market_address.to_string(),
         msg: to_binary(&AnchorQuery::EpochState {
             block_height: None,
             distributed_interest: None,
@@ -44,8 +44,8 @@ pub fn query_aust_exchange_rate<S: Storage, A: Api, Q: Querier>(
     }))
 }
 
-pub fn query_market_price<S: Storage, A: Api, Q: Querier>(
-    deps: &Extern<S, A, Q>,
+pub fn query_market_price(
+    deps: Deps,
     offer_coin: Coin,
     ask_denom: String
 ) -> StdResult<Uint128> {
