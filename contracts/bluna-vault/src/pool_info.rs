@@ -54,7 +54,7 @@ impl PoolInfoRaw {
                 info: info_0,
             },
             Asset {
-                amount: info_1.query_pool(&deps.querier, deps.api, contract_addr.clone())?,
+                amount: info_1.query_pool(&deps.querier, deps.api, contract_addr)?,
                 info: info_1,
             },
         ])
