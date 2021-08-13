@@ -1,17 +1,18 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "HandleMsg",
+  "title": "ExecuteMsg",
   "anyOf": [
     {
       "type": "object",
       "required": [
-        "send_to_burn_account"
+        "burn"
       ],
       "properties": {
-        "send_to_burn_account": {
+        "burn": {
           "type": "object"
         }
-      }
+      },
+      "additionalProperties": false
     }
   ]
 }
