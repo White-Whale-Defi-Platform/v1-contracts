@@ -1,78 +1,93 @@
 use cosmwasm_std::{
-    BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Uint128,
+    to_binary,Uint128,StdError, Binary, CosmosMsg, Env, DepsMut, Deps
+    ,Response, StdResult,MessageInfo, WasmMsg
 };
-
-use terra_cosmwasm::TerraQuerier;
+use crate::state::{State, STATE, UST_DENOM};
+use terraswap::querier::{query_token_balance};
+use terraswap::asset::{Asset,AssetInfo};
+use terraswap::pair::ExecuteMsg as HandleMsg;
+use cw20::Cw20ExecuteMsg;
 //use white_whale::msg::{create_terraswap_msg};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{config, State};
 
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
-    
+
     let state = State {
-        owner_addr: msg.owner_addr,
-        whale_token_addr: msg.whale_token_addr,
+        owner_addr: deps.api.addr_canonicalize(info.sender.as_str())?,
+        whale_token_addr: deps.api.addr_canonicalize(&msg.whale_token_addr)?,
+        whale_pool_addr: deps.api.addr_canonicalize(&msg.whale_pair_addr)?,
     };
 
-    config(deps.storage).save(&state)?;
+    STATE.save(deps.storage, &state)?;
+
     Ok(Response::default())
 }
 
 pub fn execute(
-    deps: DepsMut,
+    deps: Deps,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: ExecuteMsg,
 ) -> StdResult<Response> {
     match msg {
-        ExecuteMsg::SendToBurnAccount {} => send_to_burn_account(deps, env),
+        ExecuteMsg::Burn {} => buy_and_burn(deps, &env, info),
     }
 }
 
-fn send_to_burn_account(deps: DepsMut, env: Env) -> StdResult<Response> {
-    let balances: Vec<Coin> = deps.querier.query_all_balances(&env.contract.address)?;
-    let amount = deduct_tax(deps, balances)?;
-    Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send {
-        to_address: "terra1sk06e3dyexuq4shw77y3dsv480xv42mq73anxu".to_string(),
-        amount,
-    })))
+pub fn buy_and_burn(deps: Deps, env: &Env, msg_info: MessageInfo,) -> StdResult<Response>{
+    let buy_msg = buy_whale(deps, &env, msg_info)?;
+    let burn_msg = burn_whale(deps, &env)?;
+    Ok(Response::new().add_message(buy_msg).add_message(burn_msg)
+    )
 }
 
-static DECIMAL_FRACTION: u128 = 1_000_000_000_000_000_000u128;
-fn deduct_tax(deps: DepsMut, coins: Vec<Coin>) -> StdResult<Vec<Coin>> {
-    let terra_querier = TerraQuerier::new(&deps.querier);
-    let tax_rate: Decimal = (terra_querier.query_tax_rate()?).rate;
+pub fn burn_whale(deps: Deps, env: &Env) -> StdResult<CosmosMsg> {
+    let state = STATE.load(deps.storage)?;
+    let balance: Uint128 = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.whale_token_addr)?, env.contract.address.clone())?;
 
-    coins
-        .into_iter()
-        .map(|v| {
-            let tax_cap: Uint128 = (terra_querier.query_tax_cap(v.denom.to_string())?).cap;
-
-            Ok(Coin {
-                amount: Uint128::from(
-                    v.amount.u128()
-                        - std::cmp::min(
-                            v.amount.multiply_ratio(
-                                DECIMAL_FRACTION,
-                                (tax_rate * DECIMAL_FRACTION.into()).u128() + DECIMAL_FRACTION,
-                            ),
-                            tax_cap,
-                        )
-                        .u128(),
-                ),
-                denom: v.denom,
-            })
-        })
-        .collect()
+    Ok(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: state.whale_token_addr.to_string(),
+        funds: vec![],
+        msg: to_binary(&Cw20ExecuteMsg::Burn {
+            amount: balance 
+        })?
+    }))
 }
 
-pub fn query(_deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
+pub fn buy_whale(deps: Deps, env: &Env, msg_info: MessageInfo,) -> StdResult<CosmosMsg>{
+    let state = STATE.load(deps.storage)?;
+    if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner_addr {
+        return Err(StdError::generic_err("Unauthorized."));
+    }
+    let ust = deps.querier.query_balance(&env.contract.address,UST_DENOM)?;
+    if ust.amount == Uint128::zero() {
+        return Err(StdError::generic_err("No funds to buy token with."));
+    }
+    let offer = Asset{
+        info: AssetInfo::NativeToken{ denom: ust.denom.clone() },
+        amount: ust.amount
+    };
+
+    //We don't care about slippage
+    let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: state.whale_pool_addr.to_string(),
+        funds: vec![ust.clone()],
+        msg: to_binary(&HandleMsg::Swap{
+            offer_asset: offer,
+            belief_price: None,
+            max_spread: None,
+            to: None,
+        })?,
+    });
+    return Ok(terraswap_msg)
+}
+
+pub fn query(_deps: DepsMut, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
     Ok(Binary::default())
 }
 

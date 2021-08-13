@@ -1,9 +1,11 @@
 from terra_sdk.client.lcd import LCDClient, Wallet
 from terra_sdk.key.mnemonic import MnemonicKey
+from terra_sdk.core.coins import Coins
 
 from terra_sdk.util.contract import read_file_as_b64, get_code_id, get_contract_address
 from terra_sdk.core.auth import StdFee
 from terra_sdk.core.wasm import MsgStoreCode, MsgInstantiateContract, MsgExecuteContract
+from terra_sdk.core.bank import MsgSend
 
 import pathlib
 import sys
@@ -21,38 +23,43 @@ def send_msg(msg):
     )
     return client.tx.broadcast(tx)
 
-def store_contract(contract_name: str) -> str:
-    bytes = read_file_as_b64(f"artifacts/{contract_name}.wasm")
-    msg = MsgStoreCode(deployer.key.acc_address, bytes)
-    result = send_msg(msg)
-    return get_code_id(result)
-
-def instantiate_contract(code_id: str, init_msg) -> str:
-    msg = MsgInstantiateContract(
-        owner=deployer.key.acc_address,
-        code_id=code_id,
-        init_msg=init_msg
-    )
-    result = send_msg(msg)
-    print(result)
-    return get_contract_address(result)
-
 def execute_contract(contract_addr: str, execute_msg):
     msg = MsgExecuteContract(
-        sender=deployer.key.acc_address, 
-        contract=contract_addr, 
+        sender=deployer.key.acc_address,
+        contract=contract_addr,
         execute_msg=execute_msg
     )
     return send_msg(msg)
 
+def send_funds(receiver: str, amount: int):
+    msg = MsgSend(
+        from_address=deployer.key.acc_address,
+        to_address=receiver,
+        amount=Coins(str(amount))
+    )
+    return send_msg(msg)
 
-print("Excecuting Burn")
-contract_address = 'terra1uf3qnx93g5ddt4l6hnratmcjwuwt84w79w0vwm'
-print(f'On contract:  {contract_address}')
-result = execute_contract(contract_addr=contract_address, execute_msg={
-    "send_to_burn_account": {}
-})
+GGY_ADDRESS = "terra1gdj4adgs90avvrddf4v4ft2zj526y3uwn4flrt"
+burn_address = "terra1438rqfx8r8y3kxrqhpr7le4ewppdssn0x593k0"
 
-# print("ExecuteMsg response")
+# transfer_amount = 1
+# result = execute_contract(contract_addr=GGY_ADDRESS, execute_msg={
+#     "transfer": {
+#         "recipient": burn_address,
+#         "amount": str(transfer_amount)
+#     }
+# })
 # print(result)
+result = execute_contract(contract_addr=burn_address, execute_msg={
+    "burn" : {  }
+})
+print(result)
+result = client.wasm.contract_query(GGY_ADDRESS, {
+    "balance": {"address": burn_address}
+})
+print(result)
+result = client.wasm.contract_query(GGY_ADDRESS, {
+    "token_info": {}
+})
+print(result)
 

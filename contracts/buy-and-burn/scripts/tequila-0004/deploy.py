@@ -39,8 +39,8 @@ def instantiate_contract(code_id: str, init_msg) -> str:
 
 def execute_contract(contract_addr: str, execute_msg):
     msg = MsgExecuteContract(
-        sender=deployer.key.acc_address, 
-        contract=contract_addr, 
+        sender=deployer.key.acc_address,
+        contract=contract_addr,
         execute_msg=execute_msg
     )
     return send_msg(msg)
@@ -52,8 +52,8 @@ print(f"stored {code_id}")
 print("instantiate contract")
 #terra1sk06e3dyexuq4shw77y3dsv480xv42mq73anxu
 contract_address = instantiate_contract(code_id=code_id, init_msg={
-    "owner" : {"terra1gxsfv4ruvda37q3ta0kwx42w7qy5l9hf9l30sz"},
-    "whale_token": {"terra1gdj4adgs90avvrddf4v4ft2zj526y3uwn4flrt"}
+    "owner_addr" : "terra1gxsfv4ruvda37q3ta0kwx42w7qy5l9hf9l30sz",
+    "whale_token_addr": "terra1gdj4adgs90avvrddf4v4ft2zj526y3uwn4flrt"
 })
 print(f'instantiated {contract_address}')
 # result = execute_contract(contract_addr=contract_address, execute_msg={
