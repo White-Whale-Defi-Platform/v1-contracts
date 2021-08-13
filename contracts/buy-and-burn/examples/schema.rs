@@ -2,7 +2,7 @@ use std::env::current_dir;
 use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use buy_and_burn::msg::{ExecuteMsg, InstantiateMsg};
+use buy_and_burn::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg};
 use buy_and_burn::state::State;
 
 fn main() {
@@ -14,4 +14,6 @@ fn main() {
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(State), &out_dir);
+    export_schema(&schema_for!(ConfigResponse), &out_dir);
+
 }

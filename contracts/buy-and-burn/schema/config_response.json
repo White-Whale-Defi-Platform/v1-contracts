@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConfigResponse",
+  "type": "object",
+  "required": [
+    "owner",
+    "pool_addr",
+    "token_addr"
+  ],
+  "properties": {
+    "owner": {
+      "type": "string"
+    },
+    "pool_addr": {
+      "type": "string"
+    },
+    "token_addr": {
+      "type": "string"
+    }
+  }
+}

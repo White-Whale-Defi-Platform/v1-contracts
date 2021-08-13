@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     to_binary,Uint128,StdError, Binary, CosmosMsg, Env, DepsMut, Deps
-    ,Response, StdResult,MessageInfo, WasmMsg
+    ,Response, StdResult,MessageInfo, WasmMsg,
 };
 use crate::state::{State, STATE, UST_DENOM};
 use terraswap::querier::{query_token_balance};
@@ -8,7 +8,7 @@ use terraswap::asset::{Asset,AssetInfo};
 use terraswap::pair::ExecuteMsg as HandleMsg;
 use cw20::Cw20ExecuteMsg;
 //use white_whale::msg::{create_terraswap_msg};
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, ConfigResponse};
 
 pub fn instantiate(
     deps: DepsMut,
@@ -29,13 +29,13 @@ pub fn instantiate(
 }
 
 pub fn execute(
-    deps: Deps,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> StdResult<Response> {
     match msg {
-        ExecuteMsg::Burn {} => buy_and_burn(deps, &env, info),
+        ExecuteMsg::Burn {} => buy_and_burn(deps.as_ref(), &env, info),
     }
 }
 
@@ -87,32 +87,91 @@ pub fn buy_whale(deps: Deps, env: &Env, msg_info: MessageInfo,) -> StdResult<Cos
     return Ok(terraswap_msg)
 }
 
-pub fn query(_deps: DepsMut, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
-    Ok(Binary::default())
+pub fn query(deps: Deps, _env: Env, _msg: QueryMsg) -> StdResult<Binary> {
+    let state = STATE.load(deps.storage)?;
+    to_binary(&ConfigResponse{
+        owner: deps.api.addr_humanize(&state.owner_addr)?,
+        token_addr: deps.api.addr_humanize(&state.whale_token_addr)?,
+        pool_addr: deps.api.addr_humanize(&state.whale_pool_addr)?,
+    })
 }
 
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use cosmwasm_std::{from_binary, Coin, coins, HumanAddr};
-//     use cosmwasm_std::testing::{mock_dependencies, mock_env};
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::{mock_dependencies,mock_env};
+    use cosmwasm_std::{Api, from_binary};
+    use terraswap::asset::AssetInfo;
 
+    fn get_test_init_msg() -> InstantiateMsg {
+        InstantiateMsg {
+            whale_token_addr: "whale token".to_string(),
+            whale_pair_addr: "terraswap pair".to_string(), 
+            asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() },
+        }
+    }
 
-//     #[test]
-//     fn proper_initialization() {
-//         let mut deps = mock_dependencies(20, &[]);
-//         let whale_token_addr = HumanAddr::from("test_vault");
-//         let owner_addr = HumanAddr::from("owner");
-//         println!("Whale token addr is {:?}.", whale_token_addr);
-//         println!("Owner addr is {:?}.", owner_addr);
-//         let msg = InitMsg {
-//             owner_addr : owner_addr.clone(),
-//             whale_token_addr : whale_token_addr.clone(),
-//         };
-//         let env = mock_env("creator", &coins(1000, "earth"));
+    #[test]
+    fn proper_initialization() {
+        // Set dependencies, make the message, make the message info.
+        let mut deps = mock_dependencies(&[]);
+        let msg = get_test_init_msg();
+        let env = mock_env();
+        let info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
 
-//         let res = init(&mut deps, env, msg).unwrap();
-//         assert_eq!(0, res.messages.len());
-//     }
-// }
+        //Ssimulate transaction.
+        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+        // TODO: implement query 
+    }
+
+    #[test]
+    fn test_unauthorized_buy_and_burn() {
+        // Set dependencies, make the message, make the message info.
+        let mut deps = mock_dependencies(&[]);
+        let msg = get_test_init_msg();
+        let env = mock_env();
+        let creator_info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
+
+        //Ssimulate transaction.
+        let res = instantiate(deps.as_mut(), env.clone(), creator_info, msg).unwrap();
+        assert_eq!(0, res.messages.len());
+
+        let attacker_info = MessageInfo{sender: deps.api.addr_validate("attacker").unwrap(), funds: vec![]};
+        let ex_res = execute(deps.as_mut(), env, attacker_info, ExecuteMsg::Burn{});
+        assert_eq!(ex_res.err(), Some(StdError::generic_err("Unauthorized.")))
+    }
+
+    #[test]
+    fn test_no_ust_available(){
+        // Set dependencies, make the message, make the message info.
+        let mut deps = mock_dependencies(&[]);
+        let msg = get_test_init_msg();
+        let env = mock_env();
+        let creator_info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
+
+        //Ssimulate transaction.
+        let init_res = instantiate(deps.as_mut(), env.clone(), creator_info.clone(), msg).unwrap();
+        assert_eq!(0, init_res.messages.len());
+
+        let ex_res = execute(deps.as_mut(), env, creator_info, ExecuteMsg::Burn{});
+        assert_eq!(ex_res.err(), Some(StdError::generic_err("No funds to buy token with.")))
+    }
+
+    #[test]
+    fn test_config_query(){
+        // Set dependencies, make the message, make the message info.
+        let mut deps = mock_dependencies(&[]);
+        let msg = get_test_init_msg();
+        let env = mock_env();
+        let creator_info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
+
+        //Ssimulate transaction.
+        let init_res = instantiate(deps.as_mut(), env.clone(), creator_info.clone(), msg).unwrap();
+        assert_eq!(0, init_res.messages.len());
+
+        let q_res: ConfigResponse = from_binary(&query(deps.as_ref(), env, QueryMsg{}).unwrap()).unwrap();
+        assert_eq!(q_res.owner,deps.api.addr_validate("creator").unwrap())
+    }
+}
