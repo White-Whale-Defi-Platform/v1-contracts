@@ -36,6 +36,9 @@ pub enum ContractError {
     #[error("Cannot make a text proposal to expired state")]
     NoExecuteData {},
 
+    #[error("Expire height has not been reached")]
+    PollNotExpired {},
+
     #[error("Poll does not exist")]
     PollNotFound {},
 

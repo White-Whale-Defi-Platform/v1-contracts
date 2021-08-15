@@ -1,7 +1,6 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
 use cosmwasm_std::{Binary, CanonicalAddr, Decimal, Order, Storage, StdResult, Uint128};
 use cosmwasm_storage::{
@@ -394,4 +393,7 @@ pub enum Cw20HookMsg {
         link: Option<String>,
         execute_msgs: Option<Vec<PollExecuteMsg>>,
     },
+    /// StakeVotingTokens a user can stake their mirror token to receive rewards
+    /// or do vote on polls
+    StakeVotingTokens {},
 }

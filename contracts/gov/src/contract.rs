@@ -5,8 +5,9 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{bank_read, bank_store, State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_read, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo, ConfigResponse, PollResponse, StateResponse, OrderBy, PollsResponse, VotersResponse, read_polls, VotersResponseItem, read_poll_voters};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::{bank_read, bank_store, State, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_read, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo, ConfigResponse, PollResponse, StateResponse, OrderBy, PollsResponse, VotersResponse, read_polls, VotersResponseItem, read_poll_voters};
+use crate::staking::{query_staker, stake_voting_tokens, withdraw_voting_tokens};
 
 const MIN_TITLE_LENGTH: usize = 4;
 const MAX_TITLE_LENGTH: usize = 64;
@@ -120,11 +121,16 @@ pub fn execute(
     match msg {
         // Handle 'payable' functionalities 
         ExecuteMsg::Receive(msg) => receive_cw20(deps, _env, info, msg),
-
+        ExecuteMsg::CastVote {
+            poll_id,
+            vote,
+            amount,
+        } => cast_vote(deps, _env, info, poll_id, vote, amount),
         // Mark a poll as ended
         ExecuteMsg::EndPoll { poll_id } => end_poll(deps, _env, poll_id),
         // Execute the associated messages of a passed poll
         ExecuteMsg::ExecutePoll { poll_id } => execute_poll(deps, _env, poll_id),
+        ExecuteMsg::ExpirePoll { poll_id } => expire_poll(deps, _env, poll_id),
         ExecuteMsg::RegisterContracts { whale_token } => register_contracts(deps, whale_token),
     }
 }
@@ -134,7 +140,32 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
     match msg {
         QueryMsg::Config {} => Ok(to_binary(&query_config(deps)?)?),
         QueryMsg::State {} => Ok(to_binary(&query_state(deps)?)?),
+        QueryMsg::Staker { address } => Ok(to_binary(&query_staker(deps, address)?)?),
         QueryMsg::Poll { poll_id } => Ok(to_binary(&query_poll(deps, poll_id)?)?),
+        QueryMsg::Polls {
+            filter,
+            start_after,
+            limit,
+            order_by,
+        } => Ok(to_binary(&query_polls(
+            deps,
+            filter,
+            start_after,
+            limit,
+            order_by,
+        )?)?),
+        QueryMsg::Voters {
+            poll_id,
+            start_after,
+            limit,
+            order_by,
+        } => Ok(to_binary(&query_voters(
+            deps,
+            poll_id,
+            start_after,
+            limit,
+            order_by,
+        )?)?),
     }
 }
 
@@ -168,6 +199,10 @@ pub fn receive_cw20(
     }
 
     match from_binary(&cw20_msg.msg) {
+        Ok(Cw20HookMsg::StakeVotingTokens {}) => {
+            let api = deps.api;
+            stake_voting_tokens(deps, api.addr_validate(&cw20_msg.sender)?, cw20_msg.amount)
+        }
         Ok(Cw20HookMsg::CreatePoll {
             title,
             description,
@@ -509,6 +544,35 @@ pub fn cast_vote(
         ("amount", amount.to_string().as_str()),
         ("voter", info.sender.as_str()),
         ("vote_option", vote_info.vote.to_string().as_str()),
+    ]))
+}
+
+/// ExpirePoll is used to make the poll as expired state for querying purpose
+pub fn expire_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, ContractError> {
+    let config: Config = config_read(deps.storage).load()?;
+    let mut a_poll: Poll = poll_store(deps.storage).load(&poll_id.to_be_bytes())?;
+
+    if a_poll.status != PollStatus::Passed {
+        return Err(ContractError::PollNotPassed {});
+    }
+
+    if a_poll.execute_data.is_none() {
+        return Err(ContractError::NoExecuteData {});
+    }
+
+    if a_poll.end_height + config.expiration_period > env.block.height {
+        return Err(ContractError::PollNotExpired {});
+    }
+
+    poll_indexer_store(deps.storage, &PollStatus::Passed).remove(&poll_id.to_be_bytes());
+    poll_indexer_store(deps.storage, &PollStatus::Expired).save(&poll_id.to_be_bytes(), &true)?;
+
+    a_poll.status = PollStatus::Expired;
+    poll_store(deps.storage).save(&poll_id.to_be_bytes(), &a_poll)?;
+
+    Ok(Response::new().add_attributes(vec![
+        ("action", "expire_poll"),
+        ("poll_id", poll_id.to_string().as_str()),
     ]))
 }
 
