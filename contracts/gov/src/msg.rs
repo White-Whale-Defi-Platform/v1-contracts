@@ -25,6 +25,9 @@ pub enum ExecuteMsg {
     ExecutePoll {
         poll_id: u64,
     },
+    RegisterContracts {
+        whale_token: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
