@@ -4,7 +4,7 @@ use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, DepsMut, Env, Message
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE, Config};
+use crate::state::{State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, state_store, poll_store, poll_indexer_store, PollStatus, Poll};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -48,6 +48,87 @@ pub fn execute(
         ExecuteMsg::Increment {} => try_increment(deps),
         ExecuteMsg::Reset { count } => try_reset(deps, info, count),
     }
+}
+
+
+#[allow(clippy::too_many_arguments)]
+/// create a new poll 
+pub fn create_poll(
+    deps: DepsMut,
+    env: Env,
+    proposer: String,
+    deposit_amount: Uint128,
+    title: String,
+    description: String,
+    link: Option<String>,
+    execute_msgs: Option<Vec<PollExecuteMsg>>,
+) -> Result<Response, ContractError> {
+
+
+    let config: Config = config_store(deps.storage).load()?;
+    if deposit_amount < config.proposal_deposit {
+        return Err(ContractError::InsufficientProposalDeposit(
+            config.proposal_deposit.u128(),
+        ));
+    }
+
+    let mut state: State = state_store(deps.storage).load()?;
+    let poll_id = state.poll_count + 1;
+
+    // Increase poll count & total deposit amount
+    state.poll_count += 1;
+    state.total_deposit += deposit_amount;
+
+    let mut data_list: Vec<ExecuteData> = vec![];
+    let all_execute_data = if let Some(exe_msgs) = execute_msgs {
+        for msgs in exe_msgs {
+            let execute_data = ExecuteData {
+                order: msgs.order,
+                contract: deps.api.addr_canonicalize(&msgs.contract)?,
+                msg: msgs.msg,
+            };
+            data_list.push(execute_data)
+        }
+        Some(data_list)
+    } else {
+        None
+    };
+
+    let sender_address_raw = deps.api.addr_canonicalize(&proposer)?;
+    let new_poll = Poll {
+        id: poll_id,
+        creator: sender_address_raw,
+        status: PollStatus::InProgress,
+        yes_votes: Uint128::zero(),
+        no_votes: Uint128::zero(),
+        end_height: env.block.height + config.voting_period,
+        title,
+        description,
+        link,
+        execute_data: all_execute_data,
+        deposit_amount,
+        total_balance_at_end_poll: None,
+        staked_amount: None,
+    };
+
+    poll_store(deps.storage).save(&poll_id.to_be_bytes(), &new_poll)?;
+    poll_indexer_store(deps.storage, &PollStatus::InProgress)
+        .save(&poll_id.to_be_bytes(), &true)?;
+
+    state_store(deps.storage).save(&state)?;
+
+    Ok(Response::new().add_attributes(vec![
+        ("action", "create_poll"),
+        (
+            "creator",
+            deps.api
+                .addr_humanize(&new_poll.creator)?
+                .to_string()
+                .as_str(),
+        ),
+        ("poll_id", &poll_id.to_string()),
+        ("end_height", new_poll.end_height.to_string().as_str()),
+    ]))
 }
 
 pub fn try_increment(deps: DepsMut) -> Result<Response, ContractError> {
