@@ -161,7 +161,7 @@ pub struct PollResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
-    pub anchor_token: String,
+    pub whale_token: String,
     pub quorum: Decimal,
     pub threshold: Decimal,
     pub voting_period: u64,
@@ -223,6 +223,7 @@ pub fn poll_voter_store(storage: &mut dyn Storage, poll_id: u64) -> Bucket<Voter
 pub fn poll_voter_read(storage: &dyn Storage, poll_id: u64) -> ReadonlyBucket<VoterInfo> {
     ReadonlyBucket::multilevel(storage, &[PREFIX_POLL_VOTER, &poll_id.to_be_bytes()])
 }
+
 
 pub fn poll_indexer_store<'a>(
     storage: &'a mut dyn Storage,

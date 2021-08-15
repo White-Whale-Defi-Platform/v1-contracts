@@ -1,12 +1,13 @@
-use crate::contract::{execute, instantiate};
+use crate::contract::{execute, instantiate, query};
 use crate::error::ContractError;
 use crate::state::{
     bank_read, bank_store, config_read, poll_store, poll_voter_read, poll_voter_store, state_read,
     Config, Poll, State, TokenManager, PollResponse,PollExecuteMsg, Cw20HookMsg
 };
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 
+use crate::mock_querier::mock_dependencies;
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
     attr, coins, from_binary, to_binary, Addr, Api, CanonicalAddr, CosmosMsg, Decimal, Deps,
@@ -230,5 +231,10 @@ fn add_several_execute_msgs() {
         deps.as_ref(),
     );
 
-    
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::Poll { poll_id: 1 }).unwrap();
+    let value: PollResponse = from_binary(&res).unwrap();
+
+    let response_execute_data = value.execute_data.unwrap();
+    assert_eq!(response_execute_data.len(), 3);
+    assert_eq!(response_execute_data, execute_msgs);
 }
