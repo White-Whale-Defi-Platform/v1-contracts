@@ -19,6 +19,11 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
+    CastVote {
+        poll_id: u64,
+        vote: VoteOption,
+        amount: Uint128,
+    },
     EndPoll {
         poll_id: u64,
     },
@@ -40,6 +45,12 @@ pub enum QueryMsg {
     // Poll returns the information related to a Poll if that poll exists 
     Poll {
         poll_id: u64,
+    },
+    Polls {
+        filter: Option<PollStatus>,
+        start_after: Option<u64>,
+        limit: Option<u32>,
+        order_by: Option<OrderBy>,
     },
 }
 
