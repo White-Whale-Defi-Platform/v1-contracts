@@ -1,12 +1,76 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, from_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, from_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, Uint128, WasmMsg};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{bank_read, bank_store, State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_read, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo, ConfigResponse, PollResponse, StateResponse};
+
+const MIN_TITLE_LENGTH: usize = 4;
+const MAX_TITLE_LENGTH: usize = 64;
+const MIN_DESC_LENGTH: usize = 4;
+const MAX_DESC_LENGTH: usize = 1024;
+const MIN_LINK_LENGTH: usize = 12;
+const MAX_LINK_LENGTH: usize = 128;
+// Validators
+/// validate_title returns an error if the title is invalid
+fn validate_title(title: &str) -> StdResult<()> {
+    if title.len() < MIN_TITLE_LENGTH {
+        Err(StdError::generic_err("Title too short"))
+    } else if title.len() > MAX_TITLE_LENGTH {
+        Err(StdError::generic_err("Title too long"))
+    } else {
+        Ok(())
+    }
+}
+
+/// validate_description returns an error if the description is invalid
+fn validate_description(description: &str) -> StdResult<()> {
+    if description.len() < MIN_DESC_LENGTH {
+        Err(StdError::generic_err("Description too short"))
+    } else if description.len() > MAX_DESC_LENGTH {
+        Err(StdError::generic_err("Description too long"))
+    } else {
+        Ok(())
+    }
+}
+
+/// validate_link returns an error if the link is invalid
+fn validate_link(link: &Option<String>) -> StdResult<()> {
+    if let Some(link) = link {
+        if link.len() < MIN_LINK_LENGTH {
+            Err(StdError::generic_err("Link too short"))
+        } else if link.len() > MAX_LINK_LENGTH {
+            Err(StdError::generic_err("Link too long"))
+        } else {
+            Ok(())
+        }
+    } else {
+        Ok(())
+    }
+}
+
+/// validate_quorum returns an error if the quorum is invalid
+/// (we require 0-1)
+fn validate_quorum(quorum: Decimal) -> StdResult<()> {
+    if quorum > Decimal::one() {
+        Err(StdError::generic_err("quorum must be 0 to 1"))
+    } else {
+        Ok(())
+    }
+}
+
+/// validate_threshold returns an error if the threshold is invalid
+/// (we require 0-1)
+fn validate_threshold(threshold: Decimal) -> StdResult<()> {
+    if threshold > Decimal::one() {
+        Err(StdError::generic_err("threshold must be 0 to 1"))
+    } else {
+        Ok(())
+    }
+}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -15,6 +79,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    validate_quorum(msg.quorum)?;
+    validate_threshold(msg.threshold)?;
+
     let config = Config {
         whale_token: CanonicalAddr::from(vec![]),
         owner: deps.api.addr_canonicalize(&info.sender.as_str())?,
@@ -131,7 +198,9 @@ pub fn create_poll(
     link: Option<String>,
     execute_msgs: Option<Vec<PollExecuteMsg>>,
 ) -> Result<Response, ContractError> {
-
+    validate_title(&title)?;
+    validate_description(&description)?;
+    validate_link(&link)?;
 
     let config: Config = config_store(deps.storage).load()?;
     if deposit_amount < config.proposal_deposit {
