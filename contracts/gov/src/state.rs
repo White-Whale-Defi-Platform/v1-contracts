@@ -8,6 +8,8 @@ use cosmwasm_storage::{
     bucket_read, bucket, singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton,
     Singleton,
 };
+use std::fmt;
+
 
 use std::cmp::Ordering;
 
@@ -15,8 +17,16 @@ static KEY_CONFIG: &[u8] = b"config";
 static KEY_STATE: &[u8] = b"state";
 
 static PREFIX_POLL_INDEXER: &[u8] = b"poll_indexer";
+static PREFIX_POLL_VOTER: &[u8] = b"poll_voter";
 static PREFIX_POLL: &[u8] = b"poll";
+static PREFIX_BANK: &[u8] = b"bank";
 
+
+#[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct TokenManager {
+    pub share: Uint128,                        // total staked balance
+    pub locked_balance: Vec<(u64, VoterInfo)>, // maps poll_id to weight voted
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
@@ -113,6 +123,37 @@ impl fmt::Display for PollStatus {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum VoteOption {
+    Yes,
+    No,
+}
+
+impl fmt::Display for VoteOption {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if *self == VoteOption::Yes {
+            write!(f, "yes")
+        } else {
+            write!(f, "no")
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct VoterInfo {
+    pub vote: VoteOption,
+    pub balance: Uint128,
+}
+
+pub fn bank_store(storage: &mut dyn Storage) -> Bucket<TokenManager> {
+    bucket(storage, PREFIX_BANK)
+}
+
+pub fn bank_read(storage: &dyn Storage) -> ReadonlyBucket<TokenManager> {
+    bucket_read(storage, PREFIX_BANK)
+}
+
 pub fn config_store(storage: &mut dyn Storage) -> Singleton<Config> {
     singleton(storage, KEY_CONFIG)
 }
@@ -135,6 +176,14 @@ pub fn poll_store(storage: &mut dyn Storage) -> Bucket<Poll> {
 
 pub fn poll_read(storage: &dyn Storage) -> ReadonlyBucket<Poll> {
     bucket_read(storage, PREFIX_POLL)
+}
+
+pub fn poll_voter_store(storage: &mut dyn Storage, poll_id: u64) -> Bucket<VoterInfo> {
+    Bucket::multilevel(storage, &[PREFIX_POLL_VOTER, &poll_id.to_be_bytes()])
+}
+
+pub fn poll_voter_read(storage: &dyn Storage, poll_id: u64) -> ReadonlyBucket<VoterInfo> {
+    ReadonlyBucket::multilevel(storage, &[PREFIX_POLL_VOTER, &poll_id.to_be_bytes()])
 }
 
 pub fn poll_indexer_store<'a>(

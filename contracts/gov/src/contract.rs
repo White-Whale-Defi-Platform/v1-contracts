@@ -6,7 +6,7 @@ use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg};
+use crate::state::{bank_read, bank_store, State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -66,7 +66,7 @@ pub fn receive_cw20(
 ) -> Result<Response, ContractError> {
     // only asset contract can execute this message
     let config: Config = config_read(deps.storage).load()?;
-    if config.anchor_token != deps.api.addr_canonicalize(info.sender.as_str())? {
+    if config.whale_token != deps.api.addr_canonicalize(info.sender.as_str())? {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -319,6 +319,102 @@ pub fn execute_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, C
     Ok(Response::new().add_messages(messages).add_attributes(vec![
         ("action", "execute_poll"),
         ("poll_id", poll_id.to_string().as_str()),
+    ]))
+}
+
+// Voting 
+/// cast_vote exposes the end user side of a poll. Once a poll and its proposal is created, 
+/// any account which has some staked governance tokens can cast 1 vote for a given proposal.
+/// 
+/// Before a Vote is registered from a user a number of checks are performed; firstly that 
+/// the Poll exists and that it is currently in Progress. Accounts may only vote once
+/// and the Account must have some staked governance tokens. 
+/// With all these conditions met, the account's casted vote is evaluated and both the vote and 
+/// a collection of info related to the Voter is stored in state. This registers both the actors 
+/// desired vote and also their information to prevent a second vote.
+pub fn cast_vote(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    poll_id: u64,
+    vote: VoteOption,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    
+    let sender_address_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let config = config_read(deps.storage).load()?;
+    let state = state_read(deps.storage).load()?;
+    if poll_id == 0 || state.poll_count < poll_id {
+        return Err(ContractError::PollNotFound {});
+    }
+
+    let mut a_poll: Poll = poll_store(deps.storage).load(&poll_id.to_be_bytes())?;
+    if a_poll.status != PollStatus::InProgress || env.block.height > a_poll.end_height {
+        return Err(ContractError::PollNotInProgress {});
+    }
+
+    // Check the voter already has a vote on the poll
+    if poll_voter_read(deps.storage, poll_id)
+        .load(&sender_address_raw.as_slice())
+        .is_ok()
+    {
+        return Err(ContractError::AlreadyVoted {});
+    }
+
+    let key = &sender_address_raw.as_slice();
+    let mut token_manager = bank_read(deps.storage).may_load(key)?.unwrap_or_default();
+
+    // convert share to amount
+    let total_share = state.total_share;
+    let total_balance = query_token_balance(
+        &deps.querier,
+        deps.api.addr_humanize(&config.whale_token)?,
+        deps.api.addr_humanize(&state.contract_addr)?,
+    )?
+    .checked_sub(state.total_deposit)?;
+
+    if token_manager
+        .share
+        .multiply_ratio(total_balance, total_share)
+        < amount
+    {
+        return Err(ContractError::InsufficientStaked {});
+    }
+
+    // update tally info
+    if VoteOption::Yes == vote {
+        a_poll.yes_votes += amount;
+    } else {
+        a_poll.no_votes += amount;
+    }
+
+    let vote_info = VoterInfo {
+        vote,
+        balance: amount,
+    };
+    token_manager
+        .locked_balance
+        .push((poll_id, vote_info.clone()));
+    bank_store(deps.storage).save(key, &token_manager)?;
+
+    // store poll voter && and update poll data
+    poll_voter_store(deps.storage, poll_id).save(&sender_address_raw.as_slice(), &vote_info)?;
+
+    // processing snapshot
+    let time_to_end = a_poll.end_height - env.block.height;
+
+    if time_to_end < config.snapshot_period && a_poll.staked_amount.is_none() {
+        a_poll.staked_amount = Some(total_balance);
+    }
+
+    poll_store(deps.storage).save(&poll_id.to_be_bytes(), &a_poll)?;
+
+    Ok(Response::new().add_attributes(vec![
+        ("action", "cast_vote"),
+        ("poll_id", poll_id.to_string().as_str()),
+        ("amount", amount.to_string().as_str()),
+        ("voter", info.sender.as_str()),
+        ("vote_option", vote_info.vote.to_string().as_str()),
     ]))
 }
 

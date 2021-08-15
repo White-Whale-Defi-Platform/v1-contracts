@@ -15,8 +15,20 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("User has already voted")]
+    AlreadyVoted {},
+
+    #[error("Data should be given")]
+    DataShouldBeGiven {},
+
+    #[error("User does not have enough staked tokens")]
+    InsufficientStaked {},
+
     #[error("Cannot make a text proposal to expired state")]
     NoExecuteData {},
+
+    #[error("Poll does not exist")]
+    PollNotFound {},
 
     #[error("Poll is not in progress")]
     PollNotInProgress {},
