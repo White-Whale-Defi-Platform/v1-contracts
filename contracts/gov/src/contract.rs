@@ -6,7 +6,7 @@ use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{bank_read, bank_store, State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_read, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo, ConfigResponse, PollResponse, StateResponse};
+use crate::state::{bank_read, bank_store, State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_read, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo, ConfigResponse, PollResponse, StateResponse, OrderBy, PollsResponse, VotersResponse, read_polls, VotersResponseItem, read_poll_voters};
 
 const MIN_TITLE_LENGTH: usize = 4;
 const MAX_TITLE_LENGTH: usize = 64;
@@ -120,6 +120,7 @@ pub fn execute(
     match msg {
         // Handle 'payable' functionalities 
         ExecuteMsg::Receive(msg) => receive_cw20(deps, _env, info, msg),
+
         // Mark a poll as ended
         ExecuteMsg::EndPoll { poll_id } => end_poll(deps, _env, poll_id),
         // Execute the associated messages of a passed poll
@@ -576,6 +577,98 @@ fn query_poll(deps: Deps, poll_id: u64) -> Result<PollResponse, ContractError> {
         no_votes: poll.no_votes,
         staked_amount: poll.staked_amount,
         total_balance_at_end_poll: poll.total_balance_at_end_poll,
+    })
+}
+
+fn query_polls(
+    deps: Deps,
+    filter: Option<PollStatus>,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<PollsResponse, ContractError> {
+    let polls = read_polls(deps.storage, filter, start_after, limit, order_by)?;
+
+    let poll_responses: StdResult<Vec<PollResponse>> = polls
+        .iter()
+        .map(|poll| {
+            Ok(PollResponse {
+                id: poll.id,
+                creator: deps.api.addr_humanize(&poll.creator)?.to_string(),
+                status: poll.status.clone(),
+                end_height: poll.end_height,
+                title: poll.title.to_string(),
+                description: poll.description.to_string(),
+                link: poll.link.clone(),
+                deposit_amount: poll.deposit_amount,
+                execute_data: if let Some(exe_msgs) = poll.execute_data.clone() {
+                    let mut data_list: Vec<PollExecuteMsg> = vec![];
+
+                    for msg in exe_msgs {
+                        let execute_data = PollExecuteMsg {
+                            order: msg.order,
+                            contract: deps.api.addr_humanize(&msg.contract)?.to_string(),
+                            msg: msg.msg,
+                        };
+                        data_list.push(execute_data)
+                    }
+                    Some(data_list)
+                } else {
+                    None
+                },
+                yes_votes: poll.yes_votes,
+                no_votes: poll.no_votes,
+                staked_amount: poll.staked_amount,
+                total_balance_at_end_poll: poll.total_balance_at_end_poll,
+            })
+        })
+        .collect();
+
+    Ok(PollsResponse {
+        polls: poll_responses?,
+    })
+}
+
+fn query_voters(
+    deps: Deps,
+    poll_id: u64,
+    start_after: Option<String>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> Result<VotersResponse, ContractError> {
+    let poll: Poll = match poll_read(deps.storage).may_load(&poll_id.to_be_bytes())? {
+        Some(poll) => Some(poll),
+        None => return Err(ContractError::PollNotFound {}),
+    }
+    .unwrap();
+
+    let voters = if poll.status != PollStatus::InProgress {
+        vec![]
+    } else if let Some(start_after) = start_after {
+        read_poll_voters(
+            deps.storage,
+            poll_id,
+            Some(deps.api.addr_canonicalize(&start_after)?),
+            limit,
+            order_by,
+        )?
+    } else {
+        read_poll_voters(deps.storage, poll_id, None, limit, order_by)?
+    };
+
+    let voters_response: StdResult<Vec<VotersResponseItem>> = voters
+        .iter()
+        .map(|voter_info| {
+            Ok(VotersResponseItem {
+                voter: deps.api.addr_humanize(&voter_info.0)?.to_string(),
+                vote: voter_info.1.vote.clone(),
+                balance: voter_info.1.balance,
+            })
+        })
+        .collect();
+
+    Ok(VotersResponse {
+        voters: voters_response?,
     })
 }
 
