@@ -6,7 +6,7 @@ use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{bank_read, bank_store, State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo};
+use crate::state::{bank_read, bank_store, State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_read, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo, ConfigResponse, PollResponse, StateResponse};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -39,6 +39,10 @@ pub fn instantiate(
     Ok(Response::default())
 }
 
+// Routers; here is a separate router which handles Execution of functions on the contract or performs a contract Query 
+// Each router function defines a number of handlers using Rust's pattern matching to 
+// designated how each ExecutionMsg or QueryMsg will be handled.
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -56,6 +60,18 @@ pub fn execute(
         ExecuteMsg::RegisterContracts { whale_token } => register_contracts(deps, whale_token),
     }
 }
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+    match msg {
+        QueryMsg::Config {} => Ok(to_binary(&query_config(deps)?)?),
+        QueryMsg::State {} => Ok(to_binary(&query_state(deps)?)?),
+        QueryMsg::Poll { poll_id } => Ok(to_binary(&query_poll(deps, poll_id)?)?),
+    }
+}
+
+
+// ExecutionMsg handlers
 
 pub fn register_contracts(deps: DepsMut, whale_token: String) -> Result<Response, ContractError> {
     let mut config: Config = config_read(deps.storage).load()?;
@@ -426,17 +442,72 @@ pub fn cast_vote(
     ]))
 }
 
+// Query Handlers
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
-    }
+/// query_config allows for the query of the currently set configuration values 
+/// which influence Polls such as the quorum needed and the minimum voting peroid before a poll can be ended
+fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
+    let config: Config = config_read(deps.storage).load()?;
+    Ok(ConfigResponse {
+        owner: deps.api.addr_humanize(&config.owner)?.to_string(),
+        whale_token: deps.api.addr_humanize(&config.whale_token)?.to_string(),
+        quorum: config.quorum,
+        threshold: config.threshold,
+        voting_period: config.voting_period,
+        timelock_period: config.timelock_period,
+        expiration_period: config.expiration_period,
+        proposal_deposit: config.proposal_deposit,
+        snapshot_period: config.snapshot_period,
+    })
 }
 
-fn query_count(deps: Deps) -> StdResult<CountResponse> {
-    let state = STATE.load(deps.storage)?;
-    Ok(CountResponse { count: state.count })
+/// query_state allows for the query of dynamic state values such as the poll count and how much has been deposited
+fn query_state(deps: Deps) -> Result<StateResponse, ContractError> {
+    let state: State = state_read(deps.storage).load()?;
+    Ok(StateResponse {
+        poll_count: state.poll_count,
+        total_share: state.total_share,
+        total_deposit: state.total_deposit,
+    })
+}
+
+/// query_poll allows for the query of a given poll by supplying its poll_id
+fn query_poll(deps: Deps, poll_id: u64) -> Result<PollResponse, ContractError> {
+    let poll = match poll_read(deps.storage).may_load(&poll_id.to_be_bytes())? {
+        Some(poll) => Some(poll),
+        None => return Err(ContractError::PollNotFound {}),
+    }
+    .unwrap();
+
+    let mut data_list: Vec<PollExecuteMsg> = vec![];
+
+    Ok(PollResponse {
+        id: poll.id,
+        creator: deps.api.addr_humanize(&poll.creator)?.to_string(),
+        status: poll.status,
+        end_height: poll.end_height,
+        title: poll.title,
+        description: poll.description,
+        link: poll.link,
+        deposit_amount: poll.deposit_amount,
+        execute_data: if let Some(exe_msgs) = poll.execute_data.clone() {
+            for msg in exe_msgs {
+                let execute_data = PollExecuteMsg {
+                    order: msg.order,
+                    contract: deps.api.addr_humanize(&msg.contract)?.to_string(),
+                    msg: msg.msg,
+                };
+                data_list.push(execute_data)
+            }
+            Some(data_list)
+        } else {
+            None
+        },
+        yes_votes: poll.yes_votes,
+        no_votes: poll.no_votes,
+        staked_amount: poll.staked_amount,
+        total_balance_at_end_poll: poll.total_balance_at_end_poll,
+    })
 }
 
 #[cfg(test)]

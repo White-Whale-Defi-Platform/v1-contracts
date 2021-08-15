@@ -33,8 +33,14 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // GetCount returns the current count as a json-encoded number
-    GetCount {},
+    // Config returns the configuration values of the governance contract
+    Config {},
+    // State returns the governance state values such as the poll_count and the amount deposited
+    State {},
+    // Poll returns the information related to a Poll if that poll exists 
+    Poll {
+        poll_id: u64,
+    },
 }
 
 // We define a custom struct for each query response
