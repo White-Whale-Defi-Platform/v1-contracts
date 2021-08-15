@@ -1,10 +1,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, CanonicalAddr, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128};
+use cosmwasm_std::{to_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, state_store, poll_store, poll_indexer_store, PollStatus, Poll};
+use crate::state::{State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_store, poll_indexer_store, PollStatus, Poll};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -131,24 +133,103 @@ pub fn create_poll(
     ]))
 }
 
-pub fn try_increment(deps: DepsMut) -> Result<Response, ContractError> {
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        state.count += 1;
-        Ok(state)
-    })?;
+/// end a poll
+/// 
+/// By default a Poll is considered rejected when ending. The weight of votes and the quorum of the vote is considered before declaring a Poll as passed. 
+/// Before the function completes, state is saved any leftover deposit amount is sent back to the poll creator and a response is returned.
+pub fn end_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, ContractError> {
+    let mut a_poll: Poll = poll_store(deps.storage).load(&poll_id.to_be_bytes())?;
 
-    Ok(Response::new().add_attribute("method", "try_increment"))
-}
-pub fn try_reset(deps: DepsMut, info: MessageInfo, count: i32) -> Result<Response, ContractError> {
-    STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
-        if info.sender != state.owner {
-            return Err(ContractError::Unauthorized {});
+    if a_poll.status != PollStatus::InProgress {
+        return Err(ContractError::PollNotInProgress {});
+    }
+
+    if a_poll.end_height > env.block.height {
+        return Err(ContractError::PollVotingPeriod {});
+    }
+
+    let no = a_poll.no_votes.u128();
+    let yes = a_poll.yes_votes.u128();
+
+    let tallied_weight = yes + no;
+
+    let mut poll_status = PollStatus::Rejected;
+    let mut rejected_reason = "";
+    let mut passed = false;
+
+    let mut messages: Vec<CosmosMsg> = vec![];
+    let config: Config = config_read(deps.storage).load()?;
+    let mut state: State = state_read(deps.storage).load()?;
+
+    let (quorum, staked_weight) = if state.total_share.u128() == 0 {
+        (Decimal::zero(), Uint128::zero())
+    } else if let Some(staked_amount) = a_poll.staked_amount {
+        (
+            Decimal::from_ratio(tallied_weight, staked_amount),
+            staked_amount,
+        )
+    } else {
+        let staked_weight = query_token_balance(
+            &deps.querier,
+            deps.api.addr_humanize(&config.whale_token)?,
+            deps.api.addr_humanize(&state.contract_addr)?,
+        )?
+        .checked_sub(state.total_deposit)?;
+
+        (
+            Decimal::from_ratio(tallied_weight, staked_weight),
+            staked_weight,
+        )
+    };
+
+    if tallied_weight == 0 || quorum < config.quorum {
+        // Quorum: More than quorum of the total staked tokens at the end of the voting
+        // period need to have participated in the vote.
+        rejected_reason = "Quorum not reached";
+    } else {
+        if Decimal::from_ratio(yes, tallied_weight) > config.threshold {
+            //Threshold: More than 50% of the tokens that participated in the vote
+            // (after excluding “Abstain” votes) need to have voted in favor of the proposal (“Yes”).
+            poll_status = PollStatus::Passed;
+            passed = true;
+        } else {
+            rejected_reason = "Threshold not reached";
         }
-        state.count = count;
-        Ok(state)
-    })?;
-    Ok(Response::new().add_attribute("method", "reset"))
+
+        // Refunds deposit only when quorum is reached
+        if !a_poll.deposit_amount.is_zero() {
+            messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: deps.api.addr_humanize(&config.whale_token)?.to_string(),
+                funds: vec![],
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: deps.api.addr_humanize(&a_poll.creator)?.to_string(),
+                    amount: a_poll.deposit_amount,
+                })?,
+            }))
+        }
+    }
+
+    // Decrease total deposit amount
+    state.total_deposit = state.total_deposit.checked_sub(a_poll.deposit_amount)?;
+    state_store(deps.storage).save(&state)?;
+
+    // Update poll indexer
+    poll_indexer_store(deps.storage, &PollStatus::InProgress).remove(&a_poll.id.to_be_bytes());
+    poll_indexer_store(deps.storage, &poll_status).save(&a_poll.id.to_be_bytes(), &true)?;
+
+    // Update poll status
+    a_poll.status = poll_status;
+    a_poll.total_balance_at_end_poll = Some(staked_weight);
+    poll_store(deps.storage).save(&poll_id.to_be_bytes(), &a_poll)?;
+
+    Ok(Response::new().add_messages(messages).add_attributes(vec![
+        ("action", "end_poll"),
+        ("poll_id", &poll_id.to_string()),
+        ("rejected_reason", rejected_reason),
+        ("passed", &passed.to_string()),
+    ]))
 }
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
@@ -185,50 +266,4 @@ mod tests {
         assert_eq!(17, value.count);
     }
 
-    #[test]
-    fn increment() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
-
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        // beneficiary can release it
-        let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Increment {};
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        // should increase counter by 1
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(18, value.count);
-    }
-
-    #[test]
-    fn reset() {
-        let mut deps = mock_dependencies(&coins(2, "token"));
-
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(2, "token"));
-        let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-        // beneficiary can release it
-        let unauth_info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-        match res {
-            Err(ContractError::Unauthorized {}) => {}
-            _ => panic!("Must return unauthorized error"),
-        }
-
-        // only the original creator can reset the counter
-        let auth_info = mock_info("creator", &coins(2, "token"));
-        let msg = ExecuteMsg::Reset { count: 5 };
-        let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-        // should now be 5
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(5, value.count);
-    }
 }
