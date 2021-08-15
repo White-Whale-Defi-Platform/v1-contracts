@@ -1,3 +1,23 @@
+# White Whale Governance Contracts
+
+The Gov contract contains logic for creating and managing polls and allows the White Whale Protocol to be governed by its users in a decentralized manner. After the initial bootstrapping of White Whale contracts, the Gov contract is assigned to eb the owner of itself and other contracts.
+
+New proposals for change are submitted as polls, and are voted on by WHALE stakers through the voting procedure. Polls can contain messages that can be executed directly without changing the White Whale Protocol code.
+
+The Gov Contract keeps a balance of WHALE tokens, which it uses to reward stakers with funds it receives from user deposits from creating new governance polls. This balance is separate from the Community Pool, which is held by the Community contract (owned by the Gov contract).
+
+## Aims and References
+
+This repository is based both on the examples set out by the [](), []() and their respective Governance contracts.
+
+By starting from this common ground the hope is that with time, the Anchor, Mirror, White Whale and other communities can work together to establish a common standard for Governance contracts. 
+
+A small attempt at this is made below based on what we have found when build our governance contract.
+
+## Specification of a Governance Contract
+
+Governance contracts across cosmwasm and perhaps even outside follow a typical pattern that is to say they loosely define an interface of what a governance contract does. Noted here is a abstraction of the minimum viable set of functionalities needed for a governance contract.
+ 
 # CosmWasm Starter Pack
 
 This is a template to build smart contracts in Rust to run inside a
