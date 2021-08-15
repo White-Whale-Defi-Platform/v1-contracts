@@ -51,6 +51,7 @@ pub struct State {
 
 pub const STATE: Item<State> = Item::new("state");
 
+
 // State related to Poll Execution
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -138,6 +139,43 @@ impl fmt::Display for VoteOption {
             write!(f, "no")
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
+pub struct PollResponse {
+    pub id: u64,
+    pub creator: String,
+    pub status: PollStatus,
+    pub end_height: u64,
+    pub title: String,
+    pub description: String,
+    pub link: Option<String>,
+    pub deposit_amount: Uint128,
+    pub execute_data: Option<Vec<PollExecuteMsg>>,
+    pub yes_votes: Uint128, // balance
+    pub no_votes: Uint128,  // balance
+    pub staked_amount: Option<Uint128>,
+    pub total_balance_at_end_poll: Option<Uint128>,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct ConfigResponse {
+    pub owner: String,
+    pub anchor_token: String,
+    pub quorum: Decimal,
+    pub threshold: Decimal,
+    pub voting_period: u64,
+    pub timelock_period: u64,
+    pub expiration_period: u64,
+    pub proposal_deposit: Uint128,
+    pub snapshot_period: u64,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct StateResponse {
+    pub poll_count: u64,
+    pub total_share: Uint128,
+    pub total_deposit: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -33,8 +33,8 @@ pub fn instantiate(
         total_share: Uint128::zero(),
         total_deposit: Uint128::zero(),
     };
-    STATE.save(deps.storage, &state)?;
-
+    config_store(deps.storage).save(&config)?;
+    state_store(deps.storage).save(&state)?;
 
     Ok(Response::default())
 }
@@ -53,7 +53,20 @@ pub fn execute(
         ExecuteMsg::EndPoll { poll_id } => end_poll(deps, _env, poll_id),
         // Execute the associated messages of a passed poll
         ExecuteMsg::ExecutePoll { poll_id } => execute_poll(deps, _env, poll_id),
+        ExecuteMsg::RegisterContracts { whale_token } => register_contracts(deps, whale_token),
     }
+}
+
+pub fn register_contracts(deps: DepsMut, whale_token: String) -> Result<Response, ContractError> {
+    let mut config: Config = config_read(deps.storage).load()?;
+    if config.whale_token != CanonicalAddr::from(vec![]) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    config.whale_token = deps.api.addr_canonicalize(&whale_token)?;
+    config_store(deps.storage).save(&config)?;
+
+    Ok(Response::default())
 }
 
 /// handler function invoked when the governance contract receives
@@ -273,11 +286,6 @@ pub fn end_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, Contr
 /// for the Messages to be executed. Provided these conditions are met the poll is declared in a Executed state 
 /// and the execution data that was provided when the poll was created is prepared as a number of CosmosMsg/WasmMsg(s) before being sent for execution.
 /// 
-/// Example :
-/// ```
-/// let poll_id = 1337
-/// let res = execute_poll(poll_id)
-/// ```
 /// 
 /// It is important to note that execute poll only handles the execution of predefined messages 
 /// which are associated with a Passed poll. This ensures the actions taken by a successful Poll are
@@ -434,24 +442,6 @@ fn query_count(deps: Deps) -> StdResult<CountResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coins, from_binary};
-
-    #[test]
-    fn proper_initialization() {
-        let mut deps = mock_dependencies(&[]);
-
-        let msg = InstantiateMsg { count: 17 };
-        let info = mock_info("creator", &coins(1000, "earth"));
-
-        // we can just call .unwrap() to assert this was a success
-        let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-        assert_eq!(0, res.messages.len());
-
-        // it worked, let's query the state
-        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-        let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(17, value.count);
-    }
+    // TODO: Consider moving tests to here from ./tests.rs file
 
 }
