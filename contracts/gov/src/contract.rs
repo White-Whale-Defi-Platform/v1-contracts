@@ -1,12 +1,12 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, from_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_store, poll_indexer_store, PollStatus, Poll};
+use crate::state::{State, STATE, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -47,11 +47,48 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Increment {} => try_increment(deps),
-        ExecuteMsg::Reset { count } => try_reset(deps, info, count),
+        // Handle 'payable' functionalities 
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, _env, info, msg),
+        // Mark a poll as ended
+        ExecuteMsg::EndPoll { poll_id } => end_poll(deps, _env, poll_id),
+        // Execute the associated messages of a passed poll
+        ExecuteMsg::ExecutePoll { poll_id } => execute_poll(deps, _env, poll_id),
     }
 }
 
+/// handler function invoked when the governance contract receives
+/// a transaction. This is akin to a payable function in Solidity 
+pub fn receive_cw20(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    cw20_msg: Cw20ReceiveMsg,
+) -> Result<Response, ContractError> {
+    // only asset contract can execute this message
+    let config: Config = config_read(deps.storage).load()?;
+    if config.anchor_token != deps.api.addr_canonicalize(info.sender.as_str())? {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    match from_binary(&cw20_msg.msg) {
+        Ok(Cw20HookMsg::CreatePoll {
+            title,
+            description,
+            link,
+            execute_msgs,
+        }) => create_poll(
+            deps,
+            env,
+            cw20_msg.sender,
+            cw20_msg.amount,
+            title,
+            description,
+            link,
+            execute_msgs,
+        ),
+        _ => Err(ContractError::DataShouldBeGiven {}),
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 /// create a new poll 

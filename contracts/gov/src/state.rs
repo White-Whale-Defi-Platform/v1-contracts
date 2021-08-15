@@ -146,3 +146,17 @@ pub fn poll_indexer_store<'a>(
         &[PREFIX_POLL_INDEXER, status.to_string().as_bytes()],
     )
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw20HookMsg {
+    /// CreatePoll is the default hook behavior of the governance contract 
+    /// In order for a poll to be created the proposer will need to invoke the governance 
+    /// contract with a deposit as well as some defined parameters for the contract
+    CreatePoll {
+        title: String,
+        description: String,
+        link: Option<String>,
+        execute_msgs: Option<Vec<PollExecuteMsg>>,
+    },
+}
