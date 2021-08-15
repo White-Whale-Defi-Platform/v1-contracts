@@ -238,3 +238,171 @@ fn add_several_execute_msgs() {
     assert_eq!(response_execute_data.len(), 3);
     assert_eq!(response_execute_data, execute_msgs);
 }
+
+#[test]
+fn happy_days_create_poll() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+    let env = mock_env_height(0, 10000);
+    let info = mock_info(VOTING_TOKEN, &[]);
+
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
+
+    let execute_res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+    assert_create_poll_result(
+        1,
+        env.block.height + DEFAULT_VOTING_PERIOD,
+        TEST_CREATOR,
+        execute_res,
+        deps.as_ref(),
+    );
+}
+
+#[test]
+fn create_poll_no_quorum() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    let info = mock_info(VOTING_TOKEN, &[]);
+    let env = mock_env_height(0, 10000);
+
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
+
+    let execute_res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_create_poll_result(
+        1,
+        DEFAULT_VOTING_PERIOD,
+        TEST_CREATOR,
+        execute_res,
+        deps.as_ref(),
+    );
+}
+
+#[test]
+fn fails_create_poll_invalid_title() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    let msg = create_poll_msg("a".to_string(), "test".to_string(), None, None);
+    let info = mock_info(VOTING_TOKEN, &[]);
+    match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
+            assert_eq!(msg, "Title too short")
+        }
+        Err(_) => panic!("Unknown error"),
+    }
+
+    let msg = create_poll_msg(
+            "You just assured me that I could speak. I’m under what? GENTLEMEN THIS IS DEMOCRACY MANIFEST. Have a look at the headlock here. See that chap over there? GET YOUR HAND OFF MY PENIS. This is the bloke who got me on the penis people. Why did you do this? What is the charge? EATING A MEAL? A SUCCULENT CHINESE MEAL? Ooh that’s a nice headlock sir, ahh yes, I see that you know your judo well. And you sir, are you waiting to receive my limp penis? How dare, get your hands off me. Tata and farewell.".to_string(),
+            "test".to_string(),
+            None,
+            None,
+        );
+
+    match execute(deps.as_mut(), mock_env(), info, msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
+            assert_eq!(msg, "Title too long")
+        }
+        Err(_) => panic!("Unknown error"),
+    }
+}
+
+#[test]
+fn fails_create_poll_invalid_description() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    let msg = create_poll_msg("test".to_string(), "a".to_string(), None, None);
+    let info = mock_info(VOTING_TOKEN, &[]);
+    match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
+            assert_eq!(msg, "Description too short")
+        }
+        Err(_) => panic!("Unknown error"),
+    }
+
+    let msg = create_poll_msg(
+            "test".to_string(),
+            "012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678900123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012340123456789001234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012341234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123456".to_string(),
+            None,
+            None,
+        );
+
+    match execute(deps.as_mut(), mock_env(), info, msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
+            assert_eq!(msg, "Description too long")
+        }
+        Err(_) => panic!("Unknown error"),
+    }
+}
+
+#[test]
+fn fails_create_poll_invalid_link() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    let msg = create_poll_msg(
+        "test".to_string(),
+        "test".to_string(),
+        Some("http://hih".to_string()),
+        None,
+    );
+    let info = mock_info(VOTING_TOKEN, &[]);
+    match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
+            assert_eq!(msg, "Link too short")
+        }
+        Err(_) => panic!("Unknown error"),
+    }
+
+    let msg = create_poll_msg(
+        "test".to_string(),
+        "test".to_string(),
+        Some("0123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234".to_string()),
+        None,
+    );
+
+    match execute(deps.as_mut(), mock_env(), info, msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
+            assert_eq!(msg, "Link too long")
+        }
+        Err(_) => panic!("Unknown error"),
+    }
+}
+
+#[test]
+fn fails_create_poll_invalid_deposit() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: TEST_CREATOR.to_string(),
+        amount: Uint128::from(DEFAULT_PROPOSAL_DEPOSIT - 1),
+        msg: to_binary(&Cw20HookMsg::CreatePoll {
+            title: "TESTTEST".to_string(),
+            description: "TESTTEST".to_string(),
+            link: None,
+            execute_msgs: None,
+        })
+        .unwrap(),
+    });
+
+    let info = mock_info(VOTING_TOKEN, &[]);
+    match execute(deps.as_mut(), mock_env(), info, msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::InsufficientProposalDeposit(DEFAULT_PROPOSAL_DEPOSIT)) => (),
+        Err(_) => panic!("Unknown error"),
+    }
+}
