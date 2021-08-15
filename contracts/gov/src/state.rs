@@ -9,6 +9,8 @@ use cosmwasm_storage::{
     Singleton,
 };
 
+use std::cmp::Ordering;
+
 static KEY_CONFIG: &[u8] = b"config";
 static KEY_STATE: &[u8] = b"state";
 
@@ -55,6 +57,26 @@ pub struct ExecuteData {
     pub msg: Binary,
 }
 
+impl Eq for ExecuteData {}
+
+impl Ord for ExecuteData {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.order.cmp(&other.order)
+    }
+}
+
+impl PartialOrd for ExecuteData {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for ExecuteData {
+    fn eq(&self, other: &Self) -> bool {
+        self.order == other.order
+    }
+}
+
 // State related to Polls
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Poll {
@@ -83,6 +105,12 @@ pub enum PollStatus {
     Rejected,
     Executed,
     Expired,
+}
+
+impl fmt::Display for PollStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 pub fn config_store(storage: &mut dyn Storage) -> Singleton<Config> {
