@@ -24,6 +24,15 @@ pub enum ContractError {
     #[error("User does not have enough staked tokens")]
     InsufficientStaked {},
 
+    #[error("Insufficient funds sent")]
+    InsufficientFunds {},
+
+    #[error("Nothing staked")]
+    NothingStaked {},
+
+    #[error("User is trying to withdraw too many tokens")]
+    InvalidWithdrawAmount {},
+
     #[error("Cannot make a text proposal to expired state")]
     NoExecuteData {},
 

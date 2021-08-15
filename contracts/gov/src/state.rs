@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
-use cosmwasm_std::{Binary, CanonicalAddr, Decimal, Storage, Uint128};
+use cosmwasm_std::{Binary, CanonicalAddr, Decimal, Order, Storage, StdResult, Uint128};
 use cosmwasm_storage::{
     bucket_read, bucket, singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton,
     Singleton,
@@ -20,6 +20,28 @@ static PREFIX_POLL_INDEXER: &[u8] = b"poll_indexer";
 static PREFIX_POLL_VOTER: &[u8] = b"poll_voter";
 static PREFIX_POLL: &[u8] = b"poll";
 static PREFIX_BANK: &[u8] = b"bank";
+
+
+const MAX_LIMIT: u32 = 30;
+const DEFAULT_LIMIT: u32 = 10;
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum OrderBy {
+    Asc,
+    Desc,
+}
+
+impl From<OrderBy> for Order {
+    fn from(o: OrderBy) -> Order {
+        if o == OrderBy::Asc {
+            Order::Ascending
+        } else {
+            Order::Descending
+        }
+    }
+}
 
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -107,6 +129,7 @@ pub struct Poll {
     pub staked_amount: Option<Uint128>,
 }
 
+
 // State objects here are good candidates to move to the packages module 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -158,6 +181,23 @@ pub struct PollResponse {
     pub total_balance_at_end_poll: Option<Uint128>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
+pub struct PollsResponse {
+    pub polls: Vec<PollResponse>,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
+pub struct PollCountResponse {
+    pub poll_count: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
+pub struct StakerResponse {
+    pub balance: Uint128,
+    pub share: Uint128,
+    pub locked_balance: Vec<(u64, VoterInfo)>,
+}
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
@@ -182,6 +222,18 @@ pub struct StateResponse {
 pub struct VoterInfo {
     pub vote: VoteOption,
     pub balance: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
+pub struct VotersResponseItem {
+    pub voter: String,
+    pub vote: VoteOption,
+    pub balance: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
+pub struct VotersResponse {
+    pub voters: Vec<VotersResponseItem>,
 }
 
 pub fn bank_store(storage: &mut dyn Storage) -> Bucket<TokenManager> {
@@ -234,6 +286,101 @@ pub fn poll_indexer_store<'a>(
         &[PREFIX_POLL_INDEXER, status.to_string().as_bytes()],
     )
 }
+
+pub fn read_poll_voters<'a>(
+    storage: &'a dyn Storage,
+    poll_id: u64,
+    start_after: Option<CanonicalAddr>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> StdResult<Vec<(CanonicalAddr, VoterInfo)>> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let (start, end, order_by) = match order_by {
+        Some(OrderBy::Asc) => (calc_range_start_addr(start_after), None, OrderBy::Asc),
+        _ => (None, calc_range_end_addr(start_after), OrderBy::Desc),
+    };
+
+    let voters: ReadonlyBucket<'a, VoterInfo> =
+        ReadonlyBucket::multilevel(storage, &[PREFIX_POLL_VOTER, &poll_id.to_be_bytes()]);
+    voters
+        .range(start.as_deref(), end.as_deref(), order_by.into())
+        .take(limit)
+        .map(|item| {
+            let (k, v) = item?;
+            Ok((CanonicalAddr::from(k), v))
+        })
+        .collect()
+}
+
+pub fn read_polls<'a>(
+    storage: &'a dyn Storage,
+    filter: Option<PollStatus>,
+    start_after: Option<u64>,
+    limit: Option<u32>,
+    order_by: Option<OrderBy>,
+) -> StdResult<Vec<Poll>> {
+    let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
+    let (start, end, order_by) = match order_by {
+        Some(OrderBy::Asc) => (calc_range_start(start_after), None, OrderBy::Asc),
+        _ => (None, calc_range_end(start_after), OrderBy::Desc),
+    };
+
+    if let Some(status) = filter {
+        let poll_indexer: ReadonlyBucket<'a, bool> = ReadonlyBucket::multilevel(
+            storage,
+            &[PREFIX_POLL_INDEXER, status.to_string().as_bytes()],
+        );
+        poll_indexer
+            .range(start.as_deref(), end.as_deref(), order_by.into())
+            .take(limit)
+            .map(|item| {
+                let (k, _) = item?;
+                poll_read(storage).load(&k)
+            })
+            .collect()
+    } else {
+        let polls: ReadonlyBucket<'a, Poll> = ReadonlyBucket::new(storage, PREFIX_POLL);
+
+        polls
+            .range(start.as_deref(), end.as_deref(), order_by.into())
+            .take(limit)
+            .map(|item| {
+                let (_, v) = item?;
+                Ok(v)
+            })
+            .collect()
+    }
+}
+
+// this will set the first key after the provided key, by appending a 1 byte
+fn calc_range_start(start_after: Option<u64>) -> Option<Vec<u8>> {
+    start_after.map(|id| {
+        let mut v = id.to_be_bytes().to_vec();
+        v.push(1);
+        v
+    })
+}
+
+// this will set the first key after the provided key, by appending a 1 byte
+fn calc_range_end(start_after: Option<u64>) -> Option<Vec<u8>> {
+    start_after.map(|id| id.to_be_bytes().to_vec())
+}
+
+// this will set the first key after the provided key, by appending a 1 byte
+fn calc_range_start_addr(start_after: Option<CanonicalAddr>) -> Option<Vec<u8>> {
+    start_after.map(|addr| {
+        let mut v = addr.as_slice().to_vec();
+        v.push(1);
+        v
+    })
+}
+
+// this will set the first key after the provided key, by appending a 1 byte
+fn calc_range_end_addr(start_after: Option<CanonicalAddr>) -> Option<Vec<u8>> {
+    start_after.map(|addr| addr.as_slice().to_vec())
+}
+
+
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
