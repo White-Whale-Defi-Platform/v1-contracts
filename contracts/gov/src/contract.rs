@@ -230,6 +230,61 @@ pub fn end_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, Contr
     ]))
 }
 
+/// execute_poll exposes the ability to execute the Messages which were defined on Polls creation if the Poll was deemed successful.
+/// 
+/// The fn first performs a number of checks to ensure the Poll indeed has passed and enough of an effective delay has elapsed 
+/// for the Messages to be executed. Provided these conditions are met the poll is declared in a Executed state 
+/// and the execution data that was provided when the poll was created is prepared as a number of CosmosMsg/WasmMsg(s) before being sent for execution.
+/// 
+/// Example :
+/// ```
+/// let poll_id = 1337
+/// let res = execute_poll(poll_id)
+/// ```
+/// 
+/// It is important to note that execute poll only handles the execution of predefined messages 
+/// which are associated with a Passed poll. This ensures the actions taken by a successful Poll are
+/// well known and predefined. 
+pub fn execute_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, ContractError> {
+    
+    let config: Config = config_read(deps.storage).load()?;
+    let mut a_poll: Poll = poll_store(deps.storage).load(&poll_id.to_be_bytes())?;
+
+    if a_poll.status != PollStatus::Passed {
+        return Err(ContractError::PollNotPassed {});
+    }
+
+    if a_poll.end_height + config.timelock_period > env.block.height {
+        return Err(ContractError::TimelockNotExpired {});
+    }
+
+    poll_indexer_store(deps.storage, &PollStatus::Passed).remove(&poll_id.to_be_bytes());
+    poll_indexer_store(deps.storage, &PollStatus::Executed).save(&poll_id.to_be_bytes(), &true)?;
+
+    a_poll.status = PollStatus::Executed;
+    poll_store(deps.storage).save(&poll_id.to_be_bytes(), &a_poll)?;
+
+    let mut messages: Vec<CosmosMsg> = vec![];
+    if let Some(all_msgs) = a_poll.execute_data {
+        let mut msgs = all_msgs;
+        msgs.sort();
+        for msg in msgs {
+            messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: deps.api.addr_humanize(&msg.contract)?.to_string(),
+                msg: msg.msg,
+                funds: vec![],
+            }))
+        }
+    } else {
+        return Err(ContractError::NoExecuteData {});
+    }
+
+    Ok(Response::new().add_messages(messages).add_attributes(vec![
+        ("action", "execute_poll"),
+        ("poll_id", poll_id.to_string().as_str()),
+    ]))
+}
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
