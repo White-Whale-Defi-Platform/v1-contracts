@@ -1,6 +1,6 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, from_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, Uint128, WasmMsg};
+use cosmwasm_std::{attr, to_binary, from_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, Uint128, WasmMsg};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
 
@@ -132,6 +132,29 @@ pub fn execute(
         ExecuteMsg::ExecutePoll { poll_id } => execute_poll(deps, _env, poll_id),
         ExecuteMsg::ExpirePoll { poll_id } => expire_poll(deps, _env, poll_id),
         ExecuteMsg::RegisterContracts { whale_token } => register_contracts(deps, whale_token),
+        ExecuteMsg::SnapshotPoll { poll_id } => snapshot_poll(deps, _env, poll_id),
+        ExecuteMsg::WithdrawVotingTokens { amount } => withdraw_voting_tokens(deps, info, amount),
+        ExecuteMsg::UpdateConfig {
+            owner,
+            quorum,
+            threshold,
+            voting_period,
+            timelock_period,
+            expiration_period,
+            proposal_deposit,
+            snapshot_period,
+        } => update_config(
+            deps,
+            info,
+            owner,
+            quorum,
+            threshold,
+            voting_period,
+            timelock_period,
+            expiration_period,
+            proposal_deposit,
+            snapshot_period,
+        ),
     }
 }
 
@@ -734,6 +757,102 @@ fn query_voters(
     Ok(VotersResponse {
         voters: voters_response?,
     })
+}
+
+/// SnapshotPoll is used to take a snapshot of the staked amount for quorum calculation
+pub fn snapshot_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, ContractError> {
+    let config: Config = config_read(deps.storage).load()?;
+    let mut a_poll: Poll = poll_store(deps.storage).load(&poll_id.to_be_bytes())?;
+
+    if a_poll.status != PollStatus::InProgress {
+        return Err(ContractError::PollNotInProgress {});
+    }
+
+    let time_to_end = a_poll.end_height - env.block.height;
+
+    if time_to_end > config.snapshot_period {
+        return Err(ContractError::SnapshotHeight {});
+    }
+
+    if a_poll.staked_amount.is_some() {
+        return Err(ContractError::SnapshotAlreadyOccurred {});
+    }
+
+    // store the current staked amount for quorum calculation
+    let state: State = state_store(deps.storage).load()?;
+
+    let staked_amount = query_token_balance(
+        &deps.querier,
+        deps.api.addr_humanize(&config.whale_token)?,
+        deps.api.addr_humanize(&state.contract_addr)?,
+    )?
+    .checked_sub(state.total_deposit)?;
+
+    a_poll.staked_amount = Some(staked_amount);
+
+    poll_store(deps.storage).save(&poll_id.to_be_bytes(), &a_poll)?;
+
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "snapshot_poll"),
+        attr("poll_id", poll_id.to_string().as_str()),
+        attr("staked_amount", staked_amount.to_string().as_str()),
+    ]))
+}
+#[allow(clippy::too_many_arguments)]
+pub fn update_config(
+    deps: DepsMut,
+    info: MessageInfo,
+    owner: Option<String>,
+    quorum: Option<Decimal>,
+    threshold: Option<Decimal>,
+    voting_period: Option<u64>,
+    timelock_period: Option<u64>,
+    expiration_period: Option<u64>,
+    proposal_deposit: Option<Uint128>,
+    snapshot_period: Option<u64>,
+) -> Result<Response, ContractError> {
+    let api = deps.api;
+    config_store(deps.storage).update(|mut config| {
+        if config.owner != api.addr_canonicalize(info.sender.as_str())? {
+            return Err(ContractError::Unauthorized {});
+        }
+
+        if let Some(owner) = owner {
+            config.owner = api.addr_canonicalize(&owner)?;
+        }
+
+        if let Some(quorum) = quorum {
+            config.quorum = quorum;
+        }
+
+        if let Some(threshold) = threshold {
+            config.threshold = threshold;
+        }
+
+        if let Some(voting_period) = voting_period {
+            config.voting_period = voting_period;
+        }
+
+        if let Some(timelock_period) = timelock_period {
+            config.timelock_period = timelock_period;
+        }
+
+        if let Some(expiration_period) = expiration_period {
+            config.expiration_period = expiration_period;
+        }
+
+        if let Some(proposal_deposit) = proposal_deposit {
+            config.proposal_deposit = proposal_deposit;
+        }
+
+        if let Some(period) = snapshot_period {
+            config.snapshot_period = period;
+        }
+
+        Ok(config)
+    })?;
+
+    Ok(Response::new().add_attributes(vec![("action", "update_config")]))
 }
 
 #[cfg(test)]
