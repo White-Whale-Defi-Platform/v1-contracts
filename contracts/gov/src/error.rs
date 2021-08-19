@@ -1,7 +1,7 @@
 use cosmwasm_std::{OverflowError, StdError};
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
@@ -50,6 +50,12 @@ pub enum ContractError {
 
     #[error("Voting period has not expired")]
     PollVotingPeriod {},
+
+    #[error("Snapshot has already occurred")]
+    SnapshotAlreadyOccurred {},
+
+    #[error("Cannot snapshot at this height")]
+    SnapshotHeight {},
 
     #[error("Timelock period has not expired")]
     TimelockNotExpired {},

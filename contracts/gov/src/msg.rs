@@ -38,6 +38,22 @@ pub enum ExecuteMsg {
     RegisterContracts {
         whale_token: String,
     },
+    SnapshotPoll {
+        poll_id: u64,
+    },
+    WithdrawVotingTokens {
+        amount: Option<Uint128>,
+    },
+    UpdateConfig {
+        owner: Option<String>,
+        quorum: Option<Decimal>,
+        threshold: Option<Decimal>,
+        voting_period: Option<u64>,
+        timelock_period: Option<u64>,
+        expiration_period: Option<u64>,
+        proposal_deposit: Option<Uint128>,
+        snapshot_period: Option<u64>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
