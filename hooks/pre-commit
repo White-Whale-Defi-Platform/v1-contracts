@@ -2,6 +2,7 @@
 
 set -e
 
+# Head into the bluna-vault contract, update the deps run some tests and update output schemas
 cd contracts/bluna-vault
 cargo update
 cargo clippy -- -D warnings
@@ -16,6 +17,7 @@ cargo unit-test
 cargo schema
 cd -
 
+# Head into the stablecoin-vault contract, update the deps run some tests and update output schemas
 cd contracts/stablecoin-vault
 cargo update
 cargo clippy -- -D warnings
@@ -23,6 +25,7 @@ cargo unit-test
 cargo schema
 cd -
 
+# Head into the profit-check contract, update the deps run some tests and update output schemas
 cd contracts/profit-check
 cargo update
 cargo clippy -- -D warnings
@@ -30,7 +33,16 @@ cargo unit-test
 cargo schema
 cd -
 
+# Head into the vesting contract, update the deps run some tests and update output schemas
 cd contracts/vesting
+cargo update
+# cargo clippy -- -D warnings
+cargo unit-test
+cargo schema
+cd -
+
+# Head into the gov contract, update the deps run some tests and update output schemas
+cd contracts/gov
 cargo update
 # cargo clippy -- -D warnings
 cargo unit-test
