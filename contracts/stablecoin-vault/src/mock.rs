@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use cosmwasm_std::{
-    Binary, Coin, StdResult, SystemError, SystemResult,
+    Binary, Coin, SystemError, SystemResult,
     AllBalanceResponse, BalanceResponse, BankQuery, QueryRequest,
     WasmQuery, from_slice, to_binary, Querier, QuerierResult,
     Empty, Uint128, OwnedDeps, ContractResult
@@ -28,10 +28,6 @@ pub fn mock_dependencies(
         querier: MockQuerier::new(&[(&MOCK_CONTRACT_ADDR.to_string(), contract_balance)]),
     }
 }
-
-/// The same type as cosmwasm-std's QuerierResult, but easier to reuse in
-/// cosmwasm-vm. It might diverge from QuerierResult at some point.
-pub type MockQuerierCustomHandlerResult = SystemResult<StdResult<Binary>>;
 
 /// MockQuerier holds an immutable table of bank balances
 /// TODO: also allow querying contracts

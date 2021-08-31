@@ -489,6 +489,7 @@ pub fn set_slippage(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(
     deps: Deps,
+    _env: Env,
     msg: QueryMsg,
 ) -> StdResult<Binary> {
     match msg {
@@ -522,7 +523,7 @@ pub fn try_query_pool(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_env};
-    use crate::mock::{mock_dependencies};
+    use crate::testing::{mock_dependencies};
     use cosmwasm_std::{Uint128, Api};
     use terra_cosmwasm::TerraRoute;
     use terraswap::asset::AssetInfo;

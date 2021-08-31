@@ -90,7 +90,7 @@ pub fn set_vault_address(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps:Deps, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps:Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::LastBalance{} => to_binary(&try_query_last_balance(deps)?),
         QueryMsg::Vault{} => to_binary(&try_query_vault_address(deps)?),
@@ -126,13 +126,13 @@ mod tests {
         let env = mock_env();
         let info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
 
-        let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res: LastBalanceResponse = from_binary(&query(deps.as_ref(), QueryMsg::LastBalance{}).unwrap()).unwrap();
+        let res: LastBalanceResponse = from_binary(&query(deps.as_ref(), env.clone(), QueryMsg::LastBalance{}).unwrap()).unwrap();
         assert_eq!(res.last_balance, Uint128::zero());
 
-        let res: VaultResponse = from_binary(&query(deps.as_ref(), QueryMsg::Vault{}).unwrap()).unwrap();
+        let res: VaultResponse = from_binary(&query(deps.as_ref(), env, QueryMsg::Vault{}).unwrap()).unwrap();
         assert_eq!(res.vault_address, vault_address);
     }
 
@@ -150,14 +150,14 @@ mod tests {
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res: VaultResponse = from_binary(&query(deps.as_ref(), QueryMsg::Vault{}).unwrap()).unwrap();
+        let res: VaultResponse = from_binary(&query(deps.as_ref(), env.clone(), QueryMsg::Vault{}).unwrap()).unwrap();
         assert_eq!(res.vault_address, vault_address);
 
         let other_vault = deps.api.addr_validate("test_vault").unwrap();
-        let res = execute(deps.as_mut(), env, info, HandleMsg::SetVault{ vault_address: other_vault.to_string()}).unwrap();
+        let res = execute(deps.as_mut(), env.clone(), info, HandleMsg::SetVault{ vault_address: other_vault.to_string()}).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res: VaultResponse = from_binary(&query(deps.as_ref(), QueryMsg::Vault{}).unwrap()).unwrap();
+        let res: VaultResponse = from_binary(&query(deps.as_ref(), env, QueryMsg::Vault{}).unwrap()).unwrap();
         assert_eq!(res.vault_address, other_vault);
     }
 
@@ -182,18 +182,18 @@ mod tests {
         let res = execute(deps.as_mut(), env.clone(), vault_info.clone(), HandleMsg::BeforeTrade{}).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res: LastBalanceResponse = from_binary(&query(deps.as_ref(), QueryMsg::LastBalance{}).unwrap()).unwrap();
+        let res: LastBalanceResponse = from_binary(&query(deps.as_ref(), env.clone(), QueryMsg::LastBalance{}).unwrap()).unwrap();
         assert_eq!(res.last_balance, initial_balance);
 
         deps.querier.update_balance(vault_address, vec![Coin{denom: msg.denom, amount: Uint128::from(99u64)}]);
 
-        let res = execute(deps.as_mut(), env, vault_info, HandleMsg::AfterTrade{});
+        let res = execute(deps.as_mut(), env.clone(), vault_info, HandleMsg::AfterTrade{});
         match res {
             Err(..) => {},
             _ => panic!("unexpected")
         }
 
-        let res: LastBalanceResponse = from_binary(&query(deps.as_ref(), QueryMsg::LastBalance{}).unwrap()).unwrap();
+        let res: LastBalanceResponse = from_binary(&query(deps.as_ref(), env, QueryMsg::LastBalance{}).unwrap()).unwrap();
         assert_eq!(res.last_balance, initial_balance);
     }
 
@@ -218,7 +218,7 @@ mod tests {
         let res = execute(deps.as_mut(), env.clone(), vault_info.clone(), HandleMsg::BeforeTrade{}).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res: LastBalanceResponse = from_binary(&query(deps.as_ref(), QueryMsg::LastBalance{}).unwrap()).unwrap();
+        let res: LastBalanceResponse = from_binary(&query(deps.as_ref(), env.clone(), QueryMsg::LastBalance{}).unwrap()).unwrap();
         assert_eq!(res.last_balance, initial_balance);
 
         let res = execute(deps.as_mut(), env, vault_info, HandleMsg::AfterTrade{}).unwrap();
@@ -294,7 +294,7 @@ mod tests {
             _ => panic!("unexpected")
         }
 
-        let res: VaultResponse = from_binary(&query(deps.as_ref(), QueryMsg::Vault{}).unwrap()).unwrap();
+        let res: VaultResponse = from_binary(&query(deps.as_ref(), env, QueryMsg::Vault{}).unwrap()).unwrap();
         assert_eq!(res.vault_address, vault_address);
     }
 }
