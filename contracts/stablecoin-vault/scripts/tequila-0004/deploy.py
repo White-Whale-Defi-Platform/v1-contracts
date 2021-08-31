@@ -2,6 +2,12 @@ import base64
 import json
 import requests
 
+import pathlib
+import sys
+# temp workaround
+sys.path.append('/workspaces/devcontainer/terra-sdk-python')
+sys.path.append(pathlib.Path(__file__).parent.resolve())
+
 from terra_sdk.core import Coins
 from terra_sdk.client.lcd import LCDClient, Wallet
 from terra_sdk.key.mnemonic import MnemonicKey
@@ -9,26 +15,23 @@ from terra_sdk.util.contract import read_file_as_b64, get_code_id
 from terra_sdk.core.auth import StdFee
 from terra_sdk.core.wasm import MsgStoreCode, MsgInstantiateContract, MsgExecuteContract
 
-import pathlib
-import sys
-sys.path.append(pathlib.Path(__file__).parent.resolve())
 
 from config import get_tequila_config as get_config
 
-client = LCDClient(url="https://tequila-lcd.terra.dev", chain_id="tequila-0004", gas_prices=Coins(requests.get("https://tequila-fcd.terra.dev/v1/txs/gas_prices").json()))
+client = LCDClient(url="https://bombay-lcd.terra.dev", chain_id="bombay-10", gas_prices=Coins(requests.get("https://bombay-fcd.terra.dev/v1/txs/gas_prices").json()))
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
 deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
-std_fee = StdFee(4000000, "2500000uusd")
+std_fee = StdFee(5900000, "3500000uusd")
 
 balance = client.bank.balance(deployer.key.acc_address)
 print(balance)
 
 
 def send_msg(msg):
+    estimated = client.tx.estimate_fee(sender=deployer.key.acc_address, msgs=[msg], fee_denoms=["uusd"])
     tx = deployer.create_and_sign_tx(
         msgs=[msg], fee=std_fee
     )
-    estimated = client.tx.estimate_fee(tx, fee_denoms=["uusd"])
     print(f'estimated fee: {estimated}')
     return client.tx.broadcast(tx)
 
@@ -48,7 +51,8 @@ def get_contract_address(result):
 
 def instantiate_contract(code_id: str, init_msg) -> str:
     msg = MsgInstantiateContract(
-        owner=deployer.key.acc_address,
+        sender=deployer.key.acc_address,
+        admin=deployer.key.acc_address,
         code_id=code_id,
         init_msg=init_msg
     )
@@ -70,18 +74,18 @@ def execute_contract(contract_addr: str, execute_msg, coins=None):
     )
     return send_msg(msg)
 
-def deploy(config, profit_check_address):
+def deploy(config):
     # store profit check contract
-    # print("store contract")
-    # code_id = store_contract(contract_name="profit_check")
-    # print(f"stored {code_id} {type(code_id)}")
+    print("store contract")
+    code_id = store_contract(contract_name="profit_check")
+    print(f"stored {code_id} {type(code_id)}")
 
-    # print("instantiate contract")
-    # profit_check_address = instantiate_contract(code_id=code_id, init_msg={
-    #     "vault_address": deployer.key.acc_address,
-    #     "denom": "uusd"
-    # })
-    # print(f'instantiated profit check {profit_check_address}')
+    print("instantiate contract")
+    profit_check_address = instantiate_contract(code_id=code_id, init_msg={
+        "vault_address": deployer.key.acc_address,
+        "denom": "uusd"
+    })
+    print(f'instantiated profit check {profit_check_address}')
 
     # store stablecoin vault contract
     print("store contract")
@@ -90,7 +94,7 @@ def deploy(config, profit_check_address):
 
     print("instantiate contract")
     contract_address = instantiate_contract(code_id=code_id, init_msg={
-        "pool_address": "terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff",
+        "pool_address": config.poolconfig.contract_address,
         "asset_info": {
             "native_token": { "denom": "uusd" }
         },
@@ -103,21 +107,22 @@ def deploy(config, profit_check_address):
     })
     print(f'instantiated {contract_address}')
 
-    # # configure stablecoin vault as vault in profit_check
-    # result = execute_contract(contract_addr=profit_check_address, execute_msg={
-    #     "set_vault": {
-    #         "vault_address": contract_address
-    #     }
-    # })
-    # print(result)
+    # configure stablecoin vault as vault in profit_check
+    result = execute_contract(contract_addr=profit_check_address, execute_msg={
+        "set_vault": {
+            "vault_address": contract_address
+        }
+    })
+    print(result)
 
 
     return contract_address, profit_check_address
 
 config = get_config("UST")
 # print(client.chain_id)
-profit_check_address = "terra14pun48dstc4pndkpg55gxlw8n5904rzler0j9z"
-deploy(config, profit_check_address)
+# profit_check_address = "terra19mguhxwkd7m5urc4z2vjsettgecxj57903efwx"
+# contract_address = "terra142yv4pe4s7gstprdqqs7c64m5x74hrudncapw6"
+deploy(config)
 if True:
     exit()
 
