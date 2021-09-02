@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "State",
+  "type": "object",
+  "required": [
+    "owner_addr",
+    "whale_token_addr"
+  ],
+  "properties": {
+    "owner_addr": {
+      "type": "string"
+    },
+    "whale_token_addr": {
+      "type": "string"
+    }
+  }
+}
