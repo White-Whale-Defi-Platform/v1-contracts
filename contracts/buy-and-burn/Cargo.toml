@@ -1,9 +1,9 @@
 [package]
 name = "buy-and-burn"
 version = "0.0.1"
-authors = ["CyberHoward"]
+authors = ["White Whale"]
 edition = "2018"
-description = "Send All Fund to a Burn Module Account"
+description = "Burns whale tokens"
 license = "Apache-2.0"
 
 exclude = [
@@ -13,20 +13,8 @@ exclude = [
 ]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lib]
 crate-type = ["cdylib", "rlib"]
-
-[profile.release]
-opt-level = 3
-debug = false
-rpath = false
-lto = true
-debug-assertions = false
-codegen-units = 1
-panic = 'abort'
-incremental = false
-overflow-checks = true
 
 [features]
 # for quicker tests, cargo test --lib

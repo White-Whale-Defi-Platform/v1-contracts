@@ -13,12 +13,14 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
 use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg};
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
+use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
+use white_whale::anchor::try_deposit_to_anchor as try_deposit;
 
 use crate::msg::{HandleMsg, InitMsg, PoolResponse};
 use crate::state::{State, STATE, POOL_INFO, LUNA_DENOM};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::querier::{query_aust_exchange_rate, query_market_price, from_micro};
+use crate::querier::{query_market_price, from_micro};
 use crate::response::MsgInstantiateContractResponse;
 use std::str::FromStr;
 
@@ -125,7 +127,7 @@ pub fn try_withdraw_liquidity(
     let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address.clone(), get_stable_denom(deps.as_ref())?)?;
     if refund_asset.amount*Decimal::from_ratio(Uint128::from(50u64), Uint128::from(1u64)) > stable_balance {
         let uaust_amount: Uint128 = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address)?;
-        let uaust_exchange_rate_response = query_aust_exchange_rate(deps.as_ref())?;
+        let uaust_exchange_rate_response = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
         let uaust_ust_rate = Decimal::from_str(&uaust_exchange_rate_response.exchange_rate.to_string())?;
         let uaust_amount_in_uust = uaust_amount * uaust_ust_rate;
         // TODO: Improve
@@ -409,7 +411,8 @@ pub fn compute_total_deposits(
         AssetInfo::NativeToken{..} => Uint128::zero()
     };
 
-    let epoch_state_response = query_aust_exchange_rate(deps)?;
+    let state = STATE.load(deps.storage)?;
+    let epoch_state_response = query_aust_exchange_rate(deps, deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
     let aust_exchange_rate = Decimal::from_str(&epoch_state_response.exchange_rate.to_string())?;
     let aust_value_in_ust = aust_exchange_rate*aust_amount;
 
@@ -453,22 +456,24 @@ pub fn try_deposit_to_anchor(
     msg_info: MessageInfo,
     amount: Coin
 ) -> StdResult<Response<TerraMsgWrapper>> {
-    if amount.denom != "uusd" {
-        return Err(StdError::generic_err("Wrong currency. Only UST (denom: uusd) is supported."));
-    }
+    // if amount.denom != "uusd" {
+    //     return Err(StdError::generic_err("Wrong currency. Only UST (denom: uusd) is supported."));
+    // }
 
     let state = STATE.load(deps.storage)?;
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner {
         return Err(StdError::generic_err("Unauthorized."));
     }
 
-    let msg = CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
-        msg: to_binary(&AnchorMsg::DepositStable{})?,
-        funds: vec![amount]
-    });
+    try_deposit(deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(), amount)
 
-    Ok(Response::new().add_message(msg))
+    // let msg = CosmosMsg::Wasm(WasmMsg::Execute{
+    //     contract_addr: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
+    //     msg: to_binary(&AnchorMsg::DepositStable{})?,
+    //     funds: vec![amount]
+    // });
+
+    // Ok(Response::new().add_message(msg))
 }
 
 pub fn set_slippage(
