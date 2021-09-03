@@ -36,7 +36,7 @@ pub fn query_aust_exchange_rate(
 ) -> StdResult<EpochStateResponse> {
     let state = STATE.load(deps.storage)?;
     deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr:state.anchor_money_market_address.to_string(),
+        contract_addr: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
         msg: to_binary(&AnchorQuery::EpochState {
             block_height: None,
             distributed_interest: None,

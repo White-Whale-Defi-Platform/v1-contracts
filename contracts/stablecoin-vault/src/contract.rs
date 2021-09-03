@@ -156,7 +156,7 @@ pub fn try_withdraw_liquidity(
         }),
     };
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: info.liquidity_token.to_string(),
+        contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
         funds: vec![],
     });
@@ -235,7 +235,7 @@ pub fn try_arb_below_peg(
     let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount};
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.pool_address.to_string(),
+        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
         funds: vec![offer_coin.clone()],
         msg: to_binary(&create_terraswap_msg(offer_coin, Decimal::from_ratio(luna_pool_price, expected_luna_amount), Some(slippage)))?,
     });
@@ -243,10 +243,10 @@ pub fn try_arb_below_peg(
     let mut response = Response::new();
     if uaust_withdraw_amount > Uint128::zero() {
         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-            contract_addr: state.aust_address.to_string(),
+            contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
             msg: to_binary(
                 &Cw20ExecuteMsg::Send{
-                    contract: state.anchor_money_market_address.to_string(),
+                    contract: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
                     amount: uaust_withdraw_amount,
                     msg: to_binary(&AnchorMsg::RedeemStable{})?
                 }
@@ -255,7 +255,7 @@ pub fn try_arb_below_peg(
         }));
     }
     response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: state.profit_check_address.to_string(),
+        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
         msg: to_binary(
             &ProfitCheckMsg::BeforeTrade{}
         )?,
@@ -264,7 +264,7 @@ pub fn try_arb_below_peg(
     .add_message(swap_msg)
     .add_message(terraswap_msg)
     .add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: state.profit_check_address.to_string(),
+        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
         msg: to_binary(
             &ProfitCheckMsg::AfterTrade{}
         )?,
@@ -311,10 +311,10 @@ pub fn try_arb_above_peg(
     let mut response = Response::new();
     if uaust_withdraw_amount > Uint128::zero() {
         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-            contract_addr: state.aust_address.to_string(),
+            contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
             msg: to_binary(
                 &Cw20ExecuteMsg::Send{
-                    contract: state.anchor_money_market_address.to_string(),
+                    contract: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
                     amount: uaust_withdraw_amount,
                     msg: to_binary(&AnchorMsg::RedeemStable{})?
                 }
@@ -323,7 +323,7 @@ pub fn try_arb_above_peg(
         }));
     }
     response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: state.profit_check_address.to_string(),
+        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
         msg: to_binary(
             &ProfitCheckMsg::BeforeTrade{}
         )?,
@@ -332,7 +332,7 @@ pub fn try_arb_above_peg(
     .add_message(terraswap_msg)
     .add_message(swap_msg)
     .add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: state.profit_check_address.to_string(),
+        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
         msg: to_binary(
             &ProfitCheckMsg::AfterTrade{}
         )?,
@@ -438,7 +438,7 @@ pub fn try_provide_liquidity(
 
     // mint LP token to sender
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: info.liquidity_token.to_string(),
+        contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Mint {
             recipient: msg_info.sender.to_string(),
             amount: share,
@@ -463,7 +463,7 @@ pub fn try_deposit_to_anchor(
     }
 
     let msg = CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: state.anchor_money_market_address.to_string(),
+        contract_addr: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
         msg: to_binary(&AnchorMsg::DepositStable{})?,
         funds: vec![amount]
     });
