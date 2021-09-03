@@ -44,6 +44,18 @@ def get_tequila_config(symbol: str) -> Config:
         poolconfig=tequila_pools[symbol]
     )
 
+bombay_pools = {
+        "UST": PoolConfig(contract_address='terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff', token=NativeToken('uusd')),
+        "KRT": PoolConfig(contract_address='terra1rfzwcdhhu502xws6r5pxw4hx8c6vms772d6vyu', token=NativeToken('ukrw'))
+}
+def get_bombay_config(symbol: str) -> Config:
+    return Config(
+        seignorage_address="terra1untf85jwv3kt0puyyc39myxjvplagr3wstgs5s",
+        anchor_money_market_address="terra1rpvs6ashgp69dy9atfngcsnnnd3r3set82xlln",
+        aust_address="terra12p3hnqk2et0c87kw9kxrfnt5k3cg38srmrxmw4",
+        poolconfig=bombay_pools[symbol]
+    )
+
 columbus_4_pools = {
         "UST": PoolConfig(contract_address='terra1tndcaqxkpc5ce9qee5ggqf430mr2z3pefe5wj6', token=NativeToken('uusd')),
         "KRT": PoolConfig(contract_address='terra1zw0kfxrxgrs5l087mjm79hcmj3y8z6tljuhpmc', token=NativeToken('ukrw'))
