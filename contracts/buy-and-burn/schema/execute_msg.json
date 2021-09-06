@@ -5,6 +5,18 @@
     {
       "type": "object",
       "required": [
+        "burn"
+      ],
+      "properties": {
+        "burn": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "deposit"
       ],
       "properties": {

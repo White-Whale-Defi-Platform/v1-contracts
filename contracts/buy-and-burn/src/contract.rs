@@ -7,12 +7,13 @@ use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::ExecuteMsg as PairExecuteMsg;
 use terraswap::querier::{query_balance, query_token_balance};
 use white_whale::anchor::try_deposit_to_anchor_as_submsg;
+use white_whale::denom::UST_DENOM;
 use white_whale::msg::AnchorMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use std::str::FromStr;
 use crate::error::BurnError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, ADMIN, STATE, UST_DENOM};
+use crate::state::{State, ADMIN, STATE};
 
 
 const BUY_WHALE_REPLY_ID: u64 = 1;
@@ -49,6 +50,7 @@ pub fn instantiate(
 
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> BurnResult {
     match msg {
+        ExecuteMsg::Burn{ } => try_buy_and_burn(deps.as_ref(), &env),
         ExecuteMsg::Deposit {} => deposit_or_burn(deps, &env, info),
         ExecuteMsg::BurnProfits {} => try_burn_profits(deps, &env),
         ExecuteMsg::UpdateAdmin{ admin } => {

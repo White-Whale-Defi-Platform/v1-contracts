@@ -6,8 +6,6 @@ use cw_storage_plus::Item;
 use cw_controllers::Admin;
 
 
-pub static UST_DENOM: &str = "uusd";
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
     pub whale_token_addr: CanonicalAddr,
