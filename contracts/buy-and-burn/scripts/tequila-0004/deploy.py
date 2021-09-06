@@ -41,9 +41,8 @@ contract_address = deployer.instantiate_contract(code_id=code_id, init_msg={
     "aust_addr": aust,
     "anchor_deposit_threshold": str(int(10)*int(10**6)),
     "anchor_withdraw_threshold": str(int(1)*int(10**4)),
-    "instant_burn_ratio": "0.5"
+    "anchor_deposit_ratio": "0.5"
 })
 print(f'instantiated {contract_address}')
 
 # })
-

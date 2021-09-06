@@ -10,7 +10,7 @@ pub struct InstantiateMsg {
     pub aust_addr: String,
     pub anchor_deposit_threshold: Uint128,
     pub anchor_withdraw_threshold: Uint128,
-    pub instant_burn_ratio: Decimal
+    pub anchor_deposit_ratio: Decimal
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -18,7 +18,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Deposit {},
     BurnProfits{},
-    SetBurnRatio{ ratio: Decimal },
+    SetAnchorDepositRatio{ ratio: Decimal },
     SetAnchorDepositThreshold{ threshold: Uint128 },
     SetAnchorWithdrawThreshold{ threshold: Uint128 },
 }
@@ -38,5 +38,5 @@ pub struct ConfigResponse {
     pub aust_addr: Addr,
     pub anchor_deposit_threshold: Uint128,
     pub anchor_withdraw_threshold: Uint128,
-    pub instant_burn_ratio: Decimal
+    pub anchor_deposit_ratio: Decimal
 }

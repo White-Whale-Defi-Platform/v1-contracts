@@ -17,7 +17,7 @@ pub struct State {
     pub last_deposit_in_uusd: Uint128,
     pub anchor_deposit_threshold: Uint128,
     pub anchor_withdraw_threshold: Uint128,
-    pub instant_burn_ratio: Decimal
+    pub anchor_deposit_ratio: Decimal
 }
 
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");

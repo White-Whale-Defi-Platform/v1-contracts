@@ -3,16 +3,19 @@
   "title": "ConfigResponse",
   "type": "object",
   "required": [
+    "anchor_deposit_ratio",
     "anchor_deposit_threshold",
     "anchor_money_market_addr",
     "anchor_withdraw_threshold",
     "aust_addr",
-    "instant_burn_ratio",
     "owner",
     "pool_addr",
     "token_addr"
   ],
   "properties": {
+    "anchor_deposit_ratio": {
+      "$ref": "#/definitions/Decimal"
+    },
     "anchor_deposit_threshold": {
       "$ref": "#/definitions/Uint128"
     },
@@ -24,9 +27,6 @@
     },
     "aust_addr": {
       "$ref": "#/definitions/Addr"
-    },
-    "instant_burn_ratio": {
-      "$ref": "#/definitions/Decimal"
     },
     "owner": {
       "$ref": "#/definitions/Addr"

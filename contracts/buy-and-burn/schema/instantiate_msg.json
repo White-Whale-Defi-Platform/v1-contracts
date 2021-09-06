@@ -3,15 +3,18 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
+    "anchor_deposit_ratio",
     "anchor_deposit_threshold",
     "anchor_money_market_addr",
     "anchor_withdraw_threshold",
     "aust_addr",
-    "instant_burn_ratio",
     "whale_pair_addr",
     "whale_token_addr"
   ],
   "properties": {
+    "anchor_deposit_ratio": {
+      "$ref": "#/definitions/Decimal"
+    },
     "anchor_deposit_threshold": {
       "$ref": "#/definitions/Uint128"
     },
@@ -23,9 +26,6 @@
     },
     "aust_addr": {
       "type": "string"
-    },
-    "instant_burn_ratio": {
-      "$ref": "#/definitions/Decimal"
     },
     "whale_pair_addr": {
       "type": "string"
