@@ -9,6 +9,13 @@ cargo unit-test
 cargo schema
 cd -
 
+cd contracts/gov
+cargo update
+# cargo clippy -- -D warnings
+cargo unit-test
+cargo schema
+cd -
+
 cd contracts/buy-and-burn
 cargo update
 cargo clippy -- -D warnings

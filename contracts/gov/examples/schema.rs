@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use gov::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use gov::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use gov::state::State;
 
 fn main() {
