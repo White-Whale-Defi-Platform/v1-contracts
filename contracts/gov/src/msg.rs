@@ -63,11 +63,11 @@ pub enum QueryMsg {
     Config {},
     // State returns the governance state values such as the poll_count and the amount deposited
     State {},
-    // Staker returns Staked governance token information for the provided address 
+    // Staker returns Staked governance token information for the provided address
     Staker {
         address: String,
     },
-    // Poll returns the information related to a Poll if that poll exists 
+    // Poll returns the information related to a Poll if that poll exists
     Poll {
         poll_id: u64,
     },
@@ -84,10 +84,4 @@ pub enum QueryMsg {
         limit: Option<u32>,
         order_by: Option<OrderBy>,
     },
-}
-
-// We define a custom struct for each query response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CountResponse {
-    pub count: i32,
 }
