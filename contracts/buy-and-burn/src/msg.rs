@@ -18,22 +18,23 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     Deposit {},
     BurnProfits{},
-    SetAnchorDepositRatio{ ratio: Decimal },
-    SetAnchorDepositThreshold{ threshold: Uint128 },
-    SetAnchorWithdrawThreshold{ threshold: Uint128 },
+    UpdateAdmin{ admin: String },
+    UpdateAnchorDepositRatio{ ratio: Decimal },
+    UpdateAnchorDepositThreshold{ threshold: Uint128 },
+    UpdateAnchorWithdrawThreshold{ threshold: Uint128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    Config {},
+    Admin {},
+    Config {}
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub token_addr: Addr,
     pub pool_addr: Addr,
-    pub owner: Addr,
     pub anchor_money_market_addr: Addr,
     pub aust_addr: Addr,
     pub anchor_deposit_threshold: Uint128,

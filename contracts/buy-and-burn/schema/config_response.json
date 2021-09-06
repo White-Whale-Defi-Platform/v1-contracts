@@ -8,7 +8,6 @@
     "anchor_money_market_addr",
     "anchor_withdraw_threshold",
     "aust_addr",
-    "owner",
     "pool_addr",
     "token_addr"
   ],
@@ -26,9 +25,6 @@
       "$ref": "#/definitions/Uint128"
     },
     "aust_addr": {
-      "$ref": "#/definitions/Addr"
-    },
-    "owner": {
       "$ref": "#/definitions/Addr"
     },
     "pool_addr": {

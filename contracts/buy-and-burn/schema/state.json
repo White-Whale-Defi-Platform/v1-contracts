@@ -10,7 +10,6 @@
     "aust_addr",
     "deposits_in_uusd",
     "last_deposit_in_uusd",
-    "owner_addr",
     "whale_pool_addr",
     "whale_token_addr"
   ],
@@ -35,9 +34,6 @@
     },
     "last_deposit_in_uusd": {
       "$ref": "#/definitions/Uint128"
-    },
-    "owner_addr": {
-      "$ref": "#/definitions/CanonicalAddr"
     },
     "whale_pool_addr": {
       "$ref": "#/definitions/CanonicalAddr"

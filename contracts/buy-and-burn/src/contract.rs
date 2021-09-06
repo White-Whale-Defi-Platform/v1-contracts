@@ -5,18 +5,22 @@ use cosmwasm_std::{
 use cw20::Cw20ExecuteMsg;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::ExecuteMsg as PairExecuteMsg;
-use terraswap::querier::query_token_balance;
+use terraswap::querier::{query_balance, query_token_balance};
 use white_whale::anchor::try_deposit_to_anchor_as_submsg;
 use white_whale::msg::AnchorMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use std::str::FromStr;
+use crate::error::BurnError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE, UST_DENOM};
+use crate::state::{State, ADMIN, STATE, UST_DENOM};
 
 
 const BUY_WHALE_REPLY_ID: u64 = 1;
 const ANCHOR_DEPOSIT_REPLY_ID: u64 = 2;
 const ANCHOR_WITHDRAW_REPLY_ID: u64 = 3;
+
+
+type BurnResult = Result<Response, BurnError>;
 
 
 pub fn instantiate(
@@ -26,7 +30,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let state = State {
-        owner_addr: deps.api.addr_canonicalize(info.sender.as_str())?,
         whale_token_addr: deps.api.addr_canonicalize(&msg.whale_token_addr)?,
         whale_pool_addr: deps.api.addr_canonicalize(&msg.whale_pair_addr)?,
         anchor_money_market_addr: deps.api.addr_canonicalize(&msg.anchor_money_market_addr)?,
@@ -39,69 +42,67 @@ pub fn instantiate(
     };
 
     STATE.save(deps.storage, &state)?;
+    ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::default())
 }
 
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> BurnResult {
     match msg {
         ExecuteMsg::Deposit {} => deposit_or_burn(deps, &env, info),
         ExecuteMsg::BurnProfits {} => try_burn_profits(deps, &env),
-        ExecuteMsg::SetAnchorDepositRatio { ratio } => set_anchor_deposit_ratio(deps, info, ratio),
-        ExecuteMsg::SetAnchorDepositThreshold{ threshold } => set_anchor_deposit_threshold(deps, info, threshold),
-        ExecuteMsg::SetAnchorWithdrawThreshold{ threshold } => set_anchor_withdraw_threshold(deps, info, threshold)
+        ExecuteMsg::UpdateAdmin{ admin } => {
+            let admin_addr = deps.api.addr_validate(&admin)?;
+            Ok(ADMIN.execute_update_admin(deps, info, Some(admin_addr))?)
+        },
+        ExecuteMsg::UpdateAnchorDepositRatio { ratio } => set_anchor_deposit_ratio(deps, info, ratio),
+        ExecuteMsg::UpdateAnchorDepositThreshold{ threshold } => set_anchor_deposit_threshold(deps, info, threshold),
+        ExecuteMsg::UpdateAnchorWithdrawThreshold{ threshold } => set_anchor_withdraw_threshold(deps, info, threshold)
     }
 }
 
-pub fn set_anchor_deposit_ratio(deps: DepsMut, info: MessageInfo, ratio: Decimal) -> StdResult<Response> {
+pub fn set_anchor_deposit_ratio(deps: DepsMut, info: MessageInfo, ratio: Decimal) -> BurnResult {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     if ratio > Decimal::one() {
-        return Err(StdError::generic_err("Ratio must be in [0, 1]."));
+        return Err(BurnError::Std(StdError::generic_err("Ratio must be in [0, 1].")));
     }
+
     let mut state = STATE.load(deps.storage)?;
-    if deps.api.addr_canonicalize(&info.sender.to_string())? != state.owner_addr {
-        return Err(StdError::generic_err("Unauthorized."));
-    }
     state.anchor_deposit_ratio = ratio;
     STATE.save(deps.storage, &state)?;
     Ok(Response::default())
 }
 
-pub fn set_anchor_deposit_threshold(deps: DepsMut, info: MessageInfo, threshold: Uint128) -> StdResult<Response> {
+pub fn set_anchor_deposit_threshold(deps: DepsMut, info: MessageInfo, threshold: Uint128) -> BurnResult {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     let mut state = STATE.load(deps.storage)?;
-    if deps.api.addr_canonicalize(&info.sender.to_string())? != state.owner_addr {
-        return Err(StdError::generic_err("Unauthorized."));
-    }
     state.anchor_deposit_threshold = threshold;
     STATE.save(deps.storage, &state)?;
     Ok(Response::default())
 }
 
-pub fn set_anchor_withdraw_threshold(deps: DepsMut, info: MessageInfo, threshold: Uint128) -> StdResult<Response> {
+pub fn set_anchor_withdraw_threshold(deps: DepsMut, info: MessageInfo, threshold: Uint128) -> BurnResult {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     let mut state = STATE.load(deps.storage)?;
-    if deps.api.addr_canonicalize(&info.sender.to_string())? != state.owner_addr {
-        return Err(StdError::generic_err("Unauthorized."));
-    }
     state.anchor_withdraw_threshold = threshold;
     STATE.save(deps.storage, &state)?;
     Ok(Response::default())
 }
 
-pub fn try_buy_and_burn(deps: Deps, env: &Env) -> StdResult<Response> {
+pub fn try_buy_and_burn(deps: Deps, env: &Env) -> BurnResult {
     let state = STATE.load(deps.storage)?;
-    let ust = deps
-        .querier
-        .query_balance(&env.contract.address, UST_DENOM)?;
-    if ust.amount == Uint128::zero() {
-        return Err(StdError::generic_err("No funds to buy token with."));
+    let ust_amount = query_balance(&deps.querier, env.contract.address.clone(), UST_DENOM.to_string())?;
+    if ust_amount == Uint128::zero() {
+        return Err(BurnError::NotEnoughFunds{});
     }
     let mut offer = Asset {
         info: AssetInfo::NativeToken {
-            denom: ust.denom.clone(),
+            denom: UST_DENOM.to_string(),
         },
-        amount: ust.amount
+        amount: ust_amount
     };
     let ust = offer.deduct_tax(&deps.querier)?;
-    offer.amount = ust.amount;
+    offer.amount = ust_amount;
 
     let buy_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&state.whale_pool_addr)?.to_string(),
@@ -123,7 +124,7 @@ pub fn try_buy_and_burn(deps: Deps, env: &Env) -> StdResult<Response> {
 
 }
 
-pub fn deposit(deps: DepsMut, env: &Env) -> StdResult<Response> {
+pub fn deposit(deps: DepsMut, env: &Env) -> BurnResult {
     let mut state = STATE.load(deps.storage)?;
     let mut deposit = deps.querier.query_balance(&env.contract.address, UST_DENOM)?;
     if deposit.amount < state.anchor_deposit_threshold {
@@ -133,15 +134,16 @@ pub fn deposit(deps: DepsMut, env: &Env) -> StdResult<Response> {
     deposit.amount = deposit.amount * state.anchor_deposit_ratio;
     state.last_deposit_in_uusd = deposit.amount;
     STATE.save(deps.storage, &state)?;
-    try_deposit_to_anchor_as_submsg(deps.api.addr_humanize(&state.anchor_money_market_addr)?.to_string(), deposit, ANCHOR_DEPOSIT_REPLY_ID)
+    let response = try_deposit_to_anchor_as_submsg(deps.api.addr_humanize(&state.anchor_money_market_addr)?.to_string(), deposit, ANCHOR_DEPOSIT_REPLY_ID)?;
+    Ok(response)
 }
 
-pub fn deposit_or_burn(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> StdResult<Response> {
+pub fn deposit_or_burn(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> BurnResult {
     if msg_info.funds.len() > 1 {
-        return Err(StdError::generic_err("Two many tokens. Deposit only accepts UST."));
+        return Err(BurnError::DepositTooManyTokens{});
     }
     if msg_info.funds[0].denom != UST_DENOM {
-        return Err(StdError::generic_err(format!("Wrong denom: {}. Deposit only accepts UST.", msg_info.funds[0].denom)));
+        return Err(BurnError::DepositOnlyUST{});
     }
 
     let state = STATE.load(deps.storage)?;
@@ -162,7 +164,7 @@ pub fn get_aust_value_in_ust(deps: Deps, env: &Env) -> StdResult<Uint128> {
     Ok(aust_exchange_rate*aust_amount)
 }
 
-pub fn burn_profits(deps: DepsMut, aust_value_in_ust: Uint128, deposit_amount: Uint128) -> StdResult<Response> {
+pub fn burn_profits(deps: DepsMut, aust_value_in_ust: Uint128, deposit_amount: Uint128) -> BurnResult {
     let state = STATE.load(deps.storage)?;
     let withdraw_amount = aust_value_in_ust - state.deposits_in_uusd - deposit_amount;
     let withdraw_msg = CosmosMsg::Wasm(WasmMsg::Execute{
@@ -185,12 +187,12 @@ pub fn burn_profits(deps: DepsMut, aust_value_in_ust: Uint128, deposit_amount: U
 
 }
 
-pub fn try_burn_profits(deps: DepsMut, env: &Env) -> StdResult<Response> {
+pub fn try_burn_profits(deps: DepsMut, env: &Env) -> BurnResult {
     let state = STATE.load(deps.storage)?;
 
     let aust_value_in_ust = get_aust_value_in_ust(deps.as_ref(), env)?;
     if aust_value_in_ust < state.deposits_in_uusd + state.anchor_withdraw_threshold {
-        return Err(StdError::generic_err(format!("Not enough profits: {} - {} < {}", aust_value_in_ust, state.deposits_in_uusd, state.anchor_withdraw_threshold)));
+        return Err(BurnError::Std(StdError::generic_err(format!("Not enough profits: {} - {} < {}", aust_value_in_ust, state.deposits_in_uusd, state.anchor_withdraw_threshold))));
     }
     burn_profits(deps, aust_value_in_ust, Uint128::zero())
 }
@@ -211,7 +213,7 @@ pub fn burn_whale(deps: Deps, env: &Env) -> StdResult<CosmosMsg> {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> BurnResult {
     if msg.id == BUY_WHALE_REPLY_ID {
         return Ok(Response::default().add_message(burn_whale(deps.as_ref(), &env)?))
     }
@@ -230,6 +232,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> StdResult<Response> {
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::Admin{} => Ok(to_binary(&ADMIN.query_admin(deps)?)?),
         QueryMsg::Config{} => query_config(deps)
     }
 }
@@ -237,7 +240,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let state = STATE.load(deps.storage)?;
     to_binary(&ConfigResponse {
-        owner: deps.api.addr_humanize(&state.owner_addr)?,
         token_addr: deps.api.addr_humanize(&state.whale_token_addr)?,
         pool_addr: deps.api.addr_humanize(&state.whale_pool_addr)?,
         anchor_money_market_addr: deps.api.addr_humanize(&state.anchor_money_market_addr)?,
@@ -253,6 +255,7 @@ mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::{from_binary, Api};
+    use cw_controllers::AdminResponse;
 
     fn get_test_init_msg() -> InstantiateMsg {
         InstantiateMsg {
@@ -297,7 +300,7 @@ mod tests {
         let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_ne!(state.anchor_deposit_ratio, Decimal::percent(3u64));
-        let _res = execute(deps.as_mut(), env, info, ExecuteMsg::SetAnchorDepositRatio{ ratio: Decimal::percent(3u64) }).unwrap();
+        let _res = execute(deps.as_mut(), env, info, ExecuteMsg::UpdateAnchorDepositRatio{ ratio: Decimal::percent(3u64) }).unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.anchor_deposit_ratio, Decimal::percent(3u64));
     }
@@ -316,7 +319,7 @@ mod tests {
         let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_ne!(state.anchor_deposit_threshold, Uint128::from(3u64));
-        let _res = execute(deps.as_mut(), env, info, ExecuteMsg::SetAnchorDepositThreshold{ threshold: Uint128::from(3u64) }).unwrap();
+        let _res = execute(deps.as_mut(), env, info, ExecuteMsg::UpdateAnchorDepositThreshold{ threshold: Uint128::from(3u64) }).unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.anchor_deposit_threshold, Uint128::from(3u64));
     }
@@ -335,7 +338,7 @@ mod tests {
         let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_ne!(state.anchor_withdraw_threshold, Uint128::from(3u64));
-        let _res = execute(deps.as_mut(), env, info, ExecuteMsg::SetAnchorWithdrawThreshold{ threshold: Uint128::from(3u64) }).unwrap();
+        let _res = execute(deps.as_mut(), env, info, ExecuteMsg::UpdateAnchorWithdrawThreshold{ threshold: Uint128::from(3u64) }).unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.anchor_withdraw_threshold, Uint128::from(3u64));
     }
@@ -352,7 +355,7 @@ mod tests {
 
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
         let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
-        let res = execute(deps.as_mut(), env, info, ExecuteMsg::SetAnchorDepositRatio{ ratio: Decimal::percent(101u64) });
+        let res = execute(deps.as_mut(), env, info, ExecuteMsg::UpdateAnchorDepositRatio{ ratio: Decimal::percent(101u64) });
         match res {
             Err(_) => {},
             Ok(_) => panic!("unexpected")
@@ -375,7 +378,7 @@ mod tests {
 
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
-        let res = execute(deps.as_mut(), env, other_info, ExecuteMsg::SetAnchorDepositRatio{ ratio: Decimal::percent(3u64) });
+        let res = execute(deps.as_mut(), env, other_info, ExecuteMsg::UpdateAnchorDepositRatio{ ratio: Decimal::percent(3u64) });
         match res {
             Err(_) => {},
             Ok(_) => panic!("unexpected")
@@ -398,7 +401,7 @@ mod tests {
 
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
-        let res = execute(deps.as_mut(), env, other_info, ExecuteMsg::SetAnchorDepositThreshold{ threshold: Uint128::from(3u64) });
+        let res = execute(deps.as_mut(), env, other_info, ExecuteMsg::UpdateAnchorDepositThreshold{ threshold: Uint128::from(3u64) });
         match res {
             Err(_) => {},
             Ok(_) => panic!("unexpected")
@@ -421,7 +424,7 @@ mod tests {
 
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
         let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
-        let res = execute(deps.as_mut(), env, other_info, ExecuteMsg::SetAnchorWithdrawThreshold{ threshold: Uint128::from(3u64) });
+        let res = execute(deps.as_mut(), env, other_info, ExecuteMsg::UpdateAnchorWithdrawThreshold{ threshold: Uint128::from(3u64) });
         match res {
             Err(_) => {},
             Ok(_) => panic!("unexpected")
@@ -443,6 +446,24 @@ mod tests {
 
         let q_res: ConfigResponse =
             from_binary(&query(deps.as_ref(), env, QueryMsg::Config {}).unwrap()).unwrap();
-        assert_eq!(q_res.owner, deps.api.addr_validate("creator").unwrap())
+        assert_eq!(q_res.token_addr, deps.api.addr_validate("whale token").unwrap())
+    }
+
+    #[test]
+    fn test_admin_query() {
+        let mut deps = mock_dependencies(&[]);
+        let msg = get_test_init_msg();
+        let env = mock_env();
+        let creator_info = MessageInfo {
+            sender: deps.api.addr_validate("creator").unwrap(),
+            funds: vec![],
+        };
+
+        let init_res = instantiate(deps.as_mut(), env.clone(), creator_info.clone(), msg).unwrap();
+        assert_eq!(0, init_res.messages.len());
+
+        let q_res: AdminResponse =
+            from_binary(&query(deps.as_ref(), env, QueryMsg::Admin {}).unwrap()).unwrap();
+        assert_eq!(q_res.admin.unwrap(), deps.api.addr_validate("creator").unwrap())
     }
 }
