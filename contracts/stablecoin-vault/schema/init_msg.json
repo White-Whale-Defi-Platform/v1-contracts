@@ -6,7 +6,9 @@
     "anchor_money_market_address",
     "asset_info",
     "aust_address",
+    "burn_addr",
     "pool_address",
+    "profit_burn_ratio",
     "profit_check_address",
     "seignorage_address",
     "slippage",
@@ -22,8 +24,14 @@
     "aust_address": {
       "type": "string"
     },
+    "burn_addr": {
+      "type": "string"
+    },
     "pool_address": {
       "type": "string"
+    },
+    "profit_burn_ratio": {
+      "$ref": "#/definitions/Decimal"
     },
     "profit_check_address": {
       "type": "string"

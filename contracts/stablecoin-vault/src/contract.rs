@@ -11,14 +11,15 @@ use protobuf::Message;
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
+use white_whale::denom::{ UST_DENOM, LUNA_DENOM };
 use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg};
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::query::anchor::query_aust_exchange_rate;
-use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
+use white_whale::profit_check::msg::{HandleMsg as ProfitCheckMsg, QueryMsg as ProfitCheckQueryMsg, LastProfitResponse};
 use white_whale::anchor::try_deposit_to_anchor as try_deposit;
 
 use crate::msg::{HandleMsg, InitMsg, PoolResponse};
-use crate::state::{State, STATE, POOL_INFO, LUNA_DENOM};
+use crate::state::{State, STATE, POOL_INFO};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_market_price, from_micro};
 use crate::response::MsgInstantiateContractResponse;
@@ -26,6 +27,7 @@ use std::str::FromStr;
 
 
 const INSTANTIATE_REPLY_ID: u64 = 1;
+const TRADE_REPLY_ID: u64 = 2;
 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -43,6 +45,8 @@ pub fn instantiate(
         aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
         seignorage_address: deps.api.addr_canonicalize(&msg.seignorage_address)?,
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
+        burn_addr: deps.api.addr_canonicalize(&msg.burn_addr)?,
+        profit_burn_ratio: msg.profit_burn_ratio
     };
 
     STATE.save(deps.storage, &state)?;
@@ -265,13 +269,18 @@ pub fn try_arb_below_peg(
     }))
     .add_message(swap_msg)
     .add_message(terraswap_msg)
-    .add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
-        msg: to_binary(
-            &ProfitCheckMsg::AfterTrade{}
-        )?,
-        funds: vec![]
-    }));
+    .add_submessage(SubMsg{
+        msg: CosmosMsg::Wasm(WasmMsg::Execute{
+            contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
+            msg: to_binary(
+                &ProfitCheckMsg::AfterTrade{}
+            )?,
+            funds: vec![]
+        }),
+        gas_limit: None,
+        id: TRADE_REPLY_ID,
+        reply_on: ReplyOn::Success,
+    });
 
     Ok(response)
 }
@@ -333,13 +342,18 @@ pub fn try_arb_above_peg(
     }))
     .add_message(terraswap_msg)
     .add_message(swap_msg)
-    .add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
-        msg: to_binary(
-            &ProfitCheckMsg::AfterTrade{}
-        )?,
-        funds: vec![]
-    }));
+    .add_submessage(SubMsg{
+        msg: CosmosMsg::Wasm(WasmMsg::Execute{
+            contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
+            msg: to_binary(
+                &ProfitCheckMsg::AfterTrade{}
+            )?,
+            funds: vec![]
+        }),
+        gas_limit: None,
+        id: TRADE_REPLY_ID,
+        reply_on: ReplyOn::Success,
+    });
 
     Ok(response)
 }
@@ -347,20 +361,33 @@ pub fn try_arb_above_peg(
 /// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
-    let data = msg.result.unwrap().data.unwrap();
-    let res: MsgInstantiateContractResponse =
-        Message::parse_from_bytes(data.as_slice()).map_err(|_| {
-            StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
+    if msg.id == INSTANTIATE_REPLY_ID {
+        let data = msg.result.unwrap().data.unwrap();
+        let res: MsgInstantiateContractResponse =
+            Message::parse_from_bytes(data.as_slice()).map_err(|_| {
+                StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
+            })?;
+        let liquidity_token = res.get_contract_address();
+
+        let api = deps.api;
+        POOL_INFO.update(deps.storage, |mut meta| -> StdResult<_> {
+            meta.liquidity_token = api.addr_canonicalize(liquidity_token)?;
+            Ok(meta)
         })?;
-    let liquidity_token = res.get_contract_address();
 
-    let api = deps.api;
-    POOL_INFO.update(deps.storage, |mut meta| -> StdResult<_> {
-        meta.liquidity_token = api.addr_canonicalize(liquidity_token)?;
-        Ok(meta)
-    })?;
+        return Ok(Response::new().add_attribute("liquidity_token_addr", liquidity_token));
+    }
+    if msg.id == TRADE_REPLY_ID {
+        let state = STATE.load(deps.storage)?;
+        let response: LastProfitResponse = deps.querier.query_wasm_smart(deps.api.addr_humanize(&state.profit_check_address)?, &ProfitCheckQueryMsg::LastProfit{})?;
+        let profit_share = response.last_profit * state.profit_burn_ratio;
+        return Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send{
+            to_address: deps.api.addr_humanize(&state.burn_addr)?.to_string(),
+            amount: vec![Coin{ denom: UST_DENOM.to_string(), amount: profit_share }]
+        })));
+    }
 
-    Ok(Response::new().add_attribute("liquidity_token_addr", liquidity_token))
+    Ok(Response::default())
 }
 
 // const COMMISSION_RATE: &str = "0.003";
@@ -456,24 +483,12 @@ pub fn try_deposit_to_anchor(
     msg_info: MessageInfo,
     amount: Coin
 ) -> StdResult<Response<TerraMsgWrapper>> {
-    // if amount.denom != "uusd" {
-    //     return Err(StdError::generic_err("Wrong currency. Only UST (denom: uusd) is supported."));
-    // }
-
     let state = STATE.load(deps.storage)?;
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner {
         return Err(StdError::generic_err("Unauthorized."));
     }
 
     try_deposit(deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(), amount)
-
-    // let msg = CosmosMsg::Wasm(WasmMsg::Execute{
-    //     contract_addr: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
-    //     msg: to_binary(&AnchorMsg::DepositStable{})?,
-    //     funds: vec![amount]
-    // });
-
-    // Ok(Response::new().add_message(msg))
 }
 
 pub fn set_slippage(
@@ -540,6 +555,8 @@ mod tests {
             aust_address: "test_aust".to_string(),
             seignorage_address: "test_seignorage".to_string(),
             profit_check_address: "test_profit_check".to_string(),
+            burn_addr: "burn".to_string(),
+            profit_burn_ratio: Decimal::percent(10u64),
             asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() },
             slippage: Decimal::percent(1u64), token_code_id: 0u64
         }

@@ -1,13 +1,11 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::CanonicalAddr;
+use cosmwasm_std::{ CanonicalAddr, Decimal };
 use cw_storage_plus::Item;
 
 
 use crate::pool_info::PoolInfoRaw;
-
-pub static LUNA_DENOM: &str = "uluna";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
@@ -18,6 +16,8 @@ pub struct State {
     pub aust_address: CanonicalAddr,
     pub seignorage_address: CanonicalAddr,
     pub profit_check_address: CanonicalAddr,
+    pub burn_addr: CanonicalAddr,
+    pub profit_burn_ratio: Decimal
 }
 
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");

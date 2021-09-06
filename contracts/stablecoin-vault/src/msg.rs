@@ -20,6 +20,8 @@ pub struct InitMsg {
     pub aust_address: String,
     pub seignorage_address: String,
     pub profit_check_address: String,
+    pub burn_addr: String,
+    pub profit_burn_ratio: Decimal,
     pub asset_info: AssetInfo,
     pub slippage: Decimal,
     pub token_code_id: u64

@@ -13,7 +13,7 @@ use cosmwasm_std::testing::{MockApi, MockStorage};
 use terraswap::pair::SimulationResponse;
 use terra_cosmwasm::SwapResponse;
 
-use crate::state::LUNA_DENOM;
+use white_whale::denom::LUNA_DENOM;
 
 pub const MOCK_CONTRACT_ADDR: &str = "cosmos2contract";
 
