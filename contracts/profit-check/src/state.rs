@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{CanonicalAddr, Uint128};
 use cw_storage_plus::Item;
+use cw_controllers::Admin;
 
 
 pub static LUNA_DENOM: &str = "uluna";
@@ -10,10 +11,11 @@ pub static LUNA_DENOM: &str = "uluna";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
-    pub owner: CanonicalAddr,
     pub vault_address: CanonicalAddr,
     pub denom: String,
     pub last_balance: Uint128,
+    pub last_profit: Uint128
 }
 
 pub const CONFIG: Item<State> = Item::new("\u{0}{6}config");
+pub const ADMIN: Admin = Admin::new("admin");

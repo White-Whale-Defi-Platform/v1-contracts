@@ -5,7 +5,7 @@
   "required": [
     "denom",
     "last_balance",
-    "owner",
+    "last_profit",
     "vault_address"
   ],
   "properties": {
@@ -15,8 +15,8 @@
     "last_balance": {
       "$ref": "#/definitions/Uint128"
     },
-    "owner": {
-      "$ref": "#/definitions/CanonicalAddr"
+    "last_profit": {
+      "$ref": "#/definitions/Uint128"
     },
     "vault_address": {
       "$ref": "#/definitions/CanonicalAddr"

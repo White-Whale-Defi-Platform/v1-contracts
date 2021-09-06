@@ -17,6 +17,18 @@
     {
       "type": "object",
       "required": [
+        "last_profit"
+      ],
+      "properties": {
+        "last_profit": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "vault"
       ],
       "properties": {

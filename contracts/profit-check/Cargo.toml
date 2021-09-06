@@ -20,12 +20,15 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
+cw0 = { version = "0.8" }
 cosmwasm-std = { version = "0.16" }
 cosmwasm-storage = { version = "0.16" }
+cw-controllers = { version = "0.8" }
 cw-storage-plus = { version = "0.8" }
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"
+thiserror = { version = "1.0.21" }
 white-whale = { version = "1.0.0", path = "../../packages/white_whale" }
 
 [dev-dependencies]

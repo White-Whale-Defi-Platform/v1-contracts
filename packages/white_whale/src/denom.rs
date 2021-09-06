@@ -1,0 +1,1 @@
+pub const UST_DENOM: &str = "uusd";

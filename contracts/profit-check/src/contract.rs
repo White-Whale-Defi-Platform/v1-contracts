@@ -4,8 +4,13 @@ use cosmwasm_std::{ entry_point,
 };
 use terraswap::querier::{query_balance};
 
-use white_whale::profit_check::msg::{HandleMsg, InitMsg, QueryMsg, LastBalanceResponse, VaultResponse};
-use crate::state::{CONFIG, State};
+use white_whale::profit_check::msg::{HandleMsg, InitMsg, QueryMsg, LastBalanceResponse, LastProfitResponse, VaultResponse};
+use crate::error::ProfitCheckError;
+use crate::state::{CONFIG, State, ADMIN};
+
+
+type ProfitCheckResult = Result<Response, ProfitCheckError>;
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -15,13 +20,14 @@ pub fn instantiate(
     msg: InitMsg,
 ) -> StdResult<Response> {
     let state = State {
-        owner: deps.api.addr_canonicalize(&info.sender.to_string())?,
         vault_address: deps.api.addr_canonicalize(&msg.vault_address.to_string())?,
         denom: msg.denom,
-        last_balance: Uint128::zero()
+        last_balance: Uint128::zero(),
+        last_profit: Uint128::zero()
     };
 
     CONFIG.save(deps.storage, &state)?;
+    ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::default())
 }
@@ -32,7 +38,7 @@ pub fn execute(
     _env: Env,
     info: MessageInfo,
     msg: HandleMsg,
-) -> StdResult<Response> {
+) -> ProfitCheckResult {
     match msg {
         HandleMsg::AfterTrade{} => after_trade(deps, info),
         HandleMsg::BeforeTrade{} => before_trade(deps, info),
@@ -43,13 +49,13 @@ pub fn execute(
 pub fn before_trade(
     deps: DepsMut,
     info: MessageInfo,
-) -> StdResult<Response> {
+) -> ProfitCheckResult {
     let mut conf = CONFIG.load(deps.storage)?;
     if deps.api.addr_canonicalize(&info.sender.to_string())? != conf.vault_address {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
-
+    conf.last_profit = Uint128::zero();
     conf.last_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
     CONFIG.save(deps.storage, &conf)?;
 
@@ -59,17 +65,20 @@ pub fn before_trade(
 pub fn after_trade(
     deps: DepsMut,
     info: MessageInfo,
-) -> StdResult<Response> {
-    let conf = CONFIG.load(deps.storage)?;
+) -> ProfitCheckResult {
+    let mut conf = CONFIG.load(deps.storage)?;
     if deps.api.addr_canonicalize(&info.sender.to_string())? != conf.vault_address {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
     let balance = query_balance(&deps.querier, info.sender, conf.denom)?;
 
     if balance < conf.last_balance {
-        return Err(StdError::generic_err("Cancel losing trade."));
+        return Err(ProfitCheckError::CancelLosingTrade{});
     }
+
+    conf.last_profit = balance - conf.last_balance;
+    conf.last_balance = Uint128::zero();
 
     Ok(Response::default())
 }
@@ -78,11 +87,10 @@ pub fn set_vault_address(
     deps: DepsMut,
     info: MessageInfo,
     vault_address: String
-) -> StdResult<Response> {
+) -> ProfitCheckResult {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
     let mut conf = CONFIG.load(deps.storage)?;
-    if deps.api.addr_canonicalize(&info.sender.to_string())? != conf.owner {
-        return Err(StdError::generic_err("Unauthorized."));
-    }
     conf.vault_address = deps.api.addr_canonicalize(&vault_address)?;
     CONFIG.save(deps.storage, &conf)?;
 
@@ -93,8 +101,14 @@ pub fn set_vault_address(
 pub fn query(deps:Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::LastBalance{} => to_binary(&try_query_last_balance(deps)?),
+        QueryMsg::LastProfit{} => to_binary(&try_query_last_profit(deps)?),
         QueryMsg::Vault{} => to_binary(&try_query_vault_address(deps)?),
     }
+}
+
+pub fn try_query_last_profit(deps: Deps) -> StdResult<LastProfitResponse> {
+    let conf = CONFIG.load(deps.storage)?;
+    Ok(LastProfitResponse{ last_profit: conf.last_profit })
 }
 
 pub fn try_query_last_balance(deps: Deps) -> StdResult<LastBalanceResponse> {
