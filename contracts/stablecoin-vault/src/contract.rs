@@ -547,7 +547,8 @@ pub fn try_query_pool(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_env};
+    use cosmwasm_std::{coins};
+    use cosmwasm_std::testing::{mock_env, mock_info};
     use crate::testing::{mock_dependencies};
     use cosmwasm_std::{Uint128, Api};
     use terra_cosmwasm::TerraRoute;
@@ -599,6 +600,26 @@ mod tests {
         let _res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
         let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
         assert_eq!(info.slippage, Decimal::one());
+    }
+
+    #[test]
+    fn try_deposit_and_withdraw_liquidity() {
+        let mut deps = mock_dependencies(&[]);
+
+        let msg = get_test_init_msg();
+        let env = mock_env();
+        let msg_info = mock_info("creator", &coins(100u128, UST_DENOM));
+
+        let _res = instantiate(deps.as_mut(), env.clone(), msg_info.clone(), msg).unwrap();
+
+        let asset = Asset{info : AssetInfo::NativeToken{ denom: "uusd".to_string() }, amount : Uint128::from(100u64), };
+
+        let msg = HandleMsg::ProvideLiquidity {
+            asset: asset,
+        };
+
+        let res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
+        assert_eq!(1, res.messages.len());
     }
 
     #[test]
