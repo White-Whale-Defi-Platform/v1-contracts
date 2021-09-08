@@ -18,6 +18,7 @@ use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::profit_check::msg::{HandleMsg as ProfitCheckMsg, QueryMsg as ProfitCheckQueryMsg, LastProfitResponse};
 use white_whale::anchor::try_deposit_to_anchor as try_deposit;
 
+use crate::error::StableVaultError;
 use crate::msg::{HandleMsg, InitMsg, PoolResponse};
 use crate::state::{State, STATE, POOL_INFO};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
@@ -28,6 +29,8 @@ use std::str::FromStr;
 
 const INSTANTIATE_REPLY_ID: u64 = 1;
 const TRADE_REPLY_ID: u64 = 2;
+
+type VaultResult = Result<Response<TerraMsgWrapper>, StableVaultError>;
 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -94,7 +97,7 @@ pub fn execute(
     env: Env,
     info: MessageInfo,
     msg: HandleMsg,
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
     match msg {
         HandleMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         HandleMsg::AbovePeg { amount, uaust_withdraw_amount } => try_arb_above_peg(deps, env, info, amount, uaust_withdraw_amount),
@@ -109,7 +112,7 @@ pub fn try_withdraw_liquidity(
     env: Env,
     sender: String,
     amount: Uint128,
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
 
     let total_share: Uint128 = query_supply(&deps.querier, deps.api.addr_humanize(&info.liquidity_token)?)?;
@@ -175,17 +178,17 @@ pub fn receive_cw20(
     env: Env,
     msg_info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
         match from_binary(&cw20_msg.msg)? {
             Cw20HookMsg::Swap {
                 ..
             } => {
-                Err(StdError::generic_err("no swaps can be performed in this pool"))
+                Err(StableVaultError::NoSwapAvailabe{})
             }
             Cw20HookMsg::WithdrawLiquidity {} => {
                 let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
                 if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != info.liquidity_token {
-                    return Err(StdError::generic_err("Unauthorized."));
+                    return Err(StableVaultError::Unauthorized{});
                 }
 
                 try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
@@ -220,10 +223,10 @@ pub fn try_arb_below_peg(
     msg_info: MessageInfo,
     amount: Coin,
     uaust_withdraw_amount: Uint128
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(StableVaultError::Unauthorized{});
     }
 
     let ask_denom = LUNA_DENOM.to_string();
@@ -291,10 +294,10 @@ pub fn try_arb_above_peg(
     msg_info: MessageInfo,
     amount: Coin,
     uaust_withdraw_amount: Uint128
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(StableVaultError::Unauthorized{});
     }
 
     let ask_denom = LUNA_DENOM.to_string();
@@ -357,6 +360,7 @@ pub fn try_arb_above_peg(
 
     Ok(response)
 }
+
 
 /// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -451,7 +455,7 @@ pub fn try_provide_liquidity(
     deps: DepsMut,
     msg_info: MessageInfo,
     asset: Asset
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
     asset.assert_sent_native_token_balance(&msg_info)?;
 
     let deposit: Uint128 = asset.amount;
@@ -482,23 +486,24 @@ pub fn try_deposit_to_anchor(
     deps: DepsMut,
     msg_info: MessageInfo,
     amount: Coin
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(StableVaultError::Unauthorized{});
     }
 
-    try_deposit(deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(), amount)
+    let msg = try_deposit(deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(), amount)?;
+    Ok(msg)
 }
 
 pub fn set_slippage(
     deps: DepsMut,
     msg_info: MessageInfo,
     slippage: Decimal
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(StableVaultError::Unauthorized{});
     }
     let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     info.slippage = slippage;
