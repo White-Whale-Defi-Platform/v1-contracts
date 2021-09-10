@@ -547,8 +547,7 @@ pub fn try_query_pool(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::{coins};
-    use cosmwasm_std::testing::{mock_env, mock_info};
+    use cosmwasm_std::testing::{mock_env};
     use crate::testing::{mock_dependencies};
     use cosmwasm_std::{Uint128, Api};
     use terra_cosmwasm::TerraRoute;
