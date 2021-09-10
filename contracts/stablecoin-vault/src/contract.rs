@@ -603,26 +603,6 @@ mod tests {
     }
 
     #[test]
-    fn try_deposit_and_withdraw_liquidity() {
-        let mut deps = mock_dependencies(&[]);
-
-        let msg = get_test_init_msg();
-        let env = mock_env();
-        let msg_info = mock_info("creator", &coins(100u128, UST_DENOM));
-
-        let _res = instantiate(deps.as_mut(), env.clone(), msg_info.clone(), msg).unwrap();
-
-        let asset = Asset{info : AssetInfo::NativeToken{ denom: "uusd".to_string() }, amount : Uint128::from(100u64), };
-
-        let msg = HandleMsg::ProvideLiquidity {
-            asset: asset,
-        };
-
-        let res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
-        assert_eq!(1, res.messages.len());
-    }
-
-    #[test]
     fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_msg() {
         let mut deps = mock_dependencies(&[]);
 
