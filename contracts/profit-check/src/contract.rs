@@ -71,7 +71,7 @@ pub fn after_trade(
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let balance = query_balance(&deps.querier, info.sender, conf.denom)?;
+    let balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
 
     if balance < conf.last_balance {
         return Err(ProfitCheckError::CancelLosingTrade{});
@@ -79,6 +79,7 @@ pub fn after_trade(
 
     conf.last_profit = balance - conf.last_balance;
     conf.last_balance = Uint128::zero();
+    CONFIG.save(deps.storage, &conf)?;
 
     Ok(Response::default())
 }
