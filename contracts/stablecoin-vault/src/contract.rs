@@ -11,6 +11,7 @@ use protobuf::Message;
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
+use white_whale::burn::msg::ExecuteMsg as BurnMsg;
 use white_whale::denom::{ UST_DENOM, LUNA_DENOM };
 use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg};
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
@@ -102,6 +103,7 @@ pub fn execute(
         HandleMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, info, asset),
         HandleMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, info, amount),
         HandleMsg::SetSlippage{ slippage } => set_slippage(deps, info, slippage),
+        HandleMsg::SetBurnAddress{ burn_addr } => set_burn_addr(deps, info, burn_addr)
     }
 }
 pub fn try_withdraw_liquidity(
@@ -305,7 +307,7 @@ pub fn try_arb_above_peg(
     let slippage = info.slippage;
 
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.pool_address.to_string(),
+        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
         funds: vec![amount.clone()],
         msg: to_binary(&create_terraswap_msg(amount.clone(), luna_pool_price, Some(slippage)))?,
     });
@@ -381,9 +383,13 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         let state = STATE.load(deps.storage)?;
         let response: LastProfitResponse = deps.querier.query_wasm_smart(deps.api.addr_humanize(&state.profit_check_address)?, &ProfitCheckQueryMsg::LastProfit{})?;
         let profit_share = response.last_profit * state.profit_burn_ratio;
-        return Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send{
-            to_address: deps.api.addr_humanize(&state.burn_addr)?.to_string(),
-            amount: vec![Coin{ denom: UST_DENOM.to_string(), amount: profit_share }]
+        if profit_share == Uint128::zero() {
+            return Err(StdError::generic_err(format!("profit share {} {} {}", profit_share, response.last_profit, state.profit_burn_ratio)));
+        }
+        return Ok(Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute{
+            contract_addr: deps.api.addr_humanize(&state.burn_addr)?.to_string(),
+            funds: vec![Coin{ denom: UST_DENOM.to_string(), amount: profit_share }],
+            msg: to_binary(&BurnMsg::Deposit{})?
         })));
     }
 
@@ -503,7 +509,22 @@ pub fn set_slippage(
     let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     info.slippage = slippage;
     POOL_INFO.save(deps.storage, &info)?;
-    Ok(Response::new())
+    Ok(Response::default())
+}
+
+pub fn set_burn_addr(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    burn_addr: String
+) -> StdResult<Response<TerraMsgWrapper>> {
+    let state = STATE.load(deps.storage)?;
+    if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner {
+        return Err(StdError::generic_err("Unauthorized."));
+    }
+    let mut state = STATE.load(deps.storage)?;
+    state.burn_addr = deps.api.addr_canonicalize(&burn_addr)?;
+    STATE.save(deps.storage, &state)?;
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
