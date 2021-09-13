@@ -1,68 +1,30 @@
 
-use super::*;
+use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::contract::{execute, instantiate, query};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{coins, from_binary};
+use cosmwasm_std::{from_binary, Uint128};
+
+
 
 #[test]
 fn proper_initialization() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg { count: 17 };
-    let info = mock_info("creator", &coins(1000, "earth"));
+    let msg = InstantiateMsg {
+        gov_contract: "gov".to_string(),
+        whale_token: "whale".to_string(),
+        spend_limit: Uint128::from(1000000u128),
+    };
+
+    let info = mock_info("addr0000", &[]);
 
     // we can just call .unwrap() to assert this was a success
-    let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-    assert_eq!(0, res.messages.len());
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     // it worked, let's query the state
-    let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    let value: CountResponse = from_binary(&res).unwrap();
-    assert_eq!(17, value.count);
-}
-
-#[test]
-fn increment() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
-
-    let msg = InstantiateMsg { count: 17 };
-    let info = mock_info("creator", &coins(2, "token"));
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    // beneficiary can release it
-    let info = mock_info("anyone", &coins(2, "token"));
-    let msg = ExecuteMsg::Increment {};
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    // should increase counter by 1
-    let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    let value: CountResponse = from_binary(&res).unwrap();
-    assert_eq!(18, value.count);
-}
-
-#[test]
-fn reset() {
-    let mut deps = mock_dependencies(&coins(2, "token"));
-
-    let msg = InstantiateMsg { count: 17 };
-    let info = mock_info("creator", &coins(2, "token"));
-    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
-
-    // beneficiary can release it
-    let unauth_info = mock_info("anyone", &coins(2, "token"));
-    let msg = ExecuteMsg::Reset { count: 5 };
-    let res = execute(deps.as_mut(), mock_env(), unauth_info, msg);
-    match res {
-        Err(ContractError::Unauthorized {}) => {}
-        _ => panic!("Must return unauthorized error"),
-    }
-
-    // only the original creator can reset the counter
-    let auth_info = mock_info("creator", &coins(2, "token"));
-    let msg = ExecuteMsg::Reset { count: 5 };
-    let _res = execute(deps.as_mut(), mock_env(), auth_info, msg).unwrap();
-
-    // should now be 5
-    let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
-    let value: CountResponse = from_binary(&res).unwrap();
-    assert_eq!(5, value.count);
+    let config: ConfigResponse =
+        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap()).unwrap();
+    assert_eq!("gov", config.gov_contract.as_str());
+    assert_eq!("whale", config.whale_token.as_str());
+    assert_eq!(Uint128::from(1000000u128), config.spend_limit);
 }
