@@ -497,7 +497,7 @@ pub fn try_deposit_to_anchor(
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner {
         return Err(StableVaultError::Unauthorized{});
     }
-    
+
     Ok(try_deposit(deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(), amount)?)
 }
 
@@ -520,10 +520,10 @@ pub fn set_burn_addr(
     deps: DepsMut,
     msg_info: MessageInfo,
     burn_addr: String
-) -> StdResult<Response<TerraMsgWrapper>> {
+) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner {
-        return Err(StdError::generic_err("Unauthorized."));
+        return Err(StableVaultError::Unauthorized{});
     }
     let mut state = STATE.load(deps.storage)?;
     state.burn_addr = deps.api.addr_canonicalize(&burn_addr)?;
