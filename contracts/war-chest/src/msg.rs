@@ -24,6 +24,8 @@ pub enum QueryMsg {
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CountResponse {
-    pub count: i32,
+pub struct ConfigResponse {
+    pub gov_contract: String,
+    pub anchor_token: String,
+    pub spend_limit: Uint128,
 }
