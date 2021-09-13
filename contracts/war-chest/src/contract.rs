@@ -1,18 +1,21 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, WasmMsg};
-use cw2::set_contract_version;
-use cw_controllers::Admin;
+use cosmwasm_std::{
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    WasmMsg,
+};
+// use cw2::set_contract_version;
+// use cw_controllers::Admin;
 
 use cw20::Cw20ExecuteMsg;
 
 use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{Config, read_config, store_config, ADMIN};
+use crate::state::{read_config, store_config, Config, ADMIN};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:war-chest";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+// const CONTRACT_NAME: &str = "crates.io:war-chest";
+// const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -33,6 +36,10 @@ pub fn instantiate(
 
     Ok(Response::default())
 }
+
+// Routers; here is a separate router which handles Execution of functions on the contract or performs a contract Query
+// Each router function defines a number of handlers using Rust's pattern matching to
+// designated how each ExecutionMsg or QueryMsg will be handled.
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
@@ -65,9 +72,11 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(resp)
 }
 
+// ExecutionMsg handlers
+
 /// Spend
 /// Owner can execute spend operation to send
-/// `amount` of WHALE token to `recipient` for community purpose
+/// `amount` of WHALE token to a `recipient` which could be another contract
 pub fn spend(
     deps: DepsMut,
     info: MessageInfo,

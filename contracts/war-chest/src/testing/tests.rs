@@ -1,12 +1,11 @@
-
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::contract::{execute, instantiate, query};
-use crate::error::{ContractError};
+use crate::error::ContractError;
+use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary, to_binary, Api, CosmosMsg, MessageInfo, SubMsg, Uint128, StdError, WasmMsg};
+use cosmwasm_std::{
+    from_binary, to_binary, Api, CosmosMsg, MessageInfo, SubMsg, Uint128, WasmMsg,
+};
 use cw20::Cw20ExecuteMsg;
-
-
 
 #[test]
 fn proper_initialization() {
@@ -30,7 +29,6 @@ fn proper_initialization() {
     assert_eq!("whale", config.whale_token.as_str());
     assert_eq!(Uint128::from(1_000_000u128), config.spend_limit);
 }
-
 
 #[test]
 fn update_config() {
@@ -60,7 +58,7 @@ fn update_config() {
     let info = mock_info("addr0000", &[]);
     match execute(deps.as_mut(), mock_env(), info, msg.clone()) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::Unauthorized{ .. }) => (),
+        Err(ContractError::Unauthorized { .. }) => (),
         Err(_) => panic!("Unknown error"),
     }
 
@@ -108,7 +106,7 @@ fn test_spend() {
 
     match execute(deps.as_mut(), mock_env(), info, msg) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::Unauthorized{ .. }) => (),
+        Err(ContractError::Unauthorized { .. }) => (),
         Err(_) => panic!("Unknown error"),
     }
 
@@ -121,7 +119,7 @@ fn test_spend() {
     let info = mock_info("gov", &[]);
     match execute(deps.as_mut(), mock_env(), info, msg) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::TooMuchSpend{ .. }) => (),
+        Err(ContractError::TooMuchSpend { .. }) => (),
         Err(_) => panic!("Unknown error"),
     }
 

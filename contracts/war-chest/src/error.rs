@@ -1,6 +1,6 @@
 use cosmwasm_std::StdError;
-use thiserror::Error;
 use cw_controllers::AdminError;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum ContractError {

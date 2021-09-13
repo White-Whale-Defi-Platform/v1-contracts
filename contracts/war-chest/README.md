@@ -1,3 +1,17 @@
+# War Chest contract 
+
+The War Chest receives all the transaction
+fees from the platform in UST, and will be bootstrapped with initial capital from the
+project Pre-Sale.
+The Capital in the War Chest will be diversified among several Terra Assets. Users
+will be able to stake WHALE tokens into the War Chest. Staking WHALE entitles
+depositors to a portion of the yield of the vault. The War Chest will run arb bots that monitor all of the assets in the Terra ecosystem simultaneously for arbitrage opportunities. When an opportunity is detected, capital is immediately deployed to that asset to execute the arbitrage. 
+
+## References
+
+This repository is based both on the examples set out by the [Mirror Protocol](), [Anchor Protocol]() and their respective community contracts.
+
+
 # CosmWasm Starter Pack
 
 This is a template to build smart contracts in Rust to run inside a

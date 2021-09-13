@@ -10,7 +10,7 @@ static KEY_CONFIG: &[u8] = b"config";
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub gov_contract: CanonicalAddr, // anchor gov address
-    pub whale_token: CanonicalAddr, // anchor token address
+    pub whale_token: CanonicalAddr,  // anchor token address
     pub spend_limit: Uint128,        // spend limit per each `spend` request
 }
 
