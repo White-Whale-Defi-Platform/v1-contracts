@@ -491,9 +491,8 @@ pub fn try_deposit_to_anchor(
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.owner {
         return Err(StableVaultError::Unauthorized{});
     }
-
-    let msg = try_deposit(deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(), amount)?;
-    Ok(msg)
+    
+    Ok(try_deposit(deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(), amount)?)
 }
 
 pub fn set_slippage(
