@@ -38,7 +38,8 @@ pub enum HandleMsg {
         asset: Asset
     },
     AnchorDeposit { amount: Coin },
-    SetSlippage { slippage: Decimal }
+    SetSlippage { slippage: Decimal },
+    SetBurnAddress{ burn_addr: String }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
