@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub count: i32,
+    pub gov_contract: String, // anchor gov contract
+    pub whale_token: String, // anchor token address
+    pub spend_limit: Uint128, // spend limit per each `spend` request
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

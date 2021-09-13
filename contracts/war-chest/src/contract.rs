@@ -5,7 +5,7 @@ use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE};
+use crate::state::{Config, read_config, store_config};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:war-chest";
@@ -18,17 +18,16 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let state = State {
-        count: msg.count,
-        owner: info.sender.clone(),
-    };
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &state)?;
+    store_config(
+        deps.storage,
+        &Config {
+            gov_contract: deps.api.addr_canonicalize(&msg.gov_contract)?,
+            whale_token: deps.api.addr_canonicalize(&msg.whale_token)?,
+            spend_limit: msg.spend_limit,
+        },
+    )?;
 
-    Ok(Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("owner", info.sender)
-        .add_attribute("count", msg.count.to_string()))
+    Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

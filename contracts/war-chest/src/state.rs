@@ -1,13 +1,22 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Addr;
-use cw_storage_plus::Item;
+use cosmwasm_std::{CanonicalAddr, StdResult, Storage, Uint128};
+use cw_storage_plus::{singleton, singleton_read};
+
+static KEY_CONFIG: &[u8] = b"config";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct State {
-    pub count: i32,
-    pub owner: Addr,
+pub struct Config {
+    pub gov_contract: CanonicalAddr, // anchor gov address
+    pub whale_token: CanonicalAddr, // anchor token address
+    pub spend_limit: Uint128,        // spend limit per each `spend` request
 }
 
-pub const STATE: Item<State> = Item::new("state");
+pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {
+    singleton(storage, KEY_CONFIG).save(config)
+}
+
+pub fn read_config(storage: &dyn Storage) -> StdResult<Config> {
+    singleton_read(storage, KEY_CONFIG).load()
+}
