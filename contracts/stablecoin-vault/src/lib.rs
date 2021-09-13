@@ -4,6 +4,7 @@ pub mod msg;
 pub mod querier;
 pub mod response;
 pub mod state;
+pub mod error;
 
 
 #[cfg(not(target_arch = "wasm32"))]
