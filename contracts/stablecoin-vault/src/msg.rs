@@ -5,14 +5,6 @@ use terraswap::asset::{Asset, AssetInfo};
 use cw20::Cw20ReceiveMsg;
 
 
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// pub struct AssertMinimumReceive {
-//     pub asset_info: AssetInfo,
-//     pub prev_balance: Uint128,
-//     pub minimum_receive: Uint128,
-//     pub receiver: Addr,
-// }
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
     pub pool_address: String,
@@ -24,7 +16,8 @@ pub struct InitMsg {
     pub profit_burn_ratio: Decimal,
     pub asset_info: AssetInfo,
     pub slippage: Decimal,
-    pub token_code_id: u64
+    pub token_code_id: u64,
+    pub denom: String
 }
 
 

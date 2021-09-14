@@ -13,6 +13,7 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
 use white_whale::burn::msg::ExecuteMsg as BurnMsg;
 use white_whale::denom::{ UST_DENOM, LUNA_DENOM };
+use white_whale::deposit_info::DepositInfo;
 use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg};
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::query::anchor::query_aust_exchange_rate;
@@ -50,7 +51,8 @@ pub fn instantiate(
         seignorage_address: deps.api.addr_canonicalize(&msg.seignorage_address)?,
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
         burn_addr: deps.api.addr_canonicalize(&msg.burn_addr)?,
-        profit_burn_ratio: msg.profit_burn_ratio
+        profit_burn_ratio: msg.profit_burn_ratio,
+        deposit_info: DepositInfo{ asset_info: AssetInfo::NativeToken{ denom: msg.denom } }
     };
 
     STATE.save(deps.storage, &state)?;
@@ -462,6 +464,7 @@ pub fn try_provide_liquidity(
     msg_info: MessageInfo,
     asset: Asset
 ) -> VaultResult {
+    STATE.load(deps.storage)?.deposit_info.assert(&asset.info)?;
     asset.assert_sent_native_token_balance(&msg_info)?;
 
     let deposit: Uint128 = asset.amount;
@@ -583,7 +586,8 @@ mod tests {
             burn_addr: "burn".to_string(),
             profit_burn_ratio: Decimal::percent(10u64),
             asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() },
-            slippage: Decimal::percent(1u64), token_code_id: 0u64
+            slippage: Decimal::percent(1u64), token_code_id: 0u64,
+            denom: "uusd".to_string()
         }
     }
 
