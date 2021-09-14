@@ -76,7 +76,7 @@ fn validate_threshold(threshold: Decimal) -> StdResult<()> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -96,7 +96,7 @@ pub fn instantiate(
     };
 
     let state = State {
-        contract_addr: deps.api.addr_canonicalize(_env.contract.address.as_str())?,
+        contract_addr: deps.api.addr_canonicalize(env.contract.address.as_str())?,
         poll_count: 0,
         total_share: Uint128::zero(),
         total_deposit: Uint128::zero(),
