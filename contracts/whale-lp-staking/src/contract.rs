@@ -5,7 +5,7 @@ use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE};
+use crate::state::{State, STATE, read_config, store_config};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:whale-lp-staking";
@@ -18,7 +18,17 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    
+
+    store_config(
+        &mut deps.storage,
+        &Config {
+            whale_token: deps.api.canonical_address(&msg.whale_token)?,
+            staking_token: deps.api.canonical_address(&msg.staking_token)?,
+            distribution_schedule: msg.distribution_schedule,
+        },
+    )?;
+
+    Ok(InitResponse::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
