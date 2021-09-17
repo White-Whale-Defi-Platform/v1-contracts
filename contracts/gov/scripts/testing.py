@@ -54,11 +54,12 @@ def unstake_all(deployer: Deployer):
     print(result)
 
 def vote(deployer: Deployer, poll_id: int):
+    amount = get_staked_amount(deployer)
     result = deployer.execute_contract(CONTRACT_ADDRESS, {
     "cast_vote": {
         "poll_id": poll_id,
         "vote": "yes",
-        "amount": "100000"
+        "amount": str(amount),
         }
     })
     print(result)
@@ -123,16 +124,16 @@ def create_poll(deployer: Deployer):
     print(result)
 
 client = LCDClient(url="https://bombay-lcd.terra.dev", chain_id="bombay-10", gas_prices=Coins(requests.get("https://bombay-fcd.terra.dev/v1/txs/gas_prices").json()))
-mnemonic = ""
+mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 wallet = Wallet(lcd=client, key=MnemonicKey(mnemonic))
 std_fee = StdFee(4000000, "1500000uusd")
 deployer = Deployer(client=client, wallet=wallet, fee=std_fee)
 whale_pair_addr = "terra1tc4dertggfyz9qye4ymptneqxlye2dpgfxfrhf"
 whale_token_addr = "terra1gwmn9h9cyp76ea2ce0djrhn9dpwmjhy3hepq50"
 
-#stake(deployer, amount=50000000)
-#print(str(get_staked_amount(deployer)))
-vote(deployer, 6)
+# stake(deployer, amount=50000000)
+# print(str(get_staked_amount(deployer)))
+# vote(deployer, 6)
 # expire_poll(client, 3)
 # end_poll(client, 3)
 query_poll(client, 6)
@@ -141,9 +142,10 @@ query_poll(client, 6)
 
 
 
-# result = client.wasm.contract_query(contract_address, {
-# "config": {},
-# })
+result = client.wasm.contract_query(CONTRACT_ADDRESS, {
+"state": {},
+})
+print(result)
 
 # SEND GGY
 # msg = MsgExecuteContract(
