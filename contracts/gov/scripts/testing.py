@@ -9,12 +9,9 @@ sys.path.append(pathlib.Path(__file__).parent.resolve())
 
 from terra_sdk.client.lcd import LCDClient, Wallet
 from terra_sdk.key.mnemonic import MnemonicKey
-from terra_sdk.key.key import Key
-
 from terra_sdk.core import Coins
 from terra_sdk.core.auth import StdFee
 from white_whale.deploy import Deployer
-from terra_sdk.core.wasm import MsgExecuteContract
 
 import pathlib
 import sys
