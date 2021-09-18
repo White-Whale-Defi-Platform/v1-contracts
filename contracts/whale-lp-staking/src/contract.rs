@@ -48,6 +48,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
     }
 }
 
@@ -55,7 +56,10 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
+        QueryMsg::StakerInfo {
+            staker,
+            block_height,
+        } => to_binary(&query_staker_info(deps, staker, block_height)?),
     }
 }
 
@@ -107,6 +111,30 @@ pub fn bond(deps: DepsMut, env: Env, sender_addr: Addr, amount: Uint128) -> StdR
         ("owner", sender_addr.as_str()),
         ("amount", amount.to_string().as_str()),
     ]))
+}
+
+pub fn query_staker_info(
+    deps: Deps,
+    staker: String,
+    block_height: Option<u64>,
+) -> StdResult<StakerInfoResponse> {
+    let staker_raw = deps.api.addr_canonicalize(&staker)?;
+
+    let mut staker_info: StakerInfo = read_staker_info(deps.storage, &staker_raw)?;
+    if let Some(block_height) = block_height {
+        let config = read_config(deps.storage)?;
+        let mut state = read_state(deps.storage)?;
+
+        compute_reward(&config, &mut state, block_height);
+        compute_staker_reward(&state, &mut staker_info)?;
+    }
+
+    Ok(StakerInfoResponse {
+        staker,
+        reward_index: staker_info.reward_index,
+        bond_amount: staker_info.bond_amount,
+        pending_reward: staker_info.pending_reward,
+    })
 }
 
 

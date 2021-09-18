@@ -11,19 +11,35 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Increment {},
-    Reset { count: i32 },
+    Receive(Cw20ReceiveMsg),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw20HookMsg {
+    Bond {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // GetCount returns the current count as a json-encoded number
-    GetCount {},
+    StakerInfo {
+        staker: String,
+        block_height: Option<u64>,
+    },
 }
 
 // We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CountResponse {
     pub count: i32,
+}
+
+// We define a custom struct for each query response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct StakerInfoResponse {
+    pub staker: String,
+    pub reward_index: Decimal,
+    pub bond_amount: Uint128,
+    pub pending_reward: Uint128,
 }
