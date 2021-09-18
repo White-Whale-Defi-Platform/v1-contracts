@@ -55,7 +55,58 @@ pub fn execute(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
     }
+}
+
+/// handler function invoked when the governance contract receives
+/// a transaction. This is akin to a payable function in Solidity
+pub fn receive_cw20(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    cw20_msg: Cw20ReceiveMsg,
+) -> StdResult<Response> {
+    let config: Config = read_config(deps.storage)?;
+
+    match from_binary(&cw20_msg.msg) {
+        Ok(Cw20HookMsg::Bond {}) => {
+            // only staking token contract can execute this message
+            if config.staking_token != deps.api.addr_canonicalize(info.sender.as_str())? {
+                return Err(StdError::generic_err("unauthorized"));
+            }
+
+            let cw20_sender = deps.api.addr_validate(&cw20_msg.sender)?;
+            bond(deps, env, cw20_sender, cw20_msg.amount)
+        }
+        Err(_) => Err(StdError::generic_err("data should be given")),
+    }
+}
+
+/// bond is the handler function allowing a user to send tokens to the staking contract in an attempt to bond them
+pub fn bond(deps: DepsMut, env: Env, sender_addr: Addr, amount: Uint128) -> StdResult<Response> {
+    let sender_addr_raw: CanonicalAddr = deps.api.addr_canonicalize(sender_addr.as_str())?;
+
+    let config: Config = read_config(deps.storage)?;
+    let mut state: State = read_state(deps.storage)?;
+    let mut staker_info: StakerInfo = read_staker_info(deps.storage, &sender_addr_raw)?;
+
+    // Compute global reward & staker reward
+    compute_reward(&config, &mut state, env.block.height);
+    compute_staker_reward(&state, &mut staker_info)?;
+
+    // Increase bond_amount
+    increase_bond_amount(&mut state, &mut staker_info, amount);
+
+    // Store updated state with staker's staker_info
+    store_staker_info(deps.storage, &sender_addr_raw, &staker_info)?;
+    store_state(deps.storage, &state)?;
+
+    Ok(Response::new().add_attributes(vec![
+        ("action", "bond"),
+        ("owner", sender_addr.as_str()),
+        ("amount", amount.to_string().as_str()),
+    ]))
 }
 
 
