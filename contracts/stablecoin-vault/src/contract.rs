@@ -220,6 +220,31 @@ pub fn get_slippage_ratio(slippage: Decimal) -> StdResult<Decimal> {
     Ok(Decimal::from_ratio(Uint128::from(100u64) - Uint128::from(100u64) * slippage, Uint128::from(100u64)))
 }
 
+pub fn add_profit_check(
+    deps: Deps,
+    response: Response<TerraMsgWrapper>,
+    first_msg: CosmosMsg<TerraMsgWrapper>,
+    second_msg: CosmosMsg<TerraMsgWrapper>
+) -> VaultResult {
+    let state = STATE.load(deps.storage)?;
+
+    Ok(response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
+        msg: to_binary(
+            &ProfitCheckMsg::BeforeTrade{}
+        )?,
+        funds: vec![]
+    }))
+    .add_message(first_msg)
+    .add_message(second_msg)
+    .add_message(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
+        msg: to_binary(
+            &ProfitCheckMsg::AfterTrade{}
+        )?,
+        funds: vec![]
+    })))
+}
 
 pub fn try_arb_below_peg(
     deps: DepsMut,
@@ -267,29 +292,7 @@ pub fn try_arb_below_peg(
             funds: vec![]
         }));
     }
-    response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
-        msg: to_binary(
-            &ProfitCheckMsg::BeforeTrade{}
-        )?,
-        funds: vec![]
-    }))
-    .add_message(swap_msg)
-    .add_message(terraswap_msg)
-    .add_submessage(SubMsg{
-        msg: CosmosMsg::Wasm(WasmMsg::Execute{
-            contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
-            msg: to_binary(
-                &ProfitCheckMsg::AfterTrade{}
-            )?,
-            funds: vec![]
-        }),
-        gas_limit: None,
-        id: TRADE_REPLY_ID,
-        reply_on: ReplyOn::Success,
-    });
-
-    Ok(response)
+    add_profit_check(deps.as_ref(), response, swap_msg, terraswap_msg)
 }
 
 pub fn try_arb_above_peg(
@@ -340,29 +343,7 @@ pub fn try_arb_above_peg(
             funds: vec![]
         }));
     }
-    response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-        contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
-        msg: to_binary(
-            &ProfitCheckMsg::BeforeTrade{}
-        )?,
-        funds: vec![]
-    }))
-    .add_message(terraswap_msg)
-    .add_message(swap_msg)
-    .add_submessage(SubMsg{
-        msg: CosmosMsg::Wasm(WasmMsg::Execute{
-            contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
-            msg: to_binary(
-                &ProfitCheckMsg::AfterTrade{}
-            )?,
-            funds: vec![]
-        }),
-        gas_limit: None,
-        id: TRADE_REPLY_ID,
-        reply_on: ReplyOn::Success,
-    });
-
-    Ok(response)
+    add_profit_check(deps.as_ref(), response, terraswap_msg, swap_msg)
 }
 
 
