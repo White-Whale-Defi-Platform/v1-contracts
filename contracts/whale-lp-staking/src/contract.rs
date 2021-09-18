@@ -5,7 +5,7 @@ use cw2::set_contract_version;
 
 use crate::error::ContractError;
 use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE, read_config, store_config};
+use crate::state::{State, STATE, read_config, store_config, store_state, read_state};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:whale-lp-staking";
@@ -25,6 +25,15 @@ pub fn instantiate(
             whale_token: deps.api.canonical_address(&msg.whale_token)?,
             staking_token: deps.api.canonical_address(&msg.staking_token)?,
             distribution_schedule: msg.distribution_schedule,
+        },
+    )?;
+
+    store_state(
+        deps.storage,
+        &State {
+            last_distributed: env.block.height,
+            total_bond_amount: Uint128::zero(),
+            global_reward_index: Decimal::zero(),
         },
     )?;
 
