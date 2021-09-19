@@ -1,15 +1,13 @@
+use cosmwasm_std::{CanonicalAddr, Decimal, StdResult, Storage, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{CanonicalAddr, Addr, Decimal, StdResult, Storage, Uint128};
 
-use cw_storage_plus::Item;
-use cosmwasm_storage::{singleton, singleton_read, Bucket, ReadonlyBucket};
+use cosmwasm_storage::{singleton, singleton_read, ReadonlyBucket};
 
 static KEY_CONFIG: &[u8] = b"config";
 static KEY_STATE: &[u8] = b"state";
 
 static PREFIX_REWARD: &[u8] = b"reward";
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
