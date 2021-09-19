@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
+    from_binary, to_binary, Addr, Binary, CanonicalAddr, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
     StdError, StdResult, Uint128,
 };
 // use cw2::set_contract_version;
@@ -12,7 +12,7 @@ use crate::msg::{
     StateResponse,
 };
 use crate::state::{
-    read_config, read_staker_info, read_state, store_config, store_state, Config, StakerInfo, State,
+    read_config, read_staker_info, read_state, store_config, store_state, Config, StakerInfo, State, store_staker_info
 };
 
 use cw20::{Cw20ReceiveMsg};
@@ -134,31 +134,36 @@ fn compute_staker_reward(state: &State, staker_info: &mut StakerInfo) -> StdResu
     Ok(())
 }
 
+fn increase_bond_amount(state: &mut State, staker_info: &mut StakerInfo, amount: Uint128) {
+    state.total_bond_amount += amount;
+    staker_info.bond_amount += amount;
+}
+
 /// bond is the handler function allowing a user to send tokens to the staking contract in an attempt to bond them
-pub fn bond(_deps: DepsMut, _env: Env, _sender_addr: Addr, _amount: Uint128) -> StdResult<Response> {
-    // let sender_addr_raw: CanonicalAddr = deps.api.addr_canonicalize(sender_addr.as_str())?;
+pub fn bond(deps: DepsMut, env: Env, sender_addr: Addr, amount: Uint128) -> StdResult<Response> {
+    let sender_addr_raw: CanonicalAddr = deps.api.addr_canonicalize(sender_addr.as_str())?;
 
-    // let config: Config = read_config(deps.storage)?;
-    // let mut state: State = read_state(deps.storage)?;
-    // let mut staker_info: StakerInfo = read_staker_info(deps.storage, &sender_addr_raw)?;
+    let config: Config = read_config(deps.storage)?;
+    let mut state: State = read_state(deps.storage)?;
+    let mut staker_info: StakerInfo = read_staker_info(deps.storage, &sender_addr_raw)?;
 
-    // // Compute global reward & staker reward
-    // compute_reward(&config, &mut state, env.block.height);
-    // compute_staker_reward(&state, &mut staker_info)?;
+    // Compute global reward & staker reward
+    compute_reward(&config, &mut state, env.block.height);
+    compute_staker_reward(&state, &mut staker_info)?;
 
-    // // Increase bond_amount
-    // increase_bond_amount(&mut state, &mut staker_info, amount);
+    // Increase bond_amount
+    increase_bond_amount(&mut state, &mut staker_info, amount);
 
-    // // Store updated state with staker's staker_info
-    // store_staker_info(deps.storage, &sender_addr_raw, &staker_info)?;
-    // store_state(deps.storage, &state)?;
+    // Store updated state with staker's staker_info
+    store_staker_info(deps.storage, &sender_addr_raw, &staker_info)?;
+    store_state(deps.storage, &state)?;
 
-    // Ok(Response::new().add_attributes(vec![
-    //     ("action", "bond"),
-    //     ("owner", sender_addr.as_str()),
-    //     ("amount", amount.to_string().as_str()),
-    // ]))
-    Ok(Response::new())
+    Ok(Response::new().add_attributes(vec![
+        ("action", "bond"),
+        ("owner", sender_addr.as_str()),
+        ("amount", amount.to_string().as_str()),
+    ]))
+    // Ok(Response::new())
 }
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {

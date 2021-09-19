@@ -2,7 +2,7 @@ use cosmwasm_std::{CanonicalAddr, Decimal, StdResult, Storage, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_storage::{singleton, singleton_read, ReadonlyBucket};
+use cosmwasm_storage::{singleton, singleton_read, Bucket, ReadonlyBucket};
 
 static KEY_CONFIG: &[u8] = b"config";
 static KEY_STATE: &[u8] = b"state";
@@ -57,4 +57,13 @@ pub fn read_staker_info(storage: &dyn Storage, owner: &CanonicalAddr) -> StdResu
             pending_reward: Uint128::zero(),
         }),
     }
+}
+
+/// returns return staker_info of the given owner
+pub fn store_staker_info(
+    storage: &mut dyn Storage,
+    owner: &CanonicalAddr,
+    staker_info: &StakerInfo,
+) -> StdResult<()> {
+    Bucket::new(storage, PREFIX_REWARD).save(owner.as_slice(), staker_info)
 }

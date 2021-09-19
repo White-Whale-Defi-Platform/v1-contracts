@@ -51,3 +51,130 @@ fn proper_initialization() {
         }
     );
 }
+
+#[test]
+fn test_bond_tokens() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        whale_token: "reward0000".to_string(),
+        staking_token: "staking0000".to_string(),
+        distribution_schedule: vec![
+            (12345, 12345 + 100, Uint128::from(1000000u128)),
+            (12345 + 100, 12345 + 200, Uint128::from(10000000u128)),
+        ],
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+
+    let info = mock_info("staking0000", &[]);
+    let mut env = mock_env();
+    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    assert_eq!(
+        from_binary::<StakerInfoResponse>(
+            &query(
+                deps.as_ref(),
+                mock_env(),
+                QueryMsg::StakerInfo {
+                    staker: "addr0000".to_string(),
+                    block_height: None,
+                },
+            )
+            .unwrap(),
+        )
+        .unwrap(),
+        StakerInfoResponse {
+            staker: "addr0000".to_string(),
+            reward_index: Decimal::zero(),
+            pending_reward: Uint128::zero(),
+            bond_amount: Uint128::from(100u128),
+        }
+    );
+
+    assert_eq!(
+        from_binary::<StateResponse>(
+            &query(
+                deps.as_ref(),
+                mock_env(),
+                QueryMsg::State { block_height: None }
+            )
+            .unwrap()
+        )
+        .unwrap(),
+        StateResponse {
+            total_bond_amount: Uint128::from(100u128),
+            global_reward_index: Decimal::zero(),
+            last_distributed: 12345,
+        }
+    );
+
+    // bond 100 more tokens
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+    env.block.height += 10;
+
+    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        from_binary::<StakerInfoResponse>(
+            &query(
+                deps.as_ref(),
+                mock_env(),
+                QueryMsg::StakerInfo {
+                    staker: "addr0000".to_string(),
+                    block_height: None,
+                },
+            )
+            .unwrap(),
+        )
+        .unwrap(),
+        StakerInfoResponse {
+            staker: "addr0000".to_string(),
+            reward_index: Decimal::from_ratio(1000u128, 1u128),
+            pending_reward: Uint128::from(100000u128),
+            bond_amount: Uint128::from(200u128),
+        }
+    );
+
+    assert_eq!(
+        from_binary::<StateResponse>(
+            &query(
+                deps.as_ref(),
+                mock_env(),
+                QueryMsg::State { block_height: None }
+            )
+            .unwrap()
+        )
+        .unwrap(),
+        StateResponse {
+            total_bond_amount: Uint128::from(200u128),
+            global_reward_index: Decimal::from_ratio(1000u128, 1u128),
+            last_distributed: 12345 + 10,
+        }
+    );
+
+    // failed with unauthorized
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+
+    let info = mock_info("staking0001", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Err(StdError::GenericErr { msg, .. }) => assert_eq!(msg, "unauthorized"),
+        _ => panic!("Must return unauthorized error"),
+    }
+}
