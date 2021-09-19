@@ -7,13 +7,15 @@
     "asset_info",
     "aust_address",
     "burn_addr",
+    "burn_vault_fee",
     "denom",
     "pool_address",
-    "profit_burn_ratio",
     "profit_check_address",
     "seignorage_address",
     "slippage",
-    "token_code_id"
+    "token_code_id",
+    "warchest_addr",
+    "warchest_fee"
   ],
   "properties": {
     "anchor_money_market_address": {
@@ -28,14 +30,14 @@
     "burn_addr": {
       "type": "string"
     },
+    "burn_vault_fee": {
+      "$ref": "#/definitions/Decimal"
+    },
     "denom": {
       "type": "string"
     },
     "pool_address": {
       "type": "string"
-    },
-    "profit_burn_ratio": {
-      "$ref": "#/definitions/Decimal"
     },
     "profit_check_address": {
       "type": "string"
@@ -50,6 +52,12 @@
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "warchest_addr": {
+      "type": "string"
+    },
+    "warchest_fee": {
+      "$ref": "#/definitions/Decimal"
     }
   },
   "definitions": {

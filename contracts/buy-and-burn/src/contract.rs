@@ -237,7 +237,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> BurnResult {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Admin{} => Ok(to_binary(&ADMIN.query_admin(deps)?)?),
-        QueryMsg::Config{} => query_config(deps)
+        QueryMsg::Config{} => query_config(deps),
     }
 }
 

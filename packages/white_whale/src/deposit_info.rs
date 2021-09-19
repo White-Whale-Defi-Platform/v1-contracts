@@ -18,6 +18,13 @@ impl DepositInfo {
 
         Err(StdError::generic_err(format!("Invalid deposit asset. Expected {}, got {}.", self.asset_info, asset_info)))
     }
+
+    pub fn get_denom(self) -> StdResult<String> {
+        match self.asset_info {
+            AssetInfo::NativeToken{ denom } => Ok(denom),
+            AssetInfo::Token{..} => Err(StdError::generic_err("'denom' only exists for native tokens."))
+        }
+    }
 }
 
 

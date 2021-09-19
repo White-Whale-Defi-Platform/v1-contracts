@@ -103,7 +103,13 @@ def deploy(config):
         "seignorage_address": config.seignorage_address,
         "profit_check_address": profit_check_address,
         "slippage": "0.01",
-        "token_code_id": 148
+        "token_code_id": 148,
+        "burn_addr": burn_addr,
+        "warchest_addr": warchest_addr,
+        "warchest_fee": "0.1",
+        "burn_vault_fee": "0.005",
+        "max_burn_vault_fee": "1000000",
+        "denom": "uusd"
     })
     print(f'instantiated {contract_address}')
 
