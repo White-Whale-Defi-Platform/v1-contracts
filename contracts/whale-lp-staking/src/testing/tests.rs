@@ -178,3 +178,63 @@ fn test_bond_tokens() {
         _ => panic!("Must return unauthorized error"),
     }
 }
+
+#[test]
+fn test_unbond_tokens() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        whale_token: "reward0000".to_string(),
+        staking_token: "staking0000".to_string(),
+        distribution_schedule: vec![
+            (12345, 12345 + 100, Uint128::from(1000000u128)),
+            (12345 + 100, 12345 + 200, Uint128::from(10000000u128)),
+        ],
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // bond 100 tokens
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+    let info = mock_info("staking0000", &[]);
+    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // unbond 150 tokens; failed
+    let msg = ExecuteMsg::Unbond {
+        amount: Uint128::from(150u128),
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    match res {
+        StdError::GenericErr { msg, .. } => {
+            assert_eq!(msg, "Cannot unbond more than bond amount");
+        }
+        _ => panic!("Must return generic error"),
+    };
+
+    // normal unbond
+    let msg = ExecuteMsg::Unbond {
+        amount: Uint128::from(100u128),
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "staking0000".to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "addr0000".to_string(),
+                amount: Uint128::from(100u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        }))]
+    );
+}

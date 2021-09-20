@@ -1,3 +1,14 @@
+# White Whale LP Staking Incentive Contract
+
+The Staking Contract contains the logic for LP Token staking and reward distribution. WHALE tokens 
+allocated for as liquidity incentives are distributed pro-rata to stakers of the WHALE-UST 
+Terraswap pair LP token. 
+
+## References
+
+The Governance contract is based both on the examples set out by the [Mirror Protocol](https://github.com/Mirror-Protocol/mirror-contracts/tree/main/contracts/mirror_staking), [Anchor Protocol](https://github.com/Anchor-Protocol/anchor-token-contracts/tree/main/contracts/staking) and their respective community contracts.
+
+
 # CosmWasm Starter Pack
 
 This is a template to build smart contracts in Rust to run inside a

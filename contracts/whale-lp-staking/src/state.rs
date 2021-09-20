@@ -59,6 +59,11 @@ pub fn read_staker_info(storage: &dyn Storage, owner: &CanonicalAddr) -> StdResu
     }
 }
 
+/// remove staker_info of the given owner
+pub fn remove_staker_info(storage: &mut dyn Storage, owner: &CanonicalAddr) {
+    Bucket::<StakerInfo>::new(storage, PREFIX_REWARD).remove(owner.as_slice())
+}
+
 /// returns return staker_info of the given owner
 pub fn store_staker_info(
     storage: &mut dyn Storage,

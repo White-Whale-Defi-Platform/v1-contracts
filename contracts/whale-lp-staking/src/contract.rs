@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CanonicalAddr, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    from_binary, to_binary, Addr, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
+    StdError, StdResult, Uint128, WasmMsg
 };
 // use cw2::set_contract_version;
 
@@ -12,10 +12,10 @@ use crate::msg::{
     StateResponse,
 };
 use crate::state::{
-    read_config, read_staker_info, read_state, store_config, store_state, Config, StakerInfo, State, store_staker_info
+    read_config, read_staker_info, read_state, store_config, store_state, Config, StakerInfo, State, store_staker_info, remove_staker_info
 };
 
-use cw20::{Cw20ReceiveMsg};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
 // version info for migration info
 // const CONTRACT_NAME: &str = "crates.io:whale-lp-staking";
@@ -57,7 +57,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, StdError> {
     match msg {
+        // Receive is used to perform a bond
         ExecuteMsg::Receive(msg) => receive_cw20(deps, _env, info, msg),
+        // Unbond staked tokens
+        ExecuteMsg::Unbond { amount } => unbond(deps, _env, info, amount),
+
     }
 }
 
@@ -134,9 +138,21 @@ fn compute_staker_reward(state: &State, staker_info: &mut StakerInfo) -> StdResu
     Ok(())
 }
 
+// Bond amount manipulation
+
 fn increase_bond_amount(state: &mut State, staker_info: &mut StakerInfo, amount: Uint128) {
     state.total_bond_amount += amount;
     staker_info.bond_amount += amount;
+}
+
+fn decrease_bond_amount(
+    state: &mut State,
+    staker_info: &mut StakerInfo,
+    amount: Uint128,
+) -> StdResult<()> {
+    state.total_bond_amount = state.total_bond_amount.checked_sub(amount)?;
+    staker_info.bond_amount = staker_info.bond_amount.checked_sub(amount)?;
+    Ok(())
 }
 
 /// bond is the handler function allowing a user to send tokens to the staking contract in an attempt to bond them
@@ -163,8 +179,54 @@ pub fn bond(deps: DepsMut, env: Env, sender_addr: Addr, amount: Uint128) -> StdR
         ("owner", sender_addr.as_str()),
         ("amount", amount.to_string().as_str()),
     ]))
-    // Ok(Response::new())
 }
+
+/// unbond is the handler function allowing a user to withdraw bonded tokens from the staking contract
+pub fn unbond(deps: DepsMut, env: Env, info: MessageInfo, amount: Uint128) -> StdResult<Response> {
+    let config: Config = read_config(deps.storage)?;
+    let sender_addr_raw: CanonicalAddr = deps.api.addr_canonicalize(info.sender.as_str())?;
+
+    let mut state: State = read_state(deps.storage)?;
+    let mut staker_info: StakerInfo = read_staker_info(deps.storage, &sender_addr_raw)?;
+
+    if staker_info.bond_amount < amount {
+        return Err(StdError::generic_err("Cannot unbond more than bond amount"));
+    }
+
+    // Compute global reward & staker reward
+    compute_reward(&config, &mut state, env.block.height);
+    compute_staker_reward(&state, &mut staker_info)?;
+
+    // Decrease bond_amount
+    decrease_bond_amount(&mut state, &mut staker_info, amount)?;
+
+    // Store or remove updated rewards info
+    // depends on the left pending reward and bond amount
+    if staker_info.pending_reward.is_zero() && staker_info.bond_amount.is_zero() {
+        remove_staker_info(deps.storage, &sender_addr_raw);
+    } else {
+        store_staker_info(deps.storage, &sender_addr_raw, &staker_info)?;
+    }
+
+    // Store updated state
+    store_state(deps.storage, &state)?;
+
+    Ok(Response::new()
+        .add_messages(vec![CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: deps.api.addr_humanize(&config.staking_token)?.to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: info.sender.to_string(),
+                amount,
+            })?,
+            funds: vec![],
+        })])
+        .add_attributes(vec![
+            ("action", "unbond"),
+            ("owner", info.sender.as_str()),
+            ("amount", amount.to_string().as_str()),
+        ]))
+}
+
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = read_config(deps.storage)?;
