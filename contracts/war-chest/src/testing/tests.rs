@@ -2,9 +2,7 @@ use crate::contract::{execute, instantiate, query};
 use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{
-    from_binary, to_binary, Api, CosmosMsg, MessageInfo, SubMsg, Uint128, WasmMsg,
-};
+use cosmwasm_std::{from_binary, to_binary, Api, CosmosMsg, MessageInfo, SubMsg, Uint128, WasmMsg};
 use cw20::Cw20ExecuteMsg;
 
 #[test]
