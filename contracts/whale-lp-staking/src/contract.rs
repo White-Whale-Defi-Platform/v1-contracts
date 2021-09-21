@@ -1,8 +1,9 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128, WasmMsg
+    from_binary, to_binary, Addr, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg,
+    WasmQuery,
 };
 // use cw2::set_contract_version;
 
@@ -12,10 +13,11 @@ use crate::msg::{
     StateResponse,
 };
 use crate::state::{
-    read_config, read_staker_info, read_state, store_config, store_state, Config, StakerInfo, State, store_staker_info, remove_staker_info
+    read_config, read_staker_info, read_state, remove_staker_info, store_config, store_staker_info,
+    store_state, Config, StakerInfo, State,
 };
 
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg, MinterResponse};
 
 // version info for migration info
 // const CONTRACT_NAME: &str = "crates.io:whale-lp-staking";
@@ -61,7 +63,13 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, _env, info, msg),
         // Unbond staked tokens
         ExecuteMsg::Unbond { amount } => unbond(deps, _env, info, amount),
+        // Withdraw pending rewards
         ExecuteMsg::Withdraw {} => withdraw(deps, _env, info),
+        // Owner operation to stop distribution on current staking contract
+        // and send remaining tokens to the new contract
+        ExecuteMsg::MigrateStaking {
+            new_staking_contract,
+        } => migrate_staking(deps, _env, info, new_staking_contract),
     }
 }
 
@@ -269,6 +277,89 @@ pub fn withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Respons
         ]))
 }
 
+pub fn query_whale_minter(querier: &QuerierWrapper, whale_token: Addr) -> StdResult<String> {
+    let res: MinterResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: whale_token.to_string(),
+        msg: to_binary(&Cw20QueryMsg::Minter {})?,
+    }))?;
+
+    Ok(res.minter)
+}
+
+pub fn migrate_staking(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    new_staking_contract: String,
+) -> StdResult<Response> {
+    let sender_addr_raw: CanonicalAddr = deps.api.addr_canonicalize(info.sender.as_str())?;
+    let mut config: Config = read_config(deps.storage)?;
+    let mut state: State = read_state(deps.storage)?;
+    let whale_token: Addr = deps.api.addr_humanize(&config.whale_token)?;
+
+    // get gov address by querying whale token minter
+    let gov_addr_raw: CanonicalAddr = deps
+        .api
+        .addr_canonicalize(&query_whale_minter(&deps.querier, whale_token.clone())?)?;
+    if sender_addr_raw != gov_addr_raw {
+        return Err(StdError::generic_err("unauthorized"));
+    }
+
+    // compute global reward, sets last_distributed_height to env.block.height
+    compute_reward(&config, &mut state, env.block.height);
+
+    let total_distribution_amount: Uint128 =
+        config.distribution_schedule.iter().map(|item| item.2).sum();
+
+    let block_height = env.block.height;
+    // eliminate distribution slots that have not started
+    config
+        .distribution_schedule
+        .retain(|slot| slot.0 < block_height);
+
+    let mut distributed_amount = Uint128::zero();
+    for s in config.distribution_schedule.iter_mut() {
+        if s.1 < block_height {
+            // all distributed
+            distributed_amount += s.2;
+        } else {
+            // partially distributed slot
+            let num_blocks = s.1 - s.0;
+            let distribution_amount_per_block: Decimal = Decimal::from_ratio(s.2, num_blocks);
+
+            let passed_blocks = block_height - s.0;
+            let distributed_amount_on_slot =
+                distribution_amount_per_block * Uint128::from(passed_blocks as u128);
+            distributed_amount += distributed_amount_on_slot;
+
+            // modify distribution slot
+            s.1 = block_height;
+            s.2 = distributed_amount_on_slot;
+        }
+    }
+
+    // update config
+    store_config(deps.storage, &config)?;
+    // update state
+    store_state(deps.storage, &state)?;
+
+    let remaining_whale = total_distribution_amount.checked_sub(distributed_amount)?;
+
+    Ok(Response::new()
+        .add_messages(vec![CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: whale_token.to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: new_staking_contract,
+                amount: remaining_whale,
+            })?,
+            funds: vec![],
+        })])
+        .add_attributes(vec![
+            ("action", "migrate_staking"),
+            ("distributed_amount", &distributed_amount.to_string()),
+            ("remaining_amount", &remaining_whale.to_string()),
+        ]))
+}
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = read_config(deps.storage)?;

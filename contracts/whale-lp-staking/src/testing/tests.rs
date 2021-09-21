@@ -3,11 +3,13 @@ use crate::msg::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StakerInfoResponse,
     StateResponse,
 };
+use crate::testing::mock_querier::mock_dependencies as mock_query_deps;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{
     attr, from_binary, to_binary, CosmosMsg, Decimal, StdError, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+
 #[test]
 fn proper_initialization() {
     let mut deps = mock_dependencies(&[]);
@@ -397,5 +399,111 @@ fn test_withdraw() {
             .unwrap(),
             funds: vec![],
         }))]
+    );
+}
+
+#[test]
+fn test_migrate_staking() {
+    let mut deps = mock_query_deps(&[]);
+
+    let msg = InstantiateMsg {
+        whale_token: "reward0000".to_string(),
+        staking_token: "staking0000".to_string(),
+        distribution_schedule: vec![
+            (12345, 12345 + 100, Uint128::from(1000000u128)),
+            (12345 + 100, 12345 + 200, Uint128::from(10000000u128)),
+        ],
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // bond 100 tokens
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+    let info = mock_info("staking0000", &[]);
+    let mut env = mock_env();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    // 100 blocks passed
+    // 1,000,000 rewards distributed
+    env.block.height += 100;
+    let info = mock_info("addr0000", &[]);
+
+    let msg = ExecuteMsg::Withdraw {};
+    let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "reward0000".to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "addr0000".to_string(),
+                amount: Uint128::from(1000000u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        }))]
+    );
+
+    // execute migration after 50 blocks
+    env.block.height += 50;
+
+    deps.querier.with_anc_minter("gov0000".to_string());
+
+    let msg = ExecuteMsg::MigrateStaking {
+        new_staking_contract: "newstaking0000".to_string(),
+    };
+
+    // unauthorized attempt
+    let info = mock_info("notgov0000", &[]);
+    let res = execute(deps.as_mut(), env.clone(), info, msg.clone());
+    match res {
+        Err(StdError::GenericErr { msg, .. }) => assert_eq!(msg, "unauthorized"),
+        _ => panic!("Must return unauthorized error"),
+    }
+
+    // successful attempt
+    let info = mock_info("gov0000", &[]);
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        res.attributes,
+        vec![
+            attr("action", "migrate_staking"),
+            attr("distributed_amount", "6000000"), // 1000000 + (10000000 / 2)
+            attr("remaining_amount", "5000000")    // 11,000,000 - 6000000
+        ]
+    );
+
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "reward0000".to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "newstaking0000".to_string(),
+                amount: Uint128::from(5000000u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        }))]
+    );
+
+    // query config
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap();
+    let config: ConfigResponse = from_binary(&res).unwrap();
+    assert_eq!(
+        config,
+        ConfigResponse {
+            whale_token: "reward0000".to_string(),
+            staking_token: "staking0000".to_string(),
+            distribution_schedule: vec![
+                (12345, 12345 + 100, Uint128::from(1000000u128)),
+                (12345 + 100, 12345 + 150, Uint128::from(5000000u128)), // slot was modified
+            ]
+        }
     );
 }
