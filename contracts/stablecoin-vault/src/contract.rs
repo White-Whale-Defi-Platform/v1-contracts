@@ -117,7 +117,13 @@ pub fn execute(
         HandleMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, info, asset),
         HandleMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, info, amount),
         HandleMsg::SetSlippage{ slippage } => set_slippage(deps, info, slippage),
-        HandleMsg::SetBurnAddress{ burn_addr } => set_burn_addr(deps, info, burn_addr)
+        HandleMsg::SetBurnAddress{ burn_addr } => set_burn_addr(deps, info, burn_addr),
+        HandleMsg::UpdateAdmin{ admin } => {
+            let admin_addr = deps.api.addr_validate(&admin)?;
+            let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
+            ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
+            Ok(Response::default().add_attribute("previous admin", previous_admin).add_attribute("admin", admin))
+        },
     }
 }
 pub fn try_withdraw_liquidity(
