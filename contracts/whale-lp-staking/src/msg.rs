@@ -18,6 +18,8 @@ pub enum ExecuteMsg {
     Unbond {
         amount: Uint128,
     },
+    /// Withdraw pending rewards
+    Withdraw {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

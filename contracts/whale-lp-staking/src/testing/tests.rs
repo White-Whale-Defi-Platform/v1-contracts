@@ -238,3 +238,164 @@ fn test_unbond_tokens() {
         }))]
     );
 }
+
+#[test]
+fn test_compute_reward() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        whale_token: "reward0000".to_string(),
+        staking_token: "staking0000".to_string(),
+        distribution_schedule: vec![
+            (12345, 12345 + 100, Uint128::from(1000000u128)),
+            (12345 + 100, 12345 + 200, Uint128::from(10000000u128)),
+        ],
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // bond 100 tokens
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+    let info = mock_info("staking0000", &[]);
+    let mut env = mock_env();
+    let _res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
+
+    // 100 blocks passed
+    // 1,000,000 rewards distributed
+    env.block.height += 100;
+
+    // bond 100 more tokens
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    assert_eq!(
+        from_binary::<StakerInfoResponse>(
+            &query(
+                deps.as_ref(),
+                mock_env(),
+                QueryMsg::StakerInfo {
+                    staker: "addr0000".to_string(),
+                    block_height: None,
+                },
+            )
+            .unwrap()
+        )
+        .unwrap(),
+        StakerInfoResponse {
+            staker: "addr0000".to_string(),
+            reward_index: Decimal::from_ratio(10000u128, 1u128),
+            pending_reward: Uint128::from(1000000u128),
+            bond_amount: Uint128::from(200u128),
+        }
+    );
+
+    // 100 blocks passed
+    // 1,000,000 rewards distributed
+    env.block.height += 10;
+    let info = mock_info("addr0000", &[]);
+
+    // unbond
+    let msg = ExecuteMsg::Unbond {
+        amount: Uint128::from(100u128),
+    };
+    let _res = execute(deps.as_mut(), env, info, msg).unwrap();
+    assert_eq!(
+        from_binary::<StakerInfoResponse>(
+            &query(
+                deps.as_ref(),
+                mock_env(),
+                QueryMsg::StakerInfo {
+                    staker: "addr0000".to_string(),
+                    block_height: None,
+                },
+            )
+            .unwrap()
+        )
+        .unwrap(),
+        StakerInfoResponse {
+            staker: "addr0000".to_string(),
+            reward_index: Decimal::from_ratio(15000u64, 1u64),
+            pending_reward: Uint128::from(2000000u128),
+            bond_amount: Uint128::from(100u128),
+        }
+    );
+
+    // query future block
+    assert_eq!(
+        from_binary::<StakerInfoResponse>(
+            &query(
+                deps.as_ref(),
+                mock_env(),
+                QueryMsg::StakerInfo {
+                    staker: "addr0000".to_string(),
+                    block_height: Some(12345 + 120),
+                },
+            )
+            .unwrap()
+        )
+        .unwrap(),
+        StakerInfoResponse {
+            staker: "addr0000".to_string(),
+            reward_index: Decimal::from_ratio(25000u64, 1u64),
+            pending_reward: Uint128::from(3000000u128),
+            bond_amount: Uint128::from(100u128),
+        }
+    );
+}
+
+#[test]
+fn test_withdraw() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        whale_token: "reward0000".to_string(),
+        staking_token: "staking0000".to_string(),
+        distribution_schedule: vec![
+            (12345, 12345 + 100, Uint128::from(1000000u128)),
+            (12345 + 100, 12345 + 200, Uint128::from(10000000u128)),
+        ],
+    };
+
+    let info = mock_info("addr0000", &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+    // bond 100 tokens
+    let msg = ExecuteMsg::Receive(Cw20ReceiveMsg {
+        sender: "addr0000".to_string(),
+        amount: Uint128::from(100u128),
+        msg: to_binary(&Cw20HookMsg::Bond {}).unwrap(),
+    });
+    let info = mock_info("staking0000", &[]);
+    let mut env = mock_env();
+    let _res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    // 100 blocks passed
+    // 1,000,000 rewards distributed
+    env.block.height += 100;
+    let info = mock_info("addr0000", &[]);
+
+    let msg = ExecuteMsg::Withdraw {};
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+
+    assert_eq!(
+        res.messages,
+        vec![SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: "reward0000".to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: "addr0000".to_string(),
+                amount: Uint128::from(1000000u128),
+            })
+            .unwrap(),
+            funds: vec![],
+        }))]
+    );
+}

@@ -61,7 +61,7 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => receive_cw20(deps, _env, info, msg),
         // Unbond staked tokens
         ExecuteMsg::Unbond { amount } => unbond(deps, _env, info, amount),
-
+        ExecuteMsg::Withdraw {} => withdraw(deps, _env, info),
     }
 }
 
@@ -222,6 +222,48 @@ pub fn unbond(deps: DepsMut, env: Env, info: MessageInfo, amount: Uint128) -> St
         })])
         .add_attributes(vec![
             ("action", "unbond"),
+            ("owner", info.sender.as_str()),
+            ("amount", amount.to_string().as_str()),
+        ]))
+}
+
+// withdraw rewards to executor
+pub fn withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+    let sender_addr_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
+
+    let config: Config = read_config(deps.storage)?;
+    let mut state: State = read_state(deps.storage)?;
+    let mut staker_info = read_staker_info(deps.storage, &sender_addr_raw)?;
+
+    // Compute global reward & staker reward
+    compute_reward(&config, &mut state, env.block.height);
+    compute_staker_reward(&state, &mut staker_info)?;
+
+    let amount = staker_info.pending_reward;
+    staker_info.pending_reward = Uint128::zero();
+
+    // Store or remove updated rewards info
+    // depends on the left pending reward and bond amount
+    if staker_info.bond_amount.is_zero() {
+        remove_staker_info(deps.storage, &sender_addr_raw);
+    } else {
+        store_staker_info(deps.storage, &sender_addr_raw, &staker_info)?;
+    }
+
+    // Store updated state
+    store_state(deps.storage, &state)?;
+
+    Ok(Response::new()
+        .add_messages(vec![CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: deps.api.addr_humanize(&config.whale_token)?.to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: info.sender.to_string(),
+                amount,
+            })?,
+            funds: vec![],
+        })])
+        .add_attributes(vec![
+            ("action", "withdraw"),
             ("owner", info.sender.as_str()),
             ("amount", amount.to_string().as_str()),
         ]))
