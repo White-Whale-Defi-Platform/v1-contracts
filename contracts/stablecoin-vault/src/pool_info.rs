@@ -7,14 +7,13 @@ use cosmwasm_std::{
 };
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
 
-// We define a custom struct for each query response
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolInfo {
     pub asset_infos: [AssetInfo; 3],
     pub contract_addr: Addr,
     pub liquidity_token: Addr,
-    pub slippage: Decimal,
-    // pub total_user_deposits: Uint128
+    pub slippage: Decimal
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
