@@ -78,10 +78,7 @@ fn update_config() {
 fn test_spend() {
     let mut deps = mock_dependencies(&[]);
 
-    let info = MessageInfo {
-        sender: deps.api.addr_validate("gov").unwrap(),
-        funds: vec![],
-    };
+    let info = mock_info("gov", &[]);
 
     let msg = InstantiateMsg {
         gov_contract: info.sender.to_string(),

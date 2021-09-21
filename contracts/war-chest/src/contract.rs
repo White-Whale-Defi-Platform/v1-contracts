@@ -72,7 +72,6 @@ pub fn spend(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let config: Config = read_config(deps.storage)?;
-    // ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     if config.gov_contract != deps.api.addr_canonicalize(info.sender.as_str())? {
         return Err(ContractError::Unauthorized {});
     }

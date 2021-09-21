@@ -20,7 +20,6 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // GetConfig returns the current count as a json-encoded number
     GetConfig {},
 }
 
