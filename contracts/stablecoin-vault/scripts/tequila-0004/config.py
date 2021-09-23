@@ -51,8 +51,8 @@ bombay_pools = {
 def get_bombay_config(symbol: str) -> Config:
     return Config(
         seignorage_address="terra1untf85jwv3kt0puyyc39myxjvplagr3wstgs5s",
-        anchor_money_market_address="terra1rpvs6ashgp69dy9atfngcsnnnd3r3set82xlln",
-        aust_address="terra12p3hnqk2et0c87kw9kxrfnt5k3cg38srmrxmw4",
+        anchor_money_market_address="terra15dwd5mj8v59wpj0wvt233mf5efdff808c5tkal",
+        aust_address="terra1ajt556dpzvjwl0kl5tzku3fc3p3knkg9mkv8jl",
         poolconfig=bombay_pools[symbol]
     )
 
