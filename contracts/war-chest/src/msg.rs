@@ -14,7 +14,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Spend { recipient: String, amount: Uint128 },
-    UpdateConfig { spend_limit: Option<Uint128> },
+    UpdateSpendLimit { spend_limit: Uint128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -2,7 +2,7 @@ use crate::contract::{execute, instantiate, query};
 use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary, to_binary, Api, CosmosMsg, MessageInfo, SubMsg, Uint128, WasmMsg};
+use cosmwasm_std::{from_binary, to_binary, CosmosMsg, SubMsg, Uint128, WasmMsg};
 use cw20::Cw20ExecuteMsg;
 
 #[test]
@@ -29,7 +29,7 @@ fn proper_initialization() {
 }
 
 #[test]
-fn update_config() {
+fn test_update_spend_limit() {
     let mut deps = mock_dependencies(&[]);
 
     let msg = InstantiateMsg {
@@ -50,8 +50,8 @@ fn update_config() {
     assert_eq!("whale", config.whale_token.as_str());
     assert_eq!(Uint128::from(1000000u128), config.spend_limit);
 
-    let msg = ExecuteMsg::UpdateConfig {
-        spend_limit: Some(Uint128::from(500000u128)),
+    let msg = ExecuteMsg::UpdateSpendLimit {
+        spend_limit: Uint128::from(500000u128),
     };
     let info = mock_info("addr0000", &[]);
     match execute(deps.as_mut(), mock_env(), info, msg.clone()) {
@@ -78,10 +78,8 @@ fn update_config() {
 fn test_spend() {
     let mut deps = mock_dependencies(&[]);
 
-    let info = mock_info("gov", &[]);
-
     let msg = InstantiateMsg {
-        gov_contract: info.sender.to_string(),
+        gov_contract: "gov".to_string(),
         whale_token: "whale".to_string(),
         spend_limit: Uint128::from(1000000u128),
     };
@@ -123,10 +121,7 @@ fn test_spend() {
         amount: Uint128::from(1000000u128),
     };
 
-    let info = MessageInfo {
-        sender: deps.api.addr_validate("gov").unwrap(),
-        funds: vec![],
-    };
+    let info = mock_info("gov", &[]);
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(
         res.messages,

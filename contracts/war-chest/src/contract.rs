@@ -39,7 +39,7 @@ pub fn execute(
 ) -> Result<Response, ContractError> {
     match msg {
         ExecuteMsg::Spend { recipient, amount } => spend(deps, info, recipient, amount),
-        ExecuteMsg::UpdateConfig { spend_limit } => update_config(deps, info, spend_limit),
+        ExecuteMsg::UpdateSpendLimit { spend_limit } => update_spend_limit(deps, info, spend_limit),
     }
 }
 
@@ -96,19 +96,16 @@ pub fn spend(
         ]))
 }
 
-pub fn update_config(
+pub fn update_spend_limit(
     deps: DepsMut,
     info: MessageInfo,
-    spend_limit: Option<Uint128>,
+    spend_limit: Uint128,
 ) -> Result<Response, ContractError> {
     let mut config: Config = read_config(deps.storage)?;
     if config.gov_contract != deps.api.addr_canonicalize(info.sender.as_str())? {
         return Err(ContractError::Unauthorized {});
     }
-
-    if let Some(spend_limit) = spend_limit {
-        config.spend_limit = spend_limit;
-    }
+    config.spend_limit = spend_limit;
 
     store_config(deps.storage, &config)?;
 
