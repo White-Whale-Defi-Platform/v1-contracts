@@ -1,7 +1,7 @@
 [package]
 name = "war-chest"
 version = "0.1.0"
-authors = ["0xFable <0xfable@protonmail.com>"]
+authors = ["White Whale"]
 edition = "2018"
 
 exclude = [
