@@ -9,13 +9,13 @@ use cw20::Cw20ExecuteMsg;
 
 use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{read_config, store_config, Config, ADMIN};
+use crate::state::{read_config, store_config, Config};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     store_config(
@@ -26,7 +26,6 @@ pub fn instantiate(
             spend_limit: msg.spend_limit,
         },
     )?;
-    ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::default())
 }

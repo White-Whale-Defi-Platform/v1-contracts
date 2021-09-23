@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{CanonicalAddr, StdResult, Storage, Uint128};
 use cosmwasm_storage::{singleton, singleton_read};
-use cw_controllers::Admin;
 
 static KEY_CONFIG: &[u8] = b"config";
 
@@ -21,5 +20,3 @@ pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()>
 pub fn read_config(storage: &dyn Storage) -> StdResult<Config> {
     singleton_read(storage, KEY_CONFIG).load()
 }
-
-pub const ADMIN: Admin = Admin::new("admin");
