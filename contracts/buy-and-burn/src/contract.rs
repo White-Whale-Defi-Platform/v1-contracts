@@ -7,12 +7,13 @@ use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::ExecuteMsg as PairExecuteMsg;
 use terraswap::querier::{query_balance, query_token_balance};
 use white_whale::anchor::try_deposit_to_anchor_as_submsg;
+use white_whale::burn::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 use white_whale::denom::UST_DENOM;
 use white_whale::msg::AnchorMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use std::str::FromStr;
 use crate::error::BurnError;
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{InstantiateMsg};
 use crate::state::{State, ADMIN, STATE};
 
 
@@ -104,7 +105,8 @@ pub fn try_buy_and_burn(deps: Deps, env: &Env) -> BurnResult {
         amount: ust_amount
     };
     let ust = offer.deduct_tax(&deps.querier)?;
-    offer.amount = ust_amount;
+    offer.amount = ust.amount;
+
 
     let buy_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&state.whale_pool_addr)?.to_string(),
@@ -149,15 +151,15 @@ pub fn deposit_or_burn(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> BurnR
     }
 
     let state = STATE.load(deps.storage)?;
-    let aust_value_in_ust = get_aust_value_in_ust(deps.as_ref(), env)?;
-    if aust_value_in_ust < state.deposits_in_uusd + state.anchor_withdraw_threshold {
+    let aust_value_in_uusd = get_aust_value_in_uusd(deps.as_ref(), env)?;
+    if aust_value_in_uusd < state.deposits_in_uusd + state.anchor_withdraw_threshold {
         return deposit(deps, env);
     }
 
-    burn_profits(deps, aust_value_in_ust, msg_info.funds[0].amount)
+    burn_profits(deps, aust_value_in_uusd, msg_info.funds[0].amount)
 }
 
-pub fn get_aust_value_in_ust(deps: Deps, env: &Env) -> StdResult<Uint128> {
+pub fn get_aust_value_in_uusd(deps: Deps, env: &Env) -> StdResult<Uint128> {
     let state = STATE.load(deps.storage)?;
     let aust_amount = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_addr)?, env.contract.address.clone())?;
 
@@ -192,7 +194,7 @@ pub fn burn_profits(deps: DepsMut, aust_value_in_ust: Uint128, deposit_amount: U
 pub fn try_burn_profits(deps: DepsMut, env: &Env) -> BurnResult {
     let state = STATE.load(deps.storage)?;
 
-    let aust_value_in_ust = get_aust_value_in_ust(deps.as_ref(), env)?;
+    let aust_value_in_ust = get_aust_value_in_uusd(deps.as_ref(), env)?;
     if aust_value_in_ust < state.deposits_in_uusd + state.anchor_withdraw_threshold {
         return Err(BurnError::Std(StdError::generic_err(format!("Not enough profits: {} - {} < {}", aust_value_in_ust, state.deposits_in_uusd, state.anchor_withdraw_threshold))));
     }
@@ -235,7 +237,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> BurnResult {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Admin{} => Ok(to_binary(&ADMIN.query_admin(deps)?)?),
-        QueryMsg::Config{} => query_config(deps)
+        QueryMsg::Config{} => query_config(deps),
     }
 }
 

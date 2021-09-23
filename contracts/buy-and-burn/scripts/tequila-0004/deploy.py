@@ -26,7 +26,7 @@ std_fee = StdFee(4000000, "1500000uusd")
 
 deployer = Deployer(client=client, wallet=wallet, fee=std_fee)
 
-whale_token_addr = "terra1gwmn9h9cyp76ea2ce0djrhn9dpwmjhy3hepq50"
+whale_token_addr = "terra1gxsfv4ruvda37q3ta0kwx42w7qy5l9hf9l30sz"
 whale_pair_addr = "terra1tc4dertggfyz9qye4ymptneqxlye2dpgfxfrhf"
 
 ###

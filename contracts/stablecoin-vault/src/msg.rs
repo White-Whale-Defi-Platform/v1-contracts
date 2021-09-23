@@ -5,14 +5,6 @@ use terraswap::asset::{Asset, AssetInfo};
 use cw20::Cw20ReceiveMsg;
 
 
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// pub struct AssertMinimumReceive {
-//     pub asset_info: AssetInfo,
-//     pub prev_balance: Uint128,
-//     pub minimum_receive: Uint128,
-//     pub receiver: Addr,
-// }
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
     pub pool_address: String,
@@ -21,10 +13,14 @@ pub struct InitMsg {
     pub seignorage_address: String,
     pub profit_check_address: String,
     pub burn_addr: String,
-    pub profit_burn_ratio: Decimal,
+    pub warchest_addr: String,
     pub asset_info: AssetInfo,
     pub slippage: Decimal,
-    pub token_code_id: u64
+    pub token_code_id: u64,
+    pub denom: String,
+    pub warchest_fee: Decimal,
+    pub burn_vault_fee: Decimal,
+    pub max_burn_vault_fee: Uint128
 }
 
 
@@ -38,7 +34,9 @@ pub enum HandleMsg {
         asset: Asset
     },
     AnchorDeposit { amount: Coin },
-    SetSlippage { slippage: Decimal }
+    SetSlippage { slippage: Decimal },
+    SetBurnAddress{ burn_addr: String },
+    UpdateAdmin{ admin: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -46,6 +44,11 @@ pub struct PoolResponse {
     pub assets: [Asset; 3],
     pub total_deposits_in_ust: Uint128,
     pub total_share: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DepositResponse {
+    pub deposit: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

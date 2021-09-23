@@ -20,6 +20,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 cosmwasm-bignumber = "2.2"
 cosmwasm-std = { version = "0.16", features = ["iterator"] }
 cosmwasm-storage = { version = "0.16", features = ["iterator"] }
+cw-storage-plus = { version = "0.8" }
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"

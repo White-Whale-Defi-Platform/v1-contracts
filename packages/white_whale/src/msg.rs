@@ -9,7 +9,8 @@ use terraswap::pair::ExecuteMsg as HandleMsg;
 #[serde(rename_all = "snake_case")]
 pub enum VaultQueryMsg {
     Config{},
-    Pool{}
+    Pool{},
+    Deposit{ addr: String }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

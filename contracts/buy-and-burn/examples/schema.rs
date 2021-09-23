@@ -2,7 +2,8 @@ use std::env::current_dir;
 use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use buy_and_burn::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg};
+use white_whale::burn::msg::{ConfigResponse, ExecuteMsg};
+use buy_and_burn::msg::InstantiateMsg;
 use buy_and_burn::state::State;
 
 fn main() {

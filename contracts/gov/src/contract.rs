@@ -76,7 +76,7 @@ fn validate_threshold(threshold: Decimal) -> StdResult<()> {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -96,7 +96,7 @@ pub fn instantiate(
     };
 
     let state = State {
-        contract_addr: deps.api.addr_canonicalize(_env.contract.address.as_str())?,
+        contract_addr: deps.api.addr_canonicalize(env.contract.address.as_str())?,
         poll_count: 0,
         total_share: Uint128::zero(),
         total_deposit: Uint128::zero(),
@@ -107,8 +107,8 @@ pub fn instantiate(
     Ok(Response::default())
 }
 
-// Routers; here is a separate router which handles Execution of functions on the contract or performs a contract Query 
-// Each router function defines a number of handlers using Rust's pattern matching to 
+// Routers; here is a separate router which handles Execution of functions on the contract or performs a contract Query
+// Each router function defines a number of handlers using Rust's pattern matching to
 // designated how each ExecutionMsg or QueryMsg will be handled.
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -119,7 +119,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        // Handle 'payable' functionalities 
+        // Handle 'payable' functionalities
         ExecuteMsg::Receive(msg) => receive_cw20(deps, _env, info, msg),
         ExecuteMsg::CastVote {
             poll_id,
@@ -208,7 +208,7 @@ pub fn register_contracts(deps: DepsMut, whale_token: String) -> Result<Response
 }
 
 /// handler function invoked when the governance contract receives
-/// a transaction. This is akin to a payable function in Solidity 
+/// a transaction. This is akin to a payable function in Solidity
 pub fn receive_cw20(
     deps: DepsMut,
     env: Env,
@@ -246,7 +246,7 @@ pub fn receive_cw20(
 }
 
 #[allow(clippy::too_many_arguments)]
-/// create a new poll 
+/// create a new poll
 pub fn create_poll(
     deps: DepsMut,
     env: Env,
@@ -328,8 +328,8 @@ pub fn create_poll(
 }
 
 /// end a poll
-/// 
-/// By default a Poll is considered rejected when ending. The weight of votes and the quorum of the vote is considered before declaring a Poll as passed. 
+///
+/// By default a Poll is considered rejected when ending. The weight of votes and the quorum of the vote is considered before declaring a Poll as passed.
 /// Before the function completes, state is saved any leftover deposit amount is sent back to the poll creator and a response is returned.
 pub fn end_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, ContractError> {
     let mut a_poll: Poll = poll_store(deps.storage).load(&poll_id.to_be_bytes())?;
@@ -425,17 +425,17 @@ pub fn end_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, Contr
 }
 
 /// execute_poll exposes the ability to execute the Messages which were defined on Polls creation if the Poll was deemed successful.
-/// 
-/// The fn first performs a number of checks to ensure the Poll indeed has passed and enough of an effective delay has elapsed 
-/// for the Messages to be executed. Provided these conditions are met the poll is declared in a Executed state 
+///
+/// The fn first performs a number of checks to ensure the Poll indeed has passed and enough of an effective delay has elapsed
+/// for the Messages to be executed. Provided these conditions are met the poll is declared in a Executed state
 /// and the execution data that was provided when the poll was created is prepared as a number of CosmosMsg/WasmMsg(s) before being sent for execution.
-/// 
-/// 
-/// It is important to note that execute poll only handles the execution of predefined messages 
+///
+///
+/// It is important to note that execute poll only handles the execution of predefined messages
 /// which are associated with a Passed poll. This ensures the actions taken by a successful Poll are
-/// well known and predefined. 
+/// well known and predefined.
 pub fn execute_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, ContractError> {
-    
+
     let config: Config = config_read(deps.storage).load()?;
     let mut a_poll: Poll = poll_store(deps.storage).load(&poll_id.to_be_bytes())?;
 
@@ -474,15 +474,15 @@ pub fn execute_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, C
     ]))
 }
 
-// Voting 
-/// cast_vote exposes the end user side of a poll. Once a poll and its proposal is created, 
+// Voting
+/// cast_vote exposes the end user side of a poll. Once a poll and its proposal is created,
 /// any account which has some staked governance tokens can cast 1 vote for a given proposal.
-/// 
-/// Before a Vote is registered from a user a number of checks are performed; firstly that 
+///
+/// Before a Vote is registered from a user a number of checks are performed; firstly that
 /// the Poll exists and that it is currently in Progress. Accounts may only vote once
-/// and the Account must have some staked governance tokens. 
-/// With all these conditions met, the account's casted vote is evaluated and both the vote and 
-/// a collection of info related to the Voter is stored in state. This registers both the actors 
+/// and the Account must have some staked governance tokens.
+/// With all these conditions met, the account's casted vote is evaluated and both the vote and
+/// a collection of info related to the Voter is stored in state. This registers both the actors
 /// desired vote and also their information to prevent a second vote.
 pub fn cast_vote(
     deps: DepsMut,
@@ -492,7 +492,7 @@ pub fn cast_vote(
     vote: VoteOption,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    
+
     let sender_address_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
     let config = config_read(deps.storage).load()?;
     let state = state_read(deps.storage).load()?;
@@ -601,7 +601,7 @@ pub fn expire_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, Co
 
 // Query Handlers
 
-/// query_config allows for the query of the currently set configuration values 
+/// query_config allows for the query of the currently set configuration values
 /// which influence Polls such as the quorum needed and the minimum voting peroid before a poll can be ended
 fn query_config(deps: Deps) -> Result<ConfigResponse, ContractError> {
     let config: Config = config_read(deps.storage).load()?;
@@ -798,6 +798,7 @@ pub fn snapshot_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, 
         attr("staked_amount", staked_amount.to_string().as_str()),
     ]))
 }
+
 #[allow(clippy::too_many_arguments)]
 pub fn update_config(
     deps: DepsMut,
@@ -853,11 +854,4 @@ pub fn update_config(
     })?;
 
     Ok(Response::new().add_attributes(vec![("action", "update_config")]))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    // TODO: Consider moving tests to here from ./tests.rs file
-
 }

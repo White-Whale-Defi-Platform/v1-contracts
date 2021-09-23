@@ -18,10 +18,10 @@ from terra_sdk.core.wasm import MsgStoreCode, MsgInstantiateContract, MsgExecute
 
 from config import get_tequila_config as get_config
 
-client = LCDClient(url="https://bombay-lcd.terra.dev", chain_id="bombay-10", gas_prices=Coins(requests.get("https://bombay-fcd.terra.dev/v1/txs/gas_prices").json()))
+client = LCDClient(url="https://bombay-lcd.terra.dev", chain_id="bombay-11", gas_prices=Coins(requests.get("https://bombay-fcd.terra.dev/v1/txs/gas_prices").json()))
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
 deployer = Wallet(lcd=client, key=MnemonicKey(mnemonic))
-std_fee = StdFee(5900000, "3500000uusd")
+std_fee = StdFee(6900000, "3500000uusd")
 
 balance = client.bank.balance(deployer.key.acc_address)
 print(balance)
@@ -39,6 +39,7 @@ def store_contract(contract_name: str) -> str:
     bytes = read_file_as_b64(f"artifacts/{contract_name}.wasm")
     msg = MsgStoreCode(deployer.key.acc_address, bytes)
     result = send_msg(msg)
+    print(result)
     return get_code_id(result)
 
 def get_contract_address(result):
@@ -103,7 +104,13 @@ def deploy(config):
         "seignorage_address": config.seignorage_address,
         "profit_check_address": profit_check_address,
         "slippage": "0.01",
-        "token_code_id": 148
+        "token_code_id": 148,
+        "burn_addr": burn_addr,
+        "warchest_addr": warchest_addr,
+        "warchest_fee": "0.1",
+        "burn_vault_fee": "0.005",
+        "max_burn_vault_fee": "1000000",
+        "denom": "uusd"
     })
     print(f'instantiated {contract_address}')
 
@@ -120,8 +127,8 @@ def deploy(config):
 
 config = get_config("UST")
 # print(client.chain_id)
-# profit_check_address = "terra19mguhxwkd7m5urc4z2vjsettgecxj57903efwx"
-# contract_address = "terra142yv4pe4s7gstprdqqs7c64m5x74hrudncapw6"
+profit_check_address = "terra1jc9sxkxcrmmgeak6wmn44403la3paz60v3n7fa"
+# contract_address = "terra14uqjlrg5efah459xkstxavf3wr7ku8s0j5h328"
 deploy(config)
 if True:
     exit()
