@@ -10,9 +10,6 @@ pub enum ContractError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
-
     #[error("Cannot spend more than spend_limit")]
     TooMuchSpend {},
     // Add any other custom errors you like here.

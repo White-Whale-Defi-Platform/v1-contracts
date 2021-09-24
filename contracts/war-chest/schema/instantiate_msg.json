@@ -3,18 +3,18 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "gov_contract",
+    "admin_addr",
     "spend_limit",
-    "whale_token"
+    "whale_token_addr"
   ],
   "properties": {
-    "gov_contract": {
+    "admin_addr": {
       "type": "string"
     },
     "spend_limit": {
       "$ref": "#/definitions/Uint128"
     },
-    "whale_token": {
+    "whale_token_addr": {
       "type": "string"
     }
   },

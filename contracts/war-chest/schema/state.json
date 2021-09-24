@@ -1,20 +1,16 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Config",
+  "title": "State",
   "type": "object",
   "required": [
-    "gov_contract",
     "spend_limit",
-    "whale_token"
+    "whale_token_addr"
   ],
   "properties": {
-    "gov_contract": {
-      "$ref": "#/definitions/CanonicalAddr"
-    },
     "spend_limit": {
       "$ref": "#/definitions/Uint128"
     },
-    "whale_token": {
+    "whale_token_addr": {
       "$ref": "#/definitions/CanonicalAddr"
     }
   },

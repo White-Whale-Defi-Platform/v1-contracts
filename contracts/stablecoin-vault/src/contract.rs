@@ -22,7 +22,7 @@ use white_whale::profit_check::msg::{HandleMsg as ProfitCheckMsg};//, QueryMsg a
 use white_whale::anchor::try_deposit_to_anchor as try_deposit;
 
 use crate::error::StableVaultError;
-use crate::msg::{HandleMsg, InitMsg, PoolResponse, DepositResponse};
+use crate::msg::{ExecuteMsg, InitMsg, PoolResponse, DepositResponse};
 use crate::state::{State, ADMIN, STATE, POOL_INFO, DEPOSIT_INFO, FEE, DEPOSIT_MANAGER};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_market_price, from_micro};
@@ -108,17 +108,17 @@ pub fn execute(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: HandleMsg,
+    msg: ExecuteMsg,
 ) -> VaultResult {
     match msg {
-        HandleMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        HandleMsg::AbovePeg { amount, uaust_withdraw_amount } => try_arb_above_peg(deps, env, info, amount, uaust_withdraw_amount),
-        HandleMsg::BelowPeg { amount, uaust_withdraw_amount } => try_arb_below_peg(deps, env, info, amount, uaust_withdraw_amount),
-        HandleMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, info, asset),
-        HandleMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, info, amount),
-        HandleMsg::SetSlippage{ slippage } => set_slippage(deps, info, slippage),
-        HandleMsg::SetBurnAddress{ burn_addr } => set_burn_addr(deps, info, burn_addr),
-        HandleMsg::UpdateAdmin{ admin } => {
+        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
+        ExecuteMsg::AbovePeg { amount, uaust_withdraw_amount } => try_arb_above_peg(deps, env, info, amount, uaust_withdraw_amount),
+        ExecuteMsg::BelowPeg { amount, uaust_withdraw_amount } => try_arb_below_peg(deps, env, info, amount, uaust_withdraw_amount),
+        ExecuteMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, info, asset),
+        ExecuteMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, info, amount),
+        ExecuteMsg::SetSlippage{ slippage } => set_slippage(deps, info, slippage),
+        ExecuteMsg::SetBurnAddress{ burn_addr } => set_burn_addr(deps, info, burn_addr),
+        ExecuteMsg::SetAdmin{ admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
             ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
@@ -126,6 +126,8 @@ pub fn execute(
         },
     }
 }
+
+
 pub fn try_withdraw_liquidity(
     deps: DepsMut,
     env: Env,
@@ -661,7 +663,7 @@ mod tests {
         let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
         assert_eq!(info.slippage, Decimal::percent(1u64));
 
-        let msg = HandleMsg::SetSlippage {
+        let msg = ExecuteMsg::SetSlippage {
             slippage: Decimal::one()
         };
         let _res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
@@ -679,7 +681,7 @@ mod tests {
 
         let _res = instantiate(deps.as_mut(), env.clone(), msg_info.clone(), msg).unwrap();
 
-        let msg = HandleMsg::BelowPeg {
+        let msg = ExecuteMsg::BelowPeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128::from(1000000u64)},
             uaust_withdraw_amount: Uint128::zero()
         };
@@ -712,7 +714,7 @@ mod tests {
 
         let _res = instantiate(deps.as_mut(), env.clone(), msg_info.clone(), msg).unwrap();
 
-        let msg = HandleMsg::AbovePeg {
+        let msg = ExecuteMsg::AbovePeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128::from(1000000u64)},
             uaust_withdraw_amount: Uint128::zero()
         };

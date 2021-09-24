@@ -26,7 +26,7 @@ pub struct InitMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum HandleMsg {
+pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AbovePeg { amount: Coin, uaust_withdraw_amount: Uint128 },
     BelowPeg { amount: Coin, uaust_withdraw_amount: Uint128 },
@@ -36,7 +36,7 @@ pub enum HandleMsg {
     AnchorDeposit { amount: Coin },
     SetSlippage { slippage: Decimal },
     SetBurnAddress{ burn_addr: String },
-    UpdateAdmin{ admin: String },
+    SetAdmin{ admin: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

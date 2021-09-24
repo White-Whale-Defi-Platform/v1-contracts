@@ -9,7 +9,7 @@ use cw20::Cw20ExecuteMsg;
 
 use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{read_config, store_config, Config};
+use crate::state::{ADMIN, STATE, State};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -18,14 +18,12 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    store_config(
-        deps.storage,
-        &Config {
-            gov_contract: deps.api.addr_canonicalize(&msg.gov_contract)?,
-            whale_token: deps.api.addr_canonicalize(&msg.whale_token)?,
-            spend_limit: msg.spend_limit,
-        },
-    )?;
+    STATE.save(deps.storage, &State{
+        whale_token_addr: deps.api.addr_canonicalize(&msg.whale_token_addr)?,
+        spend_limit: msg.spend_limit,
+    })?;
+    let admin_addr = Some(deps.api.addr_validate(&msg.admin_addr)?);
+    ADMIN.set(deps, admin_addr)?;
 
     Ok(Response::default())
 }
@@ -51,44 +49,38 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
-    let state = read_config(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     let resp = ConfigResponse {
-        gov_contract: deps.api.addr_humanize(&state.gov_contract)?.to_string(),
-        whale_token: deps.api.addr_humanize(&state.whale_token)?.to_string(),
+        whale_token_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
         spend_limit: state.spend_limit,
     };
 
     Ok(resp)
 }
 
-/// Spend
-/// Owner can execute spend operation to send
-/// `amount` of WHALE token to a `recipient` which could be another contract
 pub fn spend(
     deps: DepsMut,
     info: MessageInfo,
     recipient: String,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    let config: Config = read_config(deps.storage)?;
-    if config.gov_contract != deps.api.addr_canonicalize(info.sender.as_str())? {
-        return Err(ContractError::Unauthorized {});
-    }
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    if config.spend_limit < amount {
+    let state = STATE.load(deps.storage)?;
+    if state.spend_limit < amount {
         return Err(ContractError::TooMuchSpend {});
     }
 
-    let whale_token = deps.api.addr_humanize(&config.whale_token)?.to_string();
+    let whale_token_addr = deps.api.addr_humanize(&state.whale_token_addr)?.to_string();
     Ok(Response::new()
-        .add_messages(vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: whale_token,
+        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: whale_token_addr,
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: recipient.clone(),
                 amount,
             })?,
-        })])
+        }))
         .add_attributes(vec![
             ("action", "spend"),
             ("recipient", recipient.as_str()),
@@ -101,13 +93,14 @@ pub fn update_spend_limit(
     info: MessageInfo,
     spend_limit: Uint128,
 ) -> Result<Response, ContractError> {
-    let mut config: Config = read_config(deps.storage)?;
-    if config.gov_contract != deps.api.addr_canonicalize(info.sender.as_str())? {
-        return Err(ContractError::Unauthorized {});
-    }
-    config.spend_limit = spend_limit;
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+    let mut state = STATE.load(deps.storage)?;
+    let previous_spend_limit = state.spend_limit;
+    state.spend_limit = spend_limit;
+    STATE.save(deps.storage, &state)?;
 
-    store_config(deps.storage, &config)?;
-
-    Ok(Response::new().add_attributes(vec![("action", "update_config")]))
+    Ok(Response::new()
+        .add_attribute("action", "update_spend_limit")
+        .add_attribute("previous spend limit", previous_spend_limit.to_string())
+        .add_attribute("spend limit", spend_limit.to_string()))
 }

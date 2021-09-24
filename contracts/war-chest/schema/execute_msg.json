@@ -29,21 +29,17 @@
     {
       "type": "object",
       "required": [
-        "update_config"
+        "update_spend_limit"
       ],
       "properties": {
-        "update_config": {
+        "update_spend_limit": {
           "type": "object",
+          "required": [
+            "spend_limit"
+          ],
           "properties": {
             "spend_limit": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/Uint128"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/definitions/Uint128"
             }
           }
         }

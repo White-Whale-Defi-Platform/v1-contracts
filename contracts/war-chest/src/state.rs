@@ -1,22 +1,15 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{CanonicalAddr, StdResult, Storage, Uint128};
-use cosmwasm_storage::{singleton, singleton_read};
-
-static KEY_CONFIG: &[u8] = b"config";
+use cosmwasm_std::{CanonicalAddr, Uint128};
+use cw_controllers::Admin;
+use cw_storage_plus::Item;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Config {
-    pub gov_contract: CanonicalAddr, // whale gov address
-    pub whale_token: CanonicalAddr,  // whale token address
-    pub spend_limit: Uint128,        // spend limit per each `spend` request
+pub struct State {
+    pub whale_token_addr: CanonicalAddr,
+    pub spend_limit: Uint128,
 }
 
-pub fn store_config(storage: &mut dyn Storage, config: &Config) -> StdResult<()> {
-    singleton(storage, KEY_CONFIG).save(config)
-}
-
-pub fn read_config(storage: &dyn Storage) -> StdResult<Config> {
-    singleton_read(storage, KEY_CONFIG).load()
-}
+pub const ADMIN: Admin = Admin::new("admin");
+pub const STATE: Item<State> = Item::new("\u{0}{5}state");

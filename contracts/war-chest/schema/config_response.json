@@ -3,18 +3,14 @@
   "title": "ConfigResponse",
   "type": "object",
   "required": [
-    "gov_contract",
     "spend_limit",
-    "whale_token"
+    "whale_token_addr"
   ],
   "properties": {
-    "gov_contract": {
-      "type": "string"
-    },
     "spend_limit": {
       "$ref": "#/definitions/Uint128"
     },
-    "whale_token": {
+    "whale_token_addr": {
       "type": "string"
     }
   },

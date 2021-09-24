@@ -5,9 +5,9 @@ use cosmwasm_std::Uint128;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub gov_contract: String, // whale gov contract
-    pub whale_token: String,  // whale token address
-    pub spend_limit: Uint128, // spend limit per each `spend` request
+    pub admin_addr: String,
+    pub whale_token_addr: String,
+    pub spend_limit: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -23,10 +23,8 @@ pub enum QueryMsg {
     GetConfig {},
 }
 
-// We define a custom struct for each query response
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
-    pub gov_contract: String,
-    pub whale_token: String,
+    pub whale_token_addr: String,
     pub spend_limit: Uint128,
 }
