@@ -20,7 +20,8 @@ pub struct InitMsg {
     pub denom: String,
     pub warchest_fee: Decimal,
     pub burn_vault_fee: Decimal,
-    pub max_burn_vault_fee: Uint128
+    pub max_burn_vault_fee: Uint128,
+    pub anchor_min_withdraw_amount: Uint128
 }
 
 

@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{CanonicalAddr};
+use cosmwasm_std::{CanonicalAddr, Uint128};
 use cw_storage_plus::{Item};
 use cw_controllers::Admin;
 
@@ -19,6 +19,7 @@ pub struct State {
     pub aust_address: CanonicalAddr,
     pub seignorage_address: CanonicalAddr,
     pub profit_check_address: CanonicalAddr,
+    pub anchor_min_withdraw_amount: Uint128
 }
 
 pub const ADMIN: Admin = Admin::new("admin");

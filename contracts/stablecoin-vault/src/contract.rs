@@ -1,6 +1,6 @@
 use cosmwasm_std::{ entry_point, CanonicalAddr,
     from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult, WasmMsg, Uint128, Decimal, SubMsg, Reply, ReplyOn
+    StdResult, WasmMsg, Uint128, Decimal, SubMsg, Reply, ReplyOn, Fraction
 };
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 use terraswap::asset::{Asset, AssetInfo};
@@ -49,6 +49,7 @@ pub fn instantiate(
         aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
         seignorage_address: deps.api.addr_canonicalize(&msg.seignorage_address)?,
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
+        anchor_min_withdraw_amount: msg.anchor_min_withdraw_amount
     };
 
     STATE.save(deps.storage, &state)?;
@@ -130,7 +131,7 @@ pub fn execute(
 
 pub fn try_withdraw_liquidity(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     sender: String,
     amount: Uint128,
 ) -> VaultResult {
@@ -169,7 +170,7 @@ pub fn try_withdraw_liquidity(
     DEPOSIT_MANAGER.decrease(deps.storage, key, refund_amount - user_profit_share)?;
     let refund_coin = withdraw_asset.deduct_tax(&deps.querier)?;
 
-    let response = Response::new()
+    let mut response = Response::new()
         .add_attribute("action", "withdraw_liquidity")
         .add_attribute("withdrawn_amount", refund_amount.to_string())
         .add_attribute("refund_amount", refund_coin.amount.to_string())
@@ -182,28 +183,30 @@ pub fn try_withdraw_liquidity(
         .add_attribute("burn_vault_fee", withdraw_fee.to_string());
     // withdraw from anchor if necessary
     // TODO: Improve
-    // let state = STATE.load(deps.storage)?;
-    // let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address.clone(), get_stable_denom(deps.as_ref())?)?;
-    // if refund_asset.amount*Decimal::from_ratio(Uint128::from(50u64), Uint128::from(1u64)) > stable_balance {
-    //     let uaust_amount: Uint128 = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address)?;
-    //     let uaust_exchange_rate_response = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
-    //     let uaust_ust_rate = Decimal::from_str(&uaust_exchange_rate_response.exchange_rate.to_string())?;
-    //     let uaust_amount_in_uust = uaust_amount * uaust_ust_rate;
-    //     // TODO: Improve
-    //     if uaust_amount_in_uust > Uint128::from(10u64 * 1000000u64) || amount == total_share {
-    //         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-    //             contract_addr: state.aust_address.to_string(),
-    //             msg: to_binary(
-    //                 &Cw20ExecuteMsg::Send{
-    //                     contract: state.anchor_money_market_address.to_string(),
-    //                     amount: uaust_amount,
-    //                     msg: to_binary(&AnchorMsg::RedeemStable{})?
-    //                 }
-    //             )?,
-    //             funds: vec![]
-    //         }));
-    //     }
-    // }
+    let state = STATE.load(deps.storage)?;
+    let uaust_amount: Uint128 = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address.clone())?;
+    if uaust_amount > Uint128::zero() {
+        let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address, get_stable_denom(deps.as_ref())?)?;
+        let stable_ratio = Decimal::from_ratio(stable_balance, total_value);
+        let anchor_ratio = Decimal::one() - stable_ratio;
+        let anchor_withdraw_amount = total_value * anchor_ratio;
+        if anchor_withdraw_amount > state.anchor_min_withdraw_amount {
+            let uaust_exchange_rate_response = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
+            let ust_uaust_rate = Decimal::from(uaust_exchange_rate_response.exchange_rate).inv().unwrap();
+            let anchor_withdraw_aust_amount = anchor_withdraw_amount * ust_uaust_rate;
+            response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
+                contract_addr: state.aust_address.to_string(),
+                msg: to_binary(
+                    &Cw20ExecuteMsg::Send{
+                        contract: state.anchor_money_market_address.to_string(),
+                        amount: anchor_withdraw_aust_amount,
+                        msg: to_binary(&AnchorMsg::RedeemStable{})?
+                    }
+                )?,
+                funds: vec![]
+            }));
+        }
+    }
 
     let refund_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender,
@@ -633,7 +636,8 @@ mod tests {
             denom: "uusd".to_string(),
             warchest_fee: Decimal::percent(10u64),
             burn_vault_fee: Decimal::permille(5u64),
-            max_burn_vault_fee: Uint128::from(1000000u64)
+            max_burn_vault_fee: Uint128::from(1000000u64),
+            anchor_min_withdraw_amount: Uint128::from(10000000u64)
         }
     }
 

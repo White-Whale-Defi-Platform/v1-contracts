@@ -1,3 +1,4 @@
+import base64
 import json
 
 import pathlib
@@ -66,7 +67,8 @@ def deploy():
         "warchest_fee": "0.1",
         "burn_vault_fee": "0.005",
         "max_burn_vault_fee": "1000000",
-        "denom": "uusd"
+        "denom": "uusd",
+        "anchor_min_withdraw_amount": "100000000"
     }, get_contract_address=get_contract_address)
     print(f'instantiated {contract_address}')
 
