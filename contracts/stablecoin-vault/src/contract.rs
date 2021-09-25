@@ -18,7 +18,7 @@ use white_whale::fee::{Fee, CappedFee, VaultFee};
 use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg};
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::query::anchor::query_aust_exchange_rate;
-use white_whale::profit_check::msg::{HandleMsg as ProfitCheckMsg};//, QueryMsg as ProfitCheckQueryMsg, LastProfitResponse};
+use white_whale::profit_check::msg::{HandleMsg as ProfitCheckMsg};
 use white_whale::anchor::try_deposit_to_anchor as try_deposit;
 
 use crate::error::StableVaultError;
@@ -130,7 +130,7 @@ pub fn execute(
 
 pub fn try_withdraw_liquidity(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     sender: String,
     amount: Uint128,
 ) -> VaultResult {
@@ -142,6 +142,13 @@ pub fn try_withdraw_liquidity(
 
     let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
     let refund_amount: Uint128 = total_value * share_ratio;
+    let fee_config = FEE.load(deps.storage)?;
+    let withdraw_fee: Uint128 = fee_config.burn_fee.compute(refund_amount);
+    let withdraw_fee_asset = Asset {
+        info: AssetInfo::NativeToken{ denom: get_stable_denom(deps.as_ref())? },
+        amount: withdraw_fee
+    };
+    let withdraw_fee_tax: Uint128 = withdraw_fee_asset.compute_tax(&deps.querier)?;
 
     let total_user_share = amount + query_token_balance(&deps.querier, lp_addr, deps.api.addr_validate(&sender)?)?;
     let total_user_share_ratio: Decimal = Decimal::from_ratio(total_user_share, total_share);
@@ -149,72 +156,59 @@ pub fn try_withdraw_liquidity(
     let raw_sender = deps.api.addr_canonicalize(sender.as_str())?;
     let key = &raw_sender.as_slice();
     let user_deposit = DEPOSIT_MANAGER.get(deps.storage, key)?;
-    if user_share <= user_deposit {
-        return Err(StableVaultError::Std(StdError::generic_err(format!("Insufficient deposits {} to withdraw {}.", user_deposit, user_share))));
-    }
+
     let user_profit = user_share - user_deposit;
     let user_profit_share_ratio = Decimal::from_ratio(amount, total_user_share);
     let user_profit_share = user_profit * user_profit_share_ratio;
 
-    let fee_config = FEE.load(deps.storage)?;
-    let withdraw_fee: Uint128 = fee_config.burn_fee.compute(refund_amount);
-    let adjusted_refund_amount = refund_amount - withdraw_fee;
-    if adjusted_refund_amount <= user_profit_share {
-        return Err(StableVaultError::Std(StdError::generic_err(format!("Inconsistent profit share {} to refund {}.", user_profit_share, refund_amount))));
-    }
-    let refund_asset: Asset = Asset{
+    let white_whale_adjusted_refund_amount = refund_amount - withdraw_fee - withdraw_fee_tax;
+    let withdraw_asset = Asset {
         info: AssetInfo::NativeToken{ denom: get_stable_denom(deps.as_ref())? },
-        amount: adjusted_refund_amount
+        amount: white_whale_adjusted_refund_amount
     };
-    DEPOSIT_MANAGER.decrease(deps.storage, key, adjusted_refund_amount - user_profit_share)?;
-    let refund_coin = refund_asset.deduct_tax(&deps.querier)?;
+    DEPOSIT_MANAGER.decrease(deps.storage, key, refund_amount - user_profit_share)?;
+    let refund_coin = withdraw_asset.deduct_tax(&deps.querier)?;
 
-    let mut response = Response::new()
+    let response = Response::new()
         .add_attribute("action", "withdraw_liquidity")
         .add_attribute("withdrawn_amount", refund_amount.to_string())
         .add_attribute("refund_amount", refund_coin.amount.to_string())
-        .add_attribute("withdrawn_share", adjusted_refund_amount.to_string())
+        .add_attribute("withdrawn_share", white_whale_adjusted_refund_amount.to_string())
         .add_attribute("withdrawn_deposit", (refund_amount - user_profit_share).to_string())
         .add_attribute("withdrawn_profit", user_profit_share.to_string())
-        .add_attribute("tax", (adjusted_refund_amount - refund_coin.amount).to_string())
+        .add_attribute("tax", (white_whale_adjusted_refund_amount - refund_coin.amount).to_string())
+        .add_attribute("withdraw fee tax", withdraw_fee_tax.to_string())
         .add_attribute("total_fee", withdraw_fee.to_string())
         .add_attribute("burn_vault_fee", withdraw_fee.to_string());
     // withdraw from anchor if necessary
     // TODO: Improve
-    let state = STATE.load(deps.storage)?;
-    let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address.clone(), get_stable_denom(deps.as_ref())?)?;
-    if refund_asset.amount*Decimal::from_ratio(Uint128::from(50u64), Uint128::from(1u64)) > stable_balance {
-        let uaust_amount: Uint128 = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address)?;
-        let uaust_exchange_rate_response = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
-        let uaust_ust_rate = Decimal::from_str(&uaust_exchange_rate_response.exchange_rate.to_string())?;
-        let uaust_amount_in_uust = uaust_amount * uaust_ust_rate;
-        // TODO: Improve
-        if uaust_amount_in_uust > Uint128::from(10u64 * 1000000u64) || amount == total_share {
-            response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-                contract_addr: state.aust_address.to_string(),
-                msg: to_binary(
-                    &Cw20ExecuteMsg::Send{
-                        contract: state.anchor_money_market_address.to_string(),
-                        amount: uaust_amount,
-                        msg: to_binary(&AnchorMsg::RedeemStable{})?
-                    }
-                )?,
-                funds: vec![]
-            }));
-        }
-    }
+    // let state = STATE.load(deps.storage)?;
+    // let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address.clone(), get_stable_denom(deps.as_ref())?)?;
+    // if refund_asset.amount*Decimal::from_ratio(Uint128::from(50u64), Uint128::from(1u64)) > stable_balance {
+    //     let uaust_amount: Uint128 = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address)?;
+    //     let uaust_exchange_rate_response = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
+    //     let uaust_ust_rate = Decimal::from_str(&uaust_exchange_rate_response.exchange_rate.to_string())?;
+    //     let uaust_amount_in_uust = uaust_amount * uaust_ust_rate;
+    //     // TODO: Improve
+    //     if uaust_amount_in_uust > Uint128::from(10u64 * 1000000u64) || amount == total_share {
+    //         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
+    //             contract_addr: state.aust_address.to_string(),
+    //             msg: to_binary(
+    //                 &Cw20ExecuteMsg::Send{
+    //                     contract: state.anchor_money_market_address.to_string(),
+    //                     amount: uaust_amount,
+    //                     msg: to_binary(&AnchorMsg::RedeemStable{})?
+    //                 }
+    //             )?,
+    //             funds: vec![]
+    //         }));
+    //     }
+    // }
 
-    let refund_msg = match &refund_asset.info {
-        AssetInfo::Token { contract_addr } => CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.clone(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer { recipient: sender, amount })?,
-            funds: vec![],
-        }),
-        AssetInfo::NativeToken { .. } => CosmosMsg::Bank(BankMsg::Send {
-            to_address: sender,
-            amount: vec![refund_coin],
-        }),
-    };
+    let refund_msg = CosmosMsg::Bank(BankMsg::Send {
+        to_address: sender,
+        amount: vec![refund_coin],
+    });
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
@@ -494,10 +488,16 @@ pub fn try_provide_liquidity(
     asset.assert_sent_native_token_balance(&msg_info)?;
 
     let fee_config = FEE.load(deps.storage)?;
-    let deposit_fee: Uint128 = fee_config.burn_fee.compute(asset.amount);
-    let deposit: Uint128 = asset.amount - deposit_fee;
+    let deposit_fee = fee_config.burn_fee.compute(asset.amount);
+    let deposit_asset: Asset = Asset{
+        info: AssetInfo::NativeToken{ denom: get_stable_denom(deps.as_ref())? },
+        amount: deposit_fee
+    };
+    let deposit_fee_tax: Uint128 = deposit_asset.compute_tax(&deps.querier)?;
+
+    let deposit: Uint128 = asset.amount - deposit_fee - deposit_fee_tax;
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let total_deposits_in_ust: Uint128 = compute_total_value(deps.as_ref(), &info)? - deposit;
+    let total_deposits_in_ust: Uint128 = compute_total_value(deps.as_ref(), &info)? - deposit_fee - deposit_fee_tax;
 
     let raw_sender = deps.api.addr_canonicalize(msg_info.sender.as_str())?;
     let key = &raw_sender.as_slice();
@@ -508,7 +508,7 @@ pub fn try_provide_liquidity(
         // Initial share = collateral amount
         deposit
     } else {
-        deposit.multiply_ratio(total_share, total_deposits_in_ust)
+        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
     };
 
     // mint LP token to sender
@@ -526,7 +526,7 @@ pub fn try_provide_liquidity(
         funds: vec![Coin{ denom: deposit_info.get_denom()?, amount: deposit_fee }],
         msg: to_binary(&BurnMsg::Deposit{})?
     });
-    Ok(Response::new().add_attribute("deposit", deposit.to_string()).add_attribute("fee", deposit_fee.to_string()).add_message(msg).add_message(fee_msg))
+    Ok(Response::new().add_attribute("deposit", deposit.to_string()).add_attribute("total_deposits", total_deposits_in_ust.to_string()).add_attribute("fee", deposit_fee.to_string()).add_attribute("tax", deposit_fee_tax.to_string()).add_message(msg).add_message(fee_msg))
 }
 
 pub fn try_deposit_to_anchor(
