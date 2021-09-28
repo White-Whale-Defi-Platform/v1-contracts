@@ -36,6 +36,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::Deposit{} => Ok(Response::default()),
         ExecuteMsg::Spend { recipient, amount } => spend(deps, info, recipient, amount),
         ExecuteMsg::UpdateSpendLimit { spend_limit } => update_spend_limit(deps, info, spend_limit),
     }

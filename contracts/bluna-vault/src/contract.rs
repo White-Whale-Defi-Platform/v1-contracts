@@ -294,15 +294,10 @@ pub fn query(
     match msg {
         QueryMsg::Config{} => to_binary(&try_query_config(deps)?),
         QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?),
-        QueryMsg::Deposit{ addr } => try_query_deposit(deps, addr),
+        QueryMsg::Fees{} => to_binary(""),
+        QueryMsg::EstimateDepositFee{ .. } => to_binary(""),
+        QueryMsg::EstimateWithdrawFee{ .. } => to_binary(""),
     }
-}
-
-pub fn try_query_deposit(
-    _deps: Deps,
-    _addr: String
-) -> StdResult<Binary> {
-    to_binary(&{})
 }
 
 pub fn try_query_config(

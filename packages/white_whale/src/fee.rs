@@ -31,9 +31,9 @@ impl CappedFee {
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct VaultFee {
-    pub burn_fee: CappedFee,
+    pub community_fund_fee: CappedFee,
     pub warchest_fee: Fee,
-    pub burn_addr: CanonicalAddr,
+    pub community_fund_addr: CanonicalAddr,
     pub warchest_addr: CanonicalAddr
 }
 

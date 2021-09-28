@@ -3,13 +3,13 @@
   "title": "InitMsg",
   "type": "object",
   "required": [
+    "anchor_min_withdraw_amount",
     "anchor_money_market_address",
     "asset_info",
     "aust_address",
-    "burn_addr",
-    "burn_vault_fee",
-    "denom",
-    "max_burn_vault_fee",
+    "community_fund_addr",
+    "community_fund_fee",
+    "max_community_fund_fee",
     "pool_address",
     "profit_check_address",
     "seignorage_address",
@@ -19,6 +19,9 @@
     "warchest_fee"
   ],
   "properties": {
+    "anchor_min_withdraw_amount": {
+      "$ref": "#/definitions/Uint128"
+    },
     "anchor_money_market_address": {
       "type": "string"
     },
@@ -28,16 +31,13 @@
     "aust_address": {
       "type": "string"
     },
-    "burn_addr": {
+    "community_fund_addr": {
       "type": "string"
     },
-    "burn_vault_fee": {
+    "community_fund_fee": {
       "$ref": "#/definitions/Decimal"
     },
-    "denom": {
-      "type": "string"
-    },
-    "max_burn_vault_fee": {
+    "max_community_fund_fee": {
       "$ref": "#/definitions/Uint128"
     },
     "pool_address": {
@@ -67,7 +67,7 @@
   "definitions": {
     "AssetInfo": {
       "description": "AssetInfo contract_addr is usually passed from the cw20 hook so we can trust the contract_addr is properly validated.",
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "required": [

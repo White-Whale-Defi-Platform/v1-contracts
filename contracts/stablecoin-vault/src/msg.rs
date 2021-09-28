@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Coin, Decimal, Uint128};
 use terraswap::asset::{Asset, AssetInfo};
 use cw20::Cw20ReceiveMsg;
+use white_whale::fee::VaultFee;
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -12,15 +13,14 @@ pub struct InitMsg {
     pub aust_address: String,
     pub seignorage_address: String,
     pub profit_check_address: String,
-    pub burn_addr: String,
+    pub community_fund_addr: String,
     pub warchest_addr: String,
     pub asset_info: AssetInfo,
     pub slippage: Decimal,
     pub token_code_id: u64,
-    pub denom: String,
     pub warchest_fee: Decimal,
-    pub burn_vault_fee: Decimal,
-    pub max_burn_vault_fee: Uint128,
+    pub community_fund_fee: Decimal,
+    pub max_community_fund_fee: Uint128,
     pub anchor_min_withdraw_amount: Uint128
 }
 
@@ -36,20 +36,16 @@ pub enum ExecuteMsg {
     },
     AnchorDeposit { amount: Coin },
     SetSlippage { slippage: Decimal },
-    SetBurnAddress{ burn_addr: String },
+    SetFee{ fee: VaultFee },
     SetAdmin{ admin: String },
+    SetTrader{ trader: String }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolResponse {
     pub assets: [Asset; 3],
-    pub total_deposits_in_ust: Uint128,
+    pub total_value_in_ust: Uint128,
     pub total_share: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct DepositResponse {
-    pub deposit: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

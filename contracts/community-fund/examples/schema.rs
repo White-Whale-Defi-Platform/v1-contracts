@@ -2,9 +2,9 @@ use std::env::current_dir;
 use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
-use white_whale::burn::msg::{ConfigResponse, ExecuteMsg};
-use buy_and_burn::msg::InstantiateMsg;
-use buy_and_burn::state::State;
+use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg};
+use community_fund::msg::InstantiateMsg;
+use community_fund::state::State;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

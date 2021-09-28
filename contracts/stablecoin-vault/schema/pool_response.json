@@ -4,8 +4,8 @@
   "type": "object",
   "required": [
     "assets",
-    "total_deposits_in_ust",
-    "total_share"
+    "total_share",
+    "total_value_in_ust"
   ],
   "properties": {
     "assets": {
@@ -16,10 +16,10 @@
       "maxItems": 3,
       "minItems": 3
     },
-    "total_deposits_in_ust": {
+    "total_share": {
       "$ref": "#/definitions/Uint128"
     },
-    "total_share": {
+    "total_value_in_ust": {
       "$ref": "#/definitions/Uint128"
     }
   },
@@ -41,7 +41,7 @@
     },
     "AssetInfo": {
       "description": "AssetInfo contract_addr is usually passed from the cw20 hook so we can trust the contract_addr is properly validated.",
-      "anyOf": [
+      "oneOf": [
         {
           "type": "object",
           "required": [

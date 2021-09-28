@@ -7,6 +7,7 @@ sys.path.append(pathlib.Path(__file__).parent.resolve())
 
 from terra_sdk.core.auth import StdFee
 from white_whale.deploy import get_deployer
+from white_whale.address.bombay.white_whale import whale_token
 
 import pathlib
 import sys
@@ -15,7 +16,7 @@ sys.path.append(pathlib.Path(__file__).parent.resolve())
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
 std_fee = StdFee(5000000, "1500000uusd")
 
-deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-11", fee=std_fee)
+deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=std_fee)
 
 ###
 print("store contract")
@@ -33,8 +34,7 @@ contract_address = deployer.instantiate_contract(code_id=code_id, init_msg={
 })
 print(f'instantiated {contract_address}')
 
-whale_token_addr = "terra1al4gd6wudfalazsvrjzz4fs8srasqcn9vyvqp9"
 result = deployer.execute_contract(contract_address, execute_msg={
-    "register_contracts": { "whale_token": whale_token_addr }
+    "register_contracts": { "whale_token": whale_token }
 })
 print(result)

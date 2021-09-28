@@ -1,5 +1,5 @@
 pub mod anchor;
-pub mod burn;
+pub mod community_fund;
 pub mod denom;
 pub mod deposit_info;
 pub mod deposit_manager;

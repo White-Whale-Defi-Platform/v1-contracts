@@ -1,16 +1,15 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Addr, Decimal, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Burn{},
+    Spend{ recipient: String, amount: Uint128 },
+    Burn{ amount: Uint128 },
     Deposit {},
-    BurnProfits{},
     UpdateAdmin{ admin: String },
-    UpdateAnchorDepositRatio{ ratio: Decimal },
     UpdateAnchorDepositThreshold{ threshold: Uint128 },
     UpdateAnchorWithdrawThreshold{ threshold: Uint128 },
 }
@@ -30,5 +29,4 @@ pub struct ConfigResponse {
     pub aust_addr: Addr,
     pub anchor_deposit_threshold: Uint128,
     pub anchor_withdraw_threshold: Uint128,
-    pub anchor_deposit_ratio: Decimal
 }

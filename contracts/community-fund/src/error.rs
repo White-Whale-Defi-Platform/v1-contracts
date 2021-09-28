@@ -5,7 +5,7 @@ use cw_controllers::AdminError;
 
 
 #[derive(Error, Debug, PartialEq)]
-pub enum BurnError {
+pub enum CommunityFundError {
     #[error("{0}")]
     Std(#[from] StdError),
 

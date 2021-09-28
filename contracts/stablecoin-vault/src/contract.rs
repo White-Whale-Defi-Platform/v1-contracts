@@ -1,6 +1,6 @@
 use cosmwasm_std::{ entry_point, CanonicalAddr,
-    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError,
-    StdResult, WasmMsg, Uint128, Decimal, SubMsg, Reply, ReplyOn, Fraction
+    from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, Fraction, MessageInfo, Response, StdError,
+    StdResult, WasmMsg, Uint128, Decimal, SubMsg, Reply, ReplyOn
 };
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 use terraswap::asset::{Asset, AssetInfo};
@@ -11,23 +11,22 @@ use protobuf::Message;
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
-use white_whale::burn::msg::ExecuteMsg as BurnMsg;
+use white_whale::community_fund::msg::ExecuteMsg as CommunityFundMsg;
 use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, CappedFee, VaultFee};
-use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg};
+use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg, EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse};
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::profit_check::msg::{HandleMsg as ProfitCheckMsg};
 use white_whale::anchor::try_deposit_to_anchor as try_deposit;
 
 use crate::error::StableVaultError;
-use crate::msg::{ExecuteMsg, InitMsg, PoolResponse, DepositResponse};
-use crate::state::{State, ADMIN, STATE, POOL_INFO, DEPOSIT_INFO, FEE, DEPOSIT_MANAGER};
+use crate::msg::{ExecuteMsg, InitMsg, PoolResponse};
+use crate::state::{State, ADMIN, STATE, POOL_INFO, DEPOSIT_INFO, FEE};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_market_price, from_micro};
 use crate::response::MsgInstantiateContractResponse;
-use std::str::FromStr;
 
 
 const INSTANTIATE_REPLY_ID: u64 = 1;
@@ -54,15 +53,15 @@ pub fn instantiate(
 
     STATE.save(deps.storage, &state)?;
     DEPOSIT_INFO.save(deps.storage, &DepositInfo{
-        asset_info: AssetInfo::NativeToken{ denom: msg.denom }
+        asset_info: msg.asset_info.clone()
     })?;
     FEE.save(deps.storage, &VaultFee{
-        burn_fee: CappedFee{
-            fee: Fee{ share: msg.burn_vault_fee },
-            max_fee: msg.max_burn_vault_fee
+        community_fund_fee: CappedFee{
+            fee: Fee{ share: msg.community_fund_fee },
+            max_fee: msg.max_community_fund_fee
         },
         warchest_fee: Fee{ share: msg.warchest_fee },
-        burn_addr: deps.api.addr_canonicalize(&msg.burn_addr)?,
+        community_fund_addr: deps.api.addr_canonicalize(&msg.community_fund_addr)?,
         warchest_addr: deps.api.addr_canonicalize(&msg.warchest_addr)?
     })?;
 
@@ -118,18 +117,18 @@ pub fn execute(
         ExecuteMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, info, asset),
         ExecuteMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, info, amount),
         ExecuteMsg::SetSlippage{ slippage } => set_slippage(deps, info, slippage),
-        ExecuteMsg::SetBurnAddress{ burn_addr } => set_burn_addr(deps, info, burn_addr),
         ExecuteMsg::SetAdmin{ admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
             ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
             Ok(Response::default().add_attribute("previous admin", previous_admin).add_attribute("admin", admin))
         },
+        ExecuteMsg::SetTrader{ trader } => set_trader(deps, info, trader),
+        ExecuteMsg::SetFee{ fee } => set_fee(deps, info, fee),
     }
 }
 
-
-pub fn try_withdraw_liquidity(
+fn try_withdraw_liquidity(
     deps: DepsMut,
     env: Env,
     sender: String,
@@ -138,55 +137,23 @@ pub fn try_withdraw_liquidity(
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
 
     let lp_addr = deps.api.addr_humanize(&info.liquidity_token)?;
-    let total_share: Uint128 = query_supply(&deps.querier, lp_addr.clone())?;
+    let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
     let total_value: Uint128 = compute_total_value(deps.as_ref(), &info)?;
 
     let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
     let refund_amount: Uint128 = total_value * share_ratio;
-    let fee_config = FEE.load(deps.storage)?;
-    let withdraw_fee: Uint128 = fee_config.burn_fee.compute(refund_amount);
-    let withdraw_fee_asset = Asset {
-        info: AssetInfo::NativeToken{ denom: get_stable_denom(deps.as_ref())? },
-        amount: withdraw_fee
-    };
-    let withdraw_fee_tax: Uint128 = withdraw_fee_asset.compute_tax(&deps.querier)?;
+    let community_fund_fee = compute_transaction_fee(deps.as_ref(), refund_amount)?;
+    let warchest_fee = compute_warchest_fee(deps.as_ref(), refund_amount)?;
+    let net_refund_amount = refund_amount - community_fund_fee - warchest_fee;
 
-    let total_user_share = amount + query_token_balance(&deps.querier, lp_addr, deps.api.addr_validate(&sender)?)?;
-    let total_user_share_ratio: Decimal = Decimal::from_ratio(total_user_share, total_share);
-    let user_share: Uint128 = total_value * total_user_share_ratio;
-    let raw_sender = deps.api.addr_canonicalize(sender.as_str())?;
-    let key = &raw_sender.as_slice();
-    let user_deposit = DEPOSIT_MANAGER.get(deps.storage, key)?;
-
-    let user_profit = user_share - user_deposit;
-    let user_profit_share_ratio = Decimal::from_ratio(amount, total_user_share);
-    let user_profit_share = user_profit * user_profit_share_ratio;
-
-    let white_whale_adjusted_refund_amount = refund_amount - withdraw_fee - withdraw_fee_tax;
-    let withdraw_asset = Asset {
-        info: AssetInfo::NativeToken{ denom: get_stable_denom(deps.as_ref())? },
-        amount: white_whale_adjusted_refund_amount
-    };
-    DEPOSIT_MANAGER.decrease(deps.storage, key, refund_amount - user_profit_share)?;
-    let refund_coin = withdraw_asset.deduct_tax(&deps.querier)?;
-
-    let mut response = Response::new()
-        .add_attribute("action", "withdraw_liquidity")
-        .add_attribute("withdrawn_amount", refund_amount.to_string())
-        .add_attribute("refund_amount", refund_coin.amount.to_string())
-        .add_attribute("withdrawn_share", white_whale_adjusted_refund_amount.to_string())
-        .add_attribute("withdrawn_deposit", (refund_amount - user_profit_share).to_string())
-        .add_attribute("withdrawn_profit", user_profit_share.to_string())
-        .add_attribute("tax", (white_whale_adjusted_refund_amount - refund_coin.amount).to_string())
-        .add_attribute("withdraw fee tax", withdraw_fee_tax.to_string())
-        .add_attribute("total_fee", withdraw_fee.to_string())
-        .add_attribute("burn_vault_fee", withdraw_fee.to_string());
-    // withdraw from anchor if necessary
-    // TODO: Improve
+    let mut response = Response::new();
+    // // withdraw from anchor if necessary
+    // // TODO: Improve
     let state = STATE.load(deps.storage)?;
+    let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let uaust_amount: Uint128 = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address.clone())?;
     if uaust_amount > Uint128::zero() {
-        let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address, get_stable_denom(deps.as_ref())?)?;
+        let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address, denom.clone())?;
         let stable_ratio = Decimal::from_ratio(stable_balance, total_value);
         let anchor_ratio = Decimal::one() - stable_ratio;
         let anchor_withdraw_amount = total_value * anchor_ratio;
@@ -207,31 +174,50 @@ pub fn try_withdraw_liquidity(
             }));
         }
     }
+    let refund_asset = Asset{
+        info: AssetInfo::NativeToken{ denom: denom.clone() },
+        amount: net_refund_amount
+    };
+    let community_fund_asset = Asset{
+        info: AssetInfo::NativeToken{ denom: denom.clone() },
+        amount: community_fund_fee
+    };
+
+    let warchest_asset = Asset{
+        info: AssetInfo::NativeToken{ denom },
+        amount: warchest_fee
+    };
 
     let refund_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender,
-        amount: vec![refund_coin],
+        amount: vec![refund_asset.deduct_tax(&deps.querier)?],
     });
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
         funds: vec![],
     });
-    let burn_vault_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&fee_config.burn_addr)?.to_string(),
-        funds: vec![Coin{ denom: DEPOSIT_INFO.load(deps.storage)?.get_denom()?, amount: withdraw_fee }],
-        msg: to_binary(&BurnMsg::Deposit{})?
+    let fee_config = FEE.load(deps.storage)?;
+    let community_fund_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&fee_config.community_fund_addr)?.to_string(),
+        funds: vec![community_fund_asset.deduct_tax(&deps.querier)?],
+        msg: to_binary(&CommunityFundMsg::Deposit{})?
     });
-    // let warchest_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-    //     contract_addr: deps.api.addr_humanize(&fee_config.warchest_addr)?.to_string(),
-    //     funds: vec![Coin{ denom: DEPOSIT_INFO.load(deps.storage)?.get_denom()?, amount: profit_share }],
-    //     msg: to_binary(&BurnMsg::Deposit{})?
-    // });
-
-    Ok(response.add_message(refund_msg).add_message(burn_msg).add_message(burn_vault_msg))
+    let warchest_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&fee_config.warchest_addr)?.to_string(),
+        funds: vec![warchest_asset.deduct_tax(&deps.querier)?],
+        msg: to_binary(&CommunityFundMsg::Deposit{})?
+    });
+    Ok(response.add_message(refund_msg).add_message(burn_msg).add_message(community_fund_msg).add_message(warchest_msg)
+        .add_attribute("action", "withdraw_liquidity")
+        .add_attribute("withdrawn_amount", refund_amount.to_string())
+        .add_attribute("refund amount", net_refund_amount.to_string())
+        .add_attribute("community fund fee", community_fund_fee.to_string())
+        .add_attribute("warchest fee", warchest_fee.to_string())
+    )
 }
 
-pub fn receive_cw20(
+fn receive_cw20(
     deps: DepsMut,
     env: Env,
     msg_info: MessageInfo,
@@ -254,27 +240,11 @@ pub fn receive_cw20(
         }
 }
 
-pub fn get_stable_denom(
-    deps: Deps,
-) -> StdResult<String> {
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let stable_info = info.asset_infos[0].to_normal(deps.api)?;
-    let stable_denom = match stable_info {
-        AssetInfo::Token{..} => String::default(),
-        AssetInfo::NativeToken{denom} => denom
-    };
-    if stable_denom == String::default() {
-        return Err(StdError::generic_err("get_stable_denom failed: No native token found."));
-    }
-
-    Ok(stable_denom)
-}
-
-pub fn get_slippage_ratio(slippage: Decimal) -> StdResult<Decimal> {
+fn get_slippage_ratio(slippage: Decimal) -> StdResult<Decimal> {
     Ok(Decimal::from_ratio(Uint128::from(100u64) - Uint128::from(100u64) * slippage, Uint128::from(100u64)))
 }
 
-pub fn add_profit_check(
+fn add_profit_check(
     deps: Deps,
     response: Response<TerraMsgWrapper>,
     first_msg: CosmosMsg<TerraMsgWrapper>,
@@ -300,7 +270,7 @@ pub fn add_profit_check(
     })))
 }
 
-pub fn try_arb_below_peg(
+fn try_arb_below_peg(
     deps: DepsMut,
     env: Env,
     msg_info: MessageInfo,
@@ -349,7 +319,7 @@ pub fn try_arb_below_peg(
     add_profit_check(deps.as_ref(), response, swap_msg, terraswap_msg)
 }
 
-pub fn try_arb_above_peg(
+fn try_arb_above_peg(
     deps: DepsMut,
     env: Env,
     msg_info: MessageInfo,
@@ -474,11 +444,29 @@ pub fn compute_total_value(
 
     let state = STATE.load(deps.storage)?;
     let epoch_state_response = query_aust_exchange_rate(deps, deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
-    let aust_exchange_rate = Decimal::from_str(&epoch_state_response.exchange_rate.to_string())?;
+    let aust_exchange_rate = Decimal::from(epoch_state_response.exchange_rate);
     let aust_value_in_ust = aust_exchange_rate*aust_amount;
 
     let total_deposits_in_ust = stable_amount + luna_value_in_stable + aust_value_in_ust;
     Ok(total_deposits_in_ust)
+}
+
+pub fn compute_transaction_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+    let fee_config = FEE.load(deps.storage)?;
+    let fee = fee_config.community_fund_fee.compute(amount);
+    Ok(fee)
+}
+
+pub fn compute_warchest_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+    let fee_config = FEE.load(deps.storage)?;
+    let fee = fee_config.warchest_fee.compute(amount);
+    Ok(fee)
+}
+
+pub fn compute_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+    let community_fund_fee = compute_transaction_fee(deps, amount)?;
+    let warchest_fee = compute_warchest_fee(deps, amount)?;
+    Ok(community_fund_fee + warchest_fee)
 }
 
 pub fn try_provide_liquidity(
@@ -490,21 +478,10 @@ pub fn try_provide_liquidity(
     deposit_info.assert(&asset.info)?;
     asset.assert_sent_native_token_balance(&msg_info)?;
 
-    let fee_config = FEE.load(deps.storage)?;
-    let deposit_fee = fee_config.burn_fee.compute(asset.amount);
-    let deposit_asset: Asset = Asset{
-        info: AssetInfo::NativeToken{ denom: get_stable_denom(deps.as_ref())? },
-        amount: deposit_fee
-    };
-    let deposit_fee_tax: Uint128 = deposit_asset.compute_tax(&deps.querier)?;
-
-    let deposit: Uint128 = asset.amount - deposit_fee - deposit_fee_tax;
+    let deposit_fee = compute_transaction_fee(deps.as_ref(), asset.amount)?;
+    let deposit: Uint128 = asset.amount - deposit_fee;
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let total_deposits_in_ust: Uint128 = compute_total_value(deps.as_ref(), &info)? - deposit_fee - deposit_fee_tax;
-
-    let raw_sender = deps.api.addr_canonicalize(msg_info.sender.as_str())?;
-    let key = &raw_sender.as_slice();
-    DEPOSIT_MANAGER.increase(deps.storage, key, deposit)?;
+    let total_deposits_in_ust: Uint128 = compute_total_value(deps.as_ref(), &info)? - deposit_fee;
 
     let total_share = query_supply(&deps.querier, deps.api.addr_humanize(&info.liquidity_token)?)?;
     let share = if total_share == Uint128::zero() {
@@ -523,13 +500,22 @@ pub fn try_provide_liquidity(
         })?,
         funds: vec![],
     });
-    // send fees to burn vault
-    let fee_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&fee_config.burn_addr)?.to_string(),
-        funds: vec![Coin{ denom: deposit_info.get_denom()?, amount: deposit_fee }],
-        msg: to_binary(&BurnMsg::Deposit{})?
+    // send fees to community fund
+    let denom = deposit_info.get_denom()?;
+    let fee_config = FEE.load(deps.storage)?;
+    let community_fund_asset = Asset{
+        info: AssetInfo::NativeToken{ denom },
+        amount: deposit_fee
+    };
+    let community_fund_fee_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&fee_config.community_fund_addr)?.to_string(),
+        funds: vec![community_fund_asset.deduct_tax(&deps.querier)?],
+        msg: to_binary(&CommunityFundMsg::Deposit{})?
     });
-    Ok(Response::new().add_attribute("deposit", deposit.to_string()).add_attribute("total_deposits", total_deposits_in_ust.to_string()).add_attribute("fee", deposit_fee.to_string()).add_attribute("tax", deposit_fee_tax.to_string()).add_message(msg).add_message(fee_msg))
+    Ok(
+        Response::new().add_attribute("deposit", deposit.to_string()).add_attribute("total_deposits", total_deposits_in_ust.to_string()).add_attribute("fee", deposit_fee.to_string()).add_message(msg)
+        .add_message(community_fund_fee_msg)
+    )
 }
 
 pub fn try_deposit_to_anchor(
@@ -551,21 +537,34 @@ pub fn set_slippage(
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let previous_slippage = info.slippage;
     info.slippage = slippage;
     POOL_INFO.save(deps.storage, &info)?;
-    Ok(Response::default())
+    Ok(Response::new().add_attribute("slippage", slippage.to_string()).add_attribute("previous slippage", previous_slippage.to_string()))
 }
 
-pub fn set_burn_addr(
+pub fn set_trader(
     deps: DepsMut,
     msg_info: MessageInfo,
-    burn_addr: String
+    trader: String
 ) -> VaultResult {
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
-    let mut fee_config = FEE.load(deps.storage)?;
-    fee_config.burn_addr = deps.api.addr_canonicalize(&burn_addr)?;
-    FEE.save(deps.storage, &fee_config)?;
+    let mut state = STATE.load(deps.storage)?;
+    let previous_trader = deps.api.addr_humanize(&state.trader)?.to_string();
+    state.trader = deps.api.addr_canonicalize(&trader)?;
+    STATE.save(deps.storage, &state)?;
+    Ok(Response::new().add_attribute("trader", trader).add_attribute("previous trader", previous_trader))
+}
+
+pub fn set_fee(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    fee: VaultFee,
+) -> VaultResult {
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    FEE.save(deps.storage, &fee)?;
     Ok(Response::default())
 }
 
@@ -578,8 +577,30 @@ pub fn query(
     match msg {
         QueryMsg::Config{} => to_binary(&try_query_config(deps)?),
         QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?),
-        QueryMsg::Deposit{ addr } => to_binary(&try_query_deposit(deps, addr)?),
+        QueryMsg::Fees{} => to_binary(&query_fees(deps)?),
+        QueryMsg::EstimateDepositFee{ amount } => to_binary(&estimate_deposit_fee(deps, amount)?),
+        QueryMsg::EstimateWithdrawFee{ amount } => to_binary(&estimate_withdraw_fee(deps, amount)?),
     }
+}
+
+pub fn query_fees(deps: Deps) -> StdResult<FeeResponse> {
+    Ok(FeeResponse{
+        fees: FEE.load(deps.storage)?
+    })
+}
+
+pub fn estimate_deposit_fee(deps: Deps, amount: Uint128) -> StdResult<EstimateDepositFeeResponse> {
+    let fee = compute_transaction_fee(deps, amount)?;
+    Ok(EstimateDepositFeeResponse{
+        fee: vec![Coin{ denom: DEPOSIT_INFO.load(deps.storage)?.get_denom()?, amount: fee }]
+    })
+}
+
+pub fn estimate_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<EstimateWithdrawFeeResponse> {
+    let fee = compute_withdraw_fee(deps, amount)?;
+    Ok(EstimateWithdrawFeeResponse{
+        fee: vec![Coin{ denom: DEPOSIT_INFO.load(deps.storage)?.get_denom()?, amount: fee }]
+    })
 }
 
 pub fn try_query_config(
@@ -597,21 +618,10 @@ pub fn try_query_pool(
     let total_share: Uint128 =
         query_supply(&deps.querier, deps.api.addr_humanize(&info.liquidity_token)?)?;
 
-    let total_deposits_in_ust = compute_total_value(deps, &info)?;
+    let total_value_in_ust = compute_total_value(deps, &info)?;
 
-    Ok(PoolResponse { assets, total_deposits_in_ust, total_share })
+    Ok(PoolResponse { assets, total_value_in_ust, total_share })
 }
-
-pub fn try_query_deposit(
-    deps: Deps,
-    addr: String
-) -> StdResult<DepositResponse> {
-    let raw_sender = deps.api.addr_canonicalize(addr.as_str())?;
-    let key = &raw_sender.as_slice();
-    let deposit = DEPOSIT_MANAGER.get(deps.storage, key)?;
-    Ok(DepositResponse{deposit})
-}
-
 
 #[cfg(test)]
 mod tests {
@@ -629,14 +639,13 @@ mod tests {
             aust_address: "test_aust".to_string(),
             seignorage_address: "test_seignorage".to_string(),
             profit_check_address: "test_profit_check".to_string(),
-            burn_addr: "burn".to_string(),
+            community_fund_addr: "community_fund".to_string(),
             warchest_addr: "warchest".to_string(),
             asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() },
             slippage: Decimal::percent(1u64), token_code_id: 0u64,
-            denom: "uusd".to_string(),
             warchest_fee: Decimal::percent(10u64),
-            burn_vault_fee: Decimal::permille(5u64),
-            max_burn_vault_fee: Uint128::from(1000000u64),
+            community_fund_fee: Decimal::permille(5u64),
+            max_community_fund_fee: Uint128::from(1000000u64),
             anchor_min_withdraw_amount: Uint128::from(10000000u64)
         }
     }

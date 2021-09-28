@@ -7,7 +7,6 @@ use cw_controllers::Admin;
 
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::VaultFee;
-use white_whale::deposit_manager::DepositManager;
 
 use crate::pool_info::PoolInfoRaw;
 
@@ -27,4 +26,3 @@ pub const STATE: Item<State> = Item::new("\u{0}{5}state");
 pub const POOL_INFO: Item<PoolInfoRaw> = Item::new("\u{0}{4}pool");
 pub const DEPOSIT_INFO: Item<DepositInfo> = Item::new("\u{0}{7}deposit");
 pub const FEE: Item<VaultFee> = Item::new("\u{0}{12}fee");
-pub const DEPOSIT_MANAGER: DepositManager = DepositManager::new();

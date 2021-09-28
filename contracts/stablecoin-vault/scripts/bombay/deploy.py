@@ -10,15 +10,16 @@ sys.path.append(pathlib.Path(__file__).parent.resolve())
 
 from terra_sdk.core.auth import StdFee
 from white_whale.deploy import get_deployer
-from white_whale.address.bombay_11.anchor import anchor_money_market, aust
-from white_whale.address.bombay_11.terra import seignorage
-from white_whale.address.bombay_11.terraswap import pools
+from white_whale.address.bombay.anchor import anchor_money_market, aust
+from white_whale.address.bombay.terra import seignorage
+from white_whale.address.bombay.terraswap import pools
+from white_whale.address.bombay.white_whale import community_fund, war_chest
 
 
 mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
 std_fee = StdFee(6900000, "3500000uusd")
 
-deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-11", fee=std_fee)
+deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=std_fee)
 
 def get_contract_address(result):
     log = json.loads(result.raw_log)
@@ -46,10 +47,6 @@ def deploy():
     print("store contract")
     code_id = deployer.store_contract(contract_name="stablecoin_vault")
     print(f"stored {code_id} {type(code_id)}")
-
-    burn_addr = "terra1vlsn6dwzl0eht3r6wx3kuf9dyqnc92mmrkxggh"
-    warchest_addr = burn_addr
-
     print("instantiate contract")
     contract_address = deployer.instantiate_contract(code_id=code_id, init_msg={
         "pool_address": pools['UST'].contract_address,
@@ -62,11 +59,11 @@ def deploy():
         "profit_check_address": profit_check_address,
         "slippage": "0.01",
         "token_code_id": 148,
-        "burn_addr": burn_addr,
-        "warchest_addr": warchest_addr,
+        "community_fund_addr": community_fund,
+        "warchest_addr": war_chest,
         "warchest_fee": "0.1",
-        "burn_vault_fee": "0.005",
-        "max_burn_vault_fee": "1000000",
+        "community_fund_fee": "0.005",
+        "max_community_fund_fee": "1000000",
         "denom": "uusd",
         "anchor_min_withdraw_amount": "100000000"
     }, get_contract_address=get_contract_address)
