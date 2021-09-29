@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Coin, Decimal, Uint128};
 use terraswap::asset::{Asset, AssetInfo};
 use cw20::Cw20ReceiveMsg;
-use white_whale::fee::VaultFee;
+use white_whale::fee::{Fee, CappedFee};
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -36,7 +36,10 @@ pub enum ExecuteMsg {
     },
     AnchorDeposit { amount: Coin },
     SetSlippage { slippage: Decimal },
-    SetFee{ fee: VaultFee },
+    SetFee{
+        community_fund_fee: Option<CappedFee>,
+        warchest_fee: Option<Fee>,
+     },
     SetAdmin{ admin: String },
     SetTrader{ trader: String }
 }

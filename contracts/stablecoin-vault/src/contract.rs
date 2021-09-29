@@ -28,6 +28,8 @@ use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_market_price, from_micro};
 use crate::response::MsgInstantiateContractResponse;
 
+use std::cmp::min;
+
 
 const INSTANTIATE_REPLY_ID: u64 = 1;
 
@@ -124,7 +126,7 @@ pub fn execute(
             Ok(Response::default().add_attribute("previous admin", previous_admin).add_attribute("admin", admin))
         },
         ExecuteMsg::SetTrader{ trader } => set_trader(deps, info, trader),
-        ExecuteMsg::SetFee{ fee } => set_fee(deps, info, fee),
+        ExecuteMsg::SetFee{ community_fund_fee, warchest_fee } => set_fee(deps, info, community_fund_fee, warchest_fee),
     }
 }
 
@@ -153,25 +155,26 @@ fn try_withdraw_liquidity(
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let uaust_amount: Uint128 = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address.clone())?;
     if uaust_amount > Uint128::zero() {
-        let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address, denom.clone())?;
+        let stable_balance: Uint128 = query_balance(&deps.querier, env.contract.address.clone(), denom.clone())?;
         let stable_ratio = Decimal::from_ratio(stable_balance, total_value);
         let anchor_ratio = Decimal::one() - stable_ratio;
-        let anchor_withdraw_amount = total_value * anchor_ratio;
+        let anchor_withdraw_amount = refund_amount * anchor_ratio;
         if anchor_withdraw_amount > state.anchor_min_withdraw_amount {
             let uaust_exchange_rate_response = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
             let ust_uaust_rate = Decimal::from(uaust_exchange_rate_response.exchange_rate).inv().unwrap();
-            let anchor_withdraw_aust_amount = anchor_withdraw_amount * ust_uaust_rate;
+            let max_aust_amount = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address)?;
+            let anchor_withdraw_aust_amount = min(anchor_withdraw_amount * ust_uaust_rate, max_aust_amount);
             response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
-                contract_addr: state.aust_address.to_string(),
+                contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
                 msg: to_binary(
                     &Cw20ExecuteMsg::Send{
-                        contract: state.anchor_money_market_address.to_string(),
+                        contract: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
                         amount: anchor_withdraw_aust_amount,
                         msg: to_binary(&AnchorMsg::RedeemStable{})?
                     }
                 )?,
                 funds: vec![]
-            }));
+            })).add_attribute("anchor withdrawal", anchor_withdraw_aust_amount.to_string()).add_attribute("ust_aust_rate", ust_uaust_rate.to_string())
         }
     }
     let refund_asset = Asset{
@@ -560,11 +563,19 @@ pub fn set_trader(
 pub fn set_fee(
     deps: DepsMut,
     msg_info: MessageInfo,
-    fee: VaultFee,
+    community_fund_fee: Option<CappedFee>,
+    warchest_fee: Option<Fee>,
 ) -> VaultResult {
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
-    FEE.save(deps.storage, &fee)?;
+    let mut fee_config = FEE.load(deps.storage)?;
+    if let Some(fee) = community_fund_fee {
+        fee_config.community_fund_fee = fee;
+    }
+    if let Some(fee) = warchest_fee {
+        fee_config.warchest_fee = fee;
+    }
+    FEE.save(deps.storage, &fee_config)?;
     Ok(Response::default())
 }
 
@@ -682,6 +693,61 @@ mod tests {
         let _res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
         let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
         assert_eq!(info.slippage, Decimal::one());
+    }
+
+    #[test]
+    fn test_set_warchest_fee() {
+        let mut deps = mock_dependencies(&[]);
+
+        let msg = get_test_init_msg();
+        let env = mock_env();
+        let msg_info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
+
+        let res = instantiate(deps.as_mut(), env.clone(), msg_info.clone(), msg).unwrap();
+        assert_eq!(1, res.messages.len());
+
+        let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
+        assert_eq!(info.slippage, Decimal::percent(1u64));
+
+        let warchest_fee = FEE.load(&deps.storage).unwrap().warchest_fee.share;
+        let new_fee =  Decimal::permille(1u64);
+        assert_ne!(warchest_fee, new_fee);
+        let msg = ExecuteMsg::SetFee {
+            community_fund_fee: None,
+            warchest_fee: Some(Fee { share: new_fee })
+        };
+        let _res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
+        let warchest_fee = FEE.load(&deps.storage).unwrap().warchest_fee.share;
+        assert_eq!(warchest_fee, new_fee);
+    }
+
+    #[test]
+    fn test_set_community_fund_fee() {
+        let mut deps = mock_dependencies(&[]);
+
+        let msg = get_test_init_msg();
+        let env = mock_env();
+        let msg_info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
+
+        let res = instantiate(deps.as_mut(), env.clone(), msg_info.clone(), msg).unwrap();
+        assert_eq!(1, res.messages.len());
+
+        let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
+        assert_eq!(info.slippage, Decimal::percent(1u64));
+
+        let community_fund_fee = FEE.load(&deps.storage).unwrap().community_fund_fee.fee.share;
+        let new_fee =  Decimal::permille(1u64);
+        let new_max_fee = Uint128::from(42u64);
+        assert_ne!(community_fund_fee, new_fee);
+        let msg = ExecuteMsg::SetFee {
+            community_fund_fee:  Some(CappedFee { fee: Fee{ share: new_fee }, max_fee: new_max_fee }),
+            warchest_fee: None
+        };
+        let _res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
+        let community_fund_fee = FEE.load(&deps.storage).unwrap().community_fund_fee.fee.share;
+        let community_fund_max_fee = FEE.load(&deps.storage).unwrap().community_fund_fee.max_fee;
+        assert_eq!(community_fund_fee, new_fee);
+        assert_eq!(community_fund_max_fee, new_max_fee);
     }
 
     #[test]

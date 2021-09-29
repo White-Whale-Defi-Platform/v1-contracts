@@ -61,7 +61,7 @@ def deploy():
         "token_code_id": 148,
         "community_fund_addr": community_fund,
         "warchest_addr": war_chest,
-        "warchest_fee": "0.1",
+        "warchest_fee": "0.001",
         "community_fund_fee": "0.005",
         "max_community_fund_fee": "1000000",
         "denom": "uusd",
