@@ -7,8 +7,7 @@
     "max_deposit",
     "min_profit",
     "slippage",
-    "terraswap_pool_addr",
-    "trader"
+    "terraswap_pool_addr"
   ],
   "properties": {
     "lp_token_addr": {
@@ -24,9 +23,6 @@
       "$ref": "#/definitions/Decimal"
     },
     "terraswap_pool_addr": {
-      "$ref": "#/definitions/CanonicalAddr"
-    },
-    "trader": {
       "$ref": "#/definitions/CanonicalAddr"
     }
   },

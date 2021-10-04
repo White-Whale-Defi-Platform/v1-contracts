@@ -13,7 +13,6 @@ use white_whale::trader::Trader;
 pub struct State {
     pub terraswap_pool_addr: CanonicalAddr,
     pub lp_token_addr: CanonicalAddr,
-    pub trader: CanonicalAddr,
     pub max_deposit: Asset,
     pub min_profit: Asset,
     pub slippage: Decimal

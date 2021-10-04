@@ -32,7 +32,6 @@ pub fn instantiate(
     let state = State {
         terraswap_pool_addr: deps.api.addr_canonicalize(&msg.terraswap_pool_addr)?,
         lp_token_addr:  deps.api.addr_canonicalize(&lp_token_addr)?,
-        trader: deps.api.addr_canonicalize(&msg.trader)?,
         max_deposit: msg.max_deposit.clone(),
         min_profit: msg.min_profit,
         slippage: msg.slippage
@@ -188,10 +187,7 @@ fn set_trader(
     trader: String
 ) -> TerraswapWrapperResult {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-    let mut state = STATE.load(deps.storage)?;
-    state.trader = deps.api.addr_canonicalize(&trader)?;
-    STATE.save(deps.storage, &state)?;
-
+    TRADER.set(deps.storage, Some(deps.api.addr_validate(&trader)?))?;
     Ok(Response::default().add_attribute("action", "set_trader").add_attribute("trader", trader))
 }
 
