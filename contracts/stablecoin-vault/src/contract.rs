@@ -484,14 +484,14 @@ pub fn try_provide_liquidity(
     let deposit_fee = compute_transaction_fee(deps.as_ref(), asset.amount)?;
     let deposit: Uint128 = asset.amount - deposit_fee;
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let total_deposits_in_ust: Uint128 = compute_total_value(deps.as_ref(), &info)? - deposit_fee;
+    let total_deposits_in_ust: Uint128 = compute_total_value(deps.as_ref(), &info)?;
 
     let total_share = query_supply(&deps.querier, deps.api.addr_humanize(&info.liquidity_token)?)?;
     let share = if total_share == Uint128::zero() {
         // Initial share = collateral amount
         deposit
     } else {
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
+        deposit.multiply_ratio(total_share, total_deposits_in_ust - asset.amount)
     };
 
     // mint LP token to sender
