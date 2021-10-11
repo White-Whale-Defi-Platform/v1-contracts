@@ -52,11 +52,12 @@ pub fn instantiate(
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
         anchor_min_withdraw_amount: msg.anchor_min_withdraw_amount
     };
-
+    // Store the initial config
     STATE.save(deps.storage, &state)?;
     DEPOSIT_INFO.save(deps.storage, &DepositInfo{
         asset_info: msg.asset_info.clone()
     })?;
+    // Setup the fees system with a fee and other contract addresses
     FEE.save(deps.storage, &VaultFee{
         community_fund_fee: CappedFee{
             fee: Fee{ share: msg.community_fund_fee },
@@ -67,6 +68,7 @@ pub fn instantiate(
         warchest_addr: deps.api.addr_canonicalize(&msg.warchest_addr)?
     })?;
 
+    // Setup and save the relevant pools info in state. The saved pool will be the one used by the vault.
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
         liquidity_token: CanonicalAddr::from(vec![]),
@@ -78,8 +80,9 @@ pub fn instantiate(
         ],
     };
     POOL_INFO.save(deps.storage, pool_info)?;
+    // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
-
+    // TODO: Update the creation of LP token, use non default name and symbol.
     Ok(Response::new().add_submessage(SubMsg {
         // Create LP token
         msg: WasmMsg::Instantiate {
@@ -177,10 +180,24 @@ fn try_withdraw_liquidity(
             })).add_attribute("anchor withdrawal", anchor_withdraw_aust_amount.to_string()).add_attribute("ust_aust_rate", ust_uaust_rate.to_string())
         }
     }
+
     let refund_asset = Asset{
         info: AssetInfo::NativeToken{ denom: denom.clone() },
         amount: net_refund_amount
     };
+
+    // Prepare refund message 
+    let refund_msg = CosmosMsg::Bank(BankMsg::Send {
+        to_address: sender,
+        amount: vec![refund_asset.deduct_tax(&deps.querier)?],
+    });
+
+    let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
+        msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
+        funds: vec![],
+    });
+
     let community_fund_asset = Asset{
         info: AssetInfo::NativeToken{ denom: denom.clone() },
         amount: community_fund_fee
@@ -191,15 +208,7 @@ fn try_withdraw_liquidity(
         amount: warchest_fee
     };
 
-    let refund_msg = CosmosMsg::Bank(BankMsg::Send {
-        to_address: sender,
-        amount: vec![refund_asset.deduct_tax(&deps.querier)?],
-    });
-    let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
-        msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
-        funds: vec![],
-    });
+    // Prepare deposit messages for warchest and community fund.
     let fee_config = FEE.load(deps.storage)?;
     let community_fund_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&fee_config.community_fund_addr)?.to_string(),
@@ -211,6 +220,7 @@ fn try_withdraw_liquidity(
         funds: vec![warchest_asset.deduct_tax(&deps.querier)?],
         msg: to_binary(&CommunityFundMsg::Deposit{})?
     });
+
     Ok(response.add_message(refund_msg).add_message(burn_msg).add_message(community_fund_msg).add_message(warchest_msg)
         .add_attribute("action", "withdraw_liquidity")
         .add_attribute("withdrawn_amount", refund_amount.to_string())
@@ -220,6 +230,8 @@ fn try_withdraw_liquidity(
     )
 }
 
+/// handler function invoked when the stablecoin-vault contract receives
+/// a transaction. This is akin to a payable function in Solidity
 fn receive_cw20(
     deps: DepsMut,
     env: Env,
@@ -247,6 +259,10 @@ fn get_slippage_ratio(slippage: Decimal) -> StdResult<Decimal> {
     Ok(Decimal::from_ratio(Uint128::from(100u64) - Uint128::from(100u64) * slippage, Uint128::from(100u64)))
 }
 
+/// helper method which takes two msgs assumed to be Terraswap trades
+/// and then composes a response with a ProfitCheck BeforeTrade and AfterTrade
+/// the result is an OK'd response with a series of msgs in this order
+/// Profit Check before trade - first_msg - second_msg - Profit Check after trade
 fn add_profit_check(
     deps: Deps,
     response: Response<TerraMsgWrapper>,
@@ -281,6 +297,7 @@ fn try_arb_below_peg(
     uaust_withdraw_amount: Uint128
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
+    // Ensure the caller is a named Trader
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
         return Err(StableVaultError::Unauthorized{});
     }
@@ -288,8 +305,10 @@ fn try_arb_below_peg(
     let ask_denom = LUNA_DENOM.to_string();
 
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    // Store slippage 
     let slippage = info.slippage;
     let slippage_ratio = get_slippage_ratio(slippage)?;
+    // Check how much we can Luna we can get accounting for slippage
     let expected_luna_amount = query_market_price(deps.as_ref(), amount.clone(), LUNA_DENOM.to_string())? * slippage_ratio;
     let luna_pool_price = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, Coin{denom: LUNA_DENOM.to_string(), amount: expected_luna_amount})?;
 
@@ -299,6 +318,8 @@ fn try_arb_below_peg(
     );
     let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount};
+    
+    // Prepare a terraswap message to swap an offer_coin for luna
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
         funds: vec![offer_coin.clone()],
@@ -307,6 +328,7 @@ fn try_arb_below_peg(
 
     let mut response = Response::new();
     if uaust_withdraw_amount > Uint128::zero() {
+        // Attempt to remove some money from anchor 
         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
             contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
             msg: to_binary(
@@ -319,6 +341,7 @@ fn try_arb_below_peg(
             funds: vec![]
         }));
     }
+    // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
     add_profit_check(deps.as_ref(), response, swap_msg, terraswap_msg)
 }
 
@@ -330,11 +353,11 @@ fn try_arb_above_peg(
     uaust_withdraw_amount: Uint128
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
+    // Ensure the caller is a named Trader
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
         return Err(StableVaultError::Unauthorized{});
     }
 
-    let ask_denom = LUNA_DENOM.to_string();
 
     let expected_luna_amount = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, amount.clone())?;
     let luna_pool_price = Decimal::from_ratio(amount.amount, expected_luna_amount);
@@ -349,8 +372,11 @@ fn try_arb_above_peg(
 
     let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
     let slippage_ratio = get_slippage_ratio(slippage)?;
+
+    let ask_denom = LUNA_DENOM.to_string();
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount * slippage_ratio};
 
+    // Prepare a swap message to swap an offer_coin for luna
     let swap_msg = create_swap_msg(
         offer_coin,
         amount.denom,
@@ -358,6 +384,7 @@ fn try_arb_above_peg(
 
     let mut response = Response::new();
     if uaust_withdraw_amount > Uint128::zero() {
+        // Attempt to remove some money from anchor 
         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
             contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
             msg: to_binary(
@@ -370,6 +397,7 @@ fn try_arb_above_peg(
             funds: vec![]
         }));
     }
+    // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
     add_profit_check(deps.as_ref(), response, terraswap_msg, swap_msg)
 }
 
@@ -532,11 +560,14 @@ pub fn try_deposit_to_anchor(
     Ok(try_deposit(deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(), amount)?)
 }
 
+/// Setters for contract parameters/config values
+
 pub fn set_slippage(
     deps: DepsMut,
     msg_info: MessageInfo,
     slippage: Decimal
 ) -> VaultResult {
+    // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
@@ -551,12 +582,16 @@ pub fn set_trader(
     msg_info: MessageInfo,
     trader: String
 ) -> VaultResult {
+    // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
+    // Get the old trader 
     let previous_trader = deps.api.addr_humanize(&state.trader)?.to_string();
+    // Store the new trader, validating it is indeed an address along the way
     state.trader = deps.api.addr_canonicalize(&trader)?;
     STATE.save(deps.storage, &state)?;
+    // Respond and note the previous traders address
     Ok(Response::new().add_attribute("trader", trader).add_attribute("previous trader", previous_trader))
 }
 
@@ -566,8 +601,9 @@ pub fn set_fee(
     community_fund_fee: Option<CappedFee>,
     warchest_fee: Option<Fee>,
 ) -> VaultResult {
+    // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-
+    // TODO: Evaluate this.
     let mut fee_config = FEE.load(deps.storage)?;
     if let Some(fee) = community_fund_fee {
         fee_config.community_fund_fee = fee;
@@ -578,6 +614,8 @@ pub fn set_fee(
     FEE.save(deps.storage, &fee_config)?;
     Ok(Response::default())
 }
+
+/// Query Handler and query functions 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(
