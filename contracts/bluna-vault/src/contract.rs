@@ -109,6 +109,7 @@ pub fn execute(
     }
 }
 
+/// try_swap attempts to perform a swap between an offer_coin and bluna
 pub fn try_swap(
     deps: DepsMut,
     info: MessageInfo,
@@ -295,6 +296,7 @@ pub fn query(
         QueryMsg::Config{} => to_binary(&try_query_config(deps)?),
         QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?),
         QueryMsg::Fees{} => to_binary(""),
+        // TODO: Finish fee calculation and estimation 
         QueryMsg::EstimateDepositFee{ .. } => to_binary(""),
         QueryMsg::EstimateWithdrawFee{ .. } => to_binary(""),
     }

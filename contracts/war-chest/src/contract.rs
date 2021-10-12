@@ -28,6 +28,10 @@ pub fn instantiate(
     Ok(Response::default())
 }
 
+// Routers; here is a separate router which handles Execution of functions on the contract or performs a contract Query
+// Each router function defines a number of handlers using Rust's pattern matching to
+// designated how each ExecutionMsg or QueryMsg will be handled.
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,

@@ -133,6 +133,8 @@ pub fn execute(
     }
 }
 
+/// attempt to withdraw deposits. Fees are calculated and deducted and the net refund is sent 
+/// a withdrawal from Anchor Money Market may be performed as a part of the withdrawal process.
 fn try_withdraw_liquidity(
     deps: DepsMut,
     env: Env,
