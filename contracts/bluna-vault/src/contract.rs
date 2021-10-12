@@ -109,7 +109,7 @@ pub fn execute(
     }
 }
 
-/// try_swap attempts to perform a swap between an offer_coin and bluna
+/// try_swap attempts to perform a swap between uluna and bluna, depending on what coin is offered. 
 pub fn try_swap(
     deps: DepsMut,
     info: MessageInfo,
@@ -122,12 +122,15 @@ pub fn try_swap(
 
     let slippage = (POOL_INFO.load(deps.storage)?).slippage;
     let belief_price = Decimal::from_ratio(simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, offer_coin.clone())?, offer_coin.amount);
+    
+    // Sell luna and buy bluna
     let msg = if offer_coin.denom == "uluna" {
         CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: state.pool_address.to_string(),
             funds: vec![offer_coin.clone()],
             msg: to_binary(&create_terraswap_msg(offer_coin, belief_price, Some(slippage)))?,
         })
+    // Or sell bluna and buy luna
     } else {
         CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: state.bluna_address.to_string(),
@@ -167,6 +170,7 @@ pub fn try_withdraw_liquidity(
     let total_deposits: Uint128 = compute_total_deposits(deps.as_ref(), &info)?;
 
     let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
+    // amount of luna to return
     let refund_asset: Asset = Asset{
         info: AssetInfo::NativeToken{ denom: get_stable_denom(deps.as_ref())? },
         amount: total_deposits * share_ratio
@@ -183,6 +187,7 @@ pub fn try_withdraw_liquidity(
             amount: vec![refund_asset.deduct_tax(&deps.querier)?],
         }),
     };
+    // Burn vault lp token 
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: info.liquidity_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
