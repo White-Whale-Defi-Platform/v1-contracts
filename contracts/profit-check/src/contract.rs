@@ -7,8 +7,13 @@ use terraswap::querier::{query_balance};
 use white_whale::profit_check::msg::{HandleMsg, InitMsg, QueryMsg, LastBalanceResponse, LastProfitResponse, VaultResponse};
 use crate::error::ProfitCheckError;
 use crate::state::{CONFIG, State, ADMIN};
-
-
+/* 
+    Profit check is used by the ust vault to see if a proposed trade is indeed profitable. 
+    before_trade is called before the trade to set the account balance
+    after_trade is called after the trade and checks weather a profit was made 
+    If the balance of the contract is smaller after the trade, an error gets thrown which resets the contract state to
+    the state before the contract call.
+*/ 
 type ProfitCheckResult = Result<Response, ProfitCheckError>;
 
 
@@ -46,6 +51,7 @@ pub fn execute(
     }
 }
 
+// Resets last trade and sets current UST balance of caller 
 pub fn before_trade(
     deps: DepsMut,
     info: MessageInfo,
@@ -62,6 +68,7 @@ pub fn before_trade(
     Ok(Response::default())
 }
 
+// Checks if balance increased after the trade
 pub fn after_trade(
     deps: DepsMut,
     info: MessageInfo,
@@ -84,6 +91,7 @@ pub fn after_trade(
     Ok(Response::default())
 }
 
+// Set address of UST vault
 pub fn set_vault_address(
     deps: DepsMut,
     info: MessageInfo,

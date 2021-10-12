@@ -19,6 +19,11 @@ use crate::state::{State, ADMIN, STATE};
 const ANCHOR_DEPOSIT_REPLY_ID: u64 = 2;
 const ANCHOR_WITHDRAW_REPLY_ID: u64 = 3;
 
+/*
+    The Community fund holds the protocol treasury and has control over the protocol owned liquidity. 
+    It is controlled by the governance contract and serves to grow its holdings and give grants to proposals. 
+*/
+
 
 type CommunityFundResult = Result<Response, CommunityFundError>;
 
@@ -60,6 +65,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> C
     }
 }
 
+// The deposit threshold determines the minimum amount of UST the contract has to own before it can deposit those funds into Anchor
 pub fn set_anchor_deposit_threshold(deps: DepsMut, info: MessageInfo, threshold: Uint128) -> CommunityFundResult {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     let mut state = STATE.load(deps.storage)?;
@@ -68,6 +74,7 @@ pub fn set_anchor_deposit_threshold(deps: DepsMut, info: MessageInfo, threshold:
     Ok(Response::default())
 }
 
+// The withdraw threshold determines the minimum amount of aUST the contract has to own before it can withdraw those funds from Anchor
 pub fn set_anchor_withdraw_threshold(deps: DepsMut, info: MessageInfo, threshold: Uint128) -> CommunityFundResult {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     let mut state = STATE.load(deps.storage)?;
@@ -76,6 +83,7 @@ pub fn set_anchor_withdraw_threshold(deps: DepsMut, info: MessageInfo, threshold
     Ok(Response::default())
 }
 
+// This function allows the community fund to buy whale tokens from a given market. 
 pub fn buy_whale(deps: Deps, env: &Env) -> CommunityFundResult {
     let state = STATE.load(deps.storage)?;
     let ust_amount = query_balance(&deps.querier, env.contract.address.clone(), UST_DENOM.to_string())?;
@@ -105,6 +113,7 @@ pub fn buy_whale(deps: Deps, env: &Env) -> CommunityFundResult {
     Ok(Response::new().add_message(buy_msg))
 }
 
+// Deposits UST funds into Anchor if funds > anchor_deposit_threshold
 pub fn deposit(deps: DepsMut, env: &Env) -> CommunityFundResult {
     let mut state = STATE.load(deps.storage)?;
 
@@ -118,6 +127,7 @@ pub fn deposit(deps: DepsMut, env: &Env) -> CommunityFundResult {
     Ok(try_deposit_to_anchor_as_submsg(deps.api.addr_humanize(&state.anchor_money_market_addr)?.to_string(), deposit, ANCHOR_DEPOSIT_REPLY_ID)?)
 }
 
+// 
 pub fn deposit_or_spend_interest(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> CommunityFundResult {
     if msg_info.funds.len() > 1 {
         return Err(CommunityFundError::DepositTooManyTokens{});
