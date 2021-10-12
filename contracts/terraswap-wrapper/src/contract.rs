@@ -7,6 +7,7 @@ use terraswap::pair::{ExecuteMsg as TerraswapMsg, Cw20HookMsg, PoolResponse};
 use terraswap::querier::query_token_balance;
 use cw20::Cw20ExecuteMsg;
 use white_whale::deposit_info::DepositInfo;
+// Missing functions: query_pool, query_lp_token
 use white_whale::query::terraswap::{query_pool, query_lp_token};
 use std::cmp::min;
 
@@ -17,7 +18,11 @@ use crate::msg::{InitMsg, ExecuteMsg, QueryMsg, WithdrawableProfitsResponse};
 
 type TerraswapWrapperResult = Result<Response, TerraswapWrapperError>;
 
+/*  This contract implements a way to interact with a liquidity pool. 
+ 
 
+Terraswap-wrapper contract can be used to implement protocol owned liquidity.
+*/
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -64,6 +69,7 @@ pub fn execute(
     }
 }
 
+// Lets admin transfer assets that belong to this address. 
 fn spend(
     deps: Deps,
     info: MessageInfo,
@@ -74,6 +80,8 @@ fn spend(
     Ok(Response::new().add_message(amount.into_msg(&deps.querier, deps.api.addr_validate(&recipient)?)?))
 }
 
+// Deposit asset into LP pool and receive LP tokens in return. 
+// Does not care about max_deposit
 fn deposit(
     deps: DepsMut,
     env: Env,
@@ -84,6 +92,8 @@ fn deposit(
 
     let state = STATE.load(deps.storage)?;
     let pools = query_pool(deps.as_ref(), deps.api.addr_humanize(&state.terraswap_pool_addr)?)?.assets;
+    
+    // Check if both provided assets match the pool and store amounts to deposits var
     let deposits: [Uint128; 2] = [
         funds
             .iter()
@@ -97,10 +107,16 @@ fn deposit(
             .expect("Wrong asset info is given"),
     ];
 
+    // If the pool is a cw20 contract, then we need to execute TransferFrom msg to move the funds to the cw20 contract
+    // Flow of funds:
+    // Caller of this function -> this contract -> LP pool (terraswap contract)
+
     let mut messages: Vec<CosmosMsg> = vec![];
     for (i, pool) in pools.iter().enumerate() {
-        // If the pool is token contract, then we need to execute TransferFrom msg to receive funds
+        // If pool is cw20
         if let AssetInfo::Token { contract_addr, .. } = &pool.info {
+
+            // Construct msg to send deposit funds from owner to this address. (Caller of this function -> this contract)
             messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
@@ -110,6 +126,8 @@ fn deposit(
                 })?,
                 funds: vec![],
             }));
+
+            // Allow terraswap pool to move funds from contract to pool (this contract -> LP pool)
             messages.push(CosmosMsg::Wasm(WasmMsg::Execute{
                 contract_addr: contract_addr.to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance{
@@ -130,6 +148,7 @@ fn deposit(
         receiver: None
     };
 
+    // Call cw20 to take the funds and put them in the LP 
     let msg = CosmosMsg::Wasm(WasmMsg::Execute{
         contract_addr: deps.api.addr_humanize(&state.terraswap_pool_addr)?.to_string(),
         funds: info.funds,
@@ -137,6 +156,9 @@ fn deposit(
     });
     Ok(Response::default().add_messages(messages).add_message(msg))
 }
+
+// Withdraw liquidity from pool. Can only be called by the trader. 
+// Should be used together with query_withdrawable_profits to withdraw profits to another contract. 
 
 fn withdraw(
     deps: DepsMut,
@@ -148,6 +170,8 @@ fn withdraw(
     let state = STATE.load(deps.storage)?;
     let pool_response = query_pool(deps.as_ref(), deps.api.addr_humanize(&state.terraswap_pool_addr)?)?;
     let pools = pool_response.assets;
+
+    // Check if requested funds match pool and store requested amounts. 
     let deposits: [Uint128; 2] = [
         funds
             .iter()
@@ -160,9 +184,12 @@ fn withdraw(
             .map(|a| a.amount)
             .expect("Wrong asset info is given"),
     ];
+
+    // Sender share of LP pool is minimum of requested/totalAsset -> Will always withdraw funds symmetrically! 
     let share = min(Decimal::from_ratio(deposits[0], pools[0].amount), Decimal::from_ratio(deposits[1], pools[1].amount));
     let lp_amount = pool_response.total_share * share;
 
+    // Call the LP token address (msg) to send the funds (cw20_msg) by executing (withdraw_msg) on the LP address. 
     let withdraw_msg = Cw20HookMsg::WithdrawLiquidity{};
 
     let cw20_msg = Cw20ExecuteMsg::Send{
@@ -180,7 +207,7 @@ fn withdraw(
     Ok(Response::default().add_message(msg))
 }
 
-
+// Sets the trader 
 fn set_trader(
     deps: DepsMut,
     info: MessageInfo,
@@ -191,6 +218,7 @@ fn set_trader(
     Ok(Response::default().add_attribute("action", "set_trader").add_attribute("trader", trader))
 }
 
+// Sets max deposit. This sets the cap on how much liquidity the trader can add. (protocol owned liquidity)
 fn set_max_deposit(
     deps: DepsMut,
     info: MessageInfo,
@@ -205,6 +233,7 @@ fn set_max_deposit(
     Ok(Response::default().add_attribute("action", "set_max_deposit").add_attribute("asset", asset.to_string()))
 }
 
+// Set min profit.
 fn set_min_profit(
     deps: DepsMut,
     info: MessageInfo,
@@ -227,22 +256,26 @@ pub fn query(deps:Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+// Returns total value of LP, given LP is [UST, X]
 fn query_value(deps: Deps, info: AssetInfo, share: Decimal) -> StdResult<Asset> {
     let state = STATE.load(deps.storage)?;
     let pool: PoolResponse = query_pool(deps, deps.api.addr_humanize(&state.terraswap_pool_addr)?)?;
 
     if pool.assets[0].info == info {
-        let price = Decimal::from_ratio(pool.assets[0].amount, pool.assets[1].amount);
+        let price = Decimal::from_ratio(pool.assets[0].amount, pool.assets[1].amount); // price [UST/X]
         let mut value = pool.assets[0].amount * share;
         value += pool.assets[1].amount * share * price;
         return Ok(Asset{info, amount: value})
     }
 
-    let price = Decimal::from_ratio(pool.assets[1].amount, pool.assets[0].amount);
+    let price = Decimal::from_ratio(pool.assets[1].amount, pool.assets[0].amount); // price [X/UST]
     let mut value = pool.assets[1].amount * share;
     value += pool.assets[0].amount * share * price;
     return Ok(Asset{info, amount: value})
 }
+
+// Withdrawable profit is the value of the holdings - max_deposit in either the asset denom(X) or the base denom(UST)
+// as set by the state variables. 
 
 fn query_withdrawable_profits(deps: Deps, env: Env) -> StdResult<WithdrawableProfitsResponse> {
     let state = STATE.load(deps.storage)?;
