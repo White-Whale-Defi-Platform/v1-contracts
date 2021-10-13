@@ -3,15 +3,8 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::{Coin, Decimal, Uint128};
 use terraswap::asset::{Asset, AssetInfo};
 use cw20::Cw20ReceiveMsg;
+use white_whale::fee::{Fee, CappedFee};
 
-
-// #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// pub struct AssertMinimumReceive {
-//     pub asset_info: AssetInfo,
-//     pub prev_balance: Uint128,
-//     pub minimum_receive: Uint128,
-//     pub receiver: Addr,
-// }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -20,17 +13,21 @@ pub struct InitMsg {
     pub aust_address: String,
     pub seignorage_address: String,
     pub profit_check_address: String,
-    pub burn_addr: String,
-    pub profit_burn_ratio: Decimal,
+    pub community_fund_addr: String,
+    pub warchest_addr: String,
     pub asset_info: AssetInfo,
     pub slippage: Decimal,
-    pub token_code_id: u64
+    pub token_code_id: u64,
+    pub warchest_fee: Decimal,
+    pub community_fund_fee: Decimal,
+    pub max_community_fund_fee: Uint128,
+    pub anchor_min_withdraw_amount: Uint128
 }
 
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum HandleMsg {
+pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     AbovePeg { amount: Coin, uaust_withdraw_amount: Uint128 },
     BelowPeg { amount: Coin, uaust_withdraw_amount: Uint128 },
@@ -39,13 +36,18 @@ pub enum HandleMsg {
     },
     AnchorDeposit { amount: Coin },
     SetSlippage { slippage: Decimal },
-    SetBurnAddress{ burn_addr: String }
+    SetFee{
+        community_fund_fee: Option<CappedFee>,
+        warchest_fee: Option<Fee>,
+     },
+    SetAdmin{ admin: String },
+    SetTrader{ trader: String }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolResponse {
     pub assets: [Asset; 3],
-    pub total_deposits_in_ust: Uint128,
+    pub total_value_in_ust: Uint128,
     pub total_share: Uint128,
 }
 

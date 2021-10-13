@@ -2,6 +2,12 @@
 
 set -e
 
+cd packages/white_whale
+cargo update
+cargo clippy -- -D warnings
+cargo unit-test
+cd -
+
 cd contracts/bluna-vault
 cargo update
 cargo clippy -- -D warnings
@@ -16,7 +22,7 @@ cargo unit-test
 cargo schema
 cd -
 
-cd contracts/buy-and-burn
+cd contracts/community-fund
 cargo update
 cargo clippy -- -D warnings
 cargo unit-test

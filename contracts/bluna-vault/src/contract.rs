@@ -293,7 +293,10 @@ pub fn query(
 ) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config{} => to_binary(&try_query_config(deps)?),
-        QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?)
+        QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?),
+        QueryMsg::Fees{} => to_binary(""),
+        QueryMsg::EstimateDepositFee{ .. } => to_binary(""),
+        QueryMsg::EstimateWithdrawFee{ .. } => to_binary(""),
     }
 }
 
