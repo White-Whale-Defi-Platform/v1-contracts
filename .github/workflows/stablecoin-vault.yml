@@ -52,6 +52,7 @@ jobs:
           toolchain: stable
           override: true
       - name: Run cargo-tarpaulin
+        working-directory: contracts/stablecoin-vault
         uses: actions-rs/tarpaulin@v0.1
         with:
           version: '0.15.0'
