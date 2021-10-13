@@ -42,6 +42,20 @@ jobs:
         run: cargo update
       - name: Build | Compile
         run: cargo check
+  cov:
+    name: tarpulin coverage check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Run cargo-tarpaulin
+        uses: actions-rs/tarpaulin@v0.1
+        with:
+          version: '0.15.0'
+          args: '-- --test-threads 1'
   test:
     name: Test
     runs-on:  ubuntu-latest
