@@ -53,7 +53,7 @@ jobs:
 
       - name: Generate code coverage
         run: |
-          cargo +nightly tarpaulin contracts/stablecoin-vault --verbose --all-features --workspace--timeout 120 --out Xml
+          cargo +nightly tarpaulin --all-features --timeout 120 --out Xml --test contracts/stablecoin-vault --verbose
   test:
     name: Test
     runs-on: ubuntu-latest
