@@ -3,5 +3,6 @@
 [![Vesting Contract](https://github.com/White-Whale-Defi-Platform/contracts/actions/workflows/vesting.yml/badge.svg)](https://github.com/White-Whale-Defi-Platform/contracts/actions/workflows/vesting.yml)
 [![Governance Contract](https://github.com/White-Whale-Defi-Platform/contracts/actions/workflows/governance_contract.yml/badge.svg)](https://github.com/White-Whale-Defi-Platform/contracts/actions/workflows/governance_contract.yml)
 [![War Chest Contract](https://github.com/White-Whale-Defi-Platform/contracts/actions/workflows/war_chest.yml/badge.svg)](https://github.com/White-Whale-Defi-Platform/contracts/actions/workflows/war_chest.yml)
+[![LP Staking Contract](https://github.com/White-Whale-Defi-Platform/contracts/actions/workflows/whale_lp_staking.yml/badge.svg)](https://github.com/White-Whale-Defi-Platform/contracts/actions/workflows/whale_lp_staking.yml)
 
 # contracts
