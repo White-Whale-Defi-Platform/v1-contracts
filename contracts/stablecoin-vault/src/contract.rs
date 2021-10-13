@@ -291,6 +291,12 @@ fn add_profit_check(
     })))
 }
 
+// attempt to perform an arbitrage operation with the assumption that 
+// the currency to be arb'd is below peg. This is important as checks are 
+// performed to ensure the arb opportunity still exists and price is indeed below peg
+// if needed, funds are withdrawn from anchor and messages are prepared to perform the swaps 
+// Before sending; the profit check contract messages are also added 
+// by providing the swap msg and terraswap msg to add_profit_check func
 fn try_arb_below_peg(
     deps: DepsMut,
     env: Env,
@@ -347,6 +353,12 @@ fn try_arb_below_peg(
     add_profit_check(deps.as_ref(), response, swap_msg, terraswap_msg)
 }
 
+// attempt to perform an arbitrage operation with the assumption that 
+// the currency to be arbed is above peg. This is important as checks are 
+// performed to ensure the arb opportunity still exists and price is indeed above peg
+// if needed, funds are withdrawn from anchor and messages are prepared to perform the swaps 
+// Before sending; the profit check contract messages are also added 
+// by providing the swapmsg and terraswap msg to add_profit_check func
 fn try_arb_above_peg(
     deps: DepsMut,
     env: Env,
@@ -450,6 +462,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 //     Ok((return_amount, spread_amount, commission_amount))
 // }
 
+// compute total value of deposits in UST and return
 pub fn compute_total_value(
     deps: Deps,
     info: &PoolInfoRaw
@@ -484,24 +497,29 @@ pub fn compute_total_value(
     Ok(total_deposits_in_ust)
 }
 
+// compute the community fund fee
 pub fn compute_transaction_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let fee_config = FEE.load(deps.storage)?;
     let fee = fee_config.community_fund_fee.compute(amount);
     Ok(fee)
 }
 
+// compute the war chest fee
 pub fn compute_warchest_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let fee_config = FEE.load(deps.storage)?;
     let fee = fee_config.warchest_fee.compute(amount);
     Ok(fee)
 }
 
+// compute the withdrawal fee
 pub fn compute_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let community_fund_fee = compute_transaction_fee(deps, amount)?;
     let warchest_fee = compute_warchest_fee(deps, amount)?;
     Ok(community_fund_fee + warchest_fee)
 }
 
+// attempt to take a provided deposit and return LP tokens 
+// net deposit amount is the deposit minus fees
 pub fn try_provide_liquidity(
     deps: DepsMut,
     msg_info: MessageInfo,

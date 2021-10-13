@@ -21,7 +21,11 @@ use crate::response::MsgInstantiateContractResponse;
 
 const INSTANTIATE_REPLY_ID: u64 = 1;
 
+/*  This contract implements the bLuna arbitrage vault. 
+ 
 
+The bLuna vault performs arbitrage operations on the bLuna-Luna Terraswap Pair
+*/
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -52,6 +56,7 @@ pub fn instantiate(
 
     Ok(Response::new().add_submessage(SubMsg {
         // Create LP token
+        // TODO: Update to use non default 
         msg: WasmMsg::Instantiate {
             admin: None,
             code_id: msg.token_code_id,
@@ -146,6 +151,7 @@ pub fn try_swap(
     Ok(Response::new().add_message(msg))
 }
 
+// perform a computation first by getting both the deposits in luna and bluna for the contract and then sum them
 pub fn compute_total_deposits(
     deps: Deps,
     info: &PoolInfoRaw
@@ -158,6 +164,7 @@ pub fn compute_total_deposits(
     Ok(total_deposits_in_luna)
 }
 
+/// attempt to withdraw deposits. Fees should be calculated and deducted and the net refund is sent 
 pub fn try_withdraw_liquidity(
     deps: DepsMut,
     sender: String,
@@ -202,6 +209,8 @@ pub fn try_withdraw_liquidity(
     )
 }
 
+/// handler function invoked when the bluna-vault contract receives
+/// a transaction. This is akin to a payable function in Solidity
 pub fn receive_cw20(
     deps: DepsMut,
     info: MessageInfo,
