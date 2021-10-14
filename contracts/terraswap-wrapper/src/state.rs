@@ -8,6 +8,13 @@ use terraswap::asset::Asset;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::trader::Trader;
 
+/*
+    terraswap_pool_addr: address of terraswap pool contract
+    lp_token_addr: address of LP token (cw20)
+    max_deposit: If the contract owns more liquidity than this value, profits can be withdrawn until this value
+    min_profit: Minimum profit before profits can be withdrawn. 
+    slippage: Max allowed slippage on adding to the LP 
+*/
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {

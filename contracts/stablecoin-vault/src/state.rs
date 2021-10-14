@@ -11,6 +11,8 @@ use white_whale::fee::VaultFee;
 use crate::pool_info::PoolInfoRaw;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+// The Stablecoin-vault State contains configuration options for the vault including
+// the address of the pool to trade in as well as some other addresses
 pub struct State {
     pub trader: CanonicalAddr,
     pub pool_address: CanonicalAddr,
