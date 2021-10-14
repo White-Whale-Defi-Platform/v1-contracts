@@ -511,7 +511,7 @@ pub fn compute_total_value(
         AssetInfo::Token{..} => String::default(),
         AssetInfo::NativeToken{denom} => denom
     };
-    let stable_amount = query_balance(&deps.querier, info.contract_addr.clone(), stable_denom.clone())?;
+    let stable_amount = query_balance(&deps.querier, info.contract_addr.clone(), stable_denom)?;
 
     let luna_info = info.asset_infos[1].to_normal(deps.api)?;
     let luna_amount = match luna_info {
