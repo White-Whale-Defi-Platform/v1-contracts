@@ -9,7 +9,7 @@ use terraswap::querier::{query_balance, query_token_balance, query_supply};
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use protobuf::Message;
 
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse, Cw20Coin};
 
 use white_whale::community_fund::msg::ExecuteMsg as CommunityFundMsg;
 use white_whale::denom::LUNA_DENOM;
@@ -103,7 +103,10 @@ pub fn instantiate(
                 name: "test liquidity token".to_string(),
                 symbol: "tLP".to_string(),
                 decimals: 6,
-                initial_balances: vec![],
+                initial_balances: vec![
+                    // Cw20Coin{address: env.contract.address.to_string(),
+                    // amount: Uint128::from(1u8)},
+                ],
                 mint: Some(MinterResponse {
                     minter: env.contract.address.to_string(),
                     cap: None,
@@ -128,8 +131,8 @@ pub fn execute(
 ) -> VaultResult {
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        ExecuteMsg::AbovePeg { amount, uaust_withdraw_amount } => try_arb_above_peg(deps, env, info, amount, uaust_withdraw_amount),
-        ExecuteMsg::BelowPeg { amount, uaust_withdraw_amount } => try_arb_below_peg(deps, env, info, amount, uaust_withdraw_amount),
+        ExecuteMsg::AbovePeg { amount, uaust_withdraw_amount, slippage, belief_price } => try_arb_above_peg(deps, env, info, amount, uaust_withdraw_amount, slippage, belief_price),
+        ExecuteMsg::BelowPeg { amount, uaust_withdraw_amount, slippage, belief_price } => try_arb_below_peg(deps, env, info, amount, uaust_withdraw_amount, slippage, belief_price),
         ExecuteMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, info, asset),
         ExecuteMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, info, amount),
         ExecuteMsg::SetSlippage{ slippage } => set_slippage(deps, info, slippage),
@@ -165,6 +168,7 @@ pub fn try_provide_liquidity(
         // Initial share = collateral amount
         deposit
     } else {
+        // WARNING: This could causes issues if total_deposits_in_ust - asset.amount is really small 
         deposit.multiply_ratio(total_share, total_deposits_in_ust - asset.amount)
     };
 
@@ -232,10 +236,7 @@ fn try_withdraw_liquidity(
     let (total_value,_,uaust_value_in_contract) = compute_total_value(deps.as_ref(), &info)?;
 
     let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
-    let refund_amount: Uint128 = total_value * share_ratio;
-    let community_fund_fee = compute_transaction_fee(deps.as_ref(), refund_amount)?;
-    let warchest_fee = compute_warchest_fee(deps.as_ref(), refund_amount)?;
-    let net_refund_amount = refund_amount - community_fund_fee - warchest_fee;
+    let mut refund_amount: Uint128 = total_value * share_ratio;
 
     let mut response = Response::new();
     // // withdraw from anchor if necessary
@@ -244,16 +245,18 @@ fn try_withdraw_liquidity(
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
 
     let max_aust_amount = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_address)?, env.contract.address)?;
-    let ust_uaust_rate = Decimal::from_ratio(uaust_value_in_contract, max_aust_amount);
+    
+    let mut withdrawn_ust = Asset{
+        info: AssetInfo::NativeToken{ denom: denom.clone() },
+        amount: Uint128::zero()
+    };
     
     if max_aust_amount > Uint128::zero() {
+        let ust_uaust_rate = Decimal::from_ratio(uaust_value_in_contract, max_aust_amount);
+        
         if uaust_value_in_contract < refund_amount {
             // Withdraw all aUST left
-            // let withdrawn_UST = Asset{
-            //     info: AssetInfo::NativeToken{ denom: denom.clone() },
-            //     amount: uaust_value_in_contract
-            // };
-
+            
             response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
                 contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
                 msg: to_binary(
@@ -265,7 +268,7 @@ fn try_withdraw_liquidity(
                 )?,
                 funds: vec![]
             })).add_attribute("Max anchor withdrawal", max_aust_amount.to_string()).add_attribute("ust_aust_rate", ust_uaust_rate.to_string());
-        
+            withdrawn_ust.amount = uaust_value_in_contract;
             // TODO: check if you pay 2x tax on this tx. One on withdraw and one on pay-out
         } else {
             let withdraw_amount = refund_amount * ust_uaust_rate.inv().unwrap();
@@ -280,8 +283,15 @@ fn try_withdraw_liquidity(
                 )?,
                 funds: vec![]
             })).add_attribute("Anchor withdrawal", withdraw_amount.to_string()).add_attribute("ust_aust_rate", ust_uaust_rate.to_string());
+            withdrawn_ust.amount = refund_amount;
         };
+        let withdrawtx_tax = withdrawn_ust.compute_tax(&deps.querier)?;
+        refund_amount -= withdrawtx_tax;
     };
+    
+    let community_fund_fee = compute_transaction_fee(deps.as_ref(), refund_amount)?;
+    let warchest_fee = compute_warchest_fee(deps.as_ref(), refund_amount)?;
+    let net_refund_amount = refund_amount - community_fund_fee - warchest_fee;
 
     let refund_asset = Asset{
         info: AssetInfo::NativeToken{ denom: denom.clone() },
@@ -357,10 +367,6 @@ fn receive_cw20(
         }
 }
 
-fn get_slippage_ratio(slippage: Decimal) -> StdResult<Decimal> {
-    Ok(Decimal::from_ratio(Uint128::from(100u64) - Uint128::from(100u64) * slippage, Uint128::from(100u64)))
-}
-
 /// helper method which takes two msgs assumed to be Terraswap trades
 /// and then composes a response with a ProfitCheck BeforeTrade and AfterTrade
 /// the result is an OK'd response with a series of msgs in this order
@@ -396,7 +402,9 @@ fn try_arb_below_peg(
     env: Env,
     msg_info: MessageInfo,
     amount: Coin,
-    uaust_withdraw_amount: Uint128
+    uaust_withdraw_amount: Uint128,
+    belief_price: Decimal,
+    slippage: Decimal,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     // Ensure the caller is a named Trader
@@ -406,13 +414,12 @@ fn try_arb_below_peg(
 
     let ask_denom = LUNA_DENOM.to_string();
 
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    // Store slippage 
-    let slippage = info.slippage;
-    let slippage_ratio = get_slippage_ratio(slippage)?;
+    // let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let stables_availabe = query_balance(&deps.querier, env.contract.address, amount.denom)?;
     // Check how much we can Luna we can get accounting for slippage
-    let expected_luna_amount = query_market_price(deps.as_ref(), amount.clone(), LUNA_DENOM.to_string())? * slippage_ratio;
-    let luna_pool_price = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, Coin{denom: LUNA_DENOM.to_string(), amount: expected_luna_amount})?;
+    let expected_luna_amount = query_market_price(deps.as_ref(), amount.clone(), LUNA_DENOM.to_string())?;
+    // let luna_pool_price = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, Coin{denom: LUNA_DENOM.to_string(), amount: expected_luna_amount})?;
+
 
     let swap_msg = create_swap_msg(
         amount,
@@ -425,12 +432,16 @@ fn try_arb_below_peg(
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
         funds: vec![offer_coin.clone()],
-        msg: to_binary(&create_terraswap_msg(offer_coin, Decimal::from_ratio(luna_pool_price, expected_luna_amount), Some(slippage)))?,
+        msg: to_binary(&create_terraswap_msg(offer_coin, belief_price, Some(slippage)))?,
     });
 
     let mut response = Response::new();
-    if uaust_withdraw_amount > Uint128::zero() {
+
+    // 10 UST as buffer for fees
+    if (amount.amount + Uint128::from(10_000_000u64)) > stables_availabe {
         // Attempt to remove some money from anchor 
+        let to_withdraw = (amount.amount + Uint128::from(10_000_000u64)) - stables_availabe;
+        
         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
             contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
             msg: to_binary(
@@ -443,6 +454,10 @@ fn try_arb_below_peg(
             funds: vec![]
         }));
     }
+
+    if uaust_withdraw_amount > Uint128::zero() {
+        
+    }
     // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
     add_profit_check(deps.as_ref(), response, swap_msg, terraswap_msg)
 }
@@ -451,15 +466,17 @@ fn try_arb_above_peg(
     deps: DepsMut,
     env: Env,
     msg_info: MessageInfo,
-    amount: Coin,
-    uaust_withdraw_amount: Uint128
+    amount: Coin, 
+    uaust_withdraw_amount: Uint128,
+    belief_price: Decimal,
+    slippage: Decimal,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-    // Ensure the caller is a named Trader
+
+    // Check the caller is a named Trader
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
         return Err(StableVaultError::Unauthorized{});
     }
-
 
     let expected_luna_amount = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, amount.clone())?;
     let luna_pool_price = Decimal::from_ratio(amount.amount, expected_luna_amount);
@@ -473,7 +490,6 @@ fn try_arb_above_peg(
     });
 
     let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
-    let slippage_ratio = get_slippage_ratio(slippage)?;
 
     let ask_denom = LUNA_DENOM.to_string();
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount * slippage_ratio};

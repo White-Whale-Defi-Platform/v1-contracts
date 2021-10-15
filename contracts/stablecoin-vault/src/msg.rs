@@ -29,8 +29,8 @@ pub struct InitMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    AbovePeg { amount: Coin, uaust_withdraw_amount: Uint128 },
-    BelowPeg { amount: Coin, uaust_withdraw_amount: Uint128 },
+    AbovePeg { amount: Coin, uaust_withdraw_amount: Uint128, slippage: Decimal, belief_price: Decimal },
+    BelowPeg { amount: Coin, uaust_withdraw_amount: Uint128, slippage: Decimal, belief_price: Decimal },
     ProvideLiquidity {
         asset: Asset
     },
