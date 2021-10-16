@@ -16,12 +16,12 @@ pub struct InitMsg {
     pub community_fund_addr: String,
     pub warchest_addr: String,
     pub asset_info: AssetInfo,
-    pub slippage: Decimal,
     pub token_code_id: u64,
     pub warchest_fee: Decimal,
     pub community_fund_fee: Decimal,
     pub max_community_fund_fee: Uint128,
-    pub anchor_min_withdraw_amount: Uint128
+    pub stable_cap: Uint128,
+    
 }
 
 
@@ -29,13 +29,13 @@ pub struct InitMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    AbovePeg { amount: Coin, uaust_withdraw_amount: Uint128, slippage: Decimal, belief_price: Decimal },
-    BelowPeg { amount: Coin, uaust_withdraw_amount: Uint128, slippage: Decimal, belief_price: Decimal },
+    AbovePeg { amount: Coin, slippage: Decimal, belief_price: Decimal },
+    BelowPeg { amount: Coin, slippage: Decimal, belief_price: Decimal },
     ProvideLiquidity {
         asset: Asset
     },
     AnchorDeposit { amount: Coin },
-    SetSlippage { slippage: Decimal },
+    SetStableCap { stable_cap: Uint128 },
     SetFee{
         community_fund_fee: Option<CappedFee>,
         warchest_fee: Option<Fee>,

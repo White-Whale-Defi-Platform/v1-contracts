@@ -9,7 +9,7 @@ use terraswap::querier::{query_balance, query_token_balance, query_supply};
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use protobuf::Message;
 
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse, Cw20Coin};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
 use white_whale::community_fund::msg::ExecuteMsg as CommunityFundMsg;
 use white_whale::denom::LUNA_DENOM;
@@ -17,7 +17,6 @@ use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, CappedFee, VaultFee};
 use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg, AnchorMsg, EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse};
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
-// use white_whale::query::terraswap::pool_ratio;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::profit_check::msg::{HandleMsg as ProfitCheckMsg};
 use white_whale::anchor::try_deposit_to_anchor as try_deposit;
@@ -29,15 +28,8 @@ use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_market_price};
 use crate::response::MsgInstantiateContractResponse;
 
-// use std::cmp::min;
-
-
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 const CAP_UST_REPLY_ID: u8 = 2u8;
-// Review these values
-const UST_CAP: u64 = 10_00_000_000u64;
-// TODO: make this a config var.
-const ANCHOR_DEPOSIT_THRESHOLD: u64 = 15_00_000_000u64;
 
 type VaultResult = Result<Response<TerraMsgWrapper>, StableVaultError>;
 
@@ -56,12 +48,7 @@ pub fn instantiate(
         aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
         seignorage_address: deps.api.addr_canonicalize(&msg.seignorage_address)?,
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
-        anchor_min_withdraw_amount: msg.anchor_min_withdraw_amount
     };
-    // Initial value checks
-    if ANCHOR_DEPOSIT_THRESHOLD < UST_CAP {
-        return Err(StableVaultError::InvalidInit{});
-    }
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
@@ -83,7 +70,7 @@ pub fn instantiate(
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
         liquidity_token: CanonicalAddr::from(vec![]),
-        slippage: msg.slippage,
+        stable_cap: msg.stable_cap,
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?,
             AssetInfo::NativeToken{ denom: LUNA_DENOM.to_string()}.to_raw(deps.api)?,
@@ -131,11 +118,11 @@ pub fn execute(
 ) -> VaultResult {
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        ExecuteMsg::AbovePeg { amount, uaust_withdraw_amount, slippage, belief_price } => try_arb_above_peg(deps, env, info, amount, uaust_withdraw_amount, slippage, belief_price),
-        ExecuteMsg::BelowPeg { amount, uaust_withdraw_amount, slippage, belief_price } => try_arb_below_peg(deps, env, info, amount, uaust_withdraw_amount, slippage, belief_price),
+        ExecuteMsg::BelowPeg { amount, slippage, belief_price } => try_arb_below_peg(deps, env, info, amount, slippage, belief_price),
+        ExecuteMsg::AbovePeg { amount, slippage, belief_price } => try_arb_above_peg(deps, env, info, amount, slippage, belief_price),
         ExecuteMsg::ProvideLiquidity{ asset } => try_provide_liquidity(deps, info, asset),
         ExecuteMsg::AnchorDeposit{ amount } => try_deposit_to_anchor(deps, info, amount),
-        ExecuteMsg::SetSlippage{ slippage } => set_slippage(deps, info, slippage),
+        ExecuteMsg::SetStableCap{ stable_cap } => set_stable_cap(deps, info, stable_cap),
         ExecuteMsg::SetAdmin{ admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
@@ -150,12 +137,13 @@ pub fn execute(
 pub fn try_provide_liquidity(
     deps: DepsMut,
     msg_info: MessageInfo,
-    asset: Asset
+    mut asset: Asset
 ) -> VaultResult {
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
     deposit_info.assert(&asset.info)?;
     asset.assert_sent_native_token_balance(&msg_info)?;
+    asset.amount = asset.amount - asset.compute_tax(&deps.querier)?;
 
     let deposit_fee = compute_transaction_fee(deps.as_ref(), asset.amount)?;
     let deposit: Uint128 = asset.amount - deposit_fee;
@@ -194,13 +182,19 @@ pub fn try_provide_liquidity(
         msg: to_binary(&CommunityFundMsg::Deposit{})?
     });
 
-    let response = Response::new().add_attribute("deposit", deposit.to_string()).add_attribute("total_deposits", total_deposits_in_ust.to_string()).add_attribute("fee", deposit_fee.to_string())
+    let attrs = vec![
+    ("Sent minus tax:", asset.amount.to_string()),
+    ("Deposited into the vault:", deposit.to_string()),
+    ("Community fee", deposit_fee.to_string()),
+    ];
+
+    let response = Response::new().add_attributes(attrs)
     .add_message(msg)
     .add_message(community_fund_fee_msg);
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
-    if stables_in_contract > Uint128::from(ANCHOR_DEPOSIT_THRESHOLD) {
-        let deposit_amount = stables_in_contract - Uint128::from(UST_CAP);
+    if stables_in_contract > Uint128::from(info.stable_cap * Decimal::percent(150)) {
+        let deposit_amount = stables_in_contract - Uint128::from(info.stable_cap);
         let anchor_deposit_asset = Asset{
             info: AssetInfo::NativeToken{denom: denom},
             amount: deposit_amount
@@ -402,52 +396,41 @@ fn try_arb_below_peg(
     env: Env,
     msg_info: MessageInfo,
     amount: Coin,
-    uaust_withdraw_amount: Uint128,
     belief_price: Decimal,
     slippage: Decimal,
 ) -> VaultResult {
+
     let state = STATE.load(deps.storage)?;
+    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     // Ensure the caller is a named Trader
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
         return Err(StableVaultError::Unauthorized{});
     }
+    let (total_value,stables_availabe,_) = compute_total_value(deps.as_ref(), &info)?;
+
+    if total_value < amount.amount + Uint128::from(10_000_000u64) {
+        return Err(StableVaultError::Broke{});
+    }
 
     let ask_denom = LUNA_DENOM.to_string();
-
-    // let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let stables_availabe = query_balance(&deps.querier, env.contract.address, amount.denom)?;
-    // Check how much we can Luna we can get accounting for slippage
-    let expected_luna_amount = query_market_price(deps.as_ref(), amount.clone(), LUNA_DENOM.to_string())?;
-    // let luna_pool_price = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, Coin{denom: LUNA_DENOM.to_string(), amount: expected_luna_amount})?;
-
-
-    let swap_msg = create_swap_msg(
-        amount,
-        ask_denom.clone(),
-    );
+    let expected_luna_received = query_market_price(deps.as_ref(), amount.clone(), LUNA_DENOM.to_string())?;
     let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
-    let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount};
-    
-    // Prepare a terraswap message to swap an offer_coin for luna
-    let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
-        funds: vec![offer_coin.clone()],
-        msg: to_binary(&create_terraswap_msg(offer_coin, belief_price, Some(slippage)))?,
-    });
-
+    let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + expected_luna_received};
     let mut response = Response::new();
 
     // 10 UST as buffer for fees
     if (amount.amount + Uint128::from(10_000_000u64)) > stables_availabe {
         // Attempt to remove some money from anchor 
         let to_withdraw = (amount.amount + Uint128::from(10_000_000u64)) - stables_availabe;
-        
+        let epoch_state_response = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
+        let aust_exchange_rate = Decimal::from(epoch_state_response.exchange_rate);
+
         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
             contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
             msg: to_binary(
                 &Cw20ExecuteMsg::Send{
                     contract: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
-                    amount: uaust_withdraw_amount,
+                    amount: to_withdraw * aust_exchange_rate.inv().unwrap(),
                     msg: to_binary(&AnchorMsg::RedeemStable{})?
                 }
             )?,
@@ -455,9 +438,19 @@ fn try_arb_below_peg(
         }));
     }
 
-    if uaust_withdraw_amount > Uint128::zero() {
-        
-    }
+    // Market swap msg, swap STABLE -> LUNA
+    let swap_msg = create_swap_msg(
+        amount.clone(),
+        ask_denom.clone(),
+    );
+
+    // Terraswap msg, swap LUNA -> STABLE
+    let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
+        funds: vec![offer_coin.clone()],
+        msg: to_binary(&create_terraswap_msg(offer_coin, belief_price, Some(slippage)))?,
+    });
+
     // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
     add_profit_check(deps.as_ref(), response, swap_msg, terraswap_msg)
 }
@@ -467,54 +460,61 @@ fn try_arb_above_peg(
     env: Env,
     msg_info: MessageInfo,
     amount: Coin, 
-    uaust_withdraw_amount: Uint128,
     belief_price: Decimal,
     slippage: Decimal,
 ) -> VaultResult {
-    let state = STATE.load(deps.storage)?;
 
+    let state = STATE.load(deps.storage)?;
+    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     // Check the caller is a named Trader
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
         return Err(StableVaultError::Unauthorized{});
     }
+    let (total_value,stables_availabe,_) = compute_total_value(deps.as_ref(), &info)?;
 
-    let expected_luna_amount = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, amount.clone())?;
-    let luna_pool_price = Decimal::from_ratio(amount.amount, expected_luna_amount);
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let slippage = info.slippage;
-
-    let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
-        funds: vec![amount.clone()],
-        msg: to_binary(&create_terraswap_msg(amount.clone(), luna_pool_price, Some(slippage)))?,
-    });
-
-    let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
+    if total_value < amount.amount + Uint128::from(10_000_000u64) {
+        return Err(StableVaultError::Broke{});
+    }
 
     let ask_denom = LUNA_DENOM.to_string();
-    let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_amount * slippage_ratio};
-
-    // Prepare a swap message to swap an offer_coin for luna
-    let swap_msg = create_swap_msg(
-        offer_coin,
-        amount.denom,
-    );
-
+    let expected_luna_received = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, amount.clone())?;
+    let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
+    let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_received};
     let mut response = Response::new();
-    if uaust_withdraw_amount > Uint128::zero() {
+
+    // 10 UST as buffer for fees
+    if (amount.amount + Uint128::from(10_000_000u64)) > stables_availabe {
         // Attempt to remove some money from anchor 
+        let to_withdraw = (amount.amount + Uint128::from(10_000_000u64)) - stables_availabe;
+        let epoch_state_response = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
+        let aust_exchange_rate = Decimal::from(epoch_state_response.exchange_rate);
+
         response = response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
             contract_addr: deps.api.addr_humanize(&state.aust_address)?.to_string(),
             msg: to_binary(
                 &Cw20ExecuteMsg::Send{
                     contract: deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string(),
-                    amount: uaust_withdraw_amount,
+                    amount: to_withdraw * aust_exchange_rate.inv().unwrap(),
                     msg: to_binary(&AnchorMsg::RedeemStable{})?
                 }
             )?,
             funds: vec![]
         }));
     }
+
+    // Terraswap msg, swap STABLE -> LUNA
+    let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
+        funds: vec![amount.clone()],
+        msg: to_binary(&create_terraswap_msg(amount.clone(), belief_price, Some(slippage)))?,
+    });
+
+    // Market swap msg, swap LUNA -> STABLE
+    let swap_msg = create_swap_msg(
+        offer_coin,
+        amount.denom,
+    );
+
     // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
     add_profit_check(deps.as_ref(), response, terraswap_msg, swap_msg)
 }
@@ -641,19 +641,19 @@ pub fn try_deposit_to_anchor(
 
 /// Setters for contract parameters/config values
 
-pub fn set_slippage(
+pub fn set_stable_cap(
     deps: DepsMut,
     msg_info: MessageInfo,
-    slippage: Decimal
+    stable_cap: Uint128,
 ) -> VaultResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let previous_slippage = info.slippage;
-    info.slippage = slippage;
+    let previous_cap = info.stable_cap;
+    info.stable_cap = stable_cap;
     POOL_INFO.save(deps.storage, &info)?;
-    Ok(Response::new().add_attribute("slippage", slippage.to_string()).add_attribute("previous slippage", previous_slippage.to_string()))
+    Ok(Response::new().add_attribute("slippage", stable_cap.to_string()).add_attribute("previous slippage", previous_cap.to_string()))
 }
 
 pub fn set_trader(
@@ -752,6 +752,9 @@ pub fn try_query_pool(
     Ok(PoolResponse { assets, total_value_in_ust, total_share })
 }
 
+// Tests to add
+// - set trader
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -771,11 +774,11 @@ mod tests {
             community_fund_addr: "community_fund".to_string(),
             warchest_addr: "warchest".to_string(),
             asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() },
-            slippage: Decimal::percent(1u64), token_code_id: 0u64,
+            token_code_id: 0u64,
             warchest_fee: Decimal::percent(10u64),
             community_fund_fee: Decimal::permille(5u64),
             max_community_fund_fee: Uint128::from(1000000u64),
-            anchor_min_withdraw_amount: Uint128::from(10000000u64)
+            stable_cap: Uint128::from(100_000_000u64),
         }
     }
 
@@ -792,7 +795,7 @@ mod tests {
     }
 
     #[test]
-    fn test_set_slippage() {
+    fn test_set_stable_cap() {
         let mut deps = mock_dependencies(&[]);
 
         let msg = get_test_init_msg();
@@ -803,14 +806,14 @@ mod tests {
         assert_eq!(1, res.messages.len());
 
         let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
-        assert_eq!(info.slippage, Decimal::percent(1u64));
+        assert_eq!(info.stable_cap, Uint128::from(100_000_000u64));
 
-        let msg = ExecuteMsg::SetSlippage {
-            slippage: Decimal::one()
+        let msg = ExecuteMsg::SetStableCap {
+            stable_cap: Uint128::from(100_000u64)
         };
         let _res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
         let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
-        assert_eq!(info.slippage, Decimal::one());
+        assert_eq!(info.stable_cap, Uint128::from(100_000u64));
     }
 
     #[test]
@@ -825,7 +828,7 @@ mod tests {
         assert_eq!(1, res.messages.len());
 
         let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
-        assert_eq!(info.slippage, Decimal::percent(1u64));
+        assert_eq!(info.stable_cap, Uint128::from(100_000_000u64));
 
         let warchest_fee = FEE.load(&deps.storage).unwrap().warchest_fee.share;
         let new_fee =  Decimal::permille(1u64);
@@ -851,7 +854,7 @@ mod tests {
         assert_eq!(1, res.messages.len());
 
         let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
-        assert_eq!(info.slippage, Decimal::percent(1u64));
+        assert_eq!(info.stable_cap, Uint128::from(100_000u64));
 
         let community_fund_fee = FEE.load(&deps.storage).unwrap().community_fund_fee.fee.share;
         let new_fee =  Decimal::permille(1u64);
@@ -880,7 +883,8 @@ mod tests {
 
         let msg = ExecuteMsg::BelowPeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128::from(1000000u64)},
-            uaust_withdraw_amount: Uint128::zero()
+            slippage: Decimal::percent(1u64),
+            belief_price: Decimal::from_ratio(Uint128::new(320),Uint128::new(10)), 
         };
 
         let res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
@@ -913,7 +917,8 @@ mod tests {
 
         let msg = ExecuteMsg::AbovePeg {
             amount: Coin{denom: "uusd".to_string(), amount: Uint128::from(1000000u64)},
-            uaust_withdraw_amount: Uint128::zero()
+            slippage: Decimal::percent(1u64),
+            belief_price: Decimal::from_ratio(Uint128::new(320),Uint128::new(10)), 
         };
 
         let res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
@@ -934,3 +939,7 @@ mod tests {
         }
     }
 }
+
+// TODO: 
+// - Deposit when 0 in pool -> fix by requiring one UST one init
+// - Add config for deposit amounts 
