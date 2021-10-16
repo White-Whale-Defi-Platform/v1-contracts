@@ -16,7 +16,8 @@ from white_whale.address.bombay.terraswap import pools
 from white_whale.address.bombay.white_whale import community_fund, war_chest
 
 
-mnemonic = "main jar girl opinion train type cycle blood marble kitchen april champion amount engine crumble tunnel model vicious system student hood fee curious traffic"
+mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
+# mnemonic = "flavor addict aunt cream vendor grocery prison chicken fee brother desert science shoulder isolate eyebrow zero rough together delay dose cliff world sugar viable"
 std_fee = StdFee(6900000, "3500000uusd")
 
 deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=std_fee)
@@ -81,21 +82,21 @@ def deploy():
 
 
 # deploy()
-
-profit_check_address = "terra150y2gjkvk7cr26dxjjxrayc4xh4qgvle96s0ts"
-contract_address = "terra1xkfeggsw2clvykufdk9vvqg0wrhhkgdvy7sput"
+# exit()
+# profit_check_address = "terra150y2gjkvk7cr26dxjjxrayc4xh4qgvle96s0ts"
+contract_address = "terra1my6hhy0msz4vaq93smcr7ts59manxx5hlurn7h"
 
 # result = client.wasm.contract_query(contract_address, {
 #     "config": {}
 # })
 # print(result)
-result = deployer.execute_contract(contract_address, {
-    "set_admin": {
-        "admin": "terra1jxkl0z4fam9jejzlpw3cc77rns8rrv42n4nt0y"
-    }
-})
-print(result)
-exit()
+# result = deployer.execute_contract(contract_address, {
+#     "set_admin": {
+#         "admin": "terra1f6nthhyvtjalucnzdwwajp7mnhm5tpn5l46sed"
+#     }
+# })
+# print(result)
+
 # print(client.chain_id)
 # profit_check_address = "terra1jc9sxkxcrmmgeak6wmn44403la3paz60v3n7fa"
 # contract_address = "terra14uqjlrg5efah459xkstxavf3wr7ku8s0j5h328"
@@ -109,10 +110,7 @@ exit()
 # # print(result)
 # contract_address = "terra1y2e2qdgkysnl3z020lkzdsxdkkc6wwqd4r5u6f"
 # contract_address, profit_check_address = deploy(config, profit_check_address)
-result = deployer.client.wasm.contract_query(contract_address, {
-    "config": {}
-})
-lp_token_address = result["liquidity_token"]
+
 
 # result = client.wasm.contract_query(contract_address, {
 #     "last_balance": {}
@@ -183,20 +181,24 @@ lp_token_address = result["liquidity_token"]
 # })
 # print(result)
 
+# result = client.treasury.tax_rate()
+# print(f'tax = {result}')
+
+result = deployer.client.wasm.contract_query(contract_address, {
+    "config": {}
+})
+lp_token_address = result["liquidity_token"]
+
 result = deployer.client.wasm.contract_query(lp_token_address, {
     "balance": {
         "address": deployer.wallet.key.acc_address
     }
 })
-print(result)
-lp_balance = int(int(result["balance"])-1)
+lp_balance = int(result["balance"])
 print(f'lp {lp_balance}')
 
-# result = client.treasury.tax_rate()
-# print(f'tax = {result}')
-
 # amount = 1100*1000*1000
-amount = 1*1000*1000
+amount = 1000*1000*1000
 result = deployer.execute_contract(contract_addr=contract_address, execute_msg={
     "provide_liquidity": {
         "asset": {
@@ -209,10 +211,20 @@ result = deployer.execute_contract(contract_addr=contract_address, execute_msg={
 }, coins=str(amount) + "uusd")
 print(result)
 
-# result = client.wasm.contract_query(contract_address, {
-#     "pool": {}
+# msg = base64.b64encode(bytes(json.dumps({"withdraw_liquidity": {}}), 'ascii')).decode()
+# result = deployer.execute_contract(contract_addr=lp_token_address, execute_msg={
+#     "send": {
+#         "contract": contract_address,
+#         "amount": str(lp_balance),
+#         "msg": msg
+#     }
 # })
 # print(result)
+
+result = deployer.client.wasm.contract_query(contract_address, {
+    "pool": {}
+})
+print(result)
 
 result = deployer.client.wasm.contract_query(lp_token_address, {
     "balance": {
@@ -220,7 +232,7 @@ result = deployer.client.wasm.contract_query(lp_token_address, {
     }
 })
 print(result)
-
+exit()
 # contract_address = "terra1fg79czuq76nt699g96q2z9767gufpz8xx4s8k4"
 
 # res = requests.get("https://fcd.terra.dev/v1/txs/gas_prices")
@@ -248,15 +260,7 @@ print(result)
 # }, coins=str(amount) + "uusd")
 # print(result)
 
-# msg = base64.b64encode(bytes(json.dumps({"withdraw_liquidity": {}}), 'ascii')).decode()
-# result = execute_contract(contract_addr=lp_token_address, execute_msg={
-#     "send": {
-#         "contract": contract_address,
-#         "amount": str(lp_balance),
-#         "msg": msg
-#     }
-# })
-# print(result)
+
 
 # result = client.wasm.contract_query(contract_address, {
 #     "pool": {}
