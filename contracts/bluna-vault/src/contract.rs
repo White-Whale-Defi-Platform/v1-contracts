@@ -57,18 +57,17 @@ pub fn instantiate(
     POOL_INFO.save(deps.storage, pool_info)?;
 
     // Both the lp_token_name and symbol are Options, attempt to unwrap their value falling back to the default if not provided
-    let lp_token_name: String = msg.vault_lp_token_name.unwrap_or(String::from(DEFAULT_LP_TOKEN_NAME));
-    let lp_token_symbol: String = msg.vault_lp_token_symbol.unwrap_or(String::from(DEFAULT_LP_TOKEN_SYMBOL));
+    let lp_token_name: String = msg.vault_lp_token_name.unwrap_or_else(|| String::from(DEFAULT_LP_TOKEN_NAME));
+    let lp_token_symbol: String = msg.vault_lp_token_symbol.unwrap_or_else(|| String::from(DEFAULT_LP_TOKEN_SYMBOL));
 
     Ok(Response::new().add_submessage(SubMsg {
         // Create LP token
-        // TODO: Update to use non default 
         msg: WasmMsg::Instantiate {
             admin: None,
             code_id: msg.token_code_id,
             msg: to_binary(&TokenInstantiateMsg {
-                name: lp_token_name.to_string(),
-                symbol: lp_token_symbol.to_string(),
+                name: lp_token_name,
+                symbol: lp_token_symbol,
                 decimals: 6,
                 initial_balances: vec![],
                 mint: Some(MinterResponse {
