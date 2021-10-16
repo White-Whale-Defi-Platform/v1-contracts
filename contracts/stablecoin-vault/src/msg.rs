@@ -21,7 +21,9 @@ pub struct InitMsg {
     pub warchest_fee: Decimal,
     pub community_fund_fee: Decimal,
     pub max_community_fund_fee: Uint128,
-    pub anchor_min_withdraw_amount: Uint128
+    pub anchor_min_withdraw_amount: Uint128,
+    pub vault_lp_token_name: Option<String>,
+    pub vault_lp_token_symbol: Option<String>
 }
 
 

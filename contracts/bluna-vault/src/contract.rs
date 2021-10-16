@@ -20,6 +20,8 @@ use crate::response::MsgInstantiateContractResponse;
 
 
 const INSTANTIATE_REPLY_ID: u64 = 1;
+const DEFAULT_LP_TOKEN_NAME: &str = "White Whale Luna-bLuna Vault LP Token";
+const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVbLuna";
 
 /*  This contract implements the bLuna arbitrage vault. 
  
@@ -54,6 +56,10 @@ pub fn instantiate(
     };
     POOL_INFO.save(deps.storage, pool_info)?;
 
+    // Both the lp_token_name and symbol are Options, attempt to unwrap their value falling back to the default if not provided
+    let lp_token_name: String = msg.vault_lp_token_name.unwrap_or(String::from(DEFAULT_LP_TOKEN_NAME));
+    let lp_token_symbol: String = msg.vault_lp_token_symbol.unwrap_or(String::from(DEFAULT_LP_TOKEN_SYMBOL));
+
     Ok(Response::new().add_submessage(SubMsg {
         // Create LP token
         // TODO: Update to use non default 
@@ -61,8 +67,8 @@ pub fn instantiate(
             admin: None,
             code_id: msg.token_code_id,
             msg: to_binary(&TokenInstantiateMsg {
-                name: "test liquidity token".to_string(),
-                symbol: "tLP".to_string(),
+                name: lp_token_name.to_string(),
+                symbol: lp_token_symbol.to_string(),
                 decimals: 6,
                 initial_balances: vec![],
                 mint: Some(MinterResponse {
@@ -347,7 +353,10 @@ mod tests {
             pool_address: "test_pool".to_string(),
             bluna_hub_address: "test_mm".to_string(),
             bluna_address: "test_aust".to_string(),
-            slippage: Decimal::percent(1u64), token_code_id: 0u64
+            slippage: Decimal::percent(1u64), 
+            token_code_id: 0u64,
+            vault_lp_token_name: None,
+            vault_lp_token_symbol: None
         }
     }
 
@@ -362,6 +371,61 @@ mod tests {
 
         let res = instantiate(deps.as_mut(), env, info, msg).unwrap();
         assert_eq!(1, res.messages.len());
+    }
+
+    #[test]
+    fn test_init_with_non_default_vault_lp_token() {
+        let mut deps = mock_dependencies(&[]);
+
+        let custom_token_name = String::from("My LP Token");
+        let custom_token_symbol = String::from("MyLP");
+
+        // Define a custom Init Msg with the custom token info provided
+        let msg = InitMsg {
+            pool_address: "test_pool".to_string(),
+            bluna_hub_address: "test_mm".to_string(),
+            bluna_address: "test_aust".to_string(),
+            slippage: Decimal::percent(1u64), 
+            token_code_id: 0u64,
+            vault_lp_token_name: Some(custom_token_name.clone()),
+            vault_lp_token_symbol: Some(custom_token_symbol.clone())
+        };
+
+        // Prepare mock env 
+        let env = mock_env();
+        let info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
+
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+        // Ensure we have 1 message
+        assert_eq!(1, res.messages.len());
+        // Verify the message is the one we expect but also that our custom provided token name and symbol were taken into account.
+        assert_eq!(
+            res.messages,
+            vec![SubMsg {
+                // Create LP token
+                msg: WasmMsg::Instantiate {
+                    admin: None,
+                    code_id: msg.token_code_id,
+                    msg: to_binary(&TokenInstantiateMsg {
+                        name: custom_token_name.to_string(),
+                        symbol: custom_token_symbol.to_string(),
+                        decimals: 6,
+                        initial_balances: vec![],
+                        mint: Some(MinterResponse {
+                            minter: env.contract.address.to_string(),
+                            cap: None,
+                        }),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                    label: "".to_string(),
+                }
+                .into(),
+                gas_limit: None,
+                id: INSTANTIATE_REPLY_ID,
+                reply_on: ReplyOn::Success,
+            }]
+        );
     }
 
     #[test]
