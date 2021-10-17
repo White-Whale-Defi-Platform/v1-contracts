@@ -1,0 +1,2 @@
+pytest-bdd
+terra_sdk @ git+https://github.com/terra-money/terra-sdk-python.git@columbus-5
