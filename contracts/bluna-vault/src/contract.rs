@@ -21,7 +21,11 @@ use crate::response::MsgInstantiateContractResponse;
 
 const INSTANTIATE_REPLY_ID: u64 = 1;
 
+/*  This contract implements the bLuna arbitrage vault. 
+ 
 
+The bLuna vault performs arbitrage operations on the bLuna-Luna Terraswap Pair
+*/
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -52,6 +56,7 @@ pub fn instantiate(
 
     Ok(Response::new().add_submessage(SubMsg {
         // Create LP token
+        // TODO: Update to use non default 
         msg: WasmMsg::Instantiate {
             admin: None,
             code_id: msg.token_code_id,
@@ -109,6 +114,7 @@ pub fn execute(
     }
 }
 
+/// try_swap attempts to perform a swap between uluna and bluna, depending on what coin is offered. 
 pub fn try_swap(
     deps: DepsMut,
     info: MessageInfo,
@@ -121,12 +127,15 @@ pub fn try_swap(
 
     let slippage = (POOL_INFO.load(deps.storage)?).slippage;
     let belief_price = Decimal::from_ratio(simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, offer_coin.clone())?, offer_coin.amount);
+    
+    // Sell luna and buy bluna
     let msg = if offer_coin.denom == "uluna" {
         CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: state.pool_address.to_string(),
             funds: vec![offer_coin.clone()],
             msg: to_binary(&create_terraswap_msg(offer_coin, belief_price, Some(slippage)))?,
         })
+    // Or sell bluna and buy luna
     } else {
         CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: state.bluna_address.to_string(),
@@ -142,6 +151,7 @@ pub fn try_swap(
     Ok(Response::new().add_message(msg))
 }
 
+// perform a computation first by getting both the deposits in luna and bluna for the contract and then sum them
 pub fn compute_total_deposits(
     deps: Deps,
     info: &PoolInfoRaw
@@ -154,6 +164,7 @@ pub fn compute_total_deposits(
     Ok(total_deposits_in_luna)
 }
 
+/// attempt to withdraw deposits. Fees should be calculated and deducted and the net refund is sent 
 pub fn try_withdraw_liquidity(
     deps: DepsMut,
     sender: String,
@@ -166,6 +177,7 @@ pub fn try_withdraw_liquidity(
     let total_deposits: Uint128 = compute_total_deposits(deps.as_ref(), &info)?;
 
     let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
+    // amount of luna to return
     let refund_asset: Asset = Asset{
         info: AssetInfo::NativeToken{ denom: get_stable_denom(deps.as_ref())? },
         amount: total_deposits * share_ratio
@@ -182,6 +194,7 @@ pub fn try_withdraw_liquidity(
             amount: vec![refund_asset.deduct_tax(&deps.querier)?],
         }),
     };
+    // Burn vault lp token 
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: info.liquidity_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
@@ -196,6 +209,8 @@ pub fn try_withdraw_liquidity(
     )
 }
 
+/// handler function invoked when the bluna-vault contract receives
+/// a transaction. This is akin to a payable function in Solidity
 pub fn receive_cw20(
     deps: DepsMut,
     info: MessageInfo,
@@ -295,6 +310,7 @@ pub fn query(
         QueryMsg::Config{} => to_binary(&try_query_config(deps)?),
         QueryMsg::Pool{} => to_binary(&try_query_pool(deps)?),
         QueryMsg::Fees{} => to_binary(""),
+        // TODO: Finish fee calculation and estimation 
         QueryMsg::EstimateDepositFee{ .. } => to_binary(""),
         QueryMsg::EstimateWithdrawFee{ .. } => to_binary(""),
     }
