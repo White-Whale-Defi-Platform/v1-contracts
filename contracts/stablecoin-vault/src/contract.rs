@@ -28,6 +28,8 @@ use crate::querier::{query_market_price};
 use crate::response::MsgInstantiateContractResponse;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
+const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
+const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 
 type VaultResult = Result<Response<TerraMsgWrapper>, StableVaultError>;
 
@@ -78,15 +80,19 @@ pub fn instantiate(
     POOL_INFO.save(deps.storage, pool_info)?;
     // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
-    // TODO: Update the creation of LP token, use non default name and symbol.
+
+    // Both the lp_token_name and symbol are Options, attempt to unwrap their value falling back to the default if not provided
+    let lp_token_name: String = msg.vault_lp_token_name.unwrap_or_else(|| String::from(DEFAULT_LP_TOKEN_NAME));
+    let lp_token_symbol: String = msg.vault_lp_token_symbol.unwrap_or_else(|| String::from(DEFAULT_LP_TOKEN_SYMBOL));
+
     Ok(Response::new().add_submessage(SubMsg {
         // Create LP token
         msg: WasmMsg::Instantiate {
             admin: None,
             code_id: msg.token_code_id,
             msg: to_binary(&TokenInstantiateMsg {
-                name: "test liquidity token".to_string(),
-                symbol: "tLP".to_string(),
+                name: lp_token_name,
+                symbol: lp_token_symbol,
                 decimals: 6,
                 initial_balances: vec![
                     // Cw20Coin{address: env.contract.address.to_string(),
@@ -331,6 +337,10 @@ fn try_withdraw_liquidity(
 }
 
 
+// Attempt to perform an arbitrage operation with the assumption that 
+// the currency to be arb'd is below peg. 
+// If needed, funds are withdrawn from anchor and messages are prepared to perform the swaps.
+// Two calls to a profit_check contract surround the trade msgs to enshure the trade only finalizes if the contract makes a profit. 
 fn try_arb_below_peg(
     deps: DepsMut,
     env: Env,
@@ -390,7 +400,10 @@ fn try_arb_below_peg(
     add_profit_check(deps.as_ref(), response, swap_msg, terraswap_msg)
 }
 
-
+// Attempt to perform an arbitrage operation with the assumption that 
+// the currency to be arb'd is below peg. 
+// If needed, funds are withdrawn from anchor and messages are prepared to perform the swaps.
+// Two calls to a profit_check contract surround the trade msgs to enshure the trade only finalizes if the contract makes a profit. 
 fn try_arb_above_peg(
     deps: DepsMut,
     env: Env,
@@ -515,6 +528,7 @@ fn receive_cw20(
 }
 
 
+// compute total value of deposits in UST and return
 pub fn compute_total_value(
     deps: Deps,
     info: &PoolInfoRaw
@@ -554,6 +568,8 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let warchest_fee = get_warchest_fee(deps, amount)?;
     Ok(community_fund_fee + warchest_fee)
 }
+
+
 
 //----------------------------------------------------------------------------------------
 //  CALLBACK FUNCTION HANDLERS
@@ -758,6 +774,8 @@ mod tests {
             community_fund_fee: Decimal::permille(5u64),
             max_community_fund_fee: Uint128::from(1000000u64),
             stable_cap: Uint128::from(100_000_000u64),
+            vault_lp_token_name: None,
+            vault_lp_token_symbol: None
         }
     }
 
@@ -774,7 +792,68 @@ mod tests {
     }
 
     #[test]
-    fn test_set_stable_cap() {
+    fn test_init_with_non_default_vault_lp_token() {
+        let mut deps = mock_dependencies(&[]);
+
+        let custom_token_name = String::from("My LP Token");
+        let custom_token_symbol = String::from("MyLP");
+
+        // Define a custom Init Msg with the custom token info provided
+        let msg = InitMsg {
+            pool_address: "test_pool".to_string(),
+            anchor_money_market_address: "test_mm".to_string(),
+            aust_address: "test_aust".to_string(),
+            seignorage_address: "test_seignorage".to_string(),
+            profit_check_address: "test_profit_check".to_string(),
+            community_fund_addr: "community_fund".to_string(),
+            warchest_addr: "warchest".to_string(),
+            asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() },
+            warchest_fee: Decimal::percent(10u64),
+            community_fund_fee: Decimal::permille(5u64),
+            max_community_fund_fee: Uint128::from(1000000u64),
+            vault_lp_token_name: Some(custom_token_name.clone()),
+            vault_lp_token_symbol: Some(custom_token_symbol.clone())
+        };
+
+        // Prepare mock env 
+        let env = mock_env();
+        let info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
+
+        let res = instantiate(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+        // Ensure we have 1 message
+        assert_eq!(1, res.messages.len());
+        // Verify the message is the one we expect but also that our custom provided token name and symbol were taken into account.
+        assert_eq!(
+            res.messages,
+            vec![SubMsg {
+                // Create LP token
+                msg: WasmMsg::Instantiate {
+                    admin: None,
+                    code_id: msg.token_code_id,
+                    msg: to_binary(&TokenInstantiateMsg {
+                        name: custom_token_name.to_string(),
+                        symbol: custom_token_symbol.to_string(),
+                        decimals: 6,
+                        initial_balances: vec![],
+                        mint: Some(MinterResponse {
+                            minter: env.contract.address.to_string(),
+                            cap: None,
+                        }),
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                    label: "".to_string(),
+                }
+                .into(),
+                gas_limit: None,
+                id: u64::from(INSTANTIATE_REPLY_ID),
+                reply_on: ReplyOn::Success,
+            }]
+        );
+    }
+
+    #[test]
+    fn test_set_slippage() {
         let mut deps = mock_dependencies(&[]);
 
         let msg = get_test_init_msg();

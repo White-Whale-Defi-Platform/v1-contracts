@@ -10,7 +10,9 @@ pub struct InitMsg {
     pub bluna_hub_address: String,
     pub bluna_address: String,
     pub slippage: Decimal,
-    pub token_code_id: u64
+    pub token_code_id: u64,
+    pub vault_lp_token_name: Option<String>,
+    pub vault_lp_token_symbol: Option<String>
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -11,6 +11,12 @@ use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{ADMIN, STATE, State};
 
+/*
+    The War Chest behaves similarly to a community fund with the provisio that funds in the War Chest are specifically to be used 
+    to perform arbitrage operations across the Terra ecosystem not just limited to any particular vault or token
+    It is controlled by the governance contract and serves to grow its holdings and become a safeguard/protective measure in keeping the peg. 
+*/
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -63,6 +69,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(resp)
 }
 
+// Transfer WHALE to specified recipient
 pub fn spend(
     deps: DepsMut,
     info: MessageInfo,
