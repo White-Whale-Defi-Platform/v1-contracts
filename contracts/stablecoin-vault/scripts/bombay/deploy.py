@@ -97,8 +97,18 @@ result = deployer.client.wasm.contract_query(lp_token_address, {
 lp_balance = int(result["balance"])
 print(f'lp {lp_balance}')
 
-# amount = 1100*1000*1000
-amount = 30000*1000*1000
+# msg = base64.b64encode(bytes(json.dumps({"withdraw_liquidity": {}}), 'ascii')).decode()
+# result = deployer.execute_contract(contract_addr=lp_token_address, execute_msg={
+#     "send": {
+#         "contract": vault,
+#         "amount": str(lp_balance),
+#         "msg": msg
+#     }
+# })
+# print(result)
+
+amount = 1100*1000*1000
+# amount = 30000*1000*1000
 result = deployer.execute_contract(contract_addr=vault, execute_msg={
     "provide_liquidity": {
         "asset": {
@@ -124,15 +134,7 @@ result = deployer.client.wasm.contract_query(lp_token_address, {
 print(result)
 exit()
 
-# msg = base64.b64encode(bytes(json.dumps({"withdraw_liquidity": {}}), 'ascii')).decode()
-# result = deployer.execute_contract(contract_addr=lp_token_address, execute_msg={
-#     "send": {
-#         "contract": contract_address,
-#         "amount": str(lp_balance),
-#         "msg": msg
-#     }
-# })
-# print(result)
+
 
 # result = client.wasm.contract_query(contract_address, {
 #     "config": {}

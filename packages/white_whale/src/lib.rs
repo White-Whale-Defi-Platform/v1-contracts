@@ -5,6 +5,7 @@ pub mod deposit_info;
 pub mod deposit_manager;
 pub mod fee;
 pub mod msg;
+pub mod tax;
 pub mod profit_check;
 pub mod trader;
 pub mod query;

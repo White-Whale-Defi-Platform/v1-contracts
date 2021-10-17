@@ -1,4 +1,4 @@
-use cosmwasm_std::{ to_binary, Deps, QueryRequest, StdResult, WasmQuery };
+use cosmwasm_std::{ to_binary, Deps, QueryRequest, StdResult, WasmQuery, Decimal};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use cosmwasm_bignumber::{Decimal256, Uint256};
@@ -22,12 +22,13 @@ pub struct EpochStateResponse {
 pub fn query_aust_exchange_rate(
     deps: Deps,
     anchor_money_market_address: String
-) -> StdResult<EpochStateResponse> {
-    deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+) -> StdResult<Decimal> {
+    let response: EpochStateResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: anchor_money_market_address,
         msg: to_binary(&AnchorQuery::EpochState {
             block_height: None,
             distributed_interest: None
         })?,
-    }))
+    }))?;
+    Ok(Decimal::from(response.exchange_rate))
 }

@@ -1,7 +1,12 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use cosmwasm_std::{CanonicalAddr, Decimal, Uint128};
+use crate::community_fund::msg::ExecuteMsg as CommunityFundMsg;
 use std::cmp::min;
+use cosmwasm_std::{Deps, to_binary, CosmosMsg,  StdResult, WasmMsg};
+use terraswap::asset::{Asset, AssetInfo};
+use std::fmt;
+
 
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -12,6 +17,23 @@ pub struct Fee {
 impl Fee {
     pub fn compute(&self, value: Uint128) -> Uint128 {
         value*self.share
+    }
+
+    pub fn msg<T: Clone + fmt::Debug + PartialEq + JsonSchema>(
+        &self, deps: Deps, value: Uint128, denom: String, address: String
+        )-> StdResult<CosmosMsg<T>> {
+        let fee = self.compute(value);
+
+        let warchest_asset = Asset{
+            info: AssetInfo::NativeToken{denom: denom.clone()},
+            amount: fee,
+        };
+
+        Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: address,
+            funds: vec![warchest_asset.deduct_tax(&deps.querier)?],
+            msg: to_binary(&CommunityFundMsg::Deposit{})?
+        }))
     }
 }
 
@@ -25,6 +47,22 @@ pub struct CappedFee {
 impl CappedFee {
     pub fn compute(&self, value: Uint128) -> Uint128 {
         min(self.fee.compute(value), self.max_fee)
+    }
+
+    pub fn msg<T: Clone + fmt::Debug + PartialEq + JsonSchema>(
+        &self, deps: Deps, value: Uint128, denom: String, address: String
+        )-> StdResult<CosmosMsg<T>> {
+        let fee = self.compute(value);
+        let community_fund_asset = Asset{
+            info: AssetInfo::NativeToken{denom: denom.clone()},
+            amount: fee,
+        };
+
+        Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: address,
+            funds: vec![community_fund_asset.deduct_tax(&deps.querier)?],
+            msg: to_binary(&CommunityFundMsg::Deposit{})?
+        }))
     }
 }
 

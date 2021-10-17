@@ -34,14 +34,21 @@ pub enum ExecuteMsg {
     ProvideLiquidity {
         asset: Asset
     },
-    AnchorDeposit { amount: Coin },
     SetStableCap { stable_cap: Uint128 },
     SetFee{
         community_fund_fee: Option<CappedFee>,
         warchest_fee: Option<Fee>,
      },
     SetAdmin{ admin: String },
-    SetTrader{ trader: String }
+    SetTrader{ trader: String },
+    
+    Callback(CallbackMsg),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CallbackMsg {
+    AfterSuccessfulTradeCallback {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

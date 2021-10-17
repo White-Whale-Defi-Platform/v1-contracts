@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
     Uint128, WasmMsg, Reply, ReplyOn, entry_point
 };
 use cw20::Cw20ExecuteMsg;
@@ -155,9 +155,8 @@ pub fn deposit_or_spend_interest(deps: DepsMut, env: &Env, msg_info: MessageInfo
 pub fn get_aust_value_in_uusd(deps: Deps, env: &Env) -> StdResult<Uint128> {
     let state = STATE.load(deps.storage)?;
     let aust_amount = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_addr)?, env.contract.address.clone())?;
+    let aust_exchange_rate = query_aust_exchange_rate(deps, deps.api.addr_humanize(&state.anchor_money_market_addr)?.to_string())?;
 
-    let epoch_state_response = query_aust_exchange_rate(deps, deps.api.addr_humanize(&state.anchor_money_market_addr)?.to_string())?;
-    let aust_exchange_rate = Decimal::from(epoch_state_response.exchange_rate);
     Ok(aust_exchange_rate*aust_amount)
 }
 

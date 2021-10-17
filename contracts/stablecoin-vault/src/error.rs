@@ -14,6 +14,9 @@ pub enum StableVaultError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("Call is not a callback!")]
+    NotCallback {},
+
     #[error("No swaps can be performed in this pool")]
     NoSwapAvailabe {},
 
