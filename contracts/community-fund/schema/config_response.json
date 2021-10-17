@@ -7,7 +7,7 @@
     "anchor_money_market_addr",
     "anchor_withdraw_threshold",
     "aust_addr",
-    "pool_addr",
+    "ust_pool_addr",
     "token_addr"
   ],
   "properties": {
@@ -23,7 +23,7 @@
     "aust_addr": {
       "$ref": "#/definitions/Addr"
     },
-    "pool_addr": {
+    "ust_pool_addr": {
       "$ref": "#/definitions/Addr"
     },
     "token_addr": {
