@@ -1,6 +1,7 @@
+use std::fmt;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Coin, Decimal, Uint128};
+use cosmwasm_std::{to_binary, Coin, Decimal, Uint128, CosmosMsg, WasmMsg, Addr, StdResult};
 use terraswap::asset::{Asset, AssetInfo};
 use cw20::Cw20ReceiveMsg;
 use white_whale::fee::{Fee, CappedFee};
@@ -44,6 +45,19 @@ pub enum ExecuteMsg {
     SetTrader{ trader: String },
     
     Callback(CallbackMsg),
+}
+
+// Modified from
+// https://github.com/CosmWasm/cosmwasm-plus/blob/v0.2.3/packages/cw20/src/receiver.rs#L15
+impl CallbackMsg {
+    pub fn to_cosmos_msg <T: Clone + fmt::Debug + PartialEq + JsonSchema> (&self, contract_addr: &Addr) 
+    -> StdResult<CosmosMsg<T>> {
+        Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: String::from(contract_addr),
+            msg: to_binary(&ExecuteMsg::Callback(self.clone()))?,
+            funds: vec![],
+        }))
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

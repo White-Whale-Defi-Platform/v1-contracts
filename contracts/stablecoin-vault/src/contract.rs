@@ -364,7 +364,7 @@ fn try_arb_below_peg(
 
     let ask_denom = LUNA_DENOM.to_string();
     let expected_luna_received = query_market_price(deps.as_ref(), amount.clone(), LUNA_DENOM.to_string())?;
-    let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
+    let residual_luna = query_balance(&deps.querier, env.contract.address.clone(), LUNA_DENOM.to_string())?;
     let offer_coin = Coin{ denom: ask_denom.clone(), amount: residual_luna + expected_luna_received};
     let mut response = Response::new();
 
@@ -397,7 +397,7 @@ fn try_arb_below_peg(
     });
 
     // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
-    add_profit_check(deps.as_ref(), response, swap_msg, terraswap_msg)
+    add_profit_check(deps.as_ref(), env, response, swap_msg, terraswap_msg)
 }
 
 // Attempt to perform an arbitrage operation with the assumption that 
@@ -427,7 +427,7 @@ fn try_arb_above_peg(
 
     let ask_denom = LUNA_DENOM.to_string();
     let expected_luna_received = simulate_terraswap_swap(deps.as_ref(), deps.api.addr_humanize(&state.pool_address)?, amount.clone())?;
-    let residual_luna = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
+    let residual_luna = query_balance(&deps.querier, env.contract.address.clone(), LUNA_DENOM.to_string())?;
     let offer_coin = Coin{ denom: ask_denom, amount: residual_luna + expected_luna_received};
     let mut response = Response::new();
 
@@ -460,7 +460,7 @@ fn try_arb_above_peg(
     );
 
     // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
-    add_profit_check(deps.as_ref(), response, terraswap_msg, swap_msg)
+    add_profit_check(deps.as_ref(), env, response, terraswap_msg, swap_msg)
 }
 
 
@@ -477,12 +477,13 @@ fn try_arb_above_peg(
 /// Profit Check before trade - first_msg - second_msg - Profit Check after trade
 fn add_profit_check(
     deps: Deps,
+    env: Env,
     response: Response<TerraMsgWrapper>,
     first_msg: CosmosMsg<TerraMsgWrapper>,
     second_msg: CosmosMsg<TerraMsgWrapper>
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-
+    let callback = CallbackMsg::AfterSuccessfulTradeCallback {};
     Ok(response.add_message(CosmosMsg::Wasm(WasmMsg::Execute{
         contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
         msg: to_binary(
@@ -496,6 +497,12 @@ fn add_profit_check(
         contract_addr: deps.api.addr_humanize(&state.profit_check_address)?.to_string(),
         msg: to_binary(
             &ProfitCheckMsg::AfterTrade{}
+        )?,
+        funds: vec![]}))
+    .add_message(CosmosMsg::Wasm(WasmMsg::Execute{
+        contract_addr: env.contract.address.to_string(),
+        msg: to_binary(
+            &callback
         )?,
         funds: vec![]
     })))
@@ -808,9 +815,11 @@ mod tests {
             community_fund_addr: "community_fund".to_string(),
             warchest_addr: "warchest".to_string(),
             asset_info: AssetInfo::NativeToken{ denom: "uusd".to_string() },
+            token_code_id: 10u64,
             warchest_fee: Decimal::percent(10u64),
             community_fund_fee: Decimal::permille(5u64),
             max_community_fund_fee: Uint128::from(1000000u64),
+            stable_cap: Uint128::from(1000_000_000u64),
             vault_lp_token_name: Some(custom_token_name.clone()),
             vault_lp_token_symbol: Some(custom_token_symbol.clone())
         };
