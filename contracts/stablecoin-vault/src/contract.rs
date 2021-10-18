@@ -177,7 +177,7 @@ fn _handle_callback(
 pub fn try_provide_liquidity(
     deps: DepsMut,
     msg_info: MessageInfo,
-    mut asset: Asset
+    asset: Asset
 ) -> VaultResult {
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
@@ -185,10 +185,13 @@ pub fn try_provide_liquidity(
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let denom = deposit_info.clone().get_denom()?;
 
+    // Init vector for logging
+    let mut attrs = vec![];
     // Check if deposit matches claimed deposit.
     deposit_info.assert(&asset.info)?;
     asset.assert_sent_native_token_balance(&msg_info)?;
-    asset.amount = asset.amount - asset.compute_tax(&deps.querier)?;
+    attrs.push(("Action:", String::from("Deposit to vault")));
+    attrs.push(("Received funds:", asset.to_string()));
 
     // Get fee and msg
     let deposit_fee = get_transaction_fee(deps.as_ref(), asset.amount)?;
@@ -196,6 +199,10 @@ pub fn try_provide_liquidity(
 
     // Received deposit to vault
     let deposit: Uint128 = asset.amount - deposit_fee;
+    attrs.push(("Community fee:", deposit_fee.to_string()));
+    attrs.push(("Deposit accounting for fee:", deposit.to_string()));
+
+
     // Get total value in Vault
     let (total_deposits_in_ust, stables_in_contract,_) = compute_total_value(deps.as_ref(), &info)?;
     // Get total supply of LP tokens and calculate share
@@ -218,11 +225,6 @@ pub fn try_provide_liquidity(
         funds: vec![],
     });
     
-    let attrs = vec![
-    ("Sent minus tax:", asset.amount.to_string()),
-    ("Deposited into the vault:", deposit.to_string()),
-    ("Community fee", deposit_fee.to_string()),
-    ];
 
     let response = Response::new().add_attributes(attrs)
     .add_message(msg)
@@ -254,14 +256,18 @@ fn try_withdraw_liquidity(
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let fee_config = FEE.load(deps.storage)?;
 
+    // Logging var
+    let mut attrs = vec![];
+
     // Calculate share of pool and requested pool value
     let lp_addr = deps.api.addr_humanize(&info.liquidity_token)?;
     let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
     let (total_value,_,uaust_value_in_contract) = compute_total_value(deps.as_ref(), &info)?;
     let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
     let mut refund_amount: Uint128 = total_value * share_ratio;
+    attrs.push(("Pre-fee received:", refund_amount.to_string()));
 
-    // Load contract state
+    // Init response
     let mut response = Response::new();
 
     // Available aUST 
@@ -301,14 +307,21 @@ fn try_withdraw_liquidity(
         // Compute tax on Anchor withdraw tx
         let withdrawtx_tax = withdrawn_ust.compute_tax(&deps.querier)?;
         refund_amount -= withdrawtx_tax;
+        attrs.push(("After Anchor withdraw:", refund_amount.to_string()));
+
     };
     // Compute community fund fee and warchest fee
+
     let community_fund_fee = get_transaction_fee(deps.as_ref(), refund_amount)?;
     let community_fund_fee_msg = fee_config.community_fund_fee.msg(deps.as_ref(), refund_amount,denom.clone(), deps.api.addr_humanize(&fee_config.community_fund_addr)?.to_string())?;
+    attrs.push(("Community fund fee:", community_fund_fee.to_string()));
+
     let warchest_fee = get_warchest_fee(deps.as_ref(), refund_amount)?;
     let warchest_fee_msg = fee_config.warchest_fee.msg(deps.as_ref(), refund_amount,denom.clone(), deps.api.addr_humanize(&fee_config.warchest_addr)?.to_string())?;
+    attrs.push(("War chest fee:", warchest_fee.to_string()));
     // Net return after all the fees
     let net_refund_amount = refund_amount - community_fund_fee - warchest_fee;
+    attrs.push(("Pre-tax received", net_refund_amount.to_string()));
 
     // Construct refund message 
     let refund_asset = Asset{
@@ -328,11 +341,8 @@ fn try_withdraw_liquidity(
     });
 
     Ok(response.add_message(refund_msg).add_message(burn_msg).add_message(community_fund_fee_msg).add_message(warchest_fee_msg)
-        .add_attribute("action", "withdraw_liquidity")
-        .add_attribute("withdrawn_amount", refund_amount.to_string())
-        .add_attribute("refund amount", net_refund_amount.to_string())
-        .add_attribute("community fund fee", community_fund_fee.to_string())
-        .add_attribute("warchest fee", warchest_fee.to_string())
+        .add_attribute("action:", "withdraw_liquidity")
+        .add_attributes(attrs)
     )
 }
 
