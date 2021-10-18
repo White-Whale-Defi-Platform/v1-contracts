@@ -1,8 +1,8 @@
+use cosmwasm_std::{Coin, Decimal, Uint128};
+use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Coin, Decimal, Uint128};
 use terraswap::asset::Asset;
-use cw20::Cw20ReceiveMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -12,7 +12,7 @@ pub struct InitMsg {
     pub slippage: Decimal,
     pub token_code_id: u64,
     pub vault_lp_token_name: Option<String>,
-    pub vault_lp_token_symbol: Option<String>
+    pub vault_lp_token_symbol: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -22,11 +22,9 @@ pub enum HandleMsg {
     // Burn{ amount: Coin },
     // Claim{ amount: Coin },
     // Mint{ amount: Coin },
-    Swap{ amount: Coin },
-    ProvideLiquidity {
-        asset: Asset
-    },
-    SetSlippage { slippage: Decimal }
+    Swap { amount: Coin },
+    ProvideLiquidity { asset: Asset },
+    SetSlippage { slippage: Decimal },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

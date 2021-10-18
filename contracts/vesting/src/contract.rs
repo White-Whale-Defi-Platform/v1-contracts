@@ -6,13 +6,13 @@ use cosmwasm_std::{
     StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 
-use crate::state::{
-    read_config, read_vesting_info, read_vesting_infos, store_config, store_vesting_info, Config,
-};
 use crate::common::OrderBy;
 use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, VestingAccount, VestingAccountResponse,
     VestingAccountsResponse, VestingInfo,
+};
+use crate::state::{
+    read_config, read_vesting_info, read_vesting_infos, store_config, store_vesting_info, Config,
 };
 use cw20::Cw20ExecuteMsg;
 

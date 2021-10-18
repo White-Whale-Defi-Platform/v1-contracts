@@ -1,9 +1,8 @@
+use crate::state::{OrderBy, PollStatus, VoteOption};
+use cosmwasm_std::{Decimal, Uint128};
+use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Decimal,Uint128};
-use cw20::Cw20ReceiveMsg;
-use crate::state::{VoteOption, OrderBy, PollStatus};
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -15,7 +14,6 @@ pub struct InstantiateMsg {
     pub proposal_deposit: Uint128,
     pub snapshot_period: u64,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

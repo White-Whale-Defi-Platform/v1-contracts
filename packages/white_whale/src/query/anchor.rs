@@ -1,7 +1,7 @@
-use cosmwasm_std::{ to_binary, Deps, QueryRequest, StdResult, WasmQuery, Decimal};
+use cosmwasm_bignumber::{Decimal256, Uint256};
+use cosmwasm_std::{to_binary, Decimal, Deps, QueryRequest, StdResult, WasmQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_bignumber::{Decimal256, Uint256};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -18,17 +18,17 @@ pub struct EpochStateResponse {
     pub aterra_supply: Uint256,
 }
 
-
 pub fn query_aust_exchange_rate(
     deps: Deps,
-    anchor_money_market_address: String
+    anchor_money_market_address: String,
 ) -> StdResult<Decimal> {
-    let response: EpochStateResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: anchor_money_market_address,
-        msg: to_binary(&AnchorQuery::EpochState {
-            block_height: None,
-            distributed_interest: None
-        })?,
-    }))?;
+    let response: EpochStateResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: anchor_money_market_address,
+            msg: to_binary(&AnchorQuery::EpochState {
+                block_height: None,
+                distributed_interest: None,
+            })?,
+        }))?;
     Ok(Decimal::from(response.exchange_rate))
 }

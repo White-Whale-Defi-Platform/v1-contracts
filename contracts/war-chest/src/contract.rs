@@ -9,12 +9,12 @@ use cw20::Cw20ExecuteMsg;
 
 use crate::error::ContractError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{ADMIN, STATE, State};
+use crate::state::{State, ADMIN, STATE};
 
 /*
-    The War Chest behaves similarly to a community fund with the provisio that funds in the War Chest are specifically to be used 
+    The War Chest behaves similarly to a community fund with the provisio that funds in the War Chest are specifically to be used
     to perform arbitrage operations across the Terra ecosystem not just limited to any particular vault or token
-    It is controlled by the governance contract and serves to grow its holdings and become a safeguard/protective measure in keeping the peg. 
+    It is controlled by the governance contract and serves to grow its holdings and become a safeguard/protective measure in keeping the peg.
 */
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -24,10 +24,13 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    STATE.save(deps.storage, &State{
-        whale_token_addr: deps.api.addr_canonicalize(&msg.whale_token_addr)?,
-        spend_limit: msg.spend_limit,
-    })?;
+    STATE.save(
+        deps.storage,
+        &State {
+            whale_token_addr: deps.api.addr_canonicalize(&msg.whale_token_addr)?,
+            spend_limit: msg.spend_limit,
+        },
+    )?;
     let admin_addr = Some(deps.api.addr_validate(&msg.admin_addr)?);
     ADMIN.set(deps, admin_addr)?;
 
@@ -46,7 +49,7 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::Deposit{} => Ok(Response::default()),
+        ExecuteMsg::Deposit {} => Ok(Response::default()),
         ExecuteMsg::Spend { recipient, amount } => spend(deps, info, recipient, amount),
         ExecuteMsg::UpdateSpendLimit { spend_limit } => update_spend_limit(deps, info, spend_limit),
     }

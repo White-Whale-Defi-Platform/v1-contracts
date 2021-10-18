@@ -1,24 +1,23 @@
+use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Addr, Uint128};
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Spend{ recipient: String, amount: Uint128 },
-    Burn{ amount: Uint128 },
+    Spend { recipient: String, amount: Uint128 },
+    Burn { amount: Uint128 },
     Deposit {},
-    UpdateAdmin{ admin: String },
-    UpdateAnchorDepositThreshold{ threshold: Uint128 },
-    UpdateAnchorWithdrawThreshold{ threshold: Uint128 },
+    UpdateAdmin { admin: String },
+    UpdateAnchorDepositThreshold { threshold: Uint128 },
+    UpdateAnchorWithdrawThreshold { threshold: Uint128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Admin {},
-    Config {}
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

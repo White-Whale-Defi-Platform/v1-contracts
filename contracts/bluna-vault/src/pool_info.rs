@@ -1,10 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{
-    Addr, CanonicalAddr, Decimal, Deps,
-    StdResult
-};
+use cosmwasm_std::{Addr, CanonicalAddr, Decimal, Deps, StdResult};
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
 
 // We define a custom struct for each query response
@@ -26,10 +23,7 @@ pub struct PoolInfoRaw {
 }
 
 impl PoolInfoRaw {
-    pub fn to_normal(
-        &self,
-        deps: Deps,
-    ) -> StdResult<PoolInfo> {
+    pub fn to_normal(&self, deps: Deps) -> StdResult<PoolInfo> {
         Ok(PoolInfo {
             liquidity_token: deps.api.addr_humanize(&self.liquidity_token.clone())?,
             contract_addr: deps.api.addr_humanize(&self.contract_addr.clone())?,
@@ -41,11 +35,7 @@ impl PoolInfoRaw {
         })
     }
 
-    pub fn query_pools(
-        &self,
-        deps: Deps,
-        contract_addr: Addr,
-    ) -> StdResult<[Asset; 2]> {
+    pub fn query_pools(&self, deps: Deps, contract_addr: Addr) -> StdResult<[Asset; 2]> {
         let info_0: AssetInfo = self.asset_infos[0].to_normal(deps.api)?;
         let info_1: AssetInfo = self.asset_infos[1].to_normal(deps.api)?;
         Ok([

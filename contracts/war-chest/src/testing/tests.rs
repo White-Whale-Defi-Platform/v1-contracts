@@ -6,7 +6,6 @@ use cosmwasm_std::{from_binary, to_binary, CosmosMsg, SubMsg, Uint128, WasmMsg};
 use cw20::Cw20ExecuteMsg;
 use cw_controllers::AdminError;
 
-
 fn init_msg() -> InstantiateMsg {
     InstantiateMsg {
         admin_addr: "gov".to_string(),
@@ -14,7 +13,6 @@ fn init_msg() -> InstantiateMsg {
         spend_limit: Uint128::from(1_000_000u128),
     }
 }
-
 
 #[test]
 fn proper_initialization() {
@@ -44,7 +42,7 @@ fn test_update_spend_limit() {
     let info = mock_info("addr0000", &[]);
     match execute(deps.as_mut(), mock_env(), info, msg.clone()) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::Admin(AdminError::NotAdmin{})) => (),
+        Err(ContractError::Admin(AdminError::NotAdmin {})) => (),
         Err(_) => panic!("Unknown error"),
     }
 
@@ -72,7 +70,7 @@ fn test_spend_fails_if_not_admin() {
 
     match execute(deps.as_mut(), mock_env(), info, msg) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::Admin(AdminError::NotAdmin{})) => (),
+        Err(ContractError::Admin(AdminError::NotAdmin {})) => (),
         Err(_) => panic!("Unknown error"),
     }
 }
