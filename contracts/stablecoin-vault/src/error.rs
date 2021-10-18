@@ -18,7 +18,7 @@ pub enum StableVaultError {
     NotCallback {},
 
     #[error("No swaps can be performed in this pool")]
-    NoSwapAvailabe {},
+    NoSwapAvailable {},
 
     #[error("Initialization values make no sense.")]
     InvalidInit {},

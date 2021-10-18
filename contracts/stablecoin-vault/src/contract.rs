@@ -27,6 +27,7 @@ use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::{query_market_price};
 use crate::response::MsgInstantiateContractResponse;
 
+const FEE_BUFFER: u64 = 10_000_000u64;
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
 const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
@@ -368,7 +369,7 @@ fn try_arb_below_peg(
     }
     let (total_value,stables_availabe,_) = compute_total_value(deps.as_ref(), &info)?;
 
-    if total_value < amount.amount + Uint128::from(10_000_000u64) {
+    if total_value < amount.amount + Uint128::from(FEE_BUFFER) {
         return Err(StableVaultError::Broke{});
     }
 
@@ -379,9 +380,9 @@ fn try_arb_below_peg(
     let mut response = Response::new();
 
     // 10 UST as buffer for fees and taxes
-    if (amount.amount + Uint128::from(10_000_000u64)) > stables_availabe {
+    if (amount.amount + Uint128::from(FEE_BUFFER)) > stables_availabe {
         // Attempt to remove some money from anchor 
-        let to_withdraw = (amount.amount + Uint128::from(10_000_000u64)) - stables_availabe;
+        let to_withdraw = (amount.amount + Uint128::from(FEE_BUFFER)) - stables_availabe;
         let aust_exchange_rate = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
         
         let withdraw_msg= anchor_withdraw_msg(
@@ -431,7 +432,7 @@ fn try_arb_above_peg(
     }
     let (total_value,stables_availabe,_) = compute_total_value(deps.as_ref(), &info)?;
 
-    if total_value < amount.amount + Uint128::from(10_000_000u64) {
+    if total_value < amount.amount + Uint128::from(FEE_BUFFER) {
         return Err(StableVaultError::Broke{});
     }
 
@@ -442,9 +443,9 @@ fn try_arb_above_peg(
     let mut response = Response::new();
 
     // 10 UST as buffer for fees and taxes
-    if (amount.amount + Uint128::from(10_000_000u64)) > stables_availabe {
+    if (amount.amount + Uint128::from(FEE_BUFFER)) > stables_availabe {
         // Attempt to remove some money from anchor 
-        let to_withdraw = (amount.amount + Uint128::from(10_000_000u64)) - stables_availabe;
+        let to_withdraw = (amount.amount + Uint128::from(FEE_BUFFER)) - stables_availabe;
         let aust_exchange_rate = query_aust_exchange_rate(deps.as_ref(), deps.api.addr_humanize(&state.anchor_money_market_address)?.to_string())?;
         
         let withdraw_msg= anchor_withdraw_msg(
@@ -531,7 +532,7 @@ fn receive_cw20(
             Cw20HookMsg::Swap {
                 ..
             } => {
-                Err(StableVaultError::NoSwapAvailabe{})
+                Err(StableVaultError::NoSwapAvailable{})
             }
             Cw20HookMsg::WithdrawLiquidity {} => {
                 let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
@@ -658,7 +659,7 @@ pub fn set_stable_cap(
     let previous_cap = info.stable_cap;
     info.stable_cap = stable_cap;
     POOL_INFO.save(deps.storage, &info)?;
-    Ok(Response::new().add_attribute("slippage", stable_cap.to_string()).add_attribute("previous slippage", previous_cap.to_string()))
+    Ok(Response::new().add_attribute("new stable cap", stable_cap.to_string()).add_attribute("previous stable cap", previous_cap.to_string()))
 }
 
 pub fn set_trader(
