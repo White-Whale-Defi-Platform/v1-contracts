@@ -1,5 +1,10 @@
 {
-    "profit_check": "terra1dha3vj5t9t5kemrwf3z9kjqevnsygeu9uq48gg",
-    "stablecoin_vault": "terra1aad9mzp932xdzr6kd9408dun30ye2try37r8pu",
-    "liquidity_token": "terra1juhqr6src2ugkjy7e83a57pr80h8kypw3a485m"
+    "profit_check": "terra16up69f62djjnut36aaxg55wet8xe0xwtwx58c7",
+    "stablecoin_vault": "terra1vrus4fu8qcdzkrn7v8y663lt602ej4u24shztk",
+    "liquidity_token": "terra19ecczlc3meaz3fpzwak04hr53qkd6yk87m63j9",
+    "governance": "terra13zkn22u6fs550xdmx2s2mydesd0ym4jk3r4um3",
+    "whale_token": "terra1k8pgyyxde6y893kjfqhtw7q0uttn68th60d6gh",
+    "whale_ust_pool": "terra1xq3v5rp0w84ugqesv9m5q3xdx04akacsdlk5z7",
+    "community_fund": "terra10lhwpdtzt3m46ffg4hyfhpl0vp4a7x5s66wc8x",
+    "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v"
 }
