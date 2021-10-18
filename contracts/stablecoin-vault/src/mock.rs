@@ -2,16 +2,15 @@
 
 use std::collections::HashMap;
 
-use cosmwasm_std::{
-    Binary, Coin, SystemError, SystemResult,
-    AllBalanceResponse, BalanceResponse, BankQuery, QueryRequest,
-    WasmQuery, from_slice, to_binary, Querier, QuerierResult,
-    Empty, Uint128, OwnedDeps, ContractResult
-};
 use cosmwasm_std::testing::{MockApi, MockStorage};
+use cosmwasm_std::{
+    from_slice, to_binary, AllBalanceResponse, BalanceResponse, BankQuery, Binary, Coin,
+    ContractResult, Empty, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError,
+    SystemResult, Uint128, WasmQuery,
+};
 
-use terraswap::pair::SimulationResponse;
 use terra_cosmwasm::SwapResponse;
+use terraswap::pair::SimulationResponse;
 
 use white_whale::denom::LUNA_DENOM;
 
@@ -40,15 +39,17 @@ pub struct MockQuerier {
     ///
     /// Use box to avoid the need of another generic type
     // custom_handler: Box<dyn for<'a> Fn(&'a Empty) -> MockQuerierCustomHandlerResult>,
-    custom: FakeMarketQuerier
+    custom: FakeMarketQuerier,
 }
 
 impl MockQuerier {
     pub fn new(balances: &[(&String, &[Coin])]) -> Self {
         MockQuerier {
             bank: BankQuerier::new(balances),
-            wasm: DummyQuerier { pool_address: "test_pool".to_string() },
-            custom: FakeMarketQuerier { },
+            wasm: DummyQuerier {
+                pool_address: "test_pool".to_string(),
+            },
+            custom: FakeMarketQuerier {},
             // strange argument notation suggested as a workaround here: https://github.com/rust-lang/rust/issues/41078#issuecomment-294296365
             // custom_handler: Box::from(|_: &_| -> MockQuerierCustomHandlerResult {
             //     Ok(Ok(Binary::from(vec![0u8])))
@@ -90,7 +91,7 @@ impl MockQuerier {
             QueryRequest::Bank(bank_query) => self.bank.query(bank_query),
             QueryRequest::Custom(custom_query) => self.custom.query(custom_query),
             QueryRequest::Wasm(msg) => self.wasm.query(msg),
-            _ => SystemResult::Ok(ContractResult::Ok(to_binary("").unwrap()))
+            _ => SystemResult::Ok(ContractResult::Ok(to_binary("").unwrap())),
         }
     }
 }
@@ -103,13 +104,13 @@ struct DummyQuerier {
 impl DummyQuerier {
     fn process_smart_query(&self, contract_addr: &str) -> QuerierResult {
         if contract_addr == self.pool_address {
-            let binary_response = to_binary(&SimulationResponse{
+            let binary_response = to_binary(&SimulationResponse {
                 return_amount: Uint128::from(1000000u64),
                 spread_amount: Uint128::zero(),
-                commission_amount: Uint128::zero()
+                commission_amount: Uint128::zero(),
             });
             if binary_response.is_err() {
-                return SystemResult::Err(SystemError::Unknown{});
+                return SystemResult::Err(SystemError::Unknown {});
             }
 
             return SystemResult::Ok(ContractResult::Ok(binary_response.unwrap()));
@@ -120,21 +121,22 @@ impl DummyQuerier {
 
     fn query(&self, request: &WasmQuery) -> QuerierResult {
         match request {
-            WasmQuery::Smart{contract_addr, ..} => self.process_smart_query(contract_addr),
+            WasmQuery::Smart { contract_addr, .. } => self.process_smart_query(contract_addr),
             _ => SystemResult::Ok(ContractResult::Ok(Binary::from(vec![0u8]))),
         }
     }
 }
 
-
 #[derive(Clone, Default)]
-struct FakeMarketQuerier {
-}
+struct FakeMarketQuerier {}
 
 impl FakeMarketQuerier {
     fn query(&self, _request: &Empty) -> QuerierResult {
-        let binary_response = to_binary(&SwapResponse{
-            receive: Coin{denom: LUNA_DENOM.to_string(), amount: Uint128::from(1000000u64)}
+        let binary_response = to_binary(&SwapResponse {
+            receive: Coin {
+                denom: LUNA_DENOM.to_string(),
+                amount: Uint128::from(1000000u64),
+            },
         });
         SystemResult::Ok(ContractResult::Ok(binary_response.unwrap()))
     }
@@ -178,7 +180,7 @@ impl BankQuerier {
                 };
                 SystemResult::Ok(ContractResult::Ok(to_binary(&bank_res).unwrap()))
             }
-            _ => SystemResult::Ok(ContractResult::Ok(Binary::from(vec![0u8])))
+            _ => SystemResult::Ok(ContractResult::Ok(Binary::from(vec![0u8]))),
         }
     }
 }

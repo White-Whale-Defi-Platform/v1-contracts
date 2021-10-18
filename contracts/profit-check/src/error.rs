@@ -1,8 +1,7 @@
 use thiserror::Error;
 
-use cosmwasm_std::{StdError};
+use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
-
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ProfitCheckError {

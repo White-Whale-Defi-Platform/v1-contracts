@@ -3,8 +3,10 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use white_whale::profit_check::msg::{LastBalanceResponse, VaultResponse, HandleMsg, InitMsg, QueryMsg};
 use profit_check::state::State;
+use white_whale::profit_check::msg::{
+    HandleMsg, InitMsg, LastBalanceResponse, QueryMsg, VaultResponse,
+};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

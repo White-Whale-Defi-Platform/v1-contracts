@@ -1,6 +1,6 @@
+use cosmwasm_std::{Addr, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{Addr, Uint128};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -13,15 +13,15 @@ pub struct InitMsg {
 pub enum HandleMsg {
     BeforeTrade {},
     AfterTrade {},
-    SetVault{ vault_address: String },
+    SetVault { vault_address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    LastBalance{},
-    LastProfit{},
-    Vault{},
+    LastBalance {},
+    LastProfit {},
+    Vault {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -1,14 +1,13 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cw_storage_plus::Item;
-use cosmwasm_std::{Binary, CanonicalAddr, Decimal, Order, Storage, StdResult, Uint128};
+use cosmwasm_std::{Binary, CanonicalAddr, Decimal, Order, StdResult, Storage, Uint128};
 use cosmwasm_storage::{
-    bucket_read, bucket, singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton,
+    bucket, bucket_read, singleton, singleton_read, Bucket, ReadonlyBucket, ReadonlySingleton,
     Singleton,
 };
+use cw_storage_plus::Item;
 use std::fmt;
-
 
 use std::cmp::Ordering;
 
@@ -20,10 +19,8 @@ static PREFIX_POLL_VOTER: &[u8] = b"poll_voter";
 static PREFIX_POLL: &[u8] = b"poll";
 static PREFIX_BANK: &[u8] = b"bank";
 
-
 const MAX_LIMIT: u32 = 30;
 const DEFAULT_LIMIT: u32 = 10;
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -41,7 +38,6 @@ impl From<OrderBy> for Order {
         }
     }
 }
-
 
 #[derive(Default, Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct TokenManager {
@@ -71,7 +67,6 @@ pub struct State {
 }
 
 pub const STATE: Item<State> = Item::new("state");
-
 
 // State related to Poll Execution
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -128,8 +123,7 @@ pub struct Poll {
     pub staked_amount: Option<Uint128>,
 }
 
-
-// State objects here are good candidates to move to the packages module 
+// State objects here are good candidates to move to the packages module
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum PollStatus {
@@ -275,7 +269,6 @@ pub fn poll_voter_read(storage: &dyn Storage, poll_id: u64) -> ReadonlyBucket<Vo
     ReadonlyBucket::multilevel(storage, &[PREFIX_POLL_VOTER, &poll_id.to_be_bytes()])
 }
 
-
 pub fn poll_indexer_store<'a>(
     storage: &'a mut dyn Storage,
     status: &PollStatus,
@@ -379,13 +372,11 @@ fn calc_range_end_addr(start_after: Option<CanonicalAddr>) -> Option<Vec<u8>> {
     start_after.map(|addr| addr.as_slice().to_vec())
 }
 
-
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
-    /// CreatePoll is the default hook behavior of the governance contract 
-    /// In order for a poll to be created the proposer will need to invoke the governance 
+    /// CreatePoll is the default hook behavior of the governance contract
+    /// In order for a poll to be created the proposer will need to invoke the governance
     /// contract with a deposit as well as some defined parameters for the contract
     CreatePoll {
         title: String,

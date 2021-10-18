@@ -1,13 +1,12 @@
+use cosmwasm_std::{StdError, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{StdError, StdResult};
 
 use terraswap::asset::AssetInfo;
 
-
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositInfo {
-    pub asset_info: AssetInfo
+    pub asset_info: AssetInfo,
 }
 
 impl DepositInfo {
@@ -16,17 +15,21 @@ impl DepositInfo {
             return Ok(());
         }
 
-        Err(StdError::generic_err(format!("Invalid deposit asset. Expected {}, got {}.", self.asset_info, asset_info)))
+        Err(StdError::generic_err(format!(
+            "Invalid deposit asset. Expected {}, got {}.",
+            self.asset_info, asset_info
+        )))
     }
 
     pub fn get_denom(self) -> StdResult<String> {
         match self.asset_info {
-            AssetInfo::NativeToken{ denom } => Ok(denom),
-            AssetInfo::Token{..} => Err(StdError::generic_err("'denom' only exists for native tokens."))
+            AssetInfo::NativeToken { denom } => Ok(denom),
+            AssetInfo::Token { .. } => Err(StdError::generic_err(
+                "'denom' only exists for native tokens.",
+            )),
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -39,36 +42,66 @@ mod tests {
 
     #[test]
     fn test_failing_assert_for_native_tokens() {
-        let deposit_info = DepositInfo{ asset_info: AssetInfo::NativeToken{ denom: TEST_DENOM1.to_string() } };
-        let other_native_token = AssetInfo::NativeToken{ denom: TEST_DENOM2.to_string() };
+        let deposit_info = DepositInfo {
+            asset_info: AssetInfo::NativeToken {
+                denom: TEST_DENOM1.to_string(),
+            },
+        };
+        let other_native_token = AssetInfo::NativeToken {
+            denom: TEST_DENOM2.to_string(),
+        };
         assert!(deposit_info.assert(&other_native_token).is_err());
     }
 
     #[test]
     fn test_passing_assert_for_native_tokens() {
-        let deposit_info = DepositInfo{ asset_info: AssetInfo::NativeToken{ denom: TEST_DENOM1.to_string() } };
-        let other_native_token = AssetInfo::NativeToken{ denom: TEST_DENOM1.to_string() };
+        let deposit_info = DepositInfo {
+            asset_info: AssetInfo::NativeToken {
+                denom: TEST_DENOM1.to_string(),
+            },
+        };
+        let other_native_token = AssetInfo::NativeToken {
+            denom: TEST_DENOM1.to_string(),
+        };
         assert!(deposit_info.assert(&other_native_token).is_ok());
     }
 
     #[test]
     fn test_failing_assert_for_nonnative_tokens() {
-        let deposit_info = DepositInfo{ asset_info: AssetInfo::Token{ contract_addr: TEST_ADDR1.to_string() } };
-        let other_native_token = AssetInfo::Token{ contract_addr: TEST_ADDR2.to_string() };
+        let deposit_info = DepositInfo {
+            asset_info: AssetInfo::Token {
+                contract_addr: TEST_ADDR1.to_string(),
+            },
+        };
+        let other_native_token = AssetInfo::Token {
+            contract_addr: TEST_ADDR2.to_string(),
+        };
         assert!(deposit_info.assert(&other_native_token).is_err());
     }
 
     #[test]
     fn test_passing_assert_for_nonnative_tokens() {
-        let deposit_info = DepositInfo{ asset_info: AssetInfo::Token{ contract_addr: TEST_ADDR1.to_string() } };
-        let other_native_token = AssetInfo::Token{ contract_addr: TEST_ADDR1.to_string() };
+        let deposit_info = DepositInfo {
+            asset_info: AssetInfo::Token {
+                contract_addr: TEST_ADDR1.to_string(),
+            },
+        };
+        let other_native_token = AssetInfo::Token {
+            contract_addr: TEST_ADDR1.to_string(),
+        };
         assert!(deposit_info.assert(&other_native_token).is_ok());
     }
 
     #[test]
     fn test_failing_assert_for_mixed_tokens() {
-        let deposit_info = DepositInfo{ asset_info: AssetInfo::NativeToken{ denom: TEST_DENOM1.to_string() } };
-        let other_native_token = AssetInfo::Token{ contract_addr: TEST_DENOM1.to_string() };
+        let deposit_info = DepositInfo {
+            asset_info: AssetInfo::NativeToken {
+                denom: TEST_DENOM1.to_string(),
+            },
+        };
+        let other_native_token = AssetInfo::Token {
+            contract_addr: TEST_DENOM1.to_string(),
+        };
         assert!(deposit_info.assert(&other_native_token).is_err());
     }
 }

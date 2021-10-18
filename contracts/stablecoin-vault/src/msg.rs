@@ -1,11 +1,10 @@
-use std::fmt;
+use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg};
+use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use cosmwasm_std::{to_binary, Coin, Decimal, Uint128, CosmosMsg, WasmMsg, Addr, StdResult};
+use std::fmt;
 use terraswap::asset::{Asset, AssetInfo};
-use cw20::Cw20ReceiveMsg;
-use white_whale::fee::{Fee, CappedFee};
-
+use white_whale::fee::{CappedFee, Fee};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -23,35 +22,50 @@ pub struct InitMsg {
     pub max_community_fund_fee: Uint128,
     pub stable_cap: Uint128,
     pub vault_lp_token_name: Option<String>,
-    pub vault_lp_token_symbol: Option<String>
+    pub vault_lp_token_symbol: Option<String>,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    AbovePeg { amount: Coin, slippage: Decimal, belief_price: Decimal },
-    BelowPeg { amount: Coin, slippage: Decimal, belief_price: Decimal },
-    ProvideLiquidity {
-        asset: Asset
+    AbovePeg {
+        amount: Coin,
+        slippage: Decimal,
+        belief_price: Decimal,
     },
-    SetStableCap { stable_cap: Uint128 },
-    SetFee{
+    BelowPeg {
+        amount: Coin,
+        slippage: Decimal,
+        belief_price: Decimal,
+    },
+    ProvideLiquidity {
+        asset: Asset,
+    },
+    SetStableCap {
+        stable_cap: Uint128,
+    },
+    SetFee {
         community_fund_fee: Option<CappedFee>,
         warchest_fee: Option<Fee>,
-     },
-    SetAdmin{ admin: String },
-    SetTrader{ trader: String },
-    
+    },
+    SetAdmin {
+        admin: String,
+    },
+    SetTrader {
+        trader: String,
+    },
+
     Callback(CallbackMsg),
 }
 
 // Modified from
 // https://github.com/CosmWasm/cosmwasm-plus/blob/v0.2.3/packages/cw20/src/receiver.rs#L15
 impl CallbackMsg {
-    pub fn to_cosmos_msg <T: Clone + fmt::Debug + PartialEq + JsonSchema> (&self, contract_addr: &Addr) 
-    -> StdResult<CosmosMsg<T>> {
+    pub fn to_cosmos_msg<T: Clone + fmt::Debug + PartialEq + JsonSchema>(
+        &self,
+        contract_addr: &Addr,
+    ) -> StdResult<CosmosMsg<T>> {
         Ok(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: String::from(contract_addr),
             msg: to_binary(&ExecuteMsg::Callback(self.clone()))?,
@@ -76,5 +90,9 @@ pub struct PoolResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum Message {
-    AssertLimitOrder{ offer_coin: Coin, ask_denom: String, minimum_receive: Uint128 },
+    AssertLimitOrder {
+        offer_coin: Coin,
+        ask_denom: String,
+        minimum_receive: Uint128,
+    },
 }

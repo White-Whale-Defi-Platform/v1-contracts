@@ -1,5 +1,5 @@
-use crate::contract::{execute, instantiate, query};
 use crate::common::OrderBy;
+use crate::contract::{execute, instantiate, query};
 use crate::msg::{
     ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, VestingAccount, VestingAccountResponse,
     VestingAccountsResponse, VestingInfo,

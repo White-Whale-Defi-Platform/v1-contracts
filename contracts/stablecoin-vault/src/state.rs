@@ -1,9 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{CanonicalAddr};
-use cw_storage_plus::{Item};
+use cosmwasm_std::CanonicalAddr;
 use cw_controllers::Admin;
+use cw_storage_plus::Item;
 
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::VaultFee;

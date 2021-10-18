@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use terraswap_wrapper::msg::{WithdrawableProfitsResponse, ExecuteMsg, InitMsg, QueryMsg};
+use terraswap_wrapper::msg::{ExecuteMsg, InitMsg, QueryMsg, WithdrawableProfitsResponse};
 use terraswap_wrapper::state::State;
 
 fn main() {

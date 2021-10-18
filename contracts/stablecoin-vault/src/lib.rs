@@ -1,11 +1,10 @@
-pub mod pool_info;
 pub mod contract;
+pub mod error;
 pub mod msg;
+pub mod pool_info;
 pub mod querier;
 pub mod response;
 pub mod state;
-pub mod error;
-
 
 #[cfg(not(target_arch = "wasm32"))]
 mod mock;
