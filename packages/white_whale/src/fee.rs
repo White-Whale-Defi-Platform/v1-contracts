@@ -27,9 +27,7 @@ impl Fee {
         let fee = self.compute(value);
 
         let warchest_asset = Asset {
-            info: AssetInfo::NativeToken {
-                denom: denom.clone(),
-            },
+            info: AssetInfo::NativeToken { denom },
             amount: fee,
         };
 
@@ -61,9 +59,7 @@ impl CappedFee {
     ) -> StdResult<CosmosMsg<T>> {
         let fee = self.compute(value);
         let community_fund_asset = Asset {
-            info: AssetInfo::NativeToken {
-                denom: denom.clone(),
-            },
+            info: AssetInfo::NativeToken { denom },
             amount: fee,
         };
 

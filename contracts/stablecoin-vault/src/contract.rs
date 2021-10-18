@@ -1023,7 +1023,7 @@ mod tests {
         assert_eq!(1, res.messages.len());
 
         let info: PoolInfoRaw = POOL_INFO.load(&deps.storage).unwrap();
-        assert_eq!(info.stable_cap, Uint128::from(100_000u64));
+        assert_eq!(info.stable_cap, Uint128::from(100_000_000u64));
 
         let community_fund_fee = FEE
             .load(&deps.storage)
