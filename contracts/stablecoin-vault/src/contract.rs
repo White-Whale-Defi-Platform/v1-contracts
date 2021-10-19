@@ -6,6 +6,8 @@ use cosmwasm_std::{
 use protobuf::Message;
 
 
+use std::fmt;
+use schemars::JsonSchema;
 
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
@@ -38,18 +40,26 @@ const INSTANTIATE_REPLY_ID: u8 = 1u8;
 const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
 const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 
-type VaultResult = Result<Response<CosmosMsg>, StableVaultError>;
+
+type VaultResult = Result<Response, StableVaultError>;
+    
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
-    let state = State {
+    let mut state = State {
         trader: deps.api.addr_canonicalize(info.sender.as_str())?,
         anchor_money_market_address: deps
             .api
             .addr_canonicalize(&msg.anchor_money_market_address)?,
         aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
+        whitelisted_contracts: vec![]
     };
+
+    // Add initial contracts
+    for contract in msg.whitelisted_contracts.iter() {
+        state.whitelisted_contracts.push(deps.api.addr_canonicalize(&contract)?);
+    }
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
@@ -153,7 +163,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             community_fund_fee,
             warchest_fee,
         } => set_fee(deps, info, community_fund_fee, warchest_fee),
-        ExecuteMsg::FlashLoan { payload } => execute_payload(deps, env, info, payload),
+        ExecuteMsg::FlashLoan { payload } => handle_flashloan(deps, env, info, payload),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
 }
@@ -177,13 +187,67 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-pub fn execute_payload(_deps: DepsMut, _env: Env, info: MessageInfo, payload: Binary) -> VaultResult {
+pub fn handle_flashloan (deps: DepsMut, env: Env, info: MessageInfo, payload: FlashLoanPayload) -> VaultResult {
+    let state = STATE.load(deps.storage)?;
+    let whitelisted_contracts = state.whitelisted_contracts;
+
+    // Check if sender is whitelisted
+    if !whitelisted_contracts.contains(&deps.api.addr_canonicalize(&info.sender.to_string())?) {
+        return Err(StableVaultError::NotWhiteListed{})
+    }
+
+    // Do we have enough funds?
+    let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let (total_value, stables_availabe, _) = compute_total_value(deps.as_ref(), &pool_info)?;
+    let mut requested_asset = payload.requested_asset;
+
+    if total_value < requested_asset.amount + Uint128::from(FEE_BUFFER) {
+        return Err(StableVaultError::Broke {});
+    }
+    // Init response
+    let mut response = Response::new().add_attribute("Action", "Flashloan");
+
+    // Withdraw funds from Anchor if needed
+    // FEE_BUFFER as buffer for fees and taxes
+    if (requested_asset.amount + Uint128::from(FEE_BUFFER)) > stables_availabe {
+        // Attempt to remove some money from anchor
+        let to_withdraw = (requested_asset.amount + Uint128::from(FEE_BUFFER)) - stables_availabe;
+        let aust_exchange_rate = query_aust_exchange_rate(
+            deps.as_ref(),
+            deps.api
+                .addr_humanize(&state.anchor_money_market_address)?
+                .to_string(),
+        )?;
+
+        let withdraw_msg = anchor_withdraw_msg(
+            deps.api.addr_humanize(&state.aust_address)?,
+            deps.api.addr_humanize(&state.anchor_money_market_address)?,
+            to_withdraw * aust_exchange_rate.inv().unwrap(),
+        )?;
+        // Add msg to response and update withdrawn value
+        response = response
+            .add_message(withdraw_msg)
+            .add_attribute("Anchor withdrawal", to_withdraw.to_string())
+            .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
+    }
+
+    // Make shure contract receives their expected share by adding taxes to expected amount.
+    let expected_tax = requested_asset.compute_tax(&deps.querier)?;
+    requested_asset.amount += expected_tax;
+
+    // Construct transfer of funds msg
+    let loan_msg = requested_asset.into_msg(&deps.querier, info.sender.clone())?;
+    response = response.add_message(loan_msg);
+
+    // Construct return call with received binary
     let return_call = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: info.sender.into(),
-        msg: payload,
+        msg: payload.callback,
         funds: vec![],
     });
-    Ok(Response::new().add_message(return_call))
+
+    //Call encapsulate function
+    encapsule_payload(deps.as_ref(), env, response, return_call)
 }
 
 // This function should be called alongside a deposit of UST into the contract.
@@ -403,10 +467,10 @@ fn try_withdraw_liquidity(deps: DepsMut, env: Env, sender: String, amount: Uint1
 /// and then composes a response with a ProfitCheck BeforeTrade and AfterTrade
 /// the result is an OK'd response with a series of msgs in this order
 /// Profit Check before trade - first_msg - second_msg - Profit Check after trade
-fn add_profit_check(deps: Deps, env: Env, return_call: CosmosMsg<CosmosMsg>) -> VaultResult {
+fn encapsule_payload(deps: Deps, env: Env, response: Response, return_call: CosmosMsg) -> VaultResult {
     let state = STATE.load(deps.storage)?;
+
     let callback = CallbackMsg::AfterSuccessfulTradeCallback {};
-    let response = Response::new();
     Ok(response
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps

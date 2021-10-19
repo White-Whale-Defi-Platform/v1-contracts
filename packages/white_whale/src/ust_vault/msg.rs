@@ -21,6 +21,7 @@ pub struct InitMsg {
     pub community_fund_fee: Decimal,
     pub max_community_fund_fee: Uint128,
     pub stable_cap: Uint128,
+    pub whitelisted_contracts: Vec<String>,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
 }
@@ -45,8 +46,8 @@ pub enum ExecuteMsg {
     SetTrader {
         trader: String,
     },
-    FlashLoan {
-        payload: Binary,
+    FlashLoan { 
+        payload: FlashLoanPayload,
     },
     Callback(CallbackMsg),
 }
@@ -77,4 +78,10 @@ pub struct PoolResponse {
     pub assets: [Asset; 3],
     pub total_value_in_ust: Uint128,
     pub total_share: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct FlashLoanPayload {
+    pub requested_asset: Asset,
+    pub callback: Binary,
 }

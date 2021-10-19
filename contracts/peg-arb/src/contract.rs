@@ -1,9 +1,8 @@
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Decimal,
-    Deps, DepsMut, Env, Fraction, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult,
-    SubMsg, Uint128, WasmMsg,
+    entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Decimal,
+    Deps, DepsMut, Env,  MessageInfo,   Response, StdResult,
+     Uint128, WasmMsg,
 };
-use protobuf::Message;
 
 
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
@@ -25,6 +24,7 @@ use white_whale::msg::{
 
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
+use white_whale::ust_vault::msg::FlashLoanPayload;
 
 use crate::error::StableVaultError;
 use crate::msg::{CallbackMsg, ExecuteMsg, InitMsg, QueryMsg};
@@ -33,10 +33,7 @@ use crate::querier::query_market_price;
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, STATE};
 
-const FEE_BUFFER: u64 = 10_000_000u64;
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
-const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
-const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 
 type VaultResult = Result<Response<TerraMsgWrapper>, StableVaultError>;
 
@@ -120,24 +117,25 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //----------------------------------------------------------------------------------------
 
 fn test(deps: DepsMut, _env: Env) -> VaultResult {
-    let denom: &str = "uusd";
-    let _refund_asset = Asset {
-        info: AssetInfo::NativeToken {
-            denom: String::from(denom),
-        },
+    
+    let state = STATE.load(deps.storage)?;
+    let requested_asset = Asset{
+        info: AssetInfo::NativeToken {denom: String::from("uusd")},
         amount: Uint128::from(100000u64),
     };
-
-    let state = STATE.load(deps.storage)?;
+    let payload = FlashLoanPayload{
+        requested_asset: requested_asset,
+        callback: to_binary(&ExecuteMsg::SendToVault {})?,
+    };
 
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps.api.addr_humanize(&state.vault_address)?.to_string(),
             msg: to_binary(&VaultMsg::FlashLoan {
-                payload: to_binary(&ExecuteMsg::SendToVault {})?,
+                payload
             })?,
             funds: vec![],
-        })),
+        }))
     )
 }
 // Attempt to perform an arbitrage operation with the assumption that
@@ -393,28 +391,6 @@ fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
 
     //     return Ok(Response::new().add_message(deposit_msg));
     // };
-    Ok(Response::default())
-}
-
-/// This just stores the result for future query
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
-    if msg.id == u64::from(INSTANTIATE_REPLY_ID) {
-        let data = msg.result.unwrap().data.unwrap();
-        let res: MsgInstantiateContractResponse = Message::parse_from_bytes(data.as_slice())
-            .map_err(|_| {
-                StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
-            })?;
-        let liquidity_token = res.get_contract_address();
-
-        let api = deps.api;
-        POOL_INFO.update(deps.storage, |mut meta| -> StdResult<_> {
-            meta.liquidity_token = api.addr_canonicalize(liquidity_token)?;
-            Ok(meta)
-        })?;
-
-        return Ok(Response::new().add_attribute("liquidity_token_addr", liquidity_token));
-    }
     Ok(Response::default())
 }
 

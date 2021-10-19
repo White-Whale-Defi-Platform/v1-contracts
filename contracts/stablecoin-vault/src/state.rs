@@ -18,6 +18,7 @@ pub struct State {
     pub anchor_money_market_address: CanonicalAddr,
     pub aust_address: CanonicalAddr,
     pub profit_check_address: CanonicalAddr,
+    pub whitelisted_contracts: Vec<CanonicalAddr>,
 }
 
 pub const ADMIN: Admin = Admin::new("admin");
