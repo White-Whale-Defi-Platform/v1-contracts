@@ -246,7 +246,7 @@ pub fn handle_flashloan (deps: DepsMut, env: Env, info: MessageInfo, payload: Fl
         funds: vec![],
     });
 
-    //Call encapsulate function
+    // Call encapsulate function
     encapsule_payload(deps.as_ref(), env, response, return_call)
 }
 
@@ -463,15 +463,19 @@ fn try_withdraw_liquidity(deps: DepsMut, env: Env, sender: String, amount: Uint1
 //  HELPER FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-/// helper method which takes two msgs assumed to be Terraswap trades
-/// and then composes a response with a ProfitCheck BeforeTrade and AfterTrade
-/// the result is an OK'd response with a series of msgs in this order
-/// Profit Check before trade - first_msg - second_msg - Profit Check after trade
+/// Helper method which encapsules the requested funds.
+/// This function prevents callers from doing unprofitable actions
+/// with the vault funds and makes shure the funds are returned by 
+/// the borrower. 
 fn encapsule_payload(deps: Deps, env: Env, response: Response, return_call: CosmosMsg) -> VaultResult {
     let state = STATE.load(deps.storage)?;
 
     let callback = CallbackMsg::AfterSuccessfulTradeCallback {};
+    
     Ok(response
+
+        // Call profit-check contract to store current value of funds
+        // held in this contract
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps
                 .api
@@ -480,12 +484,20 @@ fn encapsule_payload(deps: Deps, env: Env, response: Response, return_call: Cosm
             msg: to_binary(&ProfitCheckMsg::BeforeTrade {})?,
             funds: vec![],
         }))
+
+        // Return call to borrower contract
         .add_message(return_call)
+
+        // After borrower actions, deposit the received funds back into
+        // Anchor if applicable
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: env.contract.address.to_string(),
             msg: to_binary(&callback)?,
             funds: vec![],
         }))
+
+        // Call the profit-check again to cancle the borrow if 
+        // no profit is made. 
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps
                 .api
