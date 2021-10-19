@@ -331,7 +331,12 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
 
 /// Attempt to withdraw deposits. Fees are calculated and deducted. The refund is taken out of  
 /// Anchor if possible. Luna holdings are not eligible for withdrawal.
-fn try_withdraw_liquidity(deps: DepsMut, env: Env, sender: String, amount: Uint128) -> VaultResult {
+pub fn try_withdraw_liquidity(
+    deps: DepsMut,
+    env: Env,
+    sender: String,
+    amount: Uint128,
+) -> VaultResult {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
@@ -467,7 +472,7 @@ fn try_withdraw_liquidity(deps: DepsMut, env: Env, sender: String, amount: Uint1
 /// This function prevents callers from doing unprofitable actions
 /// with the vault funds and makes shure the funds are returned by
 /// the borrower.
-fn encapsule_payload(
+pub fn encapsule_payload(
     deps: Deps,
     env: Env,
     response: Response,
@@ -511,7 +516,7 @@ fn encapsule_payload(
 
 /// handler function invoked when the stablecoin-vault contract receives
 /// a transaction. This is akin to a payable function in Solidity
-fn receive_cw20(
+pub fn receive_cw20(
     deps: DepsMut,
     env: Env,
     msg_info: MessageInfo,

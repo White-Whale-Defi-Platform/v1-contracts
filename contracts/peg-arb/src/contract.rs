@@ -20,7 +20,7 @@ use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
 
 use crate::error::StableVaultError;
-use crate::msg::{CallbackMsg, ExecuteMsg, InitMsg, QueryMsg};
+use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InitMsg, QueryMsg};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::query_market_price;
 
@@ -52,6 +52,9 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) ->
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
         ExecuteMsg::TestMsg {} => test(deps, env),
+        ExecuteMsg::BorrowForArb { details, above_peg } => {
+            call_flashloan(deps, env, info, details, above_peg)
+        }
         ExecuteMsg::SendToVault {} => {
             let denom: &str = "uusd";
             let refund_asset = Asset {
@@ -67,16 +70,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
                 amount: vec![refund_asset.deduct_tax(&deps.querier)?],
             })))
         }
-        ExecuteMsg::BelowPeg {
-            amount,
-            slippage,
-            belief_price,
-        } => try_arb_below_peg(deps, env, info, amount, slippage, belief_price),
-        ExecuteMsg::AbovePeg {
-            amount,
-            slippage,
-            belief_price,
-        } => try_arb_above_peg(deps, env, info, amount, slippage, belief_price),
+        ExecuteMsg::BelowPegCallback { details } => try_arb_below_peg(deps, env, info, details),
+        ExecuteMsg::AbovePegCallback { details } => try_arb_above_peg(deps, env, info, details),
         ExecuteMsg::SetAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
@@ -104,7 +99,6 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
         // Possibility to add more callbacks in future.
     }
 }
-
 //----------------------------------------------------------------------------------------
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
@@ -130,189 +124,201 @@ fn test(deps: DepsMut, _env: Env) -> VaultResult {
         })),
     )
 }
-// Attempt to perform an arbitrage operation with the assumption that
-// the currency to be arb'd is below peg.
-// If needed, funds are withdrawn from anchor and messages are prepared to perform the swaps.
-// Two calls to a profit_check contract surround the trade msgs to enshure the trade only finalizes if the contract makes a profit.
-fn try_arb_below_peg(
+
+fn call_flashloan(
     deps: DepsMut,
     env: Env,
     msg_info: MessageInfo,
-    amount: Coin,
-    belief_price: Decimal,
-    slippage: Decimal,
+    details: ArbDetails,
+    above_peg: bool,
 ) -> VaultResult {
+    //TODO: Check if attached coin matches config
     let state = STATE.load(deps.storage)?;
-    let _info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    // Ensure the caller is a named Trader
-    if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
-        return Err(StableVaultError::Unauthorized {});
+
+    // Construct callback msg
+    let callback_msg;
+    if above_peg {
+        callback_msg = ExecuteMsg::AbovePegCallback {
+            details: details.clone(),
+        }
+    } else {
+        callback_msg = ExecuteMsg::BelowPegCallback {
+            details: details.clone(),
+        }
     }
-    // let (total_value, stables_availabe, _) = compute_total_value(deps.as_ref(), &info)?;
 
-    // if total_value < amount.amount + Uint128::from(FEE_BUFFER) {
-    //     return Err(StableVaultError::Broke {});
-    // }
-
-    let ask_denom = LUNA_DENOM.to_string();
-    let expected_luna_received =
-        query_market_price(deps.as_ref(), amount.clone(), LUNA_DENOM.to_string())?;
-    let residual_luna = query_balance(
-        &deps.querier,
-        env.contract.address.clone(),
-        LUNA_DENOM.to_string(),
-    )?;
-    let offer_coin = Coin {
-        denom: ask_denom.clone(),
-        amount: residual_luna + expected_luna_received,
+    // TODO: Add tax (this tax is used for the first trade)
+    // Construct requested asset
+    let requested_asset = Asset {
+        info: AssetInfo::NativeToken {
+            denom: details.coin.denom,
+        },
+        amount: details.coin.amount,
     };
-    let response = Response::new();
 
-    // 10 UST as buffer for fees and taxes
+    // Construct payload
+    let payload = FlashLoanPayload {
+        requested_asset,
+        callback: to_binary(&callback_msg)?,
+    };
 
-    // Market swap msg, swap STABLE -> LUNA
-    let _swap_msg = create_swap_msg(amount.clone(), ask_denom.clone());
-
-    // Terraswap msg, swap LUNA -> STABLE
-    let _terraswap_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
-        funds: vec![offer_coin.clone()],
-        msg: to_binary(&create_terraswap_msg(
-            offer_coin,
-            belief_price,
-            Some(slippage),
-        ))?,
-    });
-    Ok(response)
-
-    // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
-    // add_profit_check(deps.as_ref(), env, response, swap_msg, terraswap_msg)
+    Ok(
+        Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: deps.api.addr_humanize(&state.vault_address)?.to_string(),
+            msg: to_binary(&VaultMsg::FlashLoan { payload })?,
+            funds: vec![],
+        })),
+    )
 }
 
 // Attempt to perform an arbitrage operation with the assumption that
 // the currency to be arb'd is below peg.
 // If needed, funds are withdrawn from anchor and messages are prepared to perform the swaps.
 // Two calls to a profit_check contract surround the trade msgs to enshure the trade only finalizes if the contract makes a profit.
-fn try_arb_above_peg(
+
+pub fn try_arb_below_peg(
     deps: DepsMut,
     env: Env,
     msg_info: MessageInfo,
-    amount: Coin,
-    _belief_price: Decimal,
-    _slippage: Decimal,
+    details: ArbDetails,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-    let _info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    // Check the caller is a named Trader
-    if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
+
+    // Ensure the caller is the vault
+    if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.vault_address {
         return Err(StableVaultError::Unauthorized {});
     }
-    // let (total_value, stables_availabe, _) = compute_total_value(deps.as_ref(), &info)?;
-
-    // if total_value < amount.amount + Uint128::from(FEE_BUFFER) {
-    //     return Err(StableVaultError::Broke {});
-    // }
-
+    // Set vars
+    let lent_coin = details.coin;
     let ask_denom = LUNA_DENOM.to_string();
+    let response: Response<TerraMsgWrapper> = Response::new();
+
+    // Simulate first tx with Terra Market Module
+    let expected_luna_received =
+        query_market_price(deps.as_ref(), lent_coin.clone(), LUNA_DENOM.to_string())?;
+    let residual_luna = query_balance(
+        &deps.querier,
+        env.contract.address.clone(),
+        LUNA_DENOM.to_string(),
+    )?;
+
+    // Construct offer for Terraswap
+    let offer_coin = Coin {
+        denom: ask_denom.clone(),
+        amount: residual_luna + expected_luna_received,
+    };
+
+    // Market swap msg, swap STABLE -> LUNA
+    let swap_msg = create_swap_msg(lent_coin.clone(), ask_denom.clone());
+
+    // Terraswap msg, swap LUNA -> STABLE
+    let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
+        funds: vec![offer_coin.clone()],
+        msg: to_binary(&create_terraswap_msg(
+            offer_coin,
+            details.belief_price,
+            Some(details.slippage),
+        ))?,
+    });
+
+    let logs = vec![
+        ("action", String::from("arb below peg")),
+        ("offer_amount", lent_coin.amount.to_string()),
+        ("expected_luna", expected_luna_received.to_string()),
+    ];
+
+    // Create callback, this will send the funds back to the vault.
+    let callback_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: env.contract.address.to_string(),
+        msg: to_binary(&CallbackMsg::AfterSuccessfulTradeCallback {})?,
+        funds: vec![],
+    });
+
+    Ok(response
+        .add_attributes(logs)
+        .add_message(swap_msg)
+        .add_message(terraswap_msg)
+        .add_message(callback_msg))
+}
+
+// Attempt to perform an arbitrage operation with the assumption that
+// the currency to be arb'd is below peg.
+// If needed, funds are withdrawn from anchor and messages are prepared to perform the swaps.
+// Two calls to a profit_check contract surround the trade msgs to enshure the trade only finalizes if the contract makes a profit.
+pub fn try_arb_above_peg(
+    deps: DepsMut,
+    env: Env,
+    msg_info: MessageInfo,
+    details: ArbDetails,
+) -> VaultResult {
+    let state = STATE.load(deps.storage)?;
+
+    // Ensure the caller is the vault
+    if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.vault_address {
+        return Err(StableVaultError::Unauthorized {});
+    }
+    // Set vars
+    let lent_coin = details.coin;
+    let ask_denom = LUNA_DENOM.to_string();
+    let response: Response<TerraMsgWrapper> = Response::new();
+
+    // Simulate first tx with Terraswap
     let expected_luna_received = simulate_terraswap_swap(
         deps.as_ref(),
         deps.api.addr_humanize(&state.pool_address)?,
-        amount.clone(),
+        lent_coin.clone(),
     )?;
     let residual_luna = query_balance(
         &deps.querier,
         env.contract.address.clone(),
         LUNA_DENOM.to_string(),
     )?;
-    let _offer_coin = Coin {
+
+    // Construct offer for Market Swap
+    let offer_coin = Coin {
         denom: ask_denom,
         amount: residual_luna + expected_luna_received,
     };
-    let response = Response::new();
-
-    // 10 UST as buffer for fees and taxes
-    // if (amount.amount + Uint128::from(FEE_BUFFER)) > stables_availabe {
-    //     // Attempt to remove some money from anchor
-    //     let to_withdraw = (amount.amount + Uint128::from(FEE_BUFFER)) - stables_availabe;
-    //     let aust_exchange_rate = query_aust_exchange_rate(
-    //         deps.as_ref(),
-    //         deps.api
-    //             .addr_humanize(&state.anchor_money_market_address)?
-    //             .to_string(),
-    //     )?;
-
-    //     let withdraw_msg = anchor_withdraw_msg(
-    //         deps.api.addr_humanize(&state.aust_address)?,
-    //         deps.api.addr_humanize(&state.anchor_money_market_address)?,
-    //         to_withdraw * aust_exchange_rate.inv().unwrap(),
-    //     )?;
-    //     // Add msg to response and update withdrawn value
-    //     response = response
-    //         .add_message(withdraw_msg)
-    //         .add_attribute("Anchor withdrawal", to_withdraw.to_string())
-    //         .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
-    // }
 
     // Terraswap msg, swap STABLE -> LUNA
-    // let terraswap_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
-    //     contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
-    //     funds: vec![amount.clone()],
-    //     msg: to_binary(&create_terraswap_msg(
-    //         amount.clone(),
-    //         belief_price,
-    //         Some(slippage),
-    //     ))?,
-    // });
+    let terraswap_msg: CosmosMsg<TerraMsgWrapper> = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
+        funds: vec![lent_coin.clone()],
+        msg: to_binary(&create_terraswap_msg(
+            lent_coin.clone(),
+            details.belief_price,
+            Some(details.slippage),
+        ))?,
+    });
 
-    // // Market swap msg, swap LUNA -> STABLE
-    // let swap_msg = create_swap_msg(offer_coin, amount.denom);
-    Ok(response)
-    // Finish off all the above by wrapping the swap and terraswap messages in between the 2 profit check queries
-    // add_profit_check(deps.as_ref(), env, response, terraswap_msg, swap_msg)
+    // Market swap msg, swap LUNA -> STABLE
+    let swap_msg = create_swap_msg(offer_coin, lent_coin.denom);
+
+    let logs = vec![
+        ("action", String::from("arb above peg")),
+        ("offer_amount", lent_coin.amount.to_string()),
+        ("expected_luna", expected_luna_received.to_string()),
+    ];
+
+    // Create callback, this will send the funds back to the vault.
+    let callback_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: env.contract.address.to_string(),
+        msg: to_binary(&CallbackMsg::AfterSuccessfulTradeCallback {})?,
+        funds: vec![],
+    });
+
+    Ok(response
+        .add_attributes(logs)
+        .add_message(swap_msg)
+        .add_message(terraswap_msg)
+        .add_message(callback_msg))
 }
 
 //----------------------------------------------------------------------------------------
 //  HELPER FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-/// helper method which takes two msgs assumed to be Terraswap trades
-/// and then composes a response with a ProfitCheck BeforeTrade and AfterTrade
-/// the result is an OK'd response with a series of msgs in this order
-/// Profit Check before trade - first_msg - second_msg - Profit Check after trade
-// fn add_profit_check(
-//     deps: Deps,
-//     env: Env,
-//     response: Response<TerraMsgWrapper>,
-//     first_msg: CosmosMsg<TerraMsgWrapper>,
-//     second_msg: CosmosMsg<TerraMsgWrapper>,
-// ) -> VaultResult {
-//     let state = STATE.load(deps.storage)?;
-//     let callback = CallbackMsg::AfterSuccessfulTradeCallback {};
-//     Ok(response
-//         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//             contract_addr: deps
-//                 .api
-//                 .addr_humanize(&state.profit_check_address)?
-//                 .to_string(),
-//             msg: to_binary(&ProfitCheckMsg::BeforeTrade {})?,
-//             funds: vec![],
-//         }))
-//         .add_message(first_msg)
-//         .add_message(second_msg)
-//         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//             contract_addr: deps
-//                 .api
-//                 .addr_humanize(&state.profit_check_address)?
-//                 .to_string(),
-//             msg: to_binary(&ProfitCheckMsg::AfterTrade {})?,
-//             funds: vec![],
-//         }))
-//         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-//             contract_addr: env.contract.address.to_string(),
-//             msg: to_binary(&callback)?,
-//             funds: vec![],
-//         })))
-// }
 
 // compute total value of deposits in UST and return
 // pub fn compute_total_value(
@@ -365,25 +371,24 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
 //----------------------------------------------------------------------------------------
 
 fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
-    let _state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     let stable_denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
-    let _stables_in_contract =
+    let stables_in_contract =
         query_balance(&deps.querier, env.contract.address, stable_denom.clone())?;
-    let _info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
 
-    // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
-    // if stables_in_contract > Uint128::from(info.stable_cap * Decimal::percent(150)) {
-    //     let deposit_amount = stables_in_contract - info.stable_cap;
-    //     let anchor_deposit = Coin::new(deposit_amount.u128(), stable_denom);
-    //     let deposit_msg = anchor_deposit_msg(
-    //         deps.as_ref(),
-    //         deps.api.addr_humanize(&state.anchor_money_market_address)?,
-    //         anchor_deposit,
-    //     )?;
+    // Send asset back to vault
+    let repay_asset = Asset {
+        info: AssetInfo::NativeToken {
+            denom: stable_denom,
+        },
+        amount: stables_in_contract,
+    };
 
-    //     return Ok(Response::new().add_message(deposit_msg));
-    // };
-    Ok(Response::default())
+    Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send {
+        to_address: deps.api.addr_humanize(&state.vault_address)?.to_string(),
+        amount: vec![repay_asset.deduct_tax(&deps.querier)?],
+    })))
+
 }
 
 //----------------------------------------------------------------------------------------
