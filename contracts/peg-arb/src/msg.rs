@@ -13,7 +13,6 @@ pub struct InitMsg {
     pub seignorage_address: String,
     pub pool_address: String,
     pub asset_info: AssetInfo,
-    pub token_code_id: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

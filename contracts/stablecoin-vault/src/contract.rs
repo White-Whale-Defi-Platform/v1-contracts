@@ -44,12 +44,10 @@ type VaultResult = Result<Response<CosmosMsg>, StableVaultError>;
 pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
     let state = State {
         trader: deps.api.addr_canonicalize(info.sender.as_str())?,
-        pool_address: deps.api.addr_canonicalize(&msg.pool_address)?,
         anchor_money_market_address: deps
             .api
             .addr_canonicalize(&msg.anchor_money_market_address)?,
         aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
-        seignorage_address: deps.api.addr_canonicalize(&msg.seignorage_address)?,
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
     };
 

@@ -10,10 +10,8 @@ use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
-    pub pool_address: String,
     pub anchor_money_market_address: String,
     pub aust_address: String,
-    pub seignorage_address: String,
     pub profit_check_address: String,
     pub community_fund_addr: String,
     pub warchest_addr: String,
@@ -31,16 +29,6 @@ pub struct InitMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
-    AbovePeg {
-        amount: Coin,
-        slippage: Decimal,
-        belief_price: Decimal,
-    },
-    BelowPeg {
-        amount: Coin,
-        slippage: Decimal,
-        belief_price: Decimal,
-    },
     ProvideLiquidity {
         asset: Asset,
     },
