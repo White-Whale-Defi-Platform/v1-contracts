@@ -3,8 +3,8 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use bluna_vault::pool_info::PoolInfo;
 use bluna_vault::msg::{HandleMsg, InitMsg, PoolResponse};
+use bluna_vault::pool_info::PoolInfo;
 use bluna_vault::state::State;
 use white_whale::msg::VaultQueryMsg;
 

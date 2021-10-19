@@ -2,9 +2,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{CanonicalAddr, Uint128};
-use cw_storage_plus::Item;
 use cw_controllers::Admin;
-
+use cw_storage_plus::Item;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {

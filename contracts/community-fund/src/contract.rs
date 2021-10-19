@@ -1,6 +1,9 @@
+use crate::error::CommunityFundError;
+use crate::msg::InstantiateMsg;
+use crate::state::{State, ADMIN, STATE};
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
-    Uint128, WasmMsg, Reply, ReplyOn, entry_point
+    entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
+    Response, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use terraswap::asset::{Asset, AssetInfo};
@@ -11,22 +14,16 @@ use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 use white_whale::denom::UST_DENOM;
 use white_whale::msg::AnchorMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
-use crate::error::CommunityFundError;
-use crate::msg::{InstantiateMsg};
-use crate::state::{State, ADMIN, STATE};
-
 
 const ANCHOR_DEPOSIT_REPLY_ID: u64 = 2;
 const ANCHOR_WITHDRAW_REPLY_ID: u64 = 3;
 
 /*
-    The Community fund holds the protocol treasury and has control over the protocol owned liquidity. 
-    It is controlled by the governance contract and serves to grow its holdings and give grants to proposals. 
+    The Community fund holds the protocol treasury and has control over the protocol owned liquidity.
+    It is controlled by the governance contract and serves to grow its holdings and give grants to proposals.
 */
 
-
 type CommunityFundResult = Result<Response, CommunityFundError>;
-
 
 pub fn instantiate(
     deps: DepsMut,
@@ -53,20 +50,30 @@ pub fn instantiate(
 
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> CommunityFundResult {
     match msg {
-        ExecuteMsg::Spend{ recipient, amount } => spend_whale(deps.as_ref(), info, recipient, amount),
-        ExecuteMsg::Burn{ amount } => burn_whale(deps.as_ref(), info, amount),
+        ExecuteMsg::Spend { recipient, amount } => {
+            spend_whale(deps.as_ref(), info, recipient, amount)
+        }
+        ExecuteMsg::Burn { amount } => burn_whale(deps.as_ref(), info, amount),
         ExecuteMsg::Deposit {} => deposit_or_spend_interest(deps, &env, info),
-        ExecuteMsg::UpdateAdmin{ admin } => {
+        ExecuteMsg::UpdateAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             Ok(ADMIN.execute_update_admin(deps, info, Some(admin_addr))?)
-        },
-        ExecuteMsg::UpdateAnchorDepositThreshold{ threshold } => set_anchor_deposit_threshold(deps, info, threshold),
-        ExecuteMsg::UpdateAnchorWithdrawThreshold{ threshold } => set_anchor_withdraw_threshold(deps, info, threshold)
+        }
+        ExecuteMsg::UpdateAnchorDepositThreshold { threshold } => {
+            set_anchor_deposit_threshold(deps, info, threshold)
+        }
+        ExecuteMsg::UpdateAnchorWithdrawThreshold { threshold } => {
+            set_anchor_withdraw_threshold(deps, info, threshold)
+        }
     }
 }
 
 // The deposit threshold determines the minimum amount of UST the contract has to own before it can deposit those funds into Anchor
-pub fn set_anchor_deposit_threshold(deps: DepsMut, info: MessageInfo, threshold: Uint128) -> CommunityFundResult {
+pub fn set_anchor_deposit_threshold(
+    deps: DepsMut,
+    info: MessageInfo,
+    threshold: Uint128,
+) -> CommunityFundResult {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     let mut state = STATE.load(deps.storage)?;
     state.anchor_deposit_threshold = threshold;
@@ -75,7 +82,11 @@ pub fn set_anchor_deposit_threshold(deps: DepsMut, info: MessageInfo, threshold:
 }
 
 // The withdraw threshold determines the minimum amount of aUST the contract has to own before it can withdraw those funds from Anchor
-pub fn set_anchor_withdraw_threshold(deps: DepsMut, info: MessageInfo, threshold: Uint128) -> CommunityFundResult {
+pub fn set_anchor_withdraw_threshold(
+    deps: DepsMut,
+    info: MessageInfo,
+    threshold: Uint128,
+) -> CommunityFundResult {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     let mut state = STATE.load(deps.storage)?;
     state.anchor_withdraw_threshold = threshold;
@@ -83,18 +94,22 @@ pub fn set_anchor_withdraw_threshold(deps: DepsMut, info: MessageInfo, threshold
     Ok(Response::default())
 }
 
-// This function allows the community fund to buy whale tokens from the terraswap market. 
+// This function allows the community fund to buy whale tokens from the terraswap market.
 pub fn buy_whale(deps: Deps, env: &Env) -> CommunityFundResult {
     let state = STATE.load(deps.storage)?;
-    let ust_amount = query_balance(&deps.querier, env.contract.address.clone(), UST_DENOM.to_string())?;
+    let ust_amount = query_balance(
+        &deps.querier,
+        env.contract.address.clone(),
+        UST_DENOM.to_string(),
+    )?;
     if ust_amount == Uint128::zero() {
-        return Err(CommunityFundError::NotEnoughFunds{});
+        return Err(CommunityFundError::NotEnoughFunds {});
     }
     let mut offer = Asset {
         info: AssetInfo::NativeToken {
             denom: UST_DENOM.to_string(),
         },
-        amount: ust_amount
+        amount: ust_amount,
     };
     let ust = offer.deduct_tax(&deps.querier)?;
     offer.amount = ust.amount;
@@ -117,23 +132,42 @@ pub fn buy_whale(deps: Deps, env: &Env) -> CommunityFundResult {
 pub fn deposit(deps: DepsMut, env: &Env) -> CommunityFundResult {
     let mut state = STATE.load(deps.storage)?;
 
-    let deposit = deps.querier.query_balance(&env.contract.address, UST_DENOM)?;
+    let deposit = deps
+        .querier
+        .query_balance(&env.contract.address, UST_DENOM)?;
     if deposit.amount < state.anchor_deposit_threshold {
         return Ok(Response::default());
     }
 
+    let deposit_asset = Asset {
+        info: AssetInfo::NativeToken {
+            denom: deposit.denom,
+        },
+        amount: deposit.amount,
+    };
+
     state.last_deposit_in_uusd = deposit.amount;
     STATE.save(deps.storage, &state)?;
-    Ok(try_deposit_to_anchor_as_submsg(deps.api.addr_humanize(&state.anchor_money_market_addr)?.to_string(), deposit, ANCHOR_DEPOSIT_REPLY_ID)?)
+    Ok(try_deposit_to_anchor_as_submsg(
+        deps.api
+            .addr_humanize(&state.anchor_money_market_addr)?
+            .to_string(),
+        deposit_asset.deduct_tax(&deps.querier)?,
+        ANCHOR_DEPOSIT_REPLY_ID,
+    )?)
 }
 
-// 
-pub fn deposit_or_spend_interest(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> CommunityFundResult {
+//
+pub fn deposit_or_spend_interest(
+    deps: DepsMut,
+    env: &Env,
+    msg_info: MessageInfo,
+) -> CommunityFundResult {
     if msg_info.funds.len() > 1 {
-        return Err(CommunityFundError::DepositTooManyTokens{});
+        return Err(CommunityFundError::DepositTooManyTokens {});
     }
     if msg_info.funds[0].denom != UST_DENOM {
-        return Err(CommunityFundError::DepositOnlyUST{});
+        return Err(CommunityFundError::DepositOnlyUST {});
     }
 
     let state = STATE.load(deps.storage)?;
@@ -142,36 +176,49 @@ pub fn deposit_or_spend_interest(deps: DepsMut, env: &Env, msg_info: MessageInfo
     if aust_value_in_uusd < state.deposits_in_uusd + state.anchor_withdraw_threshold {
         return deposit(deps, env);
     }
-    // Else, calculate earned interest and buy WHALE with it. 
+    // Else, calculate earned interest and buy WHALE with it.
     spend_interest(deps, aust_value_in_uusd, msg_info.funds[0].amount)
 }
 
 pub fn get_aust_value_in_uusd(deps: Deps, env: &Env) -> StdResult<Uint128> {
     let state = STATE.load(deps.storage)?;
-    let aust_amount = query_token_balance(&deps.querier, deps.api.addr_humanize(&state.aust_addr)?, env.contract.address.clone())?;
+    let aust_amount = query_token_balance(
+        &deps.querier,
+        deps.api.addr_humanize(&state.aust_addr)?,
+        env.contract.address.clone(),
+    )?;
+    let aust_exchange_rate = query_aust_exchange_rate(
+        deps,
+        deps.api
+            .addr_humanize(&state.anchor_money_market_addr)?
+            .to_string(),
+    )?;
 
-    let epoch_state_response = query_aust_exchange_rate(deps, deps.api.addr_humanize(&state.anchor_money_market_addr)?.to_string())?;
-    let aust_exchange_rate = Decimal::from(epoch_state_response.exchange_rate);
-    Ok(aust_exchange_rate*aust_amount)
+    Ok(aust_exchange_rate * aust_amount)
 }
 
-// Withdraw interest earned. 
-pub fn spend_interest(deps: DepsMut, aust_value_in_ust: Uint128, deposit_amount: Uint128) -> CommunityFundResult {
+// Withdraw interest earned.
+pub fn spend_interest(
+    deps: DepsMut,
+    aust_value_in_ust: Uint128,
+    deposit_amount: Uint128,
+) -> CommunityFundResult {
     let state = STATE.load(deps.storage)?;
-    // withdraw_amount = earned_interest - specified amount 
+    // withdraw_amount = earned_interest - specified amount
     let withdraw_amount = (aust_value_in_ust - state.deposits_in_uusd) - deposit_amount;
-    let withdraw_msg = CosmosMsg::Wasm(WasmMsg::Execute{
+    let withdraw_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&state.aust_addr)?.to_string(),
-        msg: to_binary(
-            &Cw20ExecuteMsg::Send{
-                contract: deps.api.addr_humanize(&state.anchor_money_market_addr)?.to_string(),
-                amount: withdraw_amount,
-                msg: to_binary(&AnchorMsg::RedeemStable{})?
-            }
-        )?,
-        funds: vec![]
+        msg: to_binary(&Cw20ExecuteMsg::Send {
+            contract: deps
+                .api
+                .addr_humanize(&state.anchor_money_market_addr)?
+                .to_string(),
+            amount: withdraw_amount,
+            msg: to_binary(&AnchorMsg::RedeemStable {})?,
+        })?,
+        funds: vec![],
     });
-    Ok(Response::new().add_submessage(SubMsg{
+    Ok(Response::new().add_submessage(SubMsg {
         msg: withdraw_msg,
         gas_limit: None,
         id: ANCHOR_WITHDRAW_REPLY_ID,
@@ -184,25 +231,34 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
 
-    Ok(Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
-        funds: vec![],
-        msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
-    })))
+    Ok(
+        Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
+            funds: vec![],
+            msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
+        })),
+    )
 }
 
 // Transfer WHALE to specified recipient
-pub fn spend_whale(deps: Deps, info: MessageInfo, recipient: String, amount: Uint128) -> CommunityFundResult {
+pub fn spend_whale(
+    deps: Deps,
+    info: MessageInfo,
+    recipient: String,
+    amount: Uint128,
+) -> CommunityFundResult {
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
-    Ok(Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
-        funds: vec![],
-        msg: to_binary(&Cw20ExecuteMsg::Transfer { recipient, amount })?,
-    })))
+    Ok(
+        Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
+            funds: vec![],
+            msg: to_binary(&Cw20ExecuteMsg::Transfer { recipient, amount })?,
+        })),
+    )
 }
 
-// Catches submessage calls. Either updating deposted UST amount or buying whale with earned interest. 
+// Catches submessage calls. Either updating deposted UST amount or buying whale with earned interest.
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> CommunityFundResult {
     if msg.id == ANCHOR_DEPOSIT_REPLY_ID {
@@ -210,7 +266,7 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> CommunityFundResult {
         state.deposits_in_uusd += state.last_deposit_in_uusd;
         state.last_deposit_in_uusd = Uint128::zero();
         STATE.save(deps.storage, &state)?;
-        return Ok(Response::default())
+        return Ok(Response::default());
     }
     if msg.id == ANCHOR_WITHDRAW_REPLY_ID {
         return buy_whale(deps.as_ref(), &env);
@@ -220,8 +276,8 @@ pub fn reply(deps: DepsMut, env: Env, msg: Reply) -> CommunityFundResult {
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Admin{} => Ok(to_binary(&ADMIN.query_admin(deps)?)?),
-        QueryMsg::Config{} => query_config(deps),
+        QueryMsg::Admin {} => Ok(to_binary(&ADMIN.query_admin(deps)?)?),
+        QueryMsg::Config {} => query_config(deps),
     }
 }
 
@@ -283,10 +339,18 @@ mod tests {
         };
 
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
+        let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_ne!(state.anchor_deposit_threshold, Uint128::from(3u64));
-        let _res = execute(deps.as_mut(), env, info, ExecuteMsg::UpdateAnchorDepositThreshold{ threshold: Uint128::from(3u64) }).unwrap();
+        let _res = execute(
+            deps.as_mut(),
+            env,
+            info,
+            ExecuteMsg::UpdateAnchorDepositThreshold {
+                threshold: Uint128::from(3u64),
+            },
+        )
+        .unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.anchor_deposit_threshold, Uint128::from(3u64));
     }
@@ -302,10 +366,18 @@ mod tests {
         };
 
         let _res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-        let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
+        let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_ne!(state.anchor_withdraw_threshold, Uint128::from(3u64));
-        let _res = execute(deps.as_mut(), env, info, ExecuteMsg::UpdateAnchorWithdrawThreshold{ threshold: Uint128::from(3u64) }).unwrap();
+        let _res = execute(
+            deps.as_mut(),
+            env,
+            info,
+            ExecuteMsg::UpdateAnchorWithdrawThreshold {
+                threshold: Uint128::from(3u64),
+            },
+        )
+        .unwrap();
         let state = STATE.load(&deps.storage).unwrap();
         assert_eq!(state.anchor_withdraw_threshold, Uint128::from(3u64));
     }
@@ -325,11 +397,18 @@ mod tests {
         };
 
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-        let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
-        let res = execute(deps.as_mut(), env, other_info, ExecuteMsg::UpdateAnchorDepositThreshold{ threshold: Uint128::from(3u64) });
+        let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env,
+            other_info,
+            ExecuteMsg::UpdateAnchorDepositThreshold {
+                threshold: Uint128::from(3u64),
+            },
+        );
         match res {
-            Err(_) => {},
-            Ok(_) => panic!("unexpected")
+            Err(_) => {}
+            Ok(_) => panic!("unexpected"),
         }
     }
 
@@ -348,11 +427,18 @@ mod tests {
         };
 
         let _res = instantiate(deps.as_mut(), env.clone(), info, msg).unwrap();
-        let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config{}).unwrap();
-        let res = execute(deps.as_mut(), env, other_info, ExecuteMsg::UpdateAnchorWithdrawThreshold{ threshold: Uint128::from(3u64) });
+        let _res = query(deps.as_ref(), env.clone(), QueryMsg::Config {}).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env,
+            other_info,
+            ExecuteMsg::UpdateAnchorWithdrawThreshold {
+                threshold: Uint128::from(3u64),
+            },
+        );
         match res {
-            Err(_) => {},
-            Ok(_) => panic!("unexpected")
+            Err(_) => {}
+            Ok(_) => panic!("unexpected"),
         }
     }
 
@@ -371,7 +457,10 @@ mod tests {
 
         let q_res: ConfigResponse =
             from_binary(&query(deps.as_ref(), env, QueryMsg::Config {}).unwrap()).unwrap();
-        assert_eq!(q_res.token_addr, deps.api.addr_validate("whale token").unwrap())
+        assert_eq!(
+            q_res.token_addr,
+            deps.api.addr_validate("whale token").unwrap()
+        )
     }
 
     #[test]
@@ -389,6 +478,9 @@ mod tests {
 
         let q_res: AdminResponse =
             from_binary(&query(deps.as_ref(), env, QueryMsg::Admin {}).unwrap()).unwrap();
-        assert_eq!(q_res.admin.unwrap(), deps.api.addr_validate("creator").unwrap())
+        assert_eq!(
+            q_res.admin.unwrap(),
+            deps.api.addr_validate("creator").unwrap()
+        )
     }
 }

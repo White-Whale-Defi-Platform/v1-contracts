@@ -8,7 +8,6 @@
 
 ## Bombay contracts
 
-UST-vault: terra169jyq8qkgfwqnfghtrdsu4stn03l30n65r9xdv <br />
-UST-vault pool addr: terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff <br />
+UST-vault: terra1aad9mzp932xdzr6kd9408dun30ye2try37r8pu <br />
 community-fund: terra1rlptsry577v4zamen6pduqpc0p2k9deupqz3uy <br />
 warchest: terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v <br />

@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use cosmwasm_std::CanonicalAddr;
 use cw_storage_plus::Item;
 
-
 use crate::pool_info::PoolInfoRaw;
 
 pub static LUNA_DENOM: &str = "uluna";

@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use cosmwasm_std::{StdError};
+use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
 
 #[derive(Error, Debug, PartialEq)]
@@ -14,6 +14,15 @@ pub enum StableVaultError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("no swaps can be performed in this pool")]
-    NoSwapAvailabe {},
+    #[error("Call is not a callback!")]
+    NotCallback {},
+
+    #[error("No swaps can be performed in this pool")]
+    NoSwapAvailable {},
+
+    #[error("Initialization values make no sense.")]
+    InvalidInit {},
+
+    #[error("Not enough funds to perform trade")]
+    Broke {},
 }

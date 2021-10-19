@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use thiserror::Error;
 
-use cosmwasm_std::{attr, Addr, MessageInfo, Response, Storage, StdError, StdResult};
+use cosmwasm_std::{attr, Addr, MessageInfo, Response, StdError, StdResult, Storage};
 use cw_storage_plus::Item;
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]

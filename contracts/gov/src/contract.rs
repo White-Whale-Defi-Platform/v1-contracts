@@ -1,13 +1,22 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{attr, to_binary, from_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, StdError, Uint128, WasmMsg};
+use cosmwasm_std::{
+    attr, from_binary, to_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
+};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{bank_read, bank_store, State, Config, ExecuteData, PollExecuteMsg, config_store, config_read, state_read, state_store, poll_read, poll_store, poll_indexer_store, PollStatus, Poll, Cw20HookMsg, poll_voter_read, poll_voter_store, VoteOption, VoterInfo, ConfigResponse, PollResponse, StateResponse, OrderBy, PollsResponse, VotersResponse, read_polls, VotersResponseItem, read_poll_voters};
 use crate::staking::{query_staker, stake_voting_tokens, withdraw_voting_tokens};
+use crate::state::{
+    bank_read, bank_store, config_read, config_store, poll_indexer_store, poll_read, poll_store,
+    poll_voter_read, poll_voter_store, read_poll_voters, read_polls, state_read, state_store,
+    Config, ConfigResponse, Cw20HookMsg, ExecuteData, OrderBy, Poll, PollExecuteMsg, PollResponse,
+    PollStatus, PollsResponse, State, StateResponse, VoteOption, VoterInfo, VotersResponse,
+    VotersResponseItem,
+};
 
 const MIN_TITLE_LENGTH: usize = 4;
 const MAX_TITLE_LENGTH: usize = 64;
@@ -85,7 +94,7 @@ pub fn instantiate(
 
     let config = Config {
         whale_token: CanonicalAddr::from(vec![]),
-        owner: deps.api.addr_canonicalize(&info.sender.as_str())?,
+        owner: deps.api.addr_canonicalize(info.sender.as_str())?,
         quorum: msg.quorum,
         threshold: msg.threshold,
         voting_period: msg.voting_period,
@@ -191,7 +200,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractErr
         )?)?),
     }
 }
-
 
 // ExecutionMsg handlers
 
@@ -435,7 +443,6 @@ pub fn end_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, Contr
 /// which are associated with a Passed poll. This ensures the actions taken by a successful Poll are
 /// well known and predefined.
 pub fn execute_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, ContractError> {
-
     let config: Config = config_read(deps.storage).load()?;
     let mut a_poll: Poll = poll_store(deps.storage).load(&poll_id.to_be_bytes())?;
 
@@ -492,7 +499,6 @@ pub fn cast_vote(
     vote: VoteOption,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-
     let sender_address_raw = deps.api.addr_canonicalize(info.sender.as_str())?;
     let config = config_read(deps.storage).load()?;
     let state = state_read(deps.storage).load()?;
@@ -507,7 +513,7 @@ pub fn cast_vote(
 
     // Check the voter already has a vote on the poll
     if poll_voter_read(deps.storage, poll_id)
-        .load(&sender_address_raw.as_slice())
+        .load(sender_address_raw.as_slice())
         .is_ok()
     {
         return Err(ContractError::AlreadyVoted {});
@@ -550,7 +556,7 @@ pub fn cast_vote(
     bank_store(deps.storage).save(key, &token_manager)?;
 
     // store poll voter && and update poll data
-    poll_voter_store(deps.storage, poll_id).save(&sender_address_raw.as_slice(), &vote_info)?;
+    poll_voter_store(deps.storage, poll_id).save(sender_address_raw.as_slice(), &vote_info)?;
 
     // processing snapshot
     let time_to_end = a_poll.end_height - env.block.height;

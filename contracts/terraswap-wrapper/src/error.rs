@@ -1,9 +1,8 @@
 use thiserror::Error;
 
-use cosmwasm_std::{StdError};
+use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
 use white_whale::trader::TraderError;
-
 
 #[derive(Error, Debug, PartialEq)]
 pub enum TerraswapWrapperError {
@@ -14,5 +13,5 @@ pub enum TerraswapWrapperError {
     Admin(#[from] AdminError),
 
     #[error("{0}")]
-    Trader(#[from] TraderError)
+    Trader(#[from] TraderError),
 }

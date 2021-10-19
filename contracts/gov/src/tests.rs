@@ -1,12 +1,12 @@
 use crate::contract::{execute, instantiate, query};
 use crate::error::ContractError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{
     bank_read, bank_store, config_read, poll_store, poll_voter_read, poll_voter_store, state_read,
-    Config, Poll, State, TokenManager, PollResponse,PollExecuteMsg, Cw20HookMsg, OrderBy, VoteOption,
-    StakerResponse, VotersResponse, PollsResponse, PollStatus, VoterInfo, VotersResponseItem, ConfigResponse
+    Config, ConfigResponse, Cw20HookMsg, OrderBy, Poll, PollExecuteMsg, PollResponse, PollStatus,
+    PollsResponse, StakerResponse, State, TokenManager, VoteOption, VoterInfo, VotersResponse,
+    VotersResponseItem,
 };
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-
 
 use crate::mock_querier::mock_dependencies;
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
@@ -16,7 +16,6 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
-
 
 const VOTING_TOKEN: &str = "voting_token";
 const TEST_CREATOR: &str = "creator";
@@ -50,7 +49,7 @@ fn create_poll_msg(
     })
 }
 
-// Mocks 
+// Mocks
 fn mock_instantiate(deps: DepsMut) {
     let msg = InstantiateMsg {
         quorum: Decimal::percent(DEFAULT_QUORUM),
@@ -221,9 +220,8 @@ fn proper_initialization() {
     );
 }
 
-
 /**
- * Tests related to the Execution of messages defined with the proposal/poll 
+ * Tests related to the Execution of messages defined with the proposal/poll
  */
 
 #[test]
@@ -463,7 +461,6 @@ fn fails_create_poll_invalid_deposit() {
         Err(_) => panic!("Unknown error"),
     }
 }
-
 
 /**
  * expire_poll Tests
@@ -1201,7 +1198,6 @@ fn end_poll_quorum_rejected() {
         ]
     );
 }
-
 
 #[test]
 fn end_poll_quorum_rejected_noting_staked() {
