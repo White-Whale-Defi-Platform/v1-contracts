@@ -1,10 +1,12 @@
-use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg};
+use crate::fee::{CappedFee, Fee};
+use cosmwasm_std::{
+    to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
+};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use terraswap::asset::{Asset, AssetInfo};
-use white_whale::fee::{CappedFee, Fee};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -55,7 +57,9 @@ pub enum ExecuteMsg {
     SetTrader {
         trader: String,
     },
-
+    FlashLoan {
+        payload: Binary,
+    },
     Callback(CallbackMsg),
 }
 
@@ -85,14 +89,4 @@ pub struct PoolResponse {
     pub assets: [Asset; 3],
     pub total_value_in_ust: Uint128,
     pub total_share: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum Message {
-    AssertLimitOrder {
-        offer_coin: Coin,
-        ask_denom: String,
-        minimum_receive: Uint128,
-    },
 }

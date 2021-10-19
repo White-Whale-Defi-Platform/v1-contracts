@@ -15,11 +15,9 @@ use crate::pool_info::PoolInfoRaw;
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
     pub trader: CanonicalAddr,
-    pub pool_address: CanonicalAddr,
-    pub anchor_money_market_address: CanonicalAddr,
-    pub aust_address: CanonicalAddr,
+    pub vault_address: CanonicalAddr,
     pub seignorage_address: CanonicalAddr,
-    pub profit_check_address: CanonicalAddr,
+    pub pool_address: CanonicalAddr,
 }
 
 pub const ADMIN: Admin = Admin::new("admin");
