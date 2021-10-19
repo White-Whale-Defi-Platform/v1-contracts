@@ -4,9 +4,9 @@ use cosmwasm_std::{
     SubMsg, Uint128, WasmMsg,
 };
 use protobuf::Message;
-use schemars::JsonSchema;
-use std::fmt;
-use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
+
+
+
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
 use terraswap::querier::{query_balance, query_supply, query_token_balance};
@@ -19,17 +19,17 @@ use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{CappedFee, Fee, VaultFee};
 use white_whale::msg::{
-    create_terraswap_msg, EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse,
+    EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse,
     VaultQueryMsg as QueryMsg,
 };
 use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
-use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
+
 use white_whale::ust_vault::msg::*;
 
 use crate::error::StableVaultError;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::querier::query_market_price;
+
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, STATE};
 
@@ -177,7 +177,7 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-pub fn execute_payload(deps: DepsMut, env: Env, info: MessageInfo, payload: Binary) -> VaultResult {
+pub fn execute_payload(_deps: DepsMut, _env: Env, info: MessageInfo, payload: Binary) -> VaultResult {
     let return_call = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: info.sender.into(),
         msg: payload,

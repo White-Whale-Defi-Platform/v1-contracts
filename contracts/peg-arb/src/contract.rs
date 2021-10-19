@@ -4,25 +4,25 @@ use cosmwasm_std::{
     SubMsg, Uint128, WasmMsg,
 };
 use protobuf::Message;
-use schemars::JsonSchema;
-use std::fmt;
+
+
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 use terraswap::asset::{Asset, AssetInfo};
-use terraswap::pair::Cw20HookMsg;
-use terraswap::querier::{query_balance, query_supply, query_token_balance};
-use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
+use terraswap::querier::{query_balance};
 
-use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
+
+
+
+
 use white_whale::denom::LUNA_DENOM;
-use white_whale::deposit_info::DepositInfo;
-use white_whale::fee::{CappedFee, Fee, VaultFee};
+
+use white_whale::fee::{CappedFee, Fee};
 use white_whale::msg::{
     create_terraswap_msg, EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse,
 };
-use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
-use white_whale::query::anchor::query_aust_exchange_rate;
+
+
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
 
@@ -41,7 +41,7 @@ const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 type VaultResult = Result<Response<TerraMsgWrapper>, StableVaultError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
+pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
     let state = State {
         trader: deps.api.addr_canonicalize(info.sender.as_str())?,
         vault_address: deps.api.addr_canonicalize(&msg.vault_address)?,
@@ -119,9 +119,9 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-fn test(deps: DepsMut, env: Env) -> VaultResult {
+fn test(deps: DepsMut, _env: Env) -> VaultResult {
     let denom: &str = "uusd";
-    let refund_asset = Asset {
+    let _refund_asset = Asset {
         info: AssetInfo::NativeToken {
             denom: String::from(denom),
         },
@@ -153,7 +153,7 @@ fn try_arb_below_peg(
     slippage: Decimal,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let _info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     // Ensure the caller is a named Trader
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
         return Err(StableVaultError::Unauthorized {});
@@ -176,15 +176,15 @@ fn try_arb_below_peg(
         denom: ask_denom.clone(),
         amount: residual_luna + expected_luna_received,
     };
-    let mut response = Response::new();
+    let response = Response::new();
 
     // 10 UST as buffer for fees and taxes
 
     // Market swap msg, swap STABLE -> LUNA
-    let swap_msg = create_swap_msg(amount.clone(), ask_denom.clone());
+    let _swap_msg = create_swap_msg(amount.clone(), ask_denom.clone());
 
     // Terraswap msg, swap LUNA -> STABLE
-    let terraswap_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
+    let _terraswap_msg: CosmosMsg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
         funds: vec![offer_coin.clone()],
         msg: to_binary(&create_terraswap_msg(
@@ -208,11 +208,11 @@ fn try_arb_above_peg(
     env: Env,
     msg_info: MessageInfo,
     amount: Coin,
-    belief_price: Decimal,
-    slippage: Decimal,
+    _belief_price: Decimal,
+    _slippage: Decimal,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let _info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     // Check the caller is a named Trader
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.trader {
         return Err(StableVaultError::Unauthorized {});
@@ -234,11 +234,11 @@ fn try_arb_above_peg(
         env.contract.address.clone(),
         LUNA_DENOM.to_string(),
     )?;
-    let offer_coin = Coin {
+    let _offer_coin = Coin {
         denom: ask_denom,
         amount: residual_luna + expected_luna_received,
     };
-    let mut response = Response::new();
+    let response = Response::new();
 
     // 10 UST as buffer for fees and taxes
     // if (amount.amount + Uint128::from(FEE_BUFFER)) > stables_availabe {
@@ -375,11 +375,11 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
 //----------------------------------------------------------------------------------------
 
 fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
-    let state = STATE.load(deps.storage)?;
+    let _state = STATE.load(deps.storage)?;
     let stable_denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
-    let stables_in_contract =
+    let _stables_in_contract =
         query_balance(&deps.querier, env.contract.address, stable_denom.clone())?;
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let _info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
     // if stables_in_contract > Uint128::from(info.stable_cap * Decimal::percent(150)) {

@@ -1,10 +1,10 @@
-use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg};
-use cw20::Cw20ReceiveMsg;
+use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, WasmMsg};
+
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use terraswap::asset::{Asset, AssetInfo};
-use white_whale::fee::{CappedFee, Fee};
+use terraswap::asset::{AssetInfo};
+
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {

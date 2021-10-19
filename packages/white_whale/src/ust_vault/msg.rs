@@ -1,6 +1,6 @@
 use crate::fee::{CappedFee, Fee};
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
+    to_binary, Addr, Binary, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
