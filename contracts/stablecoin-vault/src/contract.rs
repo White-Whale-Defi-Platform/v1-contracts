@@ -5,10 +5,6 @@ use cosmwasm_std::{
 };
 use protobuf::Message;
 
-
-use std::fmt;
-use schemars::JsonSchema;
-
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
 use terraswap::querier::{query_balance, query_supply, query_token_balance};
@@ -21,8 +17,7 @@ use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{CappedFee, Fee, VaultFee};
 use white_whale::msg::{
-    EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse,
-    VaultQueryMsg as QueryMsg,
+    EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse, VaultQueryMsg as QueryMsg,
 };
 use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
@@ -40,9 +35,7 @@ const INSTANTIATE_REPLY_ID: u8 = 1u8;
 const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
 const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 
-
 type VaultResult = Result<Response, StableVaultError>;
-    
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
@@ -53,12 +46,14 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> 
             .addr_canonicalize(&msg.anchor_money_market_address)?,
         aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
-        whitelisted_contracts: vec![]
+        whitelisted_contracts: vec![],
     };
 
     // Add initial contracts
     for contract in msg.whitelisted_contracts.iter() {
-        state.whitelisted_contracts.push(deps.api.addr_canonicalize(&contract)?);
+        state
+            .whitelisted_contracts
+            .push(deps.api.addr_canonicalize(&contract)?);
     }
 
     // Store the initial config
@@ -187,13 +182,18 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-pub fn handle_flashloan (deps: DepsMut, env: Env, info: MessageInfo, payload: FlashLoanPayload) -> VaultResult {
+pub fn handle_flashloan(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    payload: FlashLoanPayload,
+) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     let whitelisted_contracts = state.whitelisted_contracts;
 
     // Check if sender is whitelisted
     if !whitelisted_contracts.contains(&deps.api.addr_canonicalize(&info.sender.to_string())?) {
-        return Err(StableVaultError::NotWhiteListed{})
+        return Err(StableVaultError::NotWhiteListed {});
     }
 
     // Do we have enough funds?
@@ -465,15 +465,19 @@ fn try_withdraw_liquidity(deps: DepsMut, env: Env, sender: String, amount: Uint1
 
 /// Helper method which encapsules the requested funds.
 /// This function prevents callers from doing unprofitable actions
-/// with the vault funds and makes shure the funds are returned by 
-/// the borrower. 
-fn encapsule_payload(deps: Deps, env: Env, response: Response, return_call: CosmosMsg) -> VaultResult {
+/// with the vault funds and makes shure the funds are returned by
+/// the borrower.
+fn encapsule_payload(
+    deps: Deps,
+    env: Env,
+    response: Response,
+    return_call: CosmosMsg,
+) -> VaultResult {
     let state = STATE.load(deps.storage)?;
 
     let callback = CallbackMsg::AfterSuccessfulTradeCallback {};
-    
-    Ok(response
 
+    Ok(response
         // Call profit-check contract to store current value of funds
         // held in this contract
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -484,10 +488,8 @@ fn encapsule_payload(deps: Deps, env: Env, response: Response, return_call: Cosm
             msg: to_binary(&ProfitCheckMsg::BeforeTrade {})?,
             funds: vec![],
         }))
-
         // Return call to borrower contract
         .add_message(return_call)
-
         // After borrower actions, deposit the received funds back into
         // Anchor if applicable
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -495,9 +497,8 @@ fn encapsule_payload(deps: Deps, env: Env, response: Response, return_call: Cosm
             msg: to_binary(&callback)?,
             funds: vec![],
         }))
-
-        // Call the profit-check again to cancle the borrow if 
-        // no profit is made. 
+        // Call the profit-check again to cancle the borrow if
+        // no profit is made.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps
                 .api

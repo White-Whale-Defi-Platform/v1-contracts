@@ -1,7 +1,5 @@
 use crate::fee::{CappedFee, Fee};
-use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
-};
+use cosmwasm_std::{to_binary, Addr, Binary, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -46,7 +44,7 @@ pub enum ExecuteMsg {
     SetTrader {
         trader: String,
     },
-    FlashLoan { 
+    FlashLoan {
         payload: FlashLoanPayload,
     },
     Callback(CallbackMsg),
