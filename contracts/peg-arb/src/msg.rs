@@ -3,7 +3,7 @@ use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, WasmMsg
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use terraswap::asset::AssetInfo;
+use terraswap::asset::{AssetInfo, Asset};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -46,7 +46,7 @@ pub enum CallbackMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ArbDetails {
-    pub coin: Coin,
+    pub asset: Asset,
     pub slippage: Decimal,
     pub belief_price: Decimal,
 }

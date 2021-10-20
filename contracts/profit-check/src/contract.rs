@@ -81,6 +81,34 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
     Ok(Response::default())
 }
 
+// compute total value of deposits in UST and return
+// pub fn compute_total_value(
+//     deps: Deps,
+//     info: &PoolInfoRaw,
+// ) -> StdResult<(Uint128, Uint128, Uint128)> {
+//     let state = STATE.load(deps.storage)?;
+//     let stable_info = info.asset_infos[0].to_normal(deps.api)?;
+//     let stable_denom = match stable_info {
+//         AssetInfo::Token { .. } => String::default(),
+//         AssetInfo::NativeToken { denom } => denom,
+//     };
+//     let stable_amount = query_balance(&deps.querier, info.contract_addr.clone(), stable_denom)?;
+
+//     let aust_info = info.asset_infos[2].to_normal(deps.api)?;
+//     let aust_amount = aust_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
+//     let aust_exchange_rate = query_aust_exchange_rate(
+//         deps,
+//         deps.api
+//             .addr_humanize(&state.anchor_money_market_address)?
+//             .to_string(),
+//     )?;
+
+//     let aust_value_in_ust = aust_exchange_rate * aust_amount;
+
+//     let total_deposits_in_ust = stable_amount + aust_value_in_ust;
+//     Ok((total_deposits_in_ust, stable_amount, aust_value_in_ust))
+// }
+
 // Set address of UST vault
 pub fn set_vault_address(
     deps: DepsMut,

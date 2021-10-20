@@ -4,7 +4,7 @@ use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum StableVaultError {
+pub enum StableArbError {
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -17,11 +17,8 @@ pub enum StableVaultError {
     #[error("Call is not a callback!")]
     NotCallback {},
 
-    #[error("No swaps can be performed in this pool")]
-    NoSwapAvailable {},
-
-    #[error("Initialization values make no sense.")]
-    InvalidInit {},
+    #[error("The requested funds have the wrong denom")]
+    WrongDenom {},
 
     #[error("Not enough funds to perform trade")]
     Broke {},

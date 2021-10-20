@@ -15,20 +15,21 @@ use white_whale::msg::{
     create_terraswap_msg, EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse,
 };
 
+use white_whale::deposit_info::DepositInfo;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
 
-use crate::error::StableVaultError;
+use crate::error::StableArbError;
 use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InitMsg, QueryMsg};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::querier::query_market_price;
 
-use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, STATE};
+use crate::state::{State, ADMIN, DEPOSIT_INFO, STATE};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 
-type VaultResult = Result<Response<TerraMsgWrapper>, StableVaultError>;
+type VaultResult = Result<Response<TerraMsgWrapper>, StableArbError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
@@ -41,7 +42,12 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) ->
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
-
+    DEPOSIT_INFO.save(
+        deps.storage,
+        &DepositInfo {
+            asset_info: msg.asset_info.clone(),
+        },
+    )?;
     // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
 
@@ -92,7 +98,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
 fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> VaultResult {
     // Callback functions can only be called this contract itself
     if info.sender != env.contract.address {
-        return Err(StableVaultError::NotCallback {});
+        return Err(StableArbError::NotCallback {});
     }
     match msg {
         CallbackMsg::AfterSuccessfulTradeCallback {} => after_successful_trade_callback(deps, env),
@@ -134,6 +140,11 @@ fn call_flashloan(
 ) -> VaultResult {
     //TODO: Check if attached coin matches config
     let state = STATE.load(deps.storage)?;
+    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
+
+    // Check if requested asset is same as strategy base asset 
+    deposit_info.assert(&details.asset.info);
+
 
     // Construct callback msg
     let callback_msg;
@@ -149,12 +160,7 @@ fn call_flashloan(
 
     // TODO: Add tax (this tax is used for the first trade)
     // Construct requested asset
-    let requested_asset = Asset {
-        info: AssetInfo::NativeToken {
-            denom: details.coin.denom,
-        },
-        amount: details.coin.amount,
-    };
+    let requested_asset = details.asset;
 
     // Construct payload
     let payload = FlashLoanPayload {
@@ -183,23 +189,36 @@ pub fn try_arb_below_peg(
     details: ArbDetails,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
+    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
 
     // Ensure the caller is the vault
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.vault_address {
-        return Err(StableVaultError::Unauthorized {});
+        return Err(StableArbError::Unauthorized {});
     }
+
     // Set vars
-    let lent_coin = details.coin;
+    let denom = deposit_info.get_denom()?;
+    let lent_coin = Coin::new(details.asset.amount.u128(), denom);
     let ask_denom = LUNA_DENOM.to_string();
     let response: Response<TerraMsgWrapper> = Response::new();
 
+    // Check if we have enough funds
+    let balance = query_balance(
+        &deps.querier,
+        env.contract.address.clone(),
+        denom,
+    )?;
+    if balance > details.asset.amount {
+        return Err(StableArbError::Broke {})
+    }
+
     // Simulate first tx with Terra Market Module
     let expected_luna_received =
-        query_market_price(deps.as_ref(), lent_coin.clone(), LUNA_DENOM.to_string())?;
+        query_market_price(deps.as_ref(), lent_coin.clone(), ask_denom)?;
     let residual_luna = query_balance(
         &deps.querier,
         env.contract.address.clone(),
-        LUNA_DENOM.to_string(),
+        ask_denom,
     )?;
 
     // Construct offer for Terraswap
@@ -253,16 +272,28 @@ pub fn try_arb_above_peg(
     details: ArbDetails,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
+    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
 
     // Ensure the caller is the vault
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.vault_address {
-        return Err(StableVaultError::Unauthorized {});
+        return Err(StableArbError::Unauthorized {});
     }
+
     // Set vars
-    let lent_coin = details.coin;
+    let denom = deposit_info.get_denom()?;
+    let lent_coin = Coin::new(details.asset.amount.u128(), denom);
     let ask_denom = LUNA_DENOM.to_string();
     let response: Response<TerraMsgWrapper> = Response::new();
 
+    // Check if we have enough funds
+    let balance = query_balance(
+        &deps.querier,
+        env.contract.address.clone(),
+        denom,
+    )?;
+    if balance > details.asset.amount {
+        return Err(StableArbError::Broke {})
+    }
     // Simulate first tx with Terraswap
     let expected_luna_received = simulate_terraswap_swap(
         deps.as_ref(),
@@ -319,7 +350,6 @@ pub fn try_arb_above_peg(
 //  HELPER FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-
 // compute total value of deposits in UST and return
 // pub fn compute_total_value(
 //     deps: Deps,
@@ -348,24 +378,6 @@ pub fn try_arb_above_peg(
 //     Ok((total_deposits_in_ust, stable_amount, aust_value_in_ust))
 // }
 
-pub fn get_transaction_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
-    let fee_config = FEE.load(deps.storage)?;
-    let fee = fee_config.community_fund_fee.compute(amount);
-    Ok(fee)
-}
-
-pub fn get_warchest_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
-    let fee_config = FEE.load(deps.storage)?;
-    let fee = fee_config.warchest_fee.compute(amount);
-    Ok(fee)
-}
-
-pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
-    let community_fund_fee = get_transaction_fee(deps, amount)?;
-    let warchest_fee = get_warchest_fee(deps, amount)?;
-    Ok(community_fund_fee + warchest_fee)
-}
-
 //----------------------------------------------------------------------------------------
 //  CALLBACK FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
@@ -388,25 +400,11 @@ fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
         to_address: deps.api.addr_humanize(&state.vault_address)?.to_string(),
         amount: vec![repay_asset.deduct_tax(&deps.querier)?],
     })))
-
 }
 
 //----------------------------------------------------------------------------------------
 //  GOVERNANCE CONTROLLED SETTERS
 //----------------------------------------------------------------------------------------
-
-pub fn set_stable_cap(deps: DepsMut, msg_info: MessageInfo, stable_cap: Uint128) -> VaultResult {
-    // Only the admin should be able to call this
-    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-
-    let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let previous_cap = info.stable_cap;
-    info.stable_cap = stable_cap;
-    POOL_INFO.save(deps.storage, &info)?;
-    Ok(Response::new()
-        .add_attribute("new stable cap", stable_cap.to_string())
-        .add_attribute("previous stable cap", previous_cap.to_string()))
-}
 
 pub fn set_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> VaultResult {
     // Only the admin should be able to call this
@@ -424,26 +422,6 @@ pub fn set_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> Vault
         .add_attribute("previous trader", previous_trader))
 }
 
-pub fn set_fee(
-    deps: DepsMut,
-    msg_info: MessageInfo,
-    community_fund_fee: Option<CappedFee>,
-    warchest_fee: Option<Fee>,
-) -> VaultResult {
-    // Only the admin should be able to call this
-    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-    // TODO: Evaluate this.
-    let mut fee_config = FEE.load(deps.storage)?;
-    if let Some(fee) = community_fund_fee {
-        fee_config.community_fund_fee = fee;
-    }
-    if let Some(fee) = warchest_fee {
-        fee_config.warchest_fee = fee;
-    }
-    FEE.save(deps.storage, &fee_config)?;
-    Ok(Response::default())
-}
-
 //----------------------------------------------------------------------------------------
 //  QUERY HANDLERS
 //----------------------------------------------------------------------------------------
@@ -455,57 +433,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_fees(deps: Deps) -> StdResult<FeeResponse> {
-    Ok(FeeResponse {
-        fees: FEE.load(deps.storage)?,
-    })
-}
-
-// Fees not including tax.
-pub fn estimate_deposit_fee(deps: Deps, amount: Uint128) -> StdResult<EstimateDepositFeeResponse> {
-    let fee = get_transaction_fee(deps, amount)?;
-    Ok(EstimateDepositFeeResponse {
-        fee: vec![Coin {
-            denom: DEPOSIT_INFO.load(deps.storage)?.get_denom()?,
-            amount: fee,
-        }],
-    })
-}
-
-pub fn estimate_withdraw_fee(
-    deps: Deps,
-    amount: Uint128,
-) -> StdResult<EstimateWithdrawFeeResponse> {
-    let fee = get_withdraw_fee(deps, amount)?;
-    Ok(EstimateWithdrawFeeResponse {
-        fee: vec![Coin {
-            denom: DEPOSIT_INFO.load(deps.storage)?.get_denom()?,
-            amount: fee,
-        }],
-    })
-}
-
 pub fn try_query_config(deps: Deps) -> StdResult<PoolInfo> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     info.to_normal(deps)
 }
-
-// pub fn try_query_pool(deps: Deps) -> StdResult<PoolResponse> {
-//     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-//     let assets: [Asset; 3] = info.query_pools(deps, info.contract_addr.clone())?;
-//     let total_share: Uint128 = query_supply(
-//         &deps.querier,
-//         deps.api.addr_humanize(&info.liquidity_token)?,
-//     )?;
-
-//     // let (total_value_in_ust, _, _) = compute_total_value(deps, &info)?;
-
-//     Ok(PoolResponse {
-//         assets,
-//         Uint128::from(0),
-//         total_share,
-//     })
-// }
 
 //----------------------------------------------------------------------------------------
 //  TESTS -> MOVE TO OTHER FILE

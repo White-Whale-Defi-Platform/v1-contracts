@@ -189,7 +189,11 @@ pub fn handle_flashloan(
     payload: FlashLoanPayload,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
+    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let whitelisted_contracts = state.whitelisted_contracts;
+
+    // Check if requested asset is base token of vault
+    deposit_info.assert(&payload.requested_asset.info)?;
 
     // Check if sender is whitelisted
     if !whitelisted_contracts.contains(&deps.api.addr_canonicalize(&info.sender.to_string())?) {
