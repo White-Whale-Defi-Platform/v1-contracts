@@ -1,3 +1,7 @@
 mod common;
 mod instantiate;
-mod testss;
+#[cfg(test)]
+mod mock_querier;
+mod poll;
+mod staking;
+mod voting;
