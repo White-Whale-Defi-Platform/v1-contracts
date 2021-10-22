@@ -2,7 +2,10 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
     Uint128,
 };
-use terraswap::querier::query_balance;
+use white_whale::query::anchor::query_aust_exchange_rate;
+use terraswap::querier::{query_balance, query_token_balance};
+use terraswap::asset::{Asset, AssetInfo};
+
 
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};
@@ -27,6 +30,8 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     let state = State {
         vault_address: deps.api.addr_canonicalize(&msg.vault_address.to_string())?,
+        anchor_money_market_address: deps.api.addr_canonicalize(&msg.vault_address.to_string())?,
+        aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
         denom: msg.denom,
         last_balance: Uint128::zero(),
         last_profit: Uint128::zero(),
@@ -54,8 +59,28 @@ pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
+    if conf.last_balance != Uint128::zero() {
+        return Err(ProfitCheckError::Std(StdError::generic_err("Nonzero")));
+    }
+
     conf.last_profit = Uint128::zero();
-    conf.last_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
+
+    let aust_exchange_rate = query_aust_exchange_rate(
+        deps.as_ref(),
+        deps.api
+            .addr_humanize(&conf.anchor_money_market_address)?
+            .to_string(),
+    )?;
+
+    let aust_balance = query_token_balance(
+        &deps.querier,
+        info.sender.clone(),
+        deps.api.addr_humanize(&conf.aust_address)?,
+    )?;
+    
+    let ust_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
+
+    conf.last_balance = ust_balance + aust_balance * aust_exchange_rate;
     CONFIG.save(deps.storage, &conf)?;
 
     Ok(Response::default())
@@ -68,7 +93,21 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
+    let aust_exchange_rate = query_aust_exchange_rate(
+        deps.as_ref(),
+        deps.api
+            .addr_humanize(&conf.anchor_money_market_address)?
+            .to_string(),
+    )?;
+
+    let aust_balance = query_token_balance(
+        &deps.querier,
+        info.sender.clone(),
+        deps.api.addr_humanize(&conf.aust_address)?,
+    )?;
+    
+    let ust_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
+    let balance = ust_balance + aust_balance * aust_exchange_rate;
 
     if balance < conf.last_balance {
         return Err(ProfitCheckError::CancelLosingTrade {});
