@@ -39,7 +39,7 @@ type VaultResult = Result<Response, StableVaultError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
-    let mut state = State {
+    let state = State {
         anchor_money_market_address: deps
             .api
             .addr_canonicalize(&msg.anchor_money_market_address)?,
@@ -49,11 +49,11 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> 
     };
 
     // Add initial contracts
-    for contract in msg.whitelisted_contracts.iter() {
-        state
-            .whitelisted_contracts
-            .push(deps.api.addr_canonicalize(&contract)?);
-    }
+    // for contract in msg.whitelisted_contracts.iter() {
+    //     state
+    //         .whitelisted_contracts
+    //         .push(deps.api.addr_canonicalize(&contract)?);
+    // }
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
@@ -175,7 +175,7 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
         return Err(StableVaultError::NotCallback {});
     }
     match msg {
-        CallbackMsg::AfterSuccessfulTradeCallback {} => after_successful_trade_callback(deps, env),
+        CallbackMsg::AfterSuccessfulLoanCallback {} => after_successful_trade_callback(deps, env),
         // Possibility to add more callbacks in future.
     }
 }
@@ -486,7 +486,8 @@ pub fn encapsule_payload(
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
 
-    let callback = CallbackMsg::AfterSuccessfulTradeCallback {};
+    let callback_msg = CallbackMsg::AfterSuccessfulLoanCallback {}
+        .to_cosmos_msg(&env.contract.address)?;
 
     Ok(response
         // Call profit-check contract to store current value of funds
@@ -503,11 +504,7 @@ pub fn encapsule_payload(
         .add_message(return_call)
         // After borrower actions, deposit the received funds back into
         // Anchor if applicable
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: env.contract.address.to_string(),
-            msg: to_binary(&callback)?,
-            funds: vec![],
-        }))
+        .add_message(callback_msg)
         // Call the profit-check again to cancle the borrow if
         // no profit is made.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {

@@ -1,11 +1,11 @@
 {
-    "profit_check": "terra1s6hk554wqsxwk8qnuj3l7k6qyx7r30mpng4ydn",
-    "stablecoin_vault": "terra1hg805wr9p5kxjqk0muz0uwlfsstps5ck4zjc82",
-    "liquidity_token": "terra10m9ap7xk7y9nfhwujasmezer06ffq692zy52hp",
+    "profit_check": "terra1m29akmmw9nt54m7qyezce2vg462v3fgds4q09f",
+    "stablecoin_vault": "terra1vpu6jyzcmk7gdgmtkd0t3ax5szk4pkqdem0hms",
+    "liquidity_token": "terra1dcg0asdq0hy7yf2w65h4e4c7hd7gs8nh46l2dz",
     "governance": "terra13zkn22u6fs550xdmx2s2mydesd0ym4jk3r4um3",
     "whale_token": "terra1k8pgyyxde6y893kjfqhtw7q0uttn68th60d6gh",
     "whale_ust_pool": "terra1xq3v5rp0w84ugqesv9m5q3xdx04akacsdlk5z7",
     "community_fund": "terra1ugx7u99t8nqvhrt40ka759kqxy4j4r3n5v5l9j",
     "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v",
-    "stablecoin_arb": "terra10063kneq3lhkmgyv0lhe0vr8zs4f57edsfd0r2"
+    "stablecoin_peg_arb": "terra160zmqfsejlnw2mf2s7p9cn8szzuh93dhfzev83"
 }

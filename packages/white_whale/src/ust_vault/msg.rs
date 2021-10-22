@@ -19,7 +19,6 @@ pub struct InitMsg {
     pub community_fund_fee: Decimal,
     pub max_community_fund_fee: Uint128,
     pub stable_cap: Uint128,
-    pub whitelisted_contracts: Vec<String>,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
 }
@@ -71,7 +70,7 @@ impl CallbackMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CallbackMsg {
-    AfterSuccessfulTradeCallback {},
+    AfterSuccessfulLoanCallback {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

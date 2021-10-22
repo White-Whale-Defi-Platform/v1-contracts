@@ -52,7 +52,7 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) ->
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
-        ExecuteMsg::TestMsg {} => test(deps, env),
+        ExecuteMsg::TestMsg { asset } => test(deps, env, asset),
         ExecuteMsg::ExecuteArb { details, above_peg } => {
             call_flashloan(deps, env, info, details, above_peg)
         }
@@ -62,14 +62,17 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
                 info: AssetInfo::NativeToken {
                     denom: String::from(denom),
                 },
-                amount: Uint128::from(100000u64),
+                amount: Uint128::from(1000000u64),
             };
 
             let state = STATE.load(deps.storage)?;
+            // Create callback, this will send the funds back to the vault.
+            let callback_msg = CallbackMsg::AfterSuccessfulTradeCallback {}
+            .to_cosmos_msg(&env.contract.address)?;
             Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: deps.api.addr_humanize(&state.vault_address)?.to_string(),
                 amount: vec![refund_asset.deduct_tax(&deps.querier)?],
-            })))
+            })).add_message(callback_msg))
         }
         ExecuteMsg::BelowPegCallback { details } => try_arb_below_peg(deps, env, info, details),
         ExecuteMsg::AbovePegCallback { details } => try_arb_above_peg(deps, env, info, details),
@@ -104,16 +107,16 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-fn test(deps: DepsMut, _env: Env) -> VaultResult {
+fn test(deps: DepsMut, _env: Env, asset: Asset) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-    let requested_asset = Asset {
-        info: AssetInfo::NativeToken {
-            denom: String::from("uusd"),
-        },
-        amount: Uint128::from(100000u64),
-    };
+    // let requested_asset = Asset {
+    //     info: AssetInfo::NativeToken {
+    //         denom: String::from("uusd"),
+    //     },
+    //     amount: Uint128::from(100000u64),
+    // };
     let payload = FlashLoanPayload {
-        requested_asset,
+        requested_asset: asset,
         callback: to_binary(&ExecuteMsg::SendToVault {})?,
     };
 
@@ -233,11 +236,8 @@ pub fn try_arb_below_peg(
     ];
 
     // Create callback, this will send the funds back to the vault.
-    let callback_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: env.contract.address.to_string(),
-        msg: to_binary(&CallbackMsg::AfterSuccessfulTradeCallback {})?,
-        funds: vec![],
-    });
+    let callback_msg = CallbackMsg::AfterSuccessfulTradeCallback {}
+        .to_cosmos_msg(&env.contract.address)?;
 
     Ok(response
         .add_attributes(logs)

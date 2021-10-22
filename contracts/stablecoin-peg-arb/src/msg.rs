@@ -1,6 +1,7 @@
-use cosmwasm_std::Decimal;
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, StdResult, WasmMsg};
 
 use schemars::JsonSchema;
+use std::fmt;
 use serde::{Deserialize, Serialize};
 
 use terraswap::asset::{Asset, AssetInfo};
@@ -28,7 +29,7 @@ pub enum ExecuteMsg {
         details: ArbDetails,
     },
     SendToVault {},
-    TestMsg {},
+    TestMsg { asset: Asset},
     SetAdmin {
         admin: String,
     },
@@ -36,6 +37,21 @@ pub enum ExecuteMsg {
         trader: String,
     },
     Callback(CallbackMsg),
+}
+
+// Modified from
+// https://github.com/CosmWasm/cosmwasm-plus/blob/v0.2.3/packages/cw20/src/receiver.rs#L15
+impl CallbackMsg {
+    pub fn to_cosmos_msg<T: Clone + fmt::Debug + PartialEq + JsonSchema>(
+        &self,
+        contract_addr: &Addr,
+    ) -> StdResult<CosmosMsg<T>> {
+        Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: String::from(contract_addr),
+            msg: to_binary(&ExecuteMsg::Callback(self.clone()))?,
+            funds: vec![],
+        }))
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

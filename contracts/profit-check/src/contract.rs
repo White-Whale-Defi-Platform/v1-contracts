@@ -4,8 +4,6 @@ use cosmwasm_std::{
 };
 use white_whale::query::anchor::query_aust_exchange_rate;
 use terraswap::querier::{query_balance, query_token_balance};
-use terraswap::asset::{Asset, AssetInfo};
-
 
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};

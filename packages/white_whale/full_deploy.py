@@ -28,15 +28,18 @@ create = False
 if create:
     vault.create()
     ust_arb.create()
+    vault.add_to_whitelist(ust_arb.address)
 
-deployer.send_funds(ust_arb.address, [Coin("uusd", 100000)])
-# ust_arb.call_vault()
-# vault.provide_liquidity(200_000_000)
+# deployer.send_funds(ust_arb.address, [Coin("uusd", 10000000)])
+# vault.provide_liquidity(3000_000_000)
+
+
+ust_arb.call_vault(2000_000_000)
+# vault.withdraw_all()
 
 
 # lp_balance = vault.query_lp_balance()
 # print(f'lp {lp_balance}')
-# vault.withdraw_all()
 # while True:
 #     # vault.provide_liquidity(2_000_000)
 #     lp_balance = vault.query_lp_balance()
