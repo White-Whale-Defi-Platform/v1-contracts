@@ -20,6 +20,6 @@ pub enum StableArbError {
     #[error("The requested funds have the wrong denom")]
     WrongDenom {},
 
-    #[error("Not enough funds to perform trade")]
+    #[error("Not enough funds to perform arb-trade")]
     Broke {},
 }

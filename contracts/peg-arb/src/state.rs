@@ -8,7 +8,7 @@ use cw_storage_plus::Item;
 use white_whale::deposit_info::DepositInfo;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// The Stablecoin-vault State contains configuration options for the vault including
+// The Arb State contains configuration options for the vault including
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
     pub trader: CanonicalAddr,

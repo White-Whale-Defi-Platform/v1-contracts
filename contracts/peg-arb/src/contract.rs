@@ -58,7 +58,7 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) ->
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
         ExecuteMsg::TestMsg {} => test(deps, env),
-        ExecuteMsg::BorrowForArb { details, above_peg } => {
+        ExecuteMsg::ExecuteArb { details, above_peg } => {
             call_flashloan(deps, env, info, details, above_peg)
         }
         ExecuteMsg::SendToVault {} => {
@@ -142,9 +142,8 @@ fn call_flashloan(
     let state = STATE.load(deps.storage)?;
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
 
-    // Check if requested asset is same as strategy base asset 
-    deposit_info.assert(&details.asset.info);
-
+    // Check if requested asset is same as strategy base asset
+    deposit_info.assert(&details.asset.info)?;
 
     // Construct callback msg
     let callback_msg;
@@ -158,13 +157,9 @@ fn call_flashloan(
         }
     }
 
-    // TODO: Add tax (this tax is used for the first trade)
-    // Construct requested asset
-    let requested_asset = details.asset;
-
     // Construct payload
     let payload = FlashLoanPayload {
-        requested_asset,
+        requested_asset: details.asset,
         callback: to_binary(&callback_msg)?,
     };
 
@@ -178,9 +173,8 @@ fn call_flashloan(
 }
 
 // Attempt to perform an arbitrage operation with the assumption that
-// the currency to be arb'd is below peg.
-// If needed, funds are withdrawn from anchor and messages are prepared to perform the swaps.
-// Two calls to a profit_check contract surround the trade msgs to enshure the trade only finalizes if the contract makes a profit.
+// the currency to be arb'd is below peg. Needed funds should be provided
+// by the stablecoin vault flashloan call.
 
 pub fn try_arb_below_peg(
     deps: DepsMut,
@@ -198,27 +192,23 @@ pub fn try_arb_below_peg(
 
     // Set vars
     let denom = deposit_info.get_denom()?;
-    let lent_coin = Coin::new(details.asset.amount.u128(), denom);
+    let lent_coin = Coin::new(details.asset.amount.u128(), denom.clone());
     let ask_denom = LUNA_DENOM.to_string();
     let response: Response<TerraMsgWrapper> = Response::new();
 
     // Check if we have enough funds
-    let balance = query_balance(
-        &deps.querier,
-        env.contract.address.clone(),
-        denom,
-    )?;
-    if balance > details.asset.amount {
-        return Err(StableArbError::Broke {})
+    let balance = query_balance(&deps.querier, env.contract.address.clone(), denom)?;
+    if balance < details.asset.amount {
+        return Err(StableArbError::Broke {});
     }
 
     // Simulate first tx with Terra Market Module
     let expected_luna_received =
-        query_market_price(deps.as_ref(), lent_coin.clone(), ask_denom)?;
+        query_market_price(deps.as_ref(), lent_coin.clone(), ask_denom.clone())?;
     let residual_luna = query_balance(
         &deps.querier,
         env.contract.address.clone(),
-        ask_denom,
+        ask_denom.clone(),
     )?;
 
     // Construct offer for Terraswap
@@ -262,9 +252,8 @@ pub fn try_arb_below_peg(
 }
 
 // Attempt to perform an arbitrage operation with the assumption that
-// the currency to be arb'd is below peg.
-// If needed, funds are withdrawn from anchor and messages are prepared to perform the swaps.
-// Two calls to a profit_check contract surround the trade msgs to enshure the trade only finalizes if the contract makes a profit.
+// the currency to be arb'd is below peg. Needed funds should be provided
+// by the stablecoin vault flashloan call.
 pub fn try_arb_above_peg(
     deps: DepsMut,
     env: Env,
@@ -281,18 +270,14 @@ pub fn try_arb_above_peg(
 
     // Set vars
     let denom = deposit_info.get_denom()?;
-    let lent_coin = Coin::new(details.asset.amount.u128(), denom);
+    let lent_coin = Coin::new(details.asset.amount.u128(), denom.clone());
     let ask_denom = LUNA_DENOM.to_string();
     let response: Response<TerraMsgWrapper> = Response::new();
 
     // Check if we have enough funds
-    let balance = query_balance(
-        &deps.querier,
-        env.contract.address.clone(),
-        denom,
-    )?;
-    if balance > details.asset.amount {
-        return Err(StableArbError::Broke {})
+    let balance = query_balance(&deps.querier, env.contract.address.clone(), denom)?;
+    if balance < details.asset.amount {
+        return Err(StableArbError::Broke {});
     }
     // Simulate first tx with Terraswap
     let expected_luna_received = simulate_terraswap_swap(
@@ -422,6 +407,22 @@ pub fn set_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> Vault
         .add_attribute("previous trader", previous_trader))
 }
 
+pub fn set_vault_addr(deps: DepsMut, msg_info: MessageInfo, vault_address: String) -> VaultResult {
+    // Only the admin should be able to call this
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    // Get the old vault
+    let previous_vault = deps.api.addr_humanize(&state.vault_address)?.to_string();
+    // Store the new vault addr
+    state.vault_address = deps.api.addr_canonicalize(&vault_address)?;
+    STATE.save(deps.storage, &state)?;
+    // Respond and note the previous vault address
+    Ok(Response::new()
+        .add_attribute("new vault", vault_address)
+        .add_attribute("previous vault", previous_vault))
+}
+
 //----------------------------------------------------------------------------------------
 //  QUERY HANDLERS
 //----------------------------------------------------------------------------------------
@@ -433,9 +434,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn try_query_config(deps: Deps) -> StdResult<PoolInfo> {
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    info.to_normal(deps)
+pub fn try_query_config(deps: Deps) -> StdResult<DepositInfo> {
+    let info: DepositInfo = DEPOSIT_INFO.load(deps.storage)?;
+    Ok(info)
 }
 
 //----------------------------------------------------------------------------------------

@@ -41,8 +41,11 @@ pub enum ExecuteMsg {
     SetAdmin {
         admin: String,
     },
-    SetTrader {
-        trader: String,
+    AddToWhitelist {
+        contract_addr: String,
+    },
+    RemoveFromWhitelist {
+        contract_addr: String,
     },
     FlashLoan {
         payload: FlashLoanPayload,

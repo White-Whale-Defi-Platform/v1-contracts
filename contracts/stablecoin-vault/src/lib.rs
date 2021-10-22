@@ -4,6 +4,7 @@ pub mod pool_info;
 pub mod querier;
 pub mod response;
 pub mod state;
+pub mod tests;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod mock;

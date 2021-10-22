@@ -3,7 +3,7 @@ use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, WasmMsg
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use terraswap::asset::{AssetInfo, Asset};
+use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InitMsg {
@@ -17,7 +17,7 @@ pub struct InitMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    BorrowForArb {
+    ExecuteArb {
         details: ArbDetails,
         above_peg: bool,
     },

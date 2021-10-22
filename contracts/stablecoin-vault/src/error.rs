@@ -27,5 +27,8 @@ pub enum StableVaultError {
     Broke {},
 
     #[error("The requesting contract is not whitelisted.")]
-    NotWhiteListed {},
+    NotWhitelisted {},
+
+    #[error("The requesting contract already whitelisted.")]
+    AlreadyWhitelisted {},
 }
