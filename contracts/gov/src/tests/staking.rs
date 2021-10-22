@@ -1,12 +1,15 @@
+use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
+use cosmwasm_std::{attr, from_binary, to_binary, Addr, Uint128};
+use cw20::Cw20ReceiveMsg;
+
 use crate::contract::{execute, query};
 use crate::msg::{ExecuteMsg, QueryMsg};
+use crate::staking::stake_voting_tokens;
 use crate::state::{Cw20HookMsg, StakerResponse};
 use crate::tests::common::{TEST_VOTER, VOTING_TOKEN};
 use crate::tests::mock_querier::mock_dependencies;
 use crate::tests::{instantiate, poll};
-use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{attr, from_binary, to_binary, Uint128};
-use cw20::Cw20ReceiveMsg;
+use crate::ContractError;
 
 #[test]
 fn share_calculation() {
@@ -90,4 +93,15 @@ fn share_calculation() {
     assert_eq!(stake_info.share, Uint128::new(100));
     assert_eq!(stake_info.balance, Uint128::new(200));
     assert_eq!(stake_info.locked_balance, vec![]);
+}
+
+#[test]
+fn fails_insufficient_funds_staking() {
+    let mut deps = mock_dependencies(&[]);
+
+    match stake_voting_tokens(deps.as_mut(), Addr::unchecked(""), Uint128::zero()) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::InsufficientFunds {}) => (),
+        Err(_) => panic!("Unknown error"),
+    }
 }

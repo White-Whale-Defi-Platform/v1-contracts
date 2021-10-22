@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, from_binary, to_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
+    MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
@@ -17,7 +17,6 @@ use crate::state::{
     PollStatus, PollsResponse, State, StateResponse, VoteOption, VoterInfo, VotersResponse,
     VotersResponseItem,
 };
-use crate::validators;
 use crate::validators::{
     validate_poll_description, validate_poll_link, validate_poll_title, validate_quorum,
     validate_threshold,
@@ -203,8 +202,8 @@ pub fn receive_cw20(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 /// create a new poll
+#[allow(clippy::too_many_arguments)]
 pub fn create_poll(
     deps: DepsMut,
     env: Env,

@@ -79,7 +79,7 @@ fn fails_cast_vote_not_enough_staked() {
 }
 
 #[test]
-fn happy_days_cast_vote() {
+fn successful_cast_vote() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
     poll::mock_register_voting_token(deps.as_mut());
@@ -206,7 +206,7 @@ fn happy_days_cast_vote() {
 }
 
 #[test]
-fn happy_days_withdraw_voting_tokens() {
+fn successful_withdraw_voting_tokens() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
     poll::mock_register_voting_token(deps.as_mut());
@@ -277,7 +277,7 @@ fn happy_days_withdraw_voting_tokens() {
 }
 
 #[test]
-fn happy_days_withdraw_voting_tokens_all() {
+fn successful_withdraw_voting_tokens_all() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
     poll::mock_register_voting_token(deps.as_mut());
@@ -637,7 +637,7 @@ fn fails_cast_vote_without_poll() {
 }
 
 #[test]
-fn happy_days_stake_voting_tokens() {
+fn successful_stake_voting_tokens() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
     poll::mock_register_voting_token(deps.as_mut());

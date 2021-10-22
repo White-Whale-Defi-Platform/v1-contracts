@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    attr, coins, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Response, StdError,
-    SubMsg, Uint128, WasmMsg,
+    attr, coins, from_binary, to_binary, Addr, Api, CosmosMsg, Deps, DepsMut, Response, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
@@ -17,7 +17,7 @@ use crate::tests::common::{
     DEFAULT_VOTING_PERIOD, TEST_CREATOR, TEST_VOTER, TEST_VOTER_2, TEST_VOTER_3, VOTING_TOKEN,
 };
 use crate::tests::mock_querier::mock_dependencies;
-use crate::tests::{common, instantiate, poll};
+use crate::tests::{common, instantiate};
 use crate::ContractError;
 
 pub fn mock_register_voting_token(deps: DepsMut) {
@@ -138,7 +138,7 @@ pub fn assert_cast_vote_success(
 fn add_several_execute_msgs() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
     let info = mock_info(VOTING_TOKEN, &[]);
     let env = common::mock_env_height(0, 10000);
 
@@ -176,7 +176,7 @@ fn add_several_execute_msgs() {
         },
     ];
 
-    let msg = poll::create_poll_msg(
+    let msg = create_poll_msg(
         "test".to_string(),
         "test".to_string(),
         None,
@@ -184,7 +184,7 @@ fn add_several_execute_msgs() {
     );
 
     let execute_res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         env.block.height + DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -201,7 +201,7 @@ fn add_several_execute_msgs() {
 }
 
 #[test]
-fn happy_days_create_poll() {
+fn successful_create_poll() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
     mock_register_voting_token(deps.as_mut());
@@ -242,102 +242,121 @@ fn create_poll_no_quorum() {
 }
 
 #[test]
-fn fails_create_poll_invalid_title() {
+fn fails_create_poll_invalid_short_title() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
     mock_register_voting_token(deps.as_mut());
 
-    let msg = create_poll_msg("a".to_string(), "test".to_string(), None, None);
+    let msg = create_poll_msg("a".to_string(), "valid description".to_string(), None, None);
     let info = mock_info(VOTING_TOKEN, &[]);
     match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
-            assert_eq!(msg, "Title too short")
-        }
-        Err(_) => panic!("Unknown error"),
-    }
-
-    let msg = create_poll_msg(
-        "You just assured me that I could speak. I’m under what? GENTLEMEN THIS IS DEMOCRACY MANIFEST. Have a look at the headlock here. See that chap over there? GET YOUR HAND OFF MY PENIS. This is the bloke who got me on the penis people. Why did you do this? What is the charge? EATING A MEAL? A SUCCULENT CHINESE MEAL? Ooh that’s a nice headlock sir, ahh yes, I see that you know your judo well. And you sir, are you waiting to receive my limp penis? How dare, get your hands off me. Tata and farewell.".to_string(),
-        "test".to_string(),
-        None,
-        None,
-    );
-
-    match execute(deps.as_mut(), mock_env(), info, msg) {
-        Ok(_) => panic!("Must return error"),
-        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
-            assert_eq!(msg, "Title too long")
-        }
+        Err(ContractError::PollTitleInvalidShort(..)) => (),
         Err(_) => panic!("Unknown error"),
     }
 }
 
 #[test]
-fn fails_create_poll_invalid_description() {
+fn fails_create_poll_invalid_long_title() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
     mock_register_voting_token(deps.as_mut());
 
-    let msg = create_poll_msg("test".to_string(), "a".to_string(), None, None);
+    let invalid_title =
+        String::from("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do e");
+    let msg = create_poll_msg(invalid_title, "valid description".to_string(), None, None);
     let info = mock_info(VOTING_TOKEN, &[]);
     match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
-            assert_eq!(msg, "Description too short")
-        }
-        Err(_) => panic!("Unknown error"),
-    }
-
-    let msg = create_poll_msg(
-        "test".to_string(),
-        "012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678900123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012340123456789001234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012341234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123456".to_string(),
-        None,
-        None,
-    );
-
-    match execute(deps.as_mut(), mock_env(), info, msg) {
-        Ok(_) => panic!("Must return error"),
-        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
-            assert_eq!(msg, "Description too long")
-        }
+        Err(ContractError::PollTitleInvalidLong(..)) => (),
         Err(_) => panic!("Unknown error"),
     }
 }
 
 #[test]
-fn fails_create_poll_invalid_link() {
+fn fails_create_poll_invalid_short_description() {
+    let mut deps = mock_dependencies(&[]);
+    instantiate::mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    let msg = create_poll_msg("valid title".to_string(), "abc".to_string(), None, None);
+    let info = mock_info(VOTING_TOKEN, &[]);
+    match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::PollDescriptionInvalidShort(..)) => (),
+        Err(_) => panic!("Unknown error"),
+    }
+}
+
+#[test]
+fn fails_create_poll_invalid_long_description() {
+    let mut deps = mock_dependencies(&[]);
+    instantiate::mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    let s1 = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod \
+    tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud \
+    exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor \
+    in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur \
+    sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est \
+    laborum.";
+    let s2 = "Section 1.10.32 of de Finibus Bonorum et Malorum, written by Cicero in 45 BC";
+    let s3 = "Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium \
+    doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi \
+    architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit \
+    aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem \
+    sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, \
+    adipisci velit, sed quia non numquam eius modi tempora ";
+    let long_desc = s1.to_owned().clone() + s2 + s3;
+
+    let msg = create_poll_msg("valid title".to_string(), long_desc, None, None);
+    let info = mock_info(VOTING_TOKEN, &[]);
+
+    match execute(deps.as_mut(), mock_env(), info, msg) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::PollDescriptionInvalidLong(..)) => (),
+        Err(_) => panic!("Unknown error"),
+    }
+}
+
+#[test]
+fn fails_create_poll_invalid_short_link() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
     mock_register_voting_token(deps.as_mut());
 
     let msg = create_poll_msg(
-        "test".to_string(),
-        "test".to_string(),
+        "valid title".to_string(),
+        "valid description".to_string(),
         Some("http://hih".to_string()),
         None,
     );
     let info = mock_info(VOTING_TOKEN, &[]);
     match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
-            assert_eq!(msg, "Link too short")
-        }
+        Err(ContractError::PollLinkInvalidShort(..)) => (),
         Err(_) => panic!("Unknown error"),
     }
+}
 
+#[test]
+fn fails_create_poll_invalid_long_link() {
+    let mut deps = mock_dependencies(&[]);
+    instantiate::mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    let long_link = String::from("https://whaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaale.com");
     let msg = create_poll_msg(
-        "test".to_string(),
-        "test".to_string(),
-        Some("0123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234012345678901234567890123456789012345678901234567890123456789012340123456789012345678901234567890123456789012345678901234567890123401234567890123456789012345678901234567890123456789012345678901234".to_string()),
+        "valid title".to_string(),
+        "valid description".to_string(),
+        Some(long_link),
         None,
     );
+    let info = mock_info(VOTING_TOKEN, &[]);
 
     match execute(deps.as_mut(), mock_env(), info, msg) {
         Ok(_) => panic!("Must return error"),
-        Err(ContractError::Std(StdError::GenericErr { msg, .. })) => {
-            assert_eq!(msg, "Link too long")
-        }
+        Err(ContractError::PollLinkInvalidLong(..)) => (),
         Err(_) => panic!("Unknown error"),
     }
 }
@@ -368,10 +387,6 @@ fn fails_create_poll_invalid_deposit() {
     }
 }
 
-/**
- * expire_poll Tests
- */
-
 #[test]
 fn expire_poll() {
     const POLL_START_HEIGHT: u64 = 1000;
@@ -380,7 +395,7 @@ fn expire_poll() {
 
     let mut deps = mock_dependencies(&coins(1000, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
     let mut creator_env = common::mock_env_height(POLL_START_HEIGHT, 10000);
     let creator_info = mock_info(VOTING_TOKEN, &coins(2, VOTING_TOKEN));
 
@@ -393,7 +408,7 @@ fn expire_poll() {
         contract: VOTING_TOKEN.to_string(),
         msg: exec_msg_bz,
     }];
-    let msg = poll::create_poll_msg(
+    let msg = create_poll_msg(
         "test".to_string(),
         "test".to_string(),
         None,
@@ -408,7 +423,7 @@ fn expire_poll() {
     )
     .unwrap();
 
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         creator_env.block.height + DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -545,19 +560,18 @@ fn expire_poll() {
 /**
  * end_poll Tests
  */
-
 #[test]
 fn fails_end_poll_before_end_height() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
     let env = common::mock_env_height(0, 10000);
     let info = mock_info(VOTING_TOKEN, &[]);
 
-    let msg = poll::create_poll_msg("test".to_string(), "test".to_string(), None, None);
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
 
     let execute_res = execute(deps.as_mut(), env, info, msg).unwrap();
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -582,14 +596,14 @@ fn fails_end_poll_before_end_height() {
 }
 
 #[test]
-fn happy_days_end_poll() {
+fn successful_end_poll() {
     const POLL_START_HEIGHT: u64 = 1000;
     const POLL_ID: u64 = 1;
     let stake_amount = 1000;
 
     let mut deps = mock_dependencies(&coins(1000, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
     let mut creator_env = common::mock_env_height(POLL_START_HEIGHT, 10000);
     let mut creator_info = mock_info(VOTING_TOKEN, &coins(2, VOTING_TOKEN));
 
@@ -627,7 +641,7 @@ fn happy_days_end_poll() {
         },
     ];
 
-    let msg = poll::create_poll_msg(
+    let msg = create_poll_msg(
         "test".to_string(),
         "test".to_string(),
         None,
@@ -642,7 +656,7 @@ fn happy_days_end_poll() {
     )
     .unwrap();
 
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         creator_env.block.height + DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -786,12 +800,12 @@ fn happy_days_end_poll() {
                 contract_addr: VOTING_TOKEN.to_string(),
                 msg: exec_msg_bz3,
                 funds: vec![],
-            }))
+            })),
         ]
     );
     assert_eq!(
         execute_res.attributes,
-        vec![attr("action", "execute_poll"), attr("poll_id", "1"),]
+        vec![attr("action", "execute_poll"), attr("poll_id", "1")]
     );
 
     // Query executed polls
@@ -867,7 +881,7 @@ fn happy_days_end_poll() {
         StakerResponse {
             balance: Uint128::from(stake_amount),
             share: Uint128::from(stake_amount),
-            locked_balance: vec![]
+            locked_balance: vec![],
         }
     );
 
@@ -903,7 +917,7 @@ fn happy_days_end_poll() {
 fn end_poll_zero_quorum() {
     let mut deps = mock_dependencies(&coins(1000, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
     let mut creator_env = common::mock_env_height(1000, 10000);
     let mut creator_info = mock_info(VOTING_TOKEN, &[]);
 
@@ -916,7 +930,7 @@ fn end_poll_zero_quorum() {
         .unwrap(),
     }];
 
-    let msg = poll::create_poll_msg(
+    let msg = create_poll_msg(
         "test".to_string(),
         "test".to_string(),
         None,
@@ -930,7 +944,7 @@ fn end_poll_zero_quorum() {
         msg,
     )
     .unwrap();
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         creator_env.block.height + DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -1021,9 +1035,9 @@ fn end_poll_zero_quorum() {
 fn end_poll_quorum_rejected() {
     let mut deps = mock_dependencies(&coins(100, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
 
-    let msg = poll::create_poll_msg("test".to_string(), "test".to_string(), None, None);
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
     let mut creator_env = mock_env();
     let mut creator_info = mock_info(VOTING_TOKEN, &[]);
     let execute_res = execute(
@@ -1109,9 +1123,9 @@ fn end_poll_quorum_rejected() {
 fn end_poll_quorum_rejected_noting_staked() {
     let mut deps = mock_dependencies(&coins(100, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
 
-    let msg = poll::create_poll_msg("test".to_string(), "test".to_string(), None, None);
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
     let mut creator_env = mock_env();
     let mut creator_info = mock_info(VOTING_TOKEN, &[]);
     let execute_res = execute(
@@ -1154,11 +1168,11 @@ fn end_poll_nay_rejected() {
     let voter2_stake = 1000;
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
     let mut creator_env = mock_env();
     let mut creator_info = mock_info(VOTING_TOKEN, &coins(2, VOTING_TOKEN));
 
-    let msg = poll::create_poll_msg("test".to_string(), "test".to_string(), None, None);
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
 
     let execute_res = execute(
         deps.as_mut(),
@@ -1260,7 +1274,7 @@ fn execute_poll_with_order() {
 
     let mut deps = mock_dependencies(&coins(1000, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
     let mut creator_env = common::mock_env_height(POLL_START_HEIGHT, 10000);
     let mut creator_info = mock_info(VOTING_TOKEN, &coins(2, VOTING_TOKEN));
 
@@ -1316,7 +1330,7 @@ fn execute_poll_with_order() {
         },
     ];
 
-    let msg = poll::create_poll_msg(
+    let msg = create_poll_msg(
         "test".to_string(),
         "test".to_string(),
         None,
@@ -1331,7 +1345,7 @@ fn execute_poll_with_order() {
     )
     .unwrap();
 
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         creator_env.block.height + DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -1355,7 +1369,7 @@ fn execute_poll_with_order() {
 
     let info = mock_info(VOTING_TOKEN, &[]);
     let execute_res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    poll::assert_stake_tokens_result(
+    assert_stake_tokens_result(
         stake_amount,
         DEFAULT_PROPOSAL_DEPOSIT,
         stake_amount,
@@ -1462,7 +1476,7 @@ fn execute_poll_with_order() {
     );
     assert_eq!(
         execute_res.attributes,
-        vec![attr("action", "execute_poll"), attr("poll_id", "1"),]
+        vec![attr("action", "execute_poll"), attr("poll_id", "1")]
     );
 }
 
@@ -1472,9 +1486,9 @@ fn snapshot_poll() {
 
     let mut deps = mock_dependencies(&coins(100, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
 
-    let msg = poll::create_poll_msg("test".to_string(), "test".to_string(), None, None);
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
     let mut creator_env = mock_env();
     let creator_info = mock_info(VOTING_TOKEN, &[]);
     let execute_res = execute(
@@ -1544,17 +1558,17 @@ fn snapshot_poll() {
 }
 
 #[test]
-fn happy_days_cast_vote_with_snapshot() {
+fn successful_cast_vote_with_snapshot() {
     let mut deps = mock_dependencies(&[]);
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
 
     let env = common::mock_env_height(0, 10000);
     let info = mock_info(VOTING_TOKEN, &[]);
-    let msg = poll::create_poll_msg("test".to_string(), "test".to_string(), None, None);
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
 
     let execute_res = execute(deps.as_mut(), env, info, msg).unwrap();
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -1578,7 +1592,7 @@ fn happy_days_cast_vote_with_snapshot() {
 
     let info = mock_info(VOTING_TOKEN, &[]);
     let execute_res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    poll::assert_stake_tokens_result(
+    assert_stake_tokens_result(
         11,
         DEFAULT_PROPOSAL_DEPOSIT,
         11,
@@ -1599,7 +1613,7 @@ fn happy_days_cast_vote_with_snapshot() {
     };
 
     let execute_res = execute(deps.as_mut(), env, info, msg).unwrap();
-    poll::assert_cast_vote_success(TEST_VOTER, amount, 1, VoteOption::Yes, execute_res);
+    assert_cast_vote_success(TEST_VOTER, amount, 1, VoteOption::Yes, execute_res);
 
     // balance be double
     deps.querier.with_token_balances(&[(
@@ -1634,7 +1648,7 @@ fn happy_days_cast_vote_with_snapshot() {
     let env = common::mock_env_height(end_height - 9, 10000);
     let info = mock_info(TEST_VOTER_2, &[]);
     let execute_res = execute(deps.as_mut(), env.clone(), info.clone(), msg).unwrap();
-    poll::assert_cast_vote_success(TEST_VOTER_2, amount, 1, VoteOption::Yes, execute_res);
+    assert_cast_vote_success(TEST_VOTER_2, amount, 1, VoteOption::Yes, execute_res);
 
     let res = query(deps.as_ref(), mock_env(), QueryMsg::Poll { poll_id: 1 }).unwrap();
     let value: PollResponse = from_binary(&res).unwrap();
@@ -1676,7 +1690,7 @@ fn happy_days_cast_vote_with_snapshot() {
     let env = common::mock_env_height(end_height - 8, 10000);
     let info = mock_info(TEST_VOTER_3, &[]);
     let execute_res = execute(deps.as_mut(), env, info, msg).unwrap();
-    poll::assert_cast_vote_success(TEST_VOTER_3, amount, 1, VoteOption::Yes, execute_res);
+    assert_cast_vote_success(TEST_VOTER_3, amount, 1, VoteOption::Yes, execute_res);
 
     let res = query(deps.as_ref(), mock_env(), QueryMsg::Poll { poll_id: 1 }).unwrap();
     let value: PollResponse = from_binary(&res).unwrap();
@@ -1691,7 +1705,7 @@ fn fails_end_poll_quorum_inflation_without_snapshot_poll() {
 
     let mut deps = mock_dependencies(&coins(1000, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
 
     let mut creator_env = common::mock_env_height(POLL_START_HEIGHT, 10000);
     let mut creator_info = mock_info(VOTING_TOKEN, &coins(2, VOTING_TOKEN));
@@ -1715,7 +1729,7 @@ fn fails_end_poll_quorum_inflation_without_snapshot_poll() {
         },
     ];
 
-    let msg = poll::create_poll_msg(
+    let msg = create_poll_msg(
         "test".to_string(),
         "test".to_string(),
         None,
@@ -1730,7 +1744,7 @@ fn fails_end_poll_quorum_inflation_without_snapshot_poll() {
     )
     .unwrap();
 
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         creator_env.block.height + DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -1754,7 +1768,7 @@ fn fails_end_poll_quorum_inflation_without_snapshot_poll() {
 
     let info = mock_info(VOTING_TOKEN, &[]);
     let execute_res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    poll::assert_stake_tokens_result(
+    assert_stake_tokens_result(
         stake_amount,
         DEFAULT_PROPOSAL_DEPOSIT,
         stake_amount,
@@ -1853,14 +1867,14 @@ fn fails_end_poll_quorum_inflation_without_snapshot_poll() {
 }
 
 #[test]
-fn happy_days_end_poll_with_controlled_quorum() {
+fn successful_end_poll_with_controlled_quorum() {
     const POLL_START_HEIGHT: u64 = 1000;
     const POLL_ID: u64 = 1;
     let stake_amount = 1000;
 
     let mut deps = mock_dependencies(&coins(1000, VOTING_TOKEN));
     instantiate::mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
 
     let mut creator_env = common::mock_env_height(POLL_START_HEIGHT, 10000);
     let mut creator_info = mock_info(VOTING_TOKEN, &coins(2, VOTING_TOKEN));
@@ -1884,7 +1898,7 @@ fn happy_days_end_poll_with_controlled_quorum() {
         },
     ];
 
-    let msg = poll::create_poll_msg(
+    let msg = create_poll_msg(
         "test".to_string(),
         "test".to_string(),
         None,
@@ -1899,7 +1913,7 @@ fn happy_days_end_poll_with_controlled_quorum() {
     )
     .unwrap();
 
-    poll::assert_create_poll_result(
+    assert_create_poll_result(
         1,
         creator_env.block.height + DEFAULT_VOTING_PERIOD,
         TEST_CREATOR,
@@ -1923,7 +1937,7 @@ fn happy_days_end_poll_with_controlled_quorum() {
 
     let info = mock_info(VOTING_TOKEN, &[]);
     let execute_res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    poll::assert_stake_tokens_result(
+    assert_stake_tokens_result(
         stake_amount,
         DEFAULT_PROPOSAL_DEPOSIT,
         stake_amount,
@@ -2060,4 +2074,23 @@ fn happy_days_end_poll_with_controlled_quorum() {
     .unwrap();
 
     assert_eq!(actual_staked_weight.u128(), (10 * stake_amount))
+}
+
+#[test]
+fn fails_query_poll() {
+    let mut deps = mock_dependencies(&[]);
+    instantiate::mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+    let env = mock_env_height(0, 10000);
+    let info = mock_info(VOTING_TOKEN, &[]);
+
+    let msg = create_poll_msg("test".to_string(), "test".to_string(), None, None);
+
+    execute(deps.as_mut(), env.clone(), info, msg).unwrap();
+
+    match query(deps.as_ref(), mock_env(), QueryMsg::Poll { poll_id: 2 }) {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::PollNotFound {}) => (),
+        Err(_) => panic!("Unknown error"),
+    };
 }

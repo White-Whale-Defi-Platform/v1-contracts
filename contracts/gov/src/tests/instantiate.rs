@@ -10,7 +10,7 @@ use crate::tests::common::{
     DEFAULT_THRESHOLD, DEFAULT_TIMELOCK_PERIOD, DEFAULT_VOTING_PERIOD, TEST_CREATOR, VOTING_TOKEN,
 };
 use crate::tests::mock_querier::mock_dependencies;
-use crate::tests::poll;
+use crate::tests::poll::mock_register_voting_token;
 use crate::ContractError;
 
 pub(crate) fn instantiate_msg() -> InstantiateMsg {
@@ -125,10 +125,10 @@ fn invalid_threshold_fails_initialization() {
  * Tests updating the configuration of the contract.
  */
 #[test]
-fn update_config() {
+fn successful_update_config() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
-    poll::mock_register_voting_token(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
 
     // update owner
     let info = mock_info(TEST_CREATOR, &[]);
@@ -156,7 +156,7 @@ fn update_config() {
     assert_eq!(DEFAULT_TIMELOCK_PERIOD, config.timelock_period);
     assert_eq!(DEFAULT_PROPOSAL_DEPOSIT, config.proposal_deposit.u128());
 
-    // update left items
+    // update left items with the new owner
     let info = mock_info("addr0001", &[]);
     let msg = ExecuteMsg::UpdateConfig {
         owner: None,
@@ -183,9 +183,16 @@ fn update_config() {
     assert_eq!(30000u64, config.expiration_period);
     assert_eq!(123u128, config.proposal_deposit.u128());
     assert_eq!(11u64, config.snapshot_period);
+}
 
-    // Unauthorzied err
-    let info = mock_info(TEST_CREATOR, &[]);
+#[test]
+fn unsuccessful_update_config() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    // Unauthorized user
+    let info = mock_info("unauthorized_addr", &[]);
     let msg = ExecuteMsg::UpdateConfig {
         owner: None,
         quorum: None,

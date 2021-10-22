@@ -7,7 +7,6 @@ use crate::validators::{
     validate_quorum, validate_threshold,
 };
 use cosmwasm_std::Decimal;
-use std::ops::Add;
 use std::str::FromStr;
 
 /**
@@ -124,7 +123,7 @@ fn valid_threshold() {
 fn invalid_short_link() {
     let link = String::from("invalidlink");
     assert_eq!(link.len(), MIN_LINK_LENGTH - 1);
-    let invalid = validate_poll_link(&Some(link)).unwrap();
+    validate_poll_link(&Some(link)).unwrap();
 }
 
 /**
@@ -135,7 +134,7 @@ fn invalid_short_link() {
 fn invalid_long_link() {
     let link = String::from("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut en");
     assert_eq!(link.len(), MAX_LINK_LENGTH + 1);
-    let invalid = validate_poll_link(&Some(link)).unwrap();
+    validate_poll_link(&Some(link)).unwrap();
 }
 
 /**
