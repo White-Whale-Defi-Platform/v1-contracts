@@ -109,6 +109,18 @@ fn invalid_quorum_fails_initialization() {
     instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 }
 
+#[test]
+#[should_panic]
+fn invalid_threshold_fails_initialization() {
+    let mut deps = mock_dependencies(&[]);
+
+    let mut msg = instantiate_msg();
+    msg.threshold = Decimal::from_ratio(2u128, 1u128);
+
+    let info = mock_info(TEST_CREATOR, &coins(2, VOTING_TOKEN));
+    instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+}
+
 /**
  * Tests updating the configuration of the contract.
  */
