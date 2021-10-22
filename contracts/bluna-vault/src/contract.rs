@@ -341,6 +341,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         // TODO: Finish fee calculation and estimation
         QueryMsg::EstimateDepositFee { .. } => to_binary(""),
         QueryMsg::EstimateWithdrawFee { .. } => to_binary(""),
+        QueryMsg::VaultValue { .. } => to_binary(""),
     }
 }
 

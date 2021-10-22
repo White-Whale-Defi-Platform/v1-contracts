@@ -17,9 +17,10 @@ use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{CappedFee, Fee, VaultFee};
 use white_whale::msg::{
-    EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse, VaultQueryMsg as QueryMsg,
+    EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse, ValueResponse,
+    VaultQueryMsg as QueryMsg,
 };
-use white_whale::profit_check::msg::HandleMsg as ProfitCheckMsg;
+use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
 
 use white_whale::ust_vault::msg::*;
@@ -252,8 +253,10 @@ pub fn handle_flashloan(
         funds: vec![],
     });
 
+    response = response.add_message(return_call);
+
     // Call encapsulate function
-    encapsule_payload(deps.as_ref(), env, response, return_call)
+    encapsule_payload(deps.as_ref(), env, response)
 }
 
 // This function should be called alongside a deposit of UST into the contract.
@@ -478,18 +481,15 @@ pub fn try_withdraw_liquidity(
 /// This function prevents callers from doing unprofitable actions
 /// with the vault funds and makes shure the funds are returned by
 /// the borrower.
-pub fn encapsule_payload(
-    deps: Deps,
-    env: Env,
-    response: Response,
-    return_call: CosmosMsg,
-) -> VaultResult {
+pub fn encapsule_payload(deps: Deps, env: Env, response: Response) -> VaultResult {
     let state = STATE.load(deps.storage)?;
 
-    let callback_msg = CallbackMsg::AfterSuccessfulLoanCallback {}
-        .to_cosmos_msg(&env.contract.address)?;
+    let total_response: Response = Response::new();
 
-    Ok(response
+    let after_loan_msg =
+        CallbackMsg::AfterSuccessfulLoanCallback {}.to_cosmos_msg(&env.contract.address)?;
+
+    Ok(total_response
         // Call profit-check contract to store current value of funds
         // held in this contract
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -500,11 +500,14 @@ pub fn encapsule_payload(
             msg: to_binary(&ProfitCheckMsg::BeforeTrade {})?,
             funds: vec![],
         }))
-        // Return call to borrower contract
-        .add_message(return_call)
+        // Add response that:
+        // 1. Withdraws funds from Anchor if needed
+        // 2. Sends funds to the borrower
+        // 3. Calls the borrow contract through the provided callback msg
+        .add_submessages(response.messages)
         // After borrower actions, deposit the received funds back into
         // Anchor if applicable
-        .add_message(callback_msg)
+        .add_message(after_loan_msg)
         // Call the profit-check again to cancle the borrow if
         // no profit is made.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -734,6 +737,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_binary(&try_query_config(deps)?),
         QueryMsg::Pool {} => to_binary(&try_query_pool(deps)?),
         QueryMsg::Fees {} => to_binary(&query_fees(deps)?),
+        QueryMsg::VaultValue {} => to_binary(&query_total_value(deps)?),
         QueryMsg::EstimateDepositFee { amount } => to_binary(&estimate_deposit_fee(deps, amount)?),
         QueryMsg::EstimateWithdrawFee { amount } => {
             to_binary(&estimate_withdraw_fee(deps, amount)?)
@@ -791,4 +795,10 @@ pub fn try_query_pool(deps: Deps) -> StdResult<PoolResponse> {
         total_value_in_ust,
         total_share,
     })
+}
+
+pub fn query_total_value(deps: Deps) -> StdResult<ValueResponse> {
+    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let (total_ust_value, _, _) = compute_total_value(deps, &info)?;
+    Ok(ValueResponse { total_ust_value })
 }

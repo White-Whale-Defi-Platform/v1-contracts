@@ -1,8 +1,8 @@
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, StdResult, WasmMsg};
 
 use schemars::JsonSchema;
-use std::fmt;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 
 use terraswap::asset::{Asset, AssetInfo};
 
@@ -29,7 +29,9 @@ pub enum ExecuteMsg {
         details: ArbDetails,
     },
     SendToVault {},
-    TestMsg { asset: Asset},
+    TestMsg {
+        asset: Asset,
+    },
     SetAdmin {
         admin: String,
     },

@@ -20,22 +20,30 @@ std_fee = StdFee(6900000, "3500000uusd")
 
 deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=std_fee)
 
+profit_check = ProfitCheckContract(deployer)
 vault = StableVaultContract_2(deployer)
 ust_arb = StableArbContract(deployer)
 
 create = False
 
 if create:
+    # profit_check.create()
     vault.create()
+    profit_check.set_vault(vault.address)
     ust_arb.create()
     vault.add_to_whitelist(ust_arb.address)
 
+# ust_arb.call_arb(1)
+# print(vault.address)
+# profit_check.get_vault()
+# vault.query_vault_value()
 # deployer.send_funds(ust_arb.address, [Coin("uusd", 10000000)])
-# vault.provide_liquidity(3000_000_000)
+vault.provide_liquidity(5000_000_000)
 
 
-ust_arb.call_vault(2000_000_000)
+# ust_arb.call_vault(2000_000_000)
 # vault.withdraw_all()
+# vault.query_vault_value()
 
 
 # lp_balance = vault.query_lp_balance()

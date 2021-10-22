@@ -10,8 +10,6 @@ pub static LUNA_DENOM: &str = "uluna";
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
     pub vault_address: CanonicalAddr,
-    pub anchor_money_market_address: CanonicalAddr,
-    pub aust_address: CanonicalAddr,
     pub denom: String,
     pub last_balance: Uint128,
     pub last_profit: Uint128,

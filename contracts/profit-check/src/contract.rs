@@ -1,9 +1,9 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-    Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
+    StdError, StdResult, Uint128, WasmQuery,
 };
-use white_whale::query::anchor::query_aust_exchange_rate;
-use terraswap::querier::{query_balance, query_token_balance};
+
+use white_whale::msg::{ValueResponse, VaultQueryMsg};
 
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};
@@ -28,8 +28,6 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     let state = State {
         vault_address: deps.api.addr_canonicalize(&msg.vault_address.to_string())?,
-        anchor_money_market_address: deps.api.addr_canonicalize(&msg.vault_address.to_string())?,
-        aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
         denom: msg.denom,
         last_balance: Uint128::zero(),
         last_profit: Uint128::zero(),
@@ -63,25 +61,10 @@ pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
 
     conf.last_profit = Uint128::zero();
 
-    let aust_exchange_rate = query_aust_exchange_rate(
-        deps.as_ref(),
-        deps.api
-            .addr_humanize(&conf.anchor_money_market_address)?
-            .to_string(),
-    )?;
-
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        info.sender.clone(),
-        deps.api.addr_humanize(&conf.aust_address)?,
-    )?;
-    
-    let ust_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
-
-    conf.last_balance = ust_balance + aust_balance * aust_exchange_rate;
+    conf.last_balance = get_vault_value(deps.as_ref())?;
     CONFIG.save(deps.storage, &conf)?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attribute("value before trade: ", conf.last_balance.to_string()))
 }
 
 // Checks if balance increased after the trade
@@ -91,21 +74,7 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let aust_exchange_rate = query_aust_exchange_rate(
-        deps.as_ref(),
-        deps.api
-            .addr_humanize(&conf.anchor_money_market_address)?
-            .to_string(),
-    )?;
-
-    let aust_balance = query_token_balance(
-        &deps.querier,
-        info.sender.clone(),
-        deps.api.addr_humanize(&conf.aust_address)?,
-    )?;
-    
-    let ust_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
-    let balance = ust_balance + aust_balance * aust_exchange_rate;
+    let balance = get_vault_value(deps.as_ref())?;
 
     if balance < conf.last_balance {
         return Err(ProfitCheckError::CancelLosingTrade {});
@@ -115,7 +84,7 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
     conf.last_balance = Uint128::zero();
     CONFIG.save(deps.storage, &conf)?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attribute("value after trade: ", balance.to_string()))
 }
 
 // compute total value of deposits in UST and return
@@ -189,6 +158,15 @@ pub fn try_query_vault_address(deps: Deps) -> StdResult<VaultResponse> {
     Ok(VaultResponse {
         vault_address: deps.api.addr_humanize(&conf.vault_address)?,
     })
+}
+
+pub fn get_vault_value(deps: Deps) -> StdResult<Uint128> {
+    let config = CONFIG.load(deps.storage)?;
+    let response: ValueResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: deps.api.addr_humanize(&config.vault_address)?.to_string(),
+        msg: to_binary(&VaultQueryMsg::VaultValue {})?,
+    }))?;
+    Ok(response.total_ust_value)
 }
 
 #[cfg(test)]

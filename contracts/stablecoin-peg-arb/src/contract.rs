@@ -14,6 +14,7 @@ use white_whale::msg::create_terraswap_msg;
 
 use white_whale::deposit_info::DepositInfo;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
+use white_whale::tax::deduct_tax;
 use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
 
@@ -68,11 +69,13 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             let state = STATE.load(deps.storage)?;
             // Create callback, this will send the funds back to the vault.
             let callback_msg = CallbackMsg::AfterSuccessfulTradeCallback {}
-            .to_cosmos_msg(&env.contract.address)?;
-            Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send {
-                to_address: deps.api.addr_humanize(&state.vault_address)?.to_string(),
-                amount: vec![refund_asset.deduct_tax(&deps.querier)?],
-            })).add_message(callback_msg))
+                .to_cosmos_msg(&env.contract.address)?;
+            Ok(Response::new()
+                .add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: deps.api.addr_humanize(&state.vault_address)?.to_string(),
+                    amount: vec![refund_asset.deduct_tax(&deps.querier)?],
+                }))
+                .add_message(callback_msg))
         }
         ExecuteMsg::BelowPegCallback { details } => try_arb_below_peg(deps, env, info, details),
         ExecuteMsg::AbovePegCallback { details } => try_arb_above_peg(deps, env, info, details),
@@ -190,7 +193,10 @@ pub fn try_arb_below_peg(
 
     // Set vars
     let denom = deposit_info.get_denom()?;
-    let lent_coin = Coin::new(details.asset.amount.u128(), denom.clone());
+    let lent_coin = deduct_tax(
+        deps.as_ref(),
+        Coin::new(details.asset.amount.u128(), denom.clone()),
+    )?;
     let ask_denom = LUNA_DENOM.to_string();
     let response: Response<TerraMsgWrapper> = Response::new();
 
@@ -236,8 +242,8 @@ pub fn try_arb_below_peg(
     ];
 
     // Create callback, this will send the funds back to the vault.
-    let callback_msg = CallbackMsg::AfterSuccessfulTradeCallback {}
-        .to_cosmos_msg(&env.contract.address)?;
+    let callback_msg =
+        CallbackMsg::AfterSuccessfulTradeCallback {}.to_cosmos_msg(&env.contract.address)?;
 
     Ok(response
         .add_attributes(logs)
@@ -265,7 +271,10 @@ pub fn try_arb_above_peg(
 
     // Set vars
     let denom = deposit_info.get_denom()?;
-    let lent_coin = Coin::new(details.asset.amount.u128(), denom.clone());
+    let lent_coin = deduct_tax(
+        deps.as_ref(),
+        Coin::new(details.asset.amount.u128(), denom.clone()),
+    )?;
     let ask_denom = LUNA_DENOM.to_string();
     let response: Response<TerraMsgWrapper> = Response::new();
 
@@ -313,16 +322,13 @@ pub fn try_arb_above_peg(
     ];
 
     // Create callback, this will send the funds back to the vault.
-    let callback_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: env.contract.address.to_string(),
-        msg: to_binary(&CallbackMsg::AfterSuccessfulTradeCallback {})?,
-        funds: vec![],
-    });
+    let callback_msg =
+        CallbackMsg::AfterSuccessfulTradeCallback {}.to_cosmos_msg(&env.contract.address)?;
 
     Ok(response
         .add_attributes(logs)
-        .add_message(swap_msg)
         .add_message(terraswap_msg)
+        .add_message(swap_msg)
         .add_message(callback_msg))
 }
 
