@@ -12,7 +12,7 @@ const PREFIX_KEY_VESTING_INFO: &[u8] = b"vesting_info";
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: CanonicalAddr,
-    pub anchor_token: CanonicalAddr,
+    pub whale_token: CanonicalAddr,
     pub genesis_time: u64,
 }
 
