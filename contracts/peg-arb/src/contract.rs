@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Response, StdResult, Uint128, WasmMsg,
+    entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
+    Response, StdResult, Uint128, WasmMsg,
 };
 
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
@@ -10,10 +10,7 @@ use terraswap::querier::query_balance;
 
 use white_whale::denom::LUNA_DENOM;
 
-use white_whale::fee::{CappedFee, Fee};
-use white_whale::msg::{
-    create_terraswap_msg, EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse,
-};
+use white_whale::msg::create_terraswap_msg;
 
 use white_whale::deposit_info::DepositInfo;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
@@ -22,12 +19,10 @@ use white_whale::ust_vault::msg::FlashLoanPayload;
 
 use crate::error::StableArbError;
 use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InitMsg, QueryMsg};
-use crate::pool_info::{PoolInfo, PoolInfoRaw};
+
 use crate::querier::query_market_price;
 
 use crate::state::{State, ADMIN, DEPOSIT_INFO, STATE};
-
-const INSTANTIATE_REPLY_ID: u8 = 1u8;
 
 type VaultResult = Result<Response<TerraMsgWrapper>, StableArbError>;
 
@@ -118,7 +113,7 @@ fn test(deps: DepsMut, _env: Env) -> VaultResult {
         amount: Uint128::from(100000u64),
     };
     let payload = FlashLoanPayload {
-        requested_asset: requested_asset,
+        requested_asset,
         callback: to_binary(&ExecuteMsg::SendToVault {})?,
     };
 
@@ -133,8 +128,8 @@ fn test(deps: DepsMut, _env: Env) -> VaultResult {
 
 fn call_flashloan(
     deps: DepsMut,
-    env: Env,
-    msg_info: MessageInfo,
+    _env: Env,
+    _msg_info: MessageInfo,
     details: ArbDetails,
     above_peg: bool,
 ) -> VaultResult {

@@ -1,8 +1,8 @@
-use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, StdResult, WasmMsg};
+use cosmwasm_std::Decimal;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+
 use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
