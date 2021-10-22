@@ -285,7 +285,7 @@ pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let state = STATE.load(deps.storage)?;
     to_binary(&ConfigResponse {
         token_addr: deps.api.addr_humanize(&state.whale_token_addr)?,
-        pool_addr: deps.api.addr_humanize(&state.whale_pool_addr)?,
+        ust_pool_addr: deps.api.addr_humanize(&state.whale_pool_addr)?,
         anchor_money_market_addr: deps.api.addr_humanize(&state.anchor_money_market_addr)?,
         aust_addr: deps.api.addr_humanize(&state.aust_addr)?,
         anchor_deposit_threshold: state.anchor_deposit_threshold,

@@ -23,7 +23,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub token_addr: Addr,
-    pub pool_addr: Addr,
+    pub ust_pool_addr: Addr,
     pub anchor_money_market_addr: Addr,
     pub aust_addr: Addr,
     pub anchor_deposit_threshold: Uint128,
