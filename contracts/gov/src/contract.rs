@@ -23,6 +23,8 @@ use crate::validators::{
     validate_threshold,
 };
 
+pub(crate) const MAX_QUORUM: Decimal = Decimal::one();
+pub(crate) const MAX_THRESHOLD: Decimal = Decimal::one();
 pub(crate) const MIN_TITLE_LENGTH: usize = 4;
 pub(crate) const MAX_TITLE_LENGTH: usize = 64;
 pub(crate) const MIN_DESC_LENGTH: usize = 4;

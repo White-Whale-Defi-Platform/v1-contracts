@@ -95,9 +95,10 @@ fn successful_initialization() {
 }
 
 /**
- * Tests instantiation of the contract.
+ * Tests unsuccessful instantiation of the contract.
  */
 #[test]
+#[should_panic]
 fn invalid_quorum_fails_initialization() {
     let mut deps = mock_dependencies(&[]);
 
@@ -105,45 +106,7 @@ fn invalid_quorum_fails_initialization() {
     msg.quorum = Decimal::from_ratio(2u128, 1u128);
 
     let info = mock_info(TEST_CREATOR, &coins(2, VOTING_TOKEN));
-    let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-    assert_eq!(0, res.messages.len());
-
-    let config: Config = config_read(deps.as_ref().storage).load().unwrap();
-    assert_eq!(
-        config,
-        Config {
-            whale_token: CanonicalAddr::from(vec![]),
-            owner: deps.api.addr_canonicalize(&TEST_CREATOR).unwrap(),
-            quorum: Decimal::percent(DEFAULT_QUORUM),
-            threshold: Decimal::percent(DEFAULT_THRESHOLD),
-            voting_period: DEFAULT_VOTING_PERIOD,
-            timelock_period: DEFAULT_TIMELOCK_PERIOD,
-            expiration_period: DEFAULT_EXPIRATION_PERIOD,
-            proposal_deposit: Uint128::from(DEFAULT_PROPOSAL_DEPOSIT),
-            snapshot_period: DEFAULT_FIX_PERIOD
-        }
-    );
-
-    let msg = ExecuteMsg::RegisterContracts {
-        whale_token: VOTING_TOKEN.to_string(),
-    };
-    let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    let config: Config = config_read(deps.as_ref().storage).load().unwrap();
-    assert_eq!(
-        config.whale_token,
-        deps.api.addr_canonicalize(&VOTING_TOKEN).unwrap()
-    );
-
-    let state: State = state_read(deps.as_ref().storage).load().unwrap();
-    assert_eq!(
-        state,
-        State {
-            contract_addr: deps.api.addr_canonicalize(MOCK_CONTRACT_ADDR).unwrap(),
-            poll_count: 0,
-            total_share: Uint128::zero(),
-            total_deposit: Uint128::zero(),
-        }
-    );
+    instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 }
 
 /**

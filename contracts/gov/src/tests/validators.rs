@@ -3,11 +3,40 @@ use crate::contract::{
     MIN_TITLE_LENGTH,
 };
 use crate::validators::{
-    validate_poll_description, validate_poll_link, validate_poll_title, validate_quorum,
-    validate_threshold,
+    validate_decimal_value, validate_poll_description, validate_poll_link, validate_poll_title,
+    validate_quorum, validate_threshold,
 };
 use cosmwasm_std::Decimal;
 use std::ops::Add;
+use std::str::FromStr;
+
+/**
+ * Tests [validate_decimal_value]
+ */
+
+/**
+ * Tests [validate_decimal_value] with an invalid value, i.e. value > max_value.
+ */
+#[test]
+#[should_panic]
+fn invalid_validate_interval() {
+    validate_decimal_value(
+        Decimal::one(),
+        Decimal::one() - Decimal::from_str("0.000000000000000001").unwrap(),
+    )
+    .unwrap();
+}
+
+/**
+ * Tests [validate_decimal_value] with valid values, i.e. 0 <= value <= max_value.
+ */
+#[test]
+fn valid_validate_interval() {
+    let mut valid = validate_decimal_value(Decimal::one(), Decimal::one()).unwrap();
+    assert_eq!(valid, ());
+    valid = validate_decimal_value(Decimal::zero(), Decimal::one()).unwrap();
+    assert_eq!(valid, ());
+}
 
 /**
  * Tests [validate_quorum]
