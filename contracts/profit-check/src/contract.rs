@@ -7,7 +7,7 @@ use terraswap::querier::query_balance;
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};
 use white_whale::profit_check::msg::{
-    HandleMsg, InitMsg, LastBalanceResponse, LastProfitResponse, QueryMsg, VaultResponse,
+    ExecuteMsg, InstantiateMsg, LastBalanceResponse, LastProfitResponse, QueryMsg, VaultResponse,
 };
 /*
     Profit check is used by the ust vault to see if a proposed trade is indeed profitable.
@@ -23,7 +23,7 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: InitMsg,
+    msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let state = State {
         vault_address: deps.api.addr_canonicalize(&msg.vault_address.to_string())?,
@@ -39,11 +39,11 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: HandleMsg) -> ProfitCheckResult {
+pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> ProfitCheckResult {
     match msg {
-        HandleMsg::AfterTrade {} => after_trade(deps, info),
-        HandleMsg::BeforeTrade {} => before_trade(deps, info),
-        HandleMsg::SetVault { vault_address } => set_vault_address(deps, info, vault_address),
+        ExecuteMsg::AfterTrade {} => after_trade(deps, info),
+        ExecuteMsg::BeforeTrade {} => before_trade(deps, info),
+        ExecuteMsg::SetVault { vault_address } => set_vault_address(deps, info, vault_address),
     }
 }
 
@@ -136,7 +136,7 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies(&[]);
         let vault_address = deps.api.addr_validate("test_vault").unwrap();
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             vault_address: vault_address.to_string(),
             denom: "test".to_string(),
         };
@@ -163,7 +163,7 @@ mod tests {
     fn test_set_vault() {
         let mut deps = mock_dependencies(&[]);
         let vault_address = deps.api.addr_validate("test_vault").unwrap();
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             vault_address: vault_address.to_string(),
             denom: "test".to_string(),
         };
@@ -185,7 +185,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             info,
-            HandleMsg::SetVault {
+            ExecuteMsg::SetVault {
                 vault_address: other_vault.to_string(),
             },
         )
@@ -201,7 +201,7 @@ mod tests {
     fn test_failure_of_profit_check() {
         let mut deps = mock_dependencies(&[]);
         let vault_address = deps.api.addr_validate("test_vault").unwrap();
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             vault_address: vault_address.to_string(),
             denom: "test".to_string(),
         };
@@ -231,7 +231,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             vault_info.clone(),
-            HandleMsg::BeforeTrade {},
+            ExecuteMsg::BeforeTrade {},
         )
         .unwrap();
         assert_eq!(0, res.messages.len());
@@ -253,7 +253,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             vault_info,
-            HandleMsg::AfterTrade {},
+            ExecuteMsg::AfterTrade {},
         );
         match res {
             Err(..) => {}
@@ -269,7 +269,7 @@ mod tests {
     fn test_success_of_profit_check() {
         let mut deps = mock_dependencies(&[]);
         let vault_address = deps.api.addr_validate("test_vault").unwrap();
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             vault_address: vault_address.to_string(),
             denom: "test".to_string(),
         };
@@ -299,7 +299,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             vault_info.clone(),
-            HandleMsg::BeforeTrade {},
+            ExecuteMsg::BeforeTrade {},
         )
         .unwrap();
         assert_eq!(0, res.messages.len());
@@ -309,7 +309,7 @@ mod tests {
                 .unwrap();
         assert_eq!(res.last_balance, initial_balance);
 
-        let res = execute(deps.as_mut(), env, vault_info, HandleMsg::AfterTrade {}).unwrap();
+        let res = execute(deps.as_mut(), env, vault_info, ExecuteMsg::AfterTrade {}).unwrap();
         assert_eq!(0, res.messages.len())
     }
 
@@ -317,7 +317,7 @@ mod tests {
     fn test_check_before_trade_fails_if_unauthorized() {
         let mut deps = mock_dependencies(&[]);
         let vault_address = deps.api.addr_validate("test_vault").unwrap();
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             vault_address: vault_address.to_string(),
             denom: "test".to_string(),
         };
@@ -330,7 +330,7 @@ mod tests {
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res = execute(deps.as_mut(), env.clone(), info, HandleMsg::BeforeTrade {});
+        let res = execute(deps.as_mut(), env.clone(), info, ExecuteMsg::BeforeTrade {});
         match res {
             Err(..) => {}
             _ => panic!("unexpected"),
@@ -340,14 +340,14 @@ mod tests {
             sender: vault_address.clone(),
             funds: vec![],
         };
-        let _res = execute(deps.as_mut(), env, vault_info, HandleMsg::BeforeTrade {}).unwrap();
+        let _res = execute(deps.as_mut(), env, vault_info, ExecuteMsg::BeforeTrade {}).unwrap();
     }
 
     #[test]
     fn test_check_after_trade_fails_if_unauthorized() {
         let mut deps = mock_dependencies(&[]);
         let vault_address = deps.api.addr_validate("test_vault").unwrap();
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             vault_address: vault_address.to_string(),
             denom: "test".to_string(),
         };
@@ -360,7 +360,7 @@ mod tests {
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res = execute(deps.as_mut(), env.clone(), info, HandleMsg::AfterTrade {});
+        let res = execute(deps.as_mut(), env.clone(), info, ExecuteMsg::AfterTrade {});
         match res {
             Err(..) => {}
             _ => panic!("unexpected"),
@@ -370,7 +370,7 @@ mod tests {
             sender: vault_address.clone(),
             funds: vec![],
         };
-        let _res = execute(deps.as_mut(), env, vault_info, HandleMsg::AfterTrade {}).unwrap();
+        let _res = execute(deps.as_mut(), env, vault_info, ExecuteMsg::AfterTrade {}).unwrap();
     }
 
     #[test]
@@ -378,7 +378,7 @@ mod tests {
         let mut deps = mock_dependencies(&[]);
         let vault_address = deps.api.addr_validate("test_vault").unwrap();
         let other_vault_address = deps.api.addr_validate("other_test_vault").unwrap();
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             vault_address: vault_address.to_string(),
             denom: "test".to_string(),
         };
@@ -399,7 +399,7 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             user_info,
-            HandleMsg::SetVault {
+            ExecuteMsg::SetVault {
                 vault_address: other_vault_address.to_string(),
             },
         );
