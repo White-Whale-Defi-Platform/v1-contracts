@@ -49,13 +49,6 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> 
         whitelisted_contracts: vec![],
     };
 
-    // Add initial contracts
-    // for contract in msg.whitelisted_contracts.iter() {
-    //     state
-    //         .whitelisted_contracts
-    //         .push(deps.api.addr_canonicalize(&contract)?);
-    // }
-
     // Store the initial config
     STATE.save(deps.storage, &state)?;
     DEPOSIT_INFO.save(
@@ -120,10 +113,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> 
                 name: lp_token_name,
                 symbol: lp_token_symbol,
                 decimals: 6,
-                initial_balances: vec![
-                    // Cw20Coin{address: env.contract.address.to_string(),
-                    // amount: Uint128::from(1u8)},
-                ],
+                initial_balances: vec![],
                 mint: Some(MinterResponse {
                     minter: env.contract.address.to_string(),
                     cap: None,
@@ -276,7 +266,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
     attrs.push(("Received funds:", asset.to_string()));
 
     // Get fee and msg
-    let deposit_fee = get_transaction_fee(deps.as_ref(), asset.amount)?;
+    let deposit_fee = get_community_fee(deps.as_ref(), asset.amount)?;
     let community_fund_fee_msg = fee_config.community_fund_fee.msg(
         deps.as_ref(),
         asset.amount,
@@ -418,9 +408,9 @@ pub fn try_withdraw_liquidity(
         refund_amount -= withdrawtx_tax;
         attrs.push(("After Anchor withdraw:", refund_amount.to_string()));
     };
-    // Compute community fund fee and warchest fee
 
-    let community_fund_fee = get_transaction_fee(deps.as_ref(), refund_amount)?;
+    // Compute community fund fee
+    let community_fund_fee = get_community_fee(deps.as_ref(), refund_amount)?;
     let community_fund_fee_msg = fee_config.community_fund_fee.msg(
         deps.as_ref(),
         refund_amount,
@@ -431,6 +421,7 @@ pub fn try_withdraw_liquidity(
     )?;
     attrs.push(("Community fund fee:", community_fund_fee.to_string()));
 
+    // Compute warchest fee
     let warchest_fee = get_warchest_fee(deps.as_ref(), refund_amount)?;
     let warchest_fee_msg = fee_config.warchest_fee.msg(
         deps.as_ref(),
@@ -486,6 +477,7 @@ pub fn encapsule_payload(deps: Deps, env: Env, response: Response) -> VaultResul
 
     let total_response: Response = Response::new();
 
+    // Callback for after the loan
     let after_loan_msg =
         CallbackMsg::AfterSuccessfulLoanCallback {}.to_cosmos_msg(&env.contract.address)?;
 
@@ -521,7 +513,8 @@ pub fn encapsule_payload(deps: Deps, env: Env, response: Response) -> VaultResul
 }
 
 /// handler function invoked when the stablecoin-vault contract receives
-/// a transaction. This is akin to a payable function in Solidity
+/// a transaction. In this case it is triggered when the LP tokens are deposited
+/// into the contract
 pub fn receive_cw20(
     deps: DepsMut,
     env: Env,
@@ -541,7 +534,7 @@ pub fn receive_cw20(
     }
 }
 
-// compute total value of deposits in UST and return
+// compute total value of deposits in UST and return a tuple with those values.
 pub fn compute_total_value(
     deps: Deps,
     info: &PoolInfoRaw,
@@ -569,7 +562,7 @@ pub fn compute_total_value(
     Ok((total_deposits_in_ust, stable_amount, aust_value_in_ust))
 }
 
-pub fn get_transaction_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+pub fn get_community_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let fee_config = FEE.load(deps.storage)?;
     let fee = fee_config.community_fund_fee.compute(amount);
     Ok(fee)
@@ -582,7 +575,7 @@ pub fn get_warchest_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
 }
 
 pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
-    let community_fund_fee = get_transaction_fee(deps, amount)?;
+    let community_fund_fee = get_community_fee(deps, amount)?;
     let warchest_fee = get_warchest_fee(deps, amount)?;
     Ok(community_fund_fee + warchest_fee)
 }
@@ -661,7 +654,7 @@ pub fn add_to_whitelist(
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    // Check if contract already in whitelist
+    // Check if contract is already in whitelist
     if state
         .whitelisted_contracts
         .contains(&deps.api.addr_canonicalize(&contract_addr)?)
@@ -688,7 +681,7 @@ pub fn remove_from_whitelist(
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    // Check if contract in whitelist
+    // Check if contract is in whitelist
     if !state
         .whitelisted_contracts
         .contains(&deps.api.addr_canonicalize(&contract_addr)?)
@@ -753,7 +746,7 @@ pub fn query_fees(deps: Deps) -> StdResult<FeeResponse> {
 
 // Fees not including tax.
 pub fn estimate_deposit_fee(deps: Deps, amount: Uint128) -> StdResult<EstimateDepositFeeResponse> {
-    let fee = get_transaction_fee(deps, amount)?;
+    let fee = get_community_fee(deps, amount)?;
     Ok(EstimateDepositFeeResponse {
         fee: vec![Coin {
             denom: DEPOSIT_INFO.load(deps.storage)?.get_denom()?,
