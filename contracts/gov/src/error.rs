@@ -51,6 +51,30 @@ pub enum ContractError {
     #[error("Voting period has not expired")]
     PollVotingPeriod {},
 
+    #[error("Quorum must be between [0 and {0}]")]
+    PollQuorumInvalidValue(String),
+
+    #[error("Threshold must be between [0 and {0}]")]
+    PollThresholdInvalidValue(String),
+
+    #[error("Poll link too short, must be at least {0} characters")]
+    PollLinkInvalidShort(usize),
+
+    #[error("Poll link too long, must be at most {0} characters")]
+    PollLinkInvalidLong(usize),
+
+    #[error("Poll title too short, must be at least {0} characters")]
+    PollTitleInvalidShort(usize),
+
+    #[error("Poll title too long, must be at most {0} characters")]
+    PollTitleInvalidLong(usize),
+
+    #[error("Poll description too short, must be at least {0} characters")]
+    PollDescriptionInvalidShort(usize),
+
+    #[error("Poll description too long, must be at most {0} characters")]
+    PollDescriptionInvalidLong(usize),
+
     #[error("Snapshot has already occurred")]
     SnapshotAlreadyOccurred {},
 
@@ -59,6 +83,4 @@ pub enum ContractError {
 
     #[error("Timelock period has not expired")]
     TimelockNotExpired {},
-    // Add any other custom errors you like here.
-    // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }

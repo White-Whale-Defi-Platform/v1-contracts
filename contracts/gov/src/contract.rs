@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     attr, from_binary, to_binary, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
+    MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
@@ -17,70 +17,19 @@ use crate::state::{
     PollStatus, PollsResponse, State, StateResponse, VoteOption, VoterInfo, VotersResponse,
     VotersResponseItem,
 };
+use crate::validators::{
+    validate_poll_description, validate_poll_link, validate_poll_title, validate_quorum,
+    validate_threshold,
+};
 
-const MIN_TITLE_LENGTH: usize = 4;
-const MAX_TITLE_LENGTH: usize = 64;
-const MIN_DESC_LENGTH: usize = 4;
-const MAX_DESC_LENGTH: usize = 1024;
-const MIN_LINK_LENGTH: usize = 12;
-const MAX_LINK_LENGTH: usize = 128;
-// Validators
-/// validate_title returns an error if the title is invalid
-fn validate_title(title: &str) -> StdResult<()> {
-    if title.len() < MIN_TITLE_LENGTH {
-        Err(StdError::generic_err("Title too short"))
-    } else if title.len() > MAX_TITLE_LENGTH {
-        Err(StdError::generic_err("Title too long"))
-    } else {
-        Ok(())
-    }
-}
-
-/// validate_description returns an error if the description is invalid
-fn validate_description(description: &str) -> StdResult<()> {
-    if description.len() < MIN_DESC_LENGTH {
-        Err(StdError::generic_err("Description too short"))
-    } else if description.len() > MAX_DESC_LENGTH {
-        Err(StdError::generic_err("Description too long"))
-    } else {
-        Ok(())
-    }
-}
-
-/// validate_link returns an error if the link is invalid
-fn validate_link(link: &Option<String>) -> StdResult<()> {
-    if let Some(link) = link {
-        if link.len() < MIN_LINK_LENGTH {
-            Err(StdError::generic_err("Link too short"))
-        } else if link.len() > MAX_LINK_LENGTH {
-            Err(StdError::generic_err("Link too long"))
-        } else {
-            Ok(())
-        }
-    } else {
-        Ok(())
-    }
-}
-
-/// validate_quorum returns an error if the quorum is invalid
-/// (we require 0-1)
-fn validate_quorum(quorum: Decimal) -> StdResult<()> {
-    if quorum > Decimal::one() {
-        Err(StdError::generic_err("quorum must be 0 to 1"))
-    } else {
-        Ok(())
-    }
-}
-
-/// validate_threshold returns an error if the threshold is invalid
-/// (we require 0-1)
-fn validate_threshold(threshold: Decimal) -> StdResult<()> {
-    if threshold > Decimal::one() {
-        Err(StdError::generic_err("threshold must be 0 to 1"))
-    } else {
-        Ok(())
-    }
-}
+pub(crate) const MAX_QUORUM: Decimal = Decimal::one();
+pub(crate) const MAX_THRESHOLD: Decimal = Decimal::one();
+pub(crate) const MIN_TITLE_LENGTH: usize = 4;
+pub(crate) const MAX_TITLE_LENGTH: usize = 64;
+pub(crate) const MIN_DESC_LENGTH: usize = 4;
+pub(crate) const MAX_DESC_LENGTH: usize = 1024;
+pub(crate) const MIN_LINK_LENGTH: usize = 12;
+pub(crate) const MAX_LINK_LENGTH: usize = 128;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -253,8 +202,8 @@ pub fn receive_cw20(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 /// create a new poll
+#[allow(clippy::too_many_arguments)]
 pub fn create_poll(
     deps: DepsMut,
     env: Env,
@@ -265,9 +214,9 @@ pub fn create_poll(
     link: Option<String>,
     execute_msgs: Option<Vec<PollExecuteMsg>>,
 ) -> Result<Response, ContractError> {
-    validate_title(&title)?;
-    validate_description(&description)?;
-    validate_link(&link)?;
+    validate_poll_title(&title)?;
+    validate_poll_description(&description)?;
+    validate_poll_link(&link)?;
 
     let config: Config = config_store(deps.storage).load()?;
     if deposit_amount < config.proposal_deposit {
