@@ -3,7 +3,7 @@ use cosmwasm_std::{
     StdError, StdResult, Uint128, WasmQuery,
 };
 
-use white_whale::msg::{ValueResponse, VaultQueryMsg};
+use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg};
 
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};

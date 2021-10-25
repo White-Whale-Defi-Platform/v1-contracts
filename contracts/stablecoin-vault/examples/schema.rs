@@ -5,8 +5,7 @@ use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use stablecoin_vault::pool_info::PoolInfo;
 use stablecoin_vault::state::State;
-use white_whale::msg::VaultQueryMsg;
-use white_whale::ust_vault::msg::{ExecuteMsg, InitMsg, PoolResponse};
+use white_whale::ust_vault::msg::{ExecuteMsg, InitMsg, PoolResponse, VaultQueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
