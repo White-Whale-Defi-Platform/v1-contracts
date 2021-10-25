@@ -11,8 +11,9 @@ use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
-use white_whale::msg::{create_terraswap_msg, VaultQueryMsg as QueryMsg};
+use white_whale::msg::create_terraswap_msg;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
+use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 
 use crate::msg::{HandleMsg, InitMsg, PoolResponse};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};

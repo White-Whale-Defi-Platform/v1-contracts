@@ -5,7 +5,7 @@ use cosmwasm_std::CanonicalAddr;
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 
-use white_whale::deposit_info::DepositInfo;
+use white_whale::deposit_info::ArbBaseAsset;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 // The Arb State contains configuration options for the vault including
@@ -19,4 +19,4 @@ pub struct State {
 
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");
-pub const DEPOSIT_INFO: Item<DepositInfo> = Item::new("\u{0}{7}deposit");
+pub const ARB_BASE_ASSET: Item<ArbBaseAsset> = Item::new("\u{0}{7}deposit");

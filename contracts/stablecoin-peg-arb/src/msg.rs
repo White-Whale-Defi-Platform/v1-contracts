@@ -28,10 +28,6 @@ pub enum ExecuteMsg {
     BelowPegCallback {
         details: ArbDetails,
     },
-    SendToVault {},
-    TestMsg {
-        asset: Asset,
-    },
     SetAdmin {
         admin: String,
     },

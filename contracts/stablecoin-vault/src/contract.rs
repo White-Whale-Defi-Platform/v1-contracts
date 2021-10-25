@@ -16,12 +16,12 @@ use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{CappedFee, Fee, VaultFee};
-use white_whale::msg::{
+use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
+use white_whale::query::anchor::query_aust_exchange_rate;
+use white_whale::ust_vault::msg::{
     EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse, ValueResponse,
     VaultQueryMsg as QueryMsg,
 };
-use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
-use white_whale::query::anchor::query_aust_exchange_rate;
 
 use white_whale::ust_vault::msg::*;
 
@@ -313,7 +313,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         .add_message(community_fund_fee_msg);
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
-    if stables_in_contract > Uint128::from(info.stable_cap * Decimal::percent(150)) {
+    if stables_in_contract > info.stable_cap * Decimal::percent(150) {
         let deposit_amount = stables_in_contract - info.stable_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
         let deposit_msg = anchor_deposit_msg(
@@ -438,9 +438,7 @@ pub fn try_withdraw_liquidity(
 
     // Construct refund message
     let refund_asset = Asset {
-        info: AssetInfo::NativeToken {
-            denom: denom.clone(),
-        },
+        info: AssetInfo::NativeToken { denom },
         amount: net_refund_amount,
     };
     let refund_msg = CosmosMsg::Bank(BankMsg::Send {
@@ -592,7 +590,7 @@ fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
-    if stables_in_contract > Uint128::from(info.stable_cap * Decimal::percent(150)) {
+    if stables_in_contract > info.stable_cap * Decimal::percent(150) {
         let deposit_amount = stables_in_contract - info.stable_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), stable_denom);
         let deposit_msg = anchor_deposit_msg(

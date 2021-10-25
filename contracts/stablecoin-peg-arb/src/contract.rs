@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, Uint128, WasmMsg,
+    Response, StdResult, WasmMsg,
 };
 
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
@@ -12,7 +12,7 @@ use white_whale::denom::LUNA_DENOM;
 
 use white_whale::msg::create_terraswap_msg;
 
-use white_whale::deposit_info::DepositInfo;
+use white_whale::deposit_info::ArbBaseAsset;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::tax::deduct_tax;
 use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
@@ -23,7 +23,7 @@ use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InitMsg, QueryMsg};
 
 use crate::querier::query_market_price;
 
-use crate::state::{State, ADMIN, DEPOSIT_INFO, STATE};
+use crate::state::{State, ADMIN, ARB_BASE_ASSET, STATE};
 
 type VaultResult = Result<Response<TerraMsgWrapper>, StableArbError>;
 
@@ -38,10 +38,10 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) ->
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
-    DEPOSIT_INFO.save(
+    ARB_BASE_ASSET.save(
         deps.storage,
-        &DepositInfo {
-            asset_info: msg.asset_info.clone(),
+        &ArbBaseAsset {
+            asset_info: msg.asset_info,
         },
     )?;
     // Setup the admin as the creator of the contract
@@ -53,29 +53,8 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) ->
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
-        ExecuteMsg::TestMsg { asset } => test(deps, env, asset),
         ExecuteMsg::ExecuteArb { details, above_peg } => {
             call_flashloan(deps, env, info, details, above_peg)
-        }
-        ExecuteMsg::SendToVault {} => {
-            let denom: &str = "uusd";
-            let refund_asset = Asset {
-                info: AssetInfo::NativeToken {
-                    denom: String::from(denom),
-                },
-                amount: Uint128::from(1000000u64),
-            };
-
-            let state = STATE.load(deps.storage)?;
-            // Create callback, this will send the funds back to the vault.
-            let callback_msg = CallbackMsg::AfterSuccessfulTradeCallback {}
-                .to_cosmos_msg(&env.contract.address)?;
-            Ok(Response::new()
-                .add_message(CosmosMsg::Bank(BankMsg::Send {
-                    to_address: deps.api.addr_humanize(&state.vault_address)?.to_string(),
-                    amount: vec![refund_asset.deduct_tax(&deps.querier)?],
-                }))
-                .add_message(callback_msg))
         }
         ExecuteMsg::BelowPegCallback { details } => try_arb_below_peg(deps, env, info, details),
         ExecuteMsg::AbovePegCallback { details } => try_arb_above_peg(deps, env, info, details),
@@ -87,6 +66,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
                 .add_attribute("previous admin", previous_admin)
                 .add_attribute("admin", admin))
         }
+        // TODO: We could ommit the trader entirely, lets discuss!
         ExecuteMsg::SetTrader { trader } => set_trader(deps, info, trader),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
@@ -110,28 +90,6 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-fn test(deps: DepsMut, _env: Env, asset: Asset) -> VaultResult {
-    let state = STATE.load(deps.storage)?;
-    // let requested_asset = Asset {
-    //     info: AssetInfo::NativeToken {
-    //         denom: String::from("uusd"),
-    //     },
-    //     amount: Uint128::from(100000u64),
-    // };
-    let payload = FlashLoanPayload {
-        requested_asset: asset,
-        callback: to_binary(&ExecuteMsg::SendToVault {})?,
-    };
-
-    Ok(
-        Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps.api.addr_humanize(&state.vault_address)?.to_string(),
-            msg: to_binary(&VaultMsg::FlashLoan { payload })?,
-            funds: vec![],
-        })),
-    )
-}
-
 fn call_flashloan(
     deps: DepsMut,
     _env: Env,
@@ -139,9 +97,8 @@ fn call_flashloan(
     details: ArbDetails,
     above_peg: bool,
 ) -> VaultResult {
-    //TODO: Check if attached coin matches config
     let state = STATE.load(deps.storage)?;
-    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
+    let deposit_info = ARB_BASE_ASSET.load(deps.storage)?;
 
     // Check if requested asset is same as strategy base asset
     deposit_info.assert(&details.asset.info)?;
@@ -164,6 +121,7 @@ fn call_flashloan(
         callback: to_binary(&callback_msg)?,
     };
 
+    // Call stablecoin Vault
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps.api.addr_humanize(&state.vault_address)?.to_string(),
@@ -175,7 +133,7 @@ fn call_flashloan(
 
 // Attempt to perform an arbitrage operation with the assumption that
 // the currency to be arb'd is below peg. Needed funds should be provided
-// by the stablecoin vault flashloan call.
+// by the earlier stablecoin vault flashloan call.
 
 pub fn try_arb_below_peg(
     deps: DepsMut,
@@ -184,7 +142,7 @@ pub fn try_arb_below_peg(
     details: ArbDetails,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
+    let deposit_info = ARB_BASE_ASSET.load(deps.storage)?;
 
     // Ensure the caller is the vault
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.vault_address {
@@ -209,6 +167,8 @@ pub fn try_arb_below_peg(
     // Simulate first tx with Terra Market Module
     let expected_luna_received =
         query_market_price(deps.as_ref(), lent_coin.clone(), ask_denom.clone())?;
+
+    // TODO: We could ommit this
     let residual_luna = query_balance(
         &deps.querier,
         env.contract.address.clone(),
@@ -222,7 +182,7 @@ pub fn try_arb_below_peg(
     };
 
     // Market swap msg, swap STABLE -> LUNA
-    let swap_msg = create_swap_msg(lent_coin.clone(), ask_denom.clone());
+    let swap_msg = create_swap_msg(lent_coin.clone(), ask_denom);
 
     // Terraswap msg, swap LUNA -> STABLE
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -254,7 +214,7 @@ pub fn try_arb_below_peg(
 
 // Attempt to perform an arbitrage operation with the assumption that
 // the currency to be arb'd is below peg. Needed funds should be provided
-// by the stablecoin vault flashloan call.
+// by the earlier stablecoin vault flashloan call.
 pub fn try_arb_above_peg(
     deps: DepsMut,
     env: Env,
@@ -262,7 +222,7 @@ pub fn try_arb_above_peg(
     details: ArbDetails,
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
+    let deposit_info = ARB_BASE_ASSET.load(deps.storage)?;
 
     // Ensure the caller is the vault
     if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.vault_address {
@@ -289,6 +249,8 @@ pub fn try_arb_above_peg(
         deps.api.addr_humanize(&state.pool_address)?,
         lent_coin.clone(),
     )?;
+
+    // TODO: We could ommit this
     let residual_luna = query_balance(
         &deps.querier,
         env.contract.address.clone(),
@@ -333,44 +295,13 @@ pub fn try_arb_above_peg(
 }
 
 //----------------------------------------------------------------------------------------
-//  HELPER FUNCTION HANDLERS
-//----------------------------------------------------------------------------------------
-
-// compute total value of deposits in UST and return
-// pub fn compute_total_value(
-//     deps: Deps,
-//     info: &PoolInfoRaw,
-// ) -> StdResult<(Uint128, Uint128, Uint128)> {
-//     let state = STATE.load(deps.storage)?;
-//     let stable_info = info.asset_infos[0].to_normal(deps.api)?;
-//     let stable_denom = match stable_info {
-//         AssetInfo::Token { .. } => String::default(),
-//         AssetInfo::NativeToken { denom } => denom,
-//     };
-//     let stable_amount = query_balance(&deps.querier, info.contract_addr.clone(), stable_denom)?;
-
-//     let aust_info = info.asset_infos[2].to_normal(deps.api)?;
-//     let aust_amount = aust_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
-//     let aust_exchange_rate = query_aust_exchange_rate(
-//         deps,
-//         deps.api
-//             .addr_humanize(&state.anchor_money_market_address)?
-//             .to_string(),
-//     )?;
-
-//     let aust_value_in_ust = aust_exchange_rate * aust_amount;
-
-//     let total_deposits_in_ust = stable_amount + aust_value_in_ust;
-//     Ok((total_deposits_in_ust, stable_amount, aust_value_in_ust))
-// }
-
-//----------------------------------------------------------------------------------------
 //  CALLBACK FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
+// After the arb this function returns the funds to the vault.
 fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
     let state = STATE.load(deps.storage)?;
-    let stable_denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
+    let stable_denom = ARB_BASE_ASSET.load(deps.storage)?.get_denom()?;
     let stables_in_contract =
         query_balance(&deps.querier, env.contract.address, stable_denom.clone())?;
 
@@ -435,8 +366,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn try_query_config(deps: Deps) -> StdResult<DepositInfo> {
-    let info: DepositInfo = DEPOSIT_INFO.load(deps.storage)?;
+pub fn try_query_config(deps: Deps) -> StdResult<ArbBaseAsset> {
+    let info: ArbBaseAsset = ARB_BASE_ASSET.load(deps.storage)?;
     Ok(info)
 }
 

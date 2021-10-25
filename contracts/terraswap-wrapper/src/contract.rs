@@ -287,10 +287,10 @@ fn query_value(deps: Deps, info: AssetInfo, share: Decimal) -> StdResult<Asset> 
     let price = Decimal::from_ratio(pool.assets[1].amount, pool.assets[0].amount); // price [X/UST]
     let mut value = pool.assets[1].amount * share;
     value += pool.assets[0].amount * share * price;
-    return Ok(Asset {
+    Ok(Asset {
         info,
         amount: value,
-    });
+    })
 }
 
 // Withdrawable profit is the value of the holdings - max_deposit in either the asset denom(X) or the base denom(UST)

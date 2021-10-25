@@ -1,5 +1,7 @@
-use crate::fee::{CappedFee, Fee};
-use cosmwasm_std::{to_binary, Addr, Binary, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg};
+use crate::fee::{CappedFee, Fee, VaultFee};
+use cosmwasm_std::{
+    to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
+};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -84,4 +86,40 @@ pub struct PoolResponse {
 pub struct FlashLoanPayload {
     pub requested_asset: Asset,
     pub callback: Binary,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum VaultQueryMsg {
+    Config {},
+    Pool {},
+    Fees {},
+    EstimateDepositFee { amount: Uint128 },
+    EstimateWithdrawFee { amount: Uint128 },
+    VaultValue {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DepositResponse {
+    pub deposit: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ValueResponse {
+    pub total_ust_value: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct FeeResponse {
+    pub fees: VaultFee,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct EstimateDepositFeeResponse {
+    pub fee: Vec<Coin>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct EstimateWithdrawFeeResponse {
+    pub fee: Vec<Coin>,
 }
