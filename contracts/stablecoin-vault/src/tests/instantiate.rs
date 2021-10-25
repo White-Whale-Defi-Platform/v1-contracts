@@ -1,20 +1,24 @@
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{coins, from_binary, DepsMut};
+use cosmwasm_std::{coins, from_binary, to_binary, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
 use cosmwasm_std::{Api, CanonicalAddr, Decimal, Uint128};
 
 use crate::contract::{execute, instantiate, query};
 use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, STATE};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 use terraswap::asset::AssetInfo;
+use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use white_whale::fee::*;
-use white_whale::ust_vault::msg::*;
 use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
+use white_whale::ust_vault::msg::*;
 
 use crate::tests::common::{ARB_CONTRACT, LP_TOKEN, TEST_CREATOR};
 
 use crate::error::StableVaultError;
 use crate::tests::mock_querier::mock_dependencies;
+
+const INSTANTIATE_REPLY_ID: u8 = 1u8;
 
 pub(crate) fn instantiate_msg() -> InitMsg {
     InitMsg {
@@ -140,6 +144,7 @@ fn successful_update_fee() {
     assert_eq!(Decimal::percent(1), fees.community_fund_fee.fee.share);
     assert_eq!(Uint128::from(1_000_000u64), fees.community_fund_fee.max_fee);
     assert_eq!(Decimal::percent(2), fees.warchest_fee.share);
+}
 
 #[test]
 fn successfull_set_admin() {
@@ -149,11 +154,75 @@ fn successfull_set_admin() {
     // update admin
     let info = mock_info(TEST_CREATOR, &[]);
     let msg = ExecuteMsg::SetAdmin {
-        admin: "new_admin".to_string();
+        admin: "new_admin".to_string(),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
+}
 
+#[test]
+fn test_init_with_non_default_vault_lp_token() {
+    let mut deps = mock_dependencies(&[]);
 
+    let custom_token_name = String::from("My LP Token");
+    let custom_token_symbol = String::from("MyLP");
+
+    // Define a custom Init Msg with the custom token info provided
+    let msg = InitMsg {
+        anchor_money_market_address: "test_mm".to_string(),
+        aust_address: "test_aust".to_string(),
+        profit_check_address: "test_profit_check".to_string(),
+        community_fund_addr: "community_fund".to_string(),
+        warchest_addr: "warchest".to_string(),
+        asset_info: AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        },
+        token_code_id: 10u64,
+        warchest_fee: Decimal::percent(10u64),
+        community_fund_fee: Decimal::permille(5u64),
+        max_community_fund_fee: Uint128::from(1000000u64),
+        stable_cap: Uint128::from(1000_000_000u64),
+        vault_lp_token_name: Some(custom_token_name.clone()),
+        vault_lp_token_symbol: Some(custom_token_symbol.clone()),
+    };
+
+    // Prepare mock env
+    let env = mock_env();
+    let info = MessageInfo {
+        sender: deps.api.addr_validate("creator").unwrap(),
+        funds: vec![],
+    };
+
+    let res = instantiate(deps.as_mut(), env.clone(), info, msg.clone()).unwrap();
+    // Ensure we have 1 message
+    assert_eq!(1, res.messages.len());
+    // Verify the message is the one we expect but also that our custom provided token name and symbol were taken into account.
+    assert_eq!(
+        res.messages,
+        vec![SubMsg {
+            // Create LP token
+            msg: WasmMsg::Instantiate {
+                admin: None,
+                code_id: msg.token_code_id,
+                msg: to_binary(&TokenInstantiateMsg {
+                    name: custom_token_name.to_string(),
+                    symbol: custom_token_symbol.to_string(),
+                    decimals: 6,
+                    initial_balances: vec![],
+                    mint: Some(MinterResponse {
+                        minter: env.contract.address.to_string(),
+                        cap: None,
+                    }),
+                })
+                .unwrap(),
+                funds: vec![],
+                label: "".to_string(),
+            }
+            .into(),
+            gas_limit: None,
+            id: u64::from(INSTANTIATE_REPLY_ID),
+            reply_on: ReplyOn::Success,
+        }]
+    );
 }
