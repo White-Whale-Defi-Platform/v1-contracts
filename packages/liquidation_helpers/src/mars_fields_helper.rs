@@ -8,7 +8,7 @@ use cosmwasm_bignumber::{Uint256};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub controller_strategy: String,
+    pub ust_arb_strategy: String,
     pub martian_fields_addr: String,
     pub stable_denom: String,
 }
@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UpdateConfigMsg {
     pub owner: Option<String>,
-    pub controller_strategy: Option<String>,
+    pub ust_arb_strategy: Option<String>,
 }
 
 
@@ -31,6 +31,7 @@ pub enum ExecuteMsg {
     },
     LiquidateFieldsPosition {
         user_address: String,
+        ust_to_borrow: Uint256,
         fields_strat_addr: String
     },
     /// Callbacks; only callable by the contract itself.
@@ -41,6 +42,10 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CallbackMsg {
+    InitiateLiquidationCallback { 
+        user_address: String,
+        fields_strat_addr: String
+    },
     AfterLiquidationCallback { },
 }
 
@@ -68,7 +73,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
-    pub controller_strategy: String,
+    pub ust_arb_strategy: String,
     pub fields_addresses: Vec<String>,
     pub stable_denom: String,
 }

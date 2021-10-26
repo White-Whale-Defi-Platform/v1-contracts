@@ -12,7 +12,7 @@ pub const STATE: Item<State> = Item::new("state");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
-    pub controller_strategy: Addr,
+    pub ust_arb_strategy: Addr,
     pub fields_addresses: Vec<String>,
     pub stable_denom: String,
 }

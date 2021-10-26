@@ -5,17 +5,19 @@ use cosmwasm_std::{
     Response, StdResult, WasmMsg
 };
 
-use whitewhale_periphery::mars_fields_helper::{
+use whitewhale_liquidation_helpers::mars_fields_helper::{
     InstantiateMsg, UpdateConfigMsg, ExecuteMsg, QueryMsg, CallbackMsg,
     ConfigResponse, StateResponse, MartianFieldsLiquidationMsg
 };
-use whitewhale_periphery::helper::{
+use whitewhale_liquidation_helpers::helper::{
     build_send_native_asset_msg, option_string_to_addr,
     query_balance
 };
-use whitewhale_periphery::tax::{
+use whitewhale_liquidation_helpers::tax::{
     compute_tax
 };
+use whitewhale_liquidation_helpers::flashloan_helper::build_flash_loan_msg;
+
 use crate::state::{ Config, State, CONFIG, STATE};
 use cosmwasm_bignumber::{Uint256};
 
@@ -33,7 +35,7 @@ pub fn instantiate(
 
     let config = Config {
             owner:  deps.api.addr_validate(&msg.owner)?,
-            controller_strategy: deps.api.addr_validate(&msg.controller_strategy)?,
+            ust_arb_strategy: deps.api.addr_validate(&msg.ust_arb_strategy)?,
             fields_addresses: vec![],
             stable_denom: msg.stable_denom,
     };
@@ -60,7 +62,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateConfig { new_config } => handle_update_config(deps, info, new_config),
         ExecuteMsg::AddFieldsStrategy { fields_strat_addr } => handle_add_fields_strategy(deps, info, fields_strat_addr),
-        ExecuteMsg::LiquidateFieldsPosition { user_address, fields_strat_addr  } => handle_liquidate_fields_position(deps, _env, info, user_address, fields_strat_addr ),
+        ExecuteMsg::LiquidateFieldsPosition { user_address,ust_to_borrow, fields_strat_addr  } => handle_liquidate_fields_position(deps, _env, info, user_address, ust_to_borrow, fields_strat_addr ),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, _env, info, msg)
     }
 }
@@ -80,6 +82,16 @@ fn _handle_callback(
         ));
     }
     match msg {
+        CallbackMsg::InitiateLiquidationCallback {
+            user_address, 
+            fields_strat_addr 
+        } => initiate_liquidation_callback(
+            deps,
+            env,
+            info,
+            user_address, 
+            fields_strat_addr 
+        ),
         CallbackMsg::AfterLiquidationCallback { } => after_liquidation_callback(
             deps,
             env,
@@ -122,10 +134,10 @@ pub fn handle_update_config(
 
     // UPDATE :: ADDRESSES IF PROVIDED
     config.owner = option_string_to_addr(deps.api, new_config.owner, config.owner)?;
-    config.controller_strategy = option_string_to_addr(
+    config.ust_arb_strategy = option_string_to_addr(
         deps.api,
-        new_config.controller_strategy,
-        config.controller_strategy,
+        new_config.ust_arb_strategy,
+        config.ust_arb_strategy,
     )?;
 
     CONFIG.save(deps.storage, &config)?;
@@ -170,14 +182,10 @@ pub fn handle_liquidate_fields_position(
     env: Env,
     info: MessageInfo,
     user_address: String,
+    ust_to_borrow: Uint256,
     fields_strat_addr: String
 ) -> StdResult<Response> {
     let config = CONFIG.load(deps.storage)?;
-
-    // CHECK :: Only controller_strategy can call this function
-    if info.sender != config.controller_strategy {
-        return Err(StdError::generic_err("Unauthorized"));
-    }
 
     // CHECK :: Fields strategy address supported or not ?
     for fields_strat_address in config.fields_addresses.iter() {
@@ -186,6 +194,34 @@ pub fn handle_liquidate_fields_position(
         }
     }
 
+    let callback_binary = to_binary(&CallbackMsg::InitiateLiquidationCallback {
+        user_address, fields_strat_addr
+        }.to_cosmos_msg(&env.contract.address)?)?;
+
+    let flash_loan_msg = build_flash_loan_msg( config.ust_arb_strategy.to_string(),
+                                                config.stable_denom,
+                                                ust_to_borrow,
+                                                callback_binary )?;
+
+    Ok(Response::new()
+    .add_message(flash_loan_msg)
+    .add_attribute("action", "fields_helper::ExecuteMsg::LiquidatePosition"))
+                                            
+}
+
+
+//----------------------------------------------------------------------------------------
+//  CALLBACK FUNCTION HANDLERS
+//----------------------------------------------------------------------------------------
+
+pub fn initiate_liquidation_callback(
+    _deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    user_address: String,
+    fields_strat_addr: String
+) -> StdResult<Response> {
+
     // COSMOS MSGS ::
     // 1. Add LiquidatePosition Msg
     // 2. Add 'AfterLiquidationCallback' Callback Msg  
@@ -193,22 +229,17 @@ pub fn handle_liquidate_fields_position(
     let mut cosmos_msgs = vec![];
 
     // LiquidatePosition Msg
-    cosmos_msgs.push( build_liquidate_fields_position_msg(fields_strat_addr, user_address)? );
+    cosmos_msgs.push( build_liquidate_fields_position_msg(fields_strat_addr, user_address.clone())? );
 
     // Callback Cosmos Msg 
-    let after_masset_buy_callback_msg = CallbackMsg::AfterLiquidationCallback {
+    let after_liquidation_callback_msg = CallbackMsg::AfterLiquidationCallback {
     }.to_cosmos_msg(&env.contract.address)?;
-    cosmos_msgs.push(after_masset_buy_callback_msg);
+    cosmos_msgs.push(after_liquidation_callback_msg);
 
     Ok(Response::new().add_messages(cosmos_msgs)
-    .add_attribute("action", "fields_helper::ExecuteMsg::LiquidatePosition"))
+    .add_attribute("user_address", user_address))
 }
 
-
-
-//----------------------------------------------------------------------------------------
-//  CALLBACK FUNCTION HANDLERS
-//----------------------------------------------------------------------------------------
 
 pub fn after_liquidation_callback(
     deps: DepsMut,
@@ -227,10 +258,7 @@ pub fn after_liquidation_callback(
     // COSMOS MSGS :: 
     // 1. Send UST Back to the UST arb strategy
     // 2. Update Indexes and deposit UST Back into Anchor
-    let send_native_asset_msg = build_send_native_asset_msg( deps.as_ref(), config.controller_strategy.clone(), &config.stable_denom, cur_ust_balance.into() )?;
-    // TO DO ::: ADD UPDATE INDEXES MSG WHICH UPDATES INDEXES AND DEPOSITS UST INTO ANCHOR (IN THE STRATEGY CONTROLLER CONTRACT)
-    // let update_indexes_and_deposit_to_anchor_msg = 
-
+    let send_native_asset_msg = build_send_native_asset_msg( deps.as_ref(), config.ust_arb_strategy.clone(), &config.stable_denom, cur_ust_balance.into() )?;
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_messages(vec![send_native_asset_msg]).
@@ -250,7 +278,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
     Ok(ConfigResponse {
         owner: config.owner.to_string(),
-        controller_strategy: config.controller_strategy.to_string(),
+        ust_arb_strategy: config.ust_arb_strategy.to_string(),
         fields_addresses: config.fields_addresses,
         stable_denom: config.stable_denom,
     })
