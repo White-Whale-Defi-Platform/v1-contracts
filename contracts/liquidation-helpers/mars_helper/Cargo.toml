@@ -25,7 +25,6 @@ library = []
 
 [dependencies]
 whitewhale-liquidation-helpers =  { path = "../../../packages/liquidation_helpers" }
-white-whale =  { path = "../../../packages/white_whale" }
 cosmwasm-std = { version = "0.16.0", features = ["iterator"] }
 cw20 = { version = "0.8" } 
 cw20-base = { version = "0.8", features = ["library"] }

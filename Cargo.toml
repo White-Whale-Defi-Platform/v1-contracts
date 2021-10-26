@@ -2,7 +2,8 @@
 members = [
     "packages/*", 
     "contracts/bluna-vault",
-    "contracts/liquidation-helpers/mars_helper"
+    "contracts/liquidation-helpers/mars_helper",
+    "contracts/liquidation-helpers/mirror_helper"
     # "contracts/*"
     ]
 

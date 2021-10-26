@@ -5,22 +5,24 @@ use cosmwasm_std::{
     Response, StdResult, WasmMsg, QuerierWrapper, QueryRequest, WasmQuery, Uint128, Decimal
 };
 
-use whitewhale_periphery::mirror_helper::{
+use whitewhale_liquidation_helpers::mirror_helper::{
     InstantiateMsg, UpdateConfigMsg, ExecuteMsg, QueryMsg,
     CallbackMsg, ConfigResponse, StateResponse,
     MAssetInfo,
 };
-use whitewhale_periphery::helper::{
+use whitewhale_liquidation_helpers::helper::{
     build_send_native_asset_msg, option_string_to_addr,
     get_denom_amount_from_coins, query_balance, query_token_balance
 };
-use whitewhale_periphery::tax::{
-    compute_tax
-};
-use whitewhale_periphery::asset::{
-    AssetInfo };
+use whitewhale_liquidation_helpers::tax::{ compute_tax};
+use whitewhale_liquidation_helpers::asset::{AssetInfo };
+use whitewhale_liquidation_helpers::terraswap_helper::{trade_cw20_on_terraswap, trade_native_on_terraswap };
+    
 use crate::state::{ Config, State, CONFIG, STATE};
 use cosmwasm_bignumber::{Decimal256, Uint256};
+use whitewhale_liquidation_helpers::flashloan_helper::build_flash_loan_msg;
+
+
 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -33,7 +35,7 @@ pub fn instantiate(
 
     let config = Config {
             owner:  deps.api.addr_validate(&msg.owner)?,
-            controller_strategy: deps.api.addr_validate(&msg.controller_strategy)?,
+            ust_arb_strategy: deps.api.addr_validate(&msg.ust_arb_strategy)?,
             mirror_mint_contract: deps.api.addr_validate(&msg.mirror_mint_contract)?,
             stable_denom: msg.stable_denom,
             massets_supported: vec![]
@@ -60,7 +62,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateConfig { new_config } => handle_update_config(deps, info, new_config),
         ExecuteMsg::AddMasset { new_masset_info, pair_address } => handle_add_masset(deps, info, new_masset_info, pair_address),
-        ExecuteMsg::LiquidateMirrorPosition { position_idx, max_loss_amount  } => handle_liquidate_mirror_position(deps, _env, info, position_idx, max_loss_amount),
+        ExecuteMsg::LiquidateMirrorPosition { position_idx, ust_to_borrow, max_loss_amount  } => handle_liquidate_mirror_position(deps, _env, info, position_idx, ust_to_borrow, max_loss_amount),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, _env, info, msg),
     }
 }
@@ -79,6 +81,24 @@ fn _handle_callback(
         ));
     }
     match msg {
+        CallbackMsg::InitiateLiquidationCallback {
+            position_idx,
+            minted_masset,    
+            minted_pair_addr,        
+            collateral_masset,
+            collateral_pair_addr,
+            max_loss_amount,
+        } => initiate_liquidation_callback(
+            deps,
+            env,
+            info,
+            position_idx,
+            minted_masset,
+            minted_pair_addr,
+            collateral_masset,
+            collateral_pair_addr,
+            max_loss_amount
+        ),
         CallbackMsg::AftermAssetBuyCallback {
             position_idx,
             minted_masset,    
@@ -157,10 +177,10 @@ pub fn handle_update_config(
 
     // UPDATE :: ADDRESSES IF PROVIDED
     config.owner = option_string_to_addr(deps.api, new_config.owner, config.owner)?;
-    config.controller_strategy = option_string_to_addr(
+    config.ust_arb_strategy = option_string_to_addr(
         deps.api,
-        new_config.controller_strategy,
-        config.controller_strategy,
+        new_config.ust_arb_strategy,
+        config.ust_arb_strategy,
     )?;
     config.mirror_mint_contract = option_string_to_addr(
         deps.api,
@@ -234,17 +254,10 @@ pub fn handle_liquidate_mirror_position(
     env: Env,
     info: MessageInfo,
     position_idx: Uint128,
+    ust_to_borrow: Uint256,
     max_loss_amount: Uint256,
 ) -> StdResult<Response> {
     let config = CONFIG.load(deps.storage)?;
-
-    // CHECK :: Only controller_strategy can call this function
-    if info.sender != config.controller_strategy {
-        return Err(StdError::generic_err("Unauthorized"));
-    }
-
-    // get UST sent for the liquidation
-    let ust_amount = get_denom_amount_from_coins(&info.funds, &config.stable_denom);
 
     // Query Position's Info    
     let position_info = query_position( &deps.querier, config.mirror_mint_contract.to_string(), position_idx )?;
@@ -260,7 +273,7 @@ pub fn handle_liquidate_mirror_position(
         _ => { return Err(StdError::generic_err("Invalid Position query response. mAsset can only be a cw20 token") ); }
     }
 
-    // Get collateral asset and it's type which will be retuned
+    // Get collateral asset and it's type which will be returned
     let collateral_masset : AssetInfo;
     match position_info.collateral.info {
         terraswap::asset::AssetInfo::Token { contract_addr } => { 
@@ -284,34 +297,75 @@ pub fn handle_liquidate_mirror_position(
         }        
     }
 
+    let callback_binary = to_binary(&CallbackMsg::InitiateLiquidationCallback {
+        position_idx: position_idx,
+        minted_masset: minted_masset_addr.clone(),
+        minted_pair_addr: minted_pair_address,
+        collateral_masset: collateral_masset,
+        collateral_pair_addr: collateral_pair_address,
+        max_loss_amount: max_loss_amount
+    }.to_cosmos_msg(&env.contract.address)?)?;
+
+    let flash_loan_msg = build_flash_loan_msg( config.ust_arb_strategy.to_string(),
+                                                config.stable_denom,
+                                                ust_to_borrow,
+                                                callback_binary )?;
+
+    Ok(Response::new()
+    .add_message(flash_loan_msg)
+    .add_attribute("action", "mirror_helper::ExecuteMsg::LiquidatePosition")
+    .add_attribute("position_idx", position_idx.to_string() )
+    .add_attribute("loan_asked", ust_to_borrow.to_string() ))
+}
+
+//----------------------------------------------------------------------------------------
+//  CALLBACK FUNCTION HANDLERS
+//----------------------------------------------------------------------------------------
+
+
+pub fn initiate_liquidation_callback(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    position_idx: Uint128,
+    minted_masset_addr: Addr,
+    minted_pair_address: String,
+    collateral_masset: AssetInfo,
+    collateral_pair_address: String,
+    max_loss_amount: Uint256
+) -> StdResult<Response> { 
+    let config = CONFIG.load(deps.storage)?;
+
+    // get UST sent for the liquidation
+    let ust_amount = get_denom_amount_from_coins(&info.funds, &config.stable_denom);
     let mut cosmos_msgs = vec![];
 
-    // COSMOS MSGS ::
-    // 1. Add Buy mAsset from Terraswap Msg
-    // 2. Add 'AftermAssetBuyCallback' Callback Msg  
-    
-    cosmos_msgs.push( build_buy_cw20_with_native_terraswap_msg( deps.as_ref(), minted_pair_address.clone(), config.stable_denom, ust_amount.into() )? );
- 
     // Callback Cosmos Msg :: To send liquidation tx after the mAsset to be returned has been bought on Terraswap
     let after_masset_buy_callback_msg = CallbackMsg::AftermAssetBuyCallback {
         position_idx: position_idx,
         minted_masset: minted_masset_addr.clone(),
-        minted_pair_addr: minted_pair_address,
+        minted_pair_addr: minted_pair_address.clone(),
         collateral_masset: collateral_masset,
         collateral_pair_addr: collateral_pair_address,
         ust_amount: ust_amount.clone(),
         max_loss_amount: max_loss_amount
     }
     .to_cosmos_msg(&env.contract.address)?;
+
+    // COSMOS MSGS ::
+    // 1. Add Buy mAsset from Terraswap Msg
+    // 2. Add 'AftermAssetBuyCallback' Callback Msg      
+    cosmos_msgs.push( trade_native_on_terraswap( deps.as_ref(), minted_pair_address.clone(), config.stable_denom, ust_amount.into() )? );
     cosmos_msgs.push(after_masset_buy_callback_msg);
 
     Ok(Response::new().add_messages(cosmos_msgs)
-    .add_attribute("action", "mirror_helper::ExecuteMsg::LiquidatePosition"))
+    .add_attribute("cdp_token_address", minted_masset_addr.to_string() )
+    .add_attribute("buy_worth",  ust_amount.to_string() ))
 }
 
-//----------------------------------------------------------------------------------------
-//  CALLBACK FUNCTION HANDLERS
-//----------------------------------------------------------------------------------------
+
+
+
 
 pub fn after_masset_buy_callback(
     deps: DepsMut,
@@ -328,12 +382,6 @@ pub fn after_masset_buy_callback(
 
     // Query how much minted mAsset (to be returned) was received against UST from terraswap
     let minted_massets_balance = query_token_balance(&deps.querier, minted_masset.clone(), env.contract.address.clone() )?;
-
-    // COSMOS MSGS ::
-    // 1. Add LiquidatePosition Msg
-    // 2. Add 'AfterLiquidationCallback' Callback Msg  
-    let mut cosmos_msgs = vec![];
-    cosmos_msgs.push( build_liquidate_position( config.mirror_mint_contract.to_string(), position_idx )? );
     let after_liquidation_callback_msg = CallbackMsg::AfterLiquidationCallback {
         minted_masset: minted_masset,
         minted_pair_addr: minted_pair_addr,
@@ -342,9 +390,15 @@ pub fn after_masset_buy_callback(
         ust_amount: ust_amount,
         max_loss_amount: max_loss_amount,    
     }.to_cosmos_msg(&env.contract.address)?;
+
+    // COSMOS MSGS ::
+    // 1. Add LiquidatePosition Msg
+    // 2. Add 'AfterLiquidationCallback' Callback Msg  
+    let mut cosmos_msgs = vec![];
+    cosmos_msgs.push( build_liquidate_position( config.mirror_mint_contract.to_string(), position_idx )? );
     cosmos_msgs.push( after_liquidation_callback_msg );
 
-    Ok(Response::new().add_messages(cosmos_msgs).add_attribute("action", "mirror_helper::CallbackMsg::AftermAssetBuyCallback"))
+    Ok(Response::new().add_messages(cosmos_msgs))
 }
 
 
@@ -370,19 +424,19 @@ pub fn after_liquidation_callback(
 
     let minted_massets_balance = query_token_balance(&deps.querier, minted_masset.clone(), env.contract.address.clone() )?;
     if minted_massets_balance > Uint128::zero() {
-        cosmos_msgs.push( build_sell_cw20_for_native_terraswap_msg(minted_pair_addr, minted_masset.to_string() , minted_massets_balance)? );
+        cosmos_msgs.push( trade_cw20_on_terraswap(minted_pair_addr, minted_masset.to_string() , minted_massets_balance)? );
     }
 
     let collateral_masset_balance : Uint256;
     match collateral_masset {
         AssetInfo::Token { contract_addr }  => {
             collateral_masset_balance = query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address.clone() )?.into();
-            cosmos_msgs.push( build_sell_cw20_for_native_terraswap_msg(collateral_pair_addr, contract_addr.clone().to_string() , collateral_masset_balance.into() )? );
+            cosmos_msgs.push( trade_cw20_on_terraswap(collateral_pair_addr, contract_addr.clone().to_string() , collateral_masset_balance.into() )? );
         },
         AssetInfo::NativeToken { denom }  => {
             if denom.clone() != "uusd".to_string() {
                 collateral_masset_balance = query_balance(&deps.querier, env.contract.address.clone(),  denom.clone() )?.into();
-                cosmos_msgs.push( build_sell_native_for_ust_terraswap_msg(deps.as_ref(), collateral_pair_addr , denom.clone(), collateral_masset_balance.into() )? );
+                cosmos_msgs.push( trade_native_on_terraswap(deps.as_ref(), collateral_pair_addr , denom.clone(), collateral_masset_balance.into() )? );
             }
         }
     }
@@ -423,18 +477,13 @@ pub fn after_massets_sell_callback(
     // COSMOS MSGS :: 
     // 1. Send UST Back to the UST arb strategy
     // 2. Update Indexes and deposit UST Back into Anchor
-    let send_native_asset_msg = build_send_native_asset_msg( deps.as_ref(), config.controller_strategy.clone(), &config.stable_denom, cur_ust_balance.into() )?;
-    // TO DO ::: ADD UPDATE INDEXES MSG WHICH UPDATES INDEXES AND DEPOSITS UST INTO ANCHOR (IN THE STRATEGY CONTROLLER CONTRACT)
-    // let update_indexes_and_deposit_to_anchor_msg = 
+    let send_native_asset_msg = build_send_native_asset_msg( deps.as_ref(), config.ust_arb_strategy.clone(), &config.stable_denom, cur_ust_balance.into() )?;
 
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_messages(vec![send_native_asset_msg]).
     add_attribute("action", "mirror_helper::CallbackMsg::AftermAssetsSellCallback"))
 }
-
-
-
 
 
 //-----------------------------------------------------------
@@ -448,7 +497,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
     Ok(ConfigResponse {
         owner: config.owner.to_string(),
-        controller_strategy: config.controller_strategy.to_string(),
+        ust_arb_strategy: config.ust_arb_strategy.to_string(),
         mirror_mint_contract: config.mirror_mint_contract.to_string(),
         stable_denom: config.stable_denom,
         massets_supported: config.massets_supported
@@ -467,24 +516,9 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
 }
 
 
-
-
-
-
-
-
-
 //-----------------------------------------------------------
 // HELPER FUNCTIONS :: QUERY MSGs
 //-----------------------------------------------------------
-
-
-
-
-
-
-
-
 
 
 
@@ -524,82 +558,6 @@ pub fn query_masset_config(
 //-----------------------------------------------------------
 // HELPER FUNCTIONS :: COSMOS MSGs
 //-----------------------------------------------------------
-
-
-
-/// @dev Returns a Cosmos Msg to buy an mAsset (CW20) against UST via terraswap
-fn build_buy_cw20_with_native_terraswap_msg(
-    deps: Deps,
-    pair_address: String,
-    denom: String,
-    denom_buy_worth: Uint128
-) -> StdResult<CosmosMsg> {
-    let tax = compute_tax(deps, &Coin { denom: denom.clone(), amount: denom_buy_worth } )?;
-    let denom_to_send = denom_buy_worth - tax ;
-
-    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr:pair_address,
-        funds: vec![Coin {denom: denom.to_string(), amount: denom_to_send.into() } ],
-        msg: to_binary(&terraswap::pair::ExecuteMsg::Swap {
-            offer_asset: terraswap::asset::Asset {
-                info: terraswap::asset::AssetInfo::NativeToken { denom: denom },
-                amount: denom_to_send
-            } ,
-            belief_price: None,
-            max_spread: None,
-            to: None
-        })?,
-    }))
-}
-
-/// @dev Returns a Cosmos Msg to sell an mAsset (CW20)  via terraswap
-fn build_sell_cw20_for_native_terraswap_msg(
-    pair_address: String,
-    masset_to_sell_addr: String,
-    amount: Uint128
-) -> StdResult<CosmosMsg> {
-
-    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr:pair_address,
-        funds: vec![],
-        msg: to_binary(&terraswap::pair::ExecuteMsg::Swap {
-            offer_asset: terraswap::asset::Asset {
-                info: terraswap::asset::AssetInfo::Token { contract_addr: masset_to_sell_addr  },
-                amount: amount
-            } ,
-            belief_price: None,
-            max_spread: None,
-            to: None
-        })?,
-    }))
-}
-
-/// @dev Returns a Cosmos Msg to sell a Native asset for UST  via terraswap
-fn build_sell_native_for_ust_terraswap_msg(
-    deps: Deps,    
-    pair_address: String,
-    native_denom: String,
-    amount: Uint128
-) -> StdResult<CosmosMsg> {
-    let tax = compute_tax(deps, &Coin { denom: native_denom.clone(), amount: amount } )?;
-    let denom_to_send = amount - tax ;
-
-    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr:pair_address,
-        funds: vec![],
-        msg: to_binary(&terraswap::pair::ExecuteMsg::Swap {
-            offer_asset: terraswap::asset::Asset {
-                info: terraswap::asset::AssetInfo::NativeToken { denom: native_denom  },
-                amount: amount
-            } ,
-            belief_price: None,
-            max_spread: None,
-            to: None
-        })?,
-    }))
-}
-
-
 
 
 

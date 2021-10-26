@@ -1,4 +1,5 @@
 pub mod astroport_helper;
+pub mod terraswap_helper;
 pub mod mars_helper;
 pub mod flashloan_helper;
 pub mod asset;

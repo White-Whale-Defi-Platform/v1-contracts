@@ -10,7 +10,7 @@ use crate::asset::{AssetInfo};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub controller_strategy: String,
+    pub ust_arb_strategy: String,
     pub mirror_mint_contract: String,
     pub stable_denom: String,
     pub massets_supported: Vec<MAssetInfo>
@@ -19,7 +19,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UpdateConfigMsg {
     pub owner: Option<String>,
-    pub controller_strategy: Option<String>,
+    pub ust_arb_strategy: Option<String>,
     pub mirror_mint_contract: Option<String>,
 }
 
@@ -36,6 +36,7 @@ pub enum ExecuteMsg {
     },
     LiquidateMirrorPosition {
         position_idx: Uint128,
+        ust_to_borrow: Uint256,
         max_loss_amount: Uint256
     },
     /// Callbacks; only callable by the contract itself.
@@ -46,6 +47,14 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CallbackMsg {
+    InitiateLiquidationCallback {
+        position_idx: Uint128,
+        minted_masset: Addr, 
+        minted_pair_addr: String,           
+        collateral_masset: AssetInfo,
+        collateral_pair_addr: String,
+        max_loss_amount: Uint256,
+    },
     AftermAssetBuyCallback {
         position_idx: Uint128,
         minted_masset: Addr, 
@@ -93,7 +102,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
-    pub controller_strategy: String,
+    pub ust_arb_strategy: String,
     pub mirror_mint_contract: String,
     pub stable_denom: String,
     pub massets_supported: Vec<MAssetInfo>
