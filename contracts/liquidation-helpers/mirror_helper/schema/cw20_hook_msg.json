@@ -1,0 +1,29 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Cw20HookMsg",
+  "anyOf": [
+    {
+      "description": "Open a new user position or add to an existing position (Cw20ReceiveMsg)",
+      "type": "object",
+      "required": [
+        "increase_lockup"
+      ],
+      "properties": {
+        "increase_lockup": {
+          "type": "object",
+          "required": [
+            "duration"
+          ],
+          "properties": {
+            "duration": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

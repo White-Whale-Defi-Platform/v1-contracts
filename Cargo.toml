@@ -1,5 +1,10 @@
 [workspace]
-members = ["packages/*", "contracts/*"]
+members = [
+    "packages/*", 
+    "contracts/bluna-vault",
+    "contracts/liquidation-helpers/mars_helper"
+    # "contracts/*"
+    ]
 
 [profile.release]
 rpath = false

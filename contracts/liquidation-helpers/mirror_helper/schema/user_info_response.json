@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UserInfoResponse",
+  "type": "object",
+  "required": [
+    "delegated_astro_rewards",
+    "lockup_positions",
+    "total_astro_rewards"
+  ],
+  "properties": {
+    "delegated_astro_rewards": {
+      "description": "Total ASTRO tokens user delegated to the LP bootstrap auction pool",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "lockup_positions": {
+      "description": "Contains lockup Ids of the User's lockup positions with different pools having different durations / deposit amounts",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "total_astro_rewards": {
+      "description": "Total ASTRO tokens user received as rewards for participation in the lockdrop",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Uint256": {
+      "type": "string"
+    }
+  }
+}

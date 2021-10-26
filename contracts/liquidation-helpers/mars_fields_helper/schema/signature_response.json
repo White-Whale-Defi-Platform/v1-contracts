@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SignatureResponse",
+  "type": "object",
+  "required": [
+    "is_valid",
+    "public_key",
+    "recovered_address"
+  ],
+  "properties": {
+    "is_valid": {
+      "type": "boolean"
+    },
+    "public_key": {
+      "type": "string"
+    },
+    "recovered_address": {
+      "type": "string"
+    }
+  }
+}

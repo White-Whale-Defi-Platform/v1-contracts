@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "LockUpInfoResponse",
+  "type": "object",
+  "required": [
+    "astro_reward_index",
+    "astro_rewards",
+    "dual_reward_index",
+    "duration",
+    "is_migrated",
+    "lp_units_locked",
+    "pool_identifier",
+    "unlock_timestamp",
+    "withdrawal_counter"
+  ],
+  "properties": {
+    "astro_reward_index": {
+      "description": "Used to calculate user's pending ASTRO rewards from the generator (staking) contract",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal256"
+        }
+      ]
+    },
+    "astro_rewards": {
+      "description": "UST locked as part of this lockup position",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "dual_reward_index": {
+      "description": "Used to calculate user's pending DUAL rewards from the generator (staking) contract",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal256"
+        }
+      ]
+    },
+    "duration": {
+      "description": "Lockup Duration",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "is_migrated": {
+      "description": "Boolean value indicating if the user's LP units have been updated post liquidity migration",
+      "type": "boolean"
+    },
+    "lp_units_locked": {
+      "description": "UST locked as part of this lockup position",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "pool_identifier": {
+      "description": "LP Pool identifer whose LP tokens this Lockdrop position accounts for",
+      "type": "string"
+    },
+    "unlock_timestamp": {
+      "description": "Timestamp beyond which this position can be unlocked",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "withdrawal_counter": {
+      "description": "Boolean value indicating if the user's has withdrawn funds post the only 1 withdrawal limit cutoff",
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "Decimal256": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal256(1_000_000_000_000_000_000) == 1.0 The greatest possible value that can be represented is 115792089237316195423570985008687907853269984665640564039457.584007913129639935 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "Uint256": {
+      "type": "string"
+    }
+  }
+}
