@@ -36,7 +36,7 @@ pub fn instantiate(
 
     let config = Config {
             owner:  deps.api.addr_validate(&msg.owner)?,
-            ust_arb_strategy: deps.api.addr_validate(&msg.ust_arb_strategy)?,
+            ust_vault_address: deps.api.addr_validate(&msg.ust_vault_address)?,
             red_bank_addr: deps.api.addr_validate(&msg.red_bank_addr)?,
             astroport_router: deps.api.addr_validate(&msg.astroport_router)?,
             stable_denom: msg.stable_denom,
@@ -176,10 +176,10 @@ pub fn handle_update_config(
 
     // UPDATE :: ADDRESSES IF PROVIDED
     config.owner = option_string_to_addr(deps.api, new_config.owner, config.owner)?;
-    config.ust_arb_strategy = option_string_to_addr(
+    config.ust_vault_address = option_string_to_addr(
         deps.api,
-        new_config.ust_arb_strategy,
-        config.ust_arb_strategy,
+        new_config.ust_vault_address,
+        config.ust_vault_address,
     )?;
     config.red_bank_addr = option_string_to_addr(
         deps.api,
@@ -258,7 +258,7 @@ pub fn handle_liquidate_red_bank_user(
                                         max_loss_amount: max_loss_amount.into(),
                                     }.to_cosmos_msg(&env.contract.address)?)?;
 
-    let flash_loan_msg = build_flash_loan_msg( config.ust_arb_strategy.to_string(),
+    let flash_loan_msg = build_flash_loan_msg( config.ust_vault_address.to_string(),
                                 config.stable_denom,
                                 ust_to_borrow,
                                 callback_binary )?;
@@ -484,7 +484,7 @@ pub fn after_assets_sell_callback(
     // COSMOS MSGS :: 
     // 1. Send UST Back to the UST arb strategy
     // 2. Update Indexes and deposit UST Back into Anchor
-    let send_native_asset_msg = build_send_native_asset_msg( deps.as_ref(), config.ust_arb_strategy.clone(), &config.stable_denom, cur_ust_balance.into() )?;
+    let send_native_asset_msg = build_send_native_asset_msg( deps.as_ref(), config.ust_vault_address.clone(), &config.stable_denom, cur_ust_balance.into() )?;
 
     STATE.save(deps.storage, &state)?;
 
@@ -507,7 +507,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
     Ok(ConfigResponse {
         owner: config.owner.to_string(),
-        ust_arb_strategy: config.ust_arb_strategy.to_string(),
+        ust_vault_address: config.ust_vault_address.to_string(),
         red_bank_addr: config.red_bank_addr.to_string(),
         astroport_router:  config.astroport_router.to_string(),
         stable_denom: config.stable_denom,

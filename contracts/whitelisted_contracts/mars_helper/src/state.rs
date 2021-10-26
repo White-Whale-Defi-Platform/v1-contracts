@@ -14,7 +14,7 @@ pub const STATE: Item<State> = Item::new("state");
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub owner: Addr,
-    pub ust_arb_strategy: Addr,
+    pub ust_vault_address: Addr,
     pub red_bank_addr: Addr,
     pub astroport_router: Addr,
     pub stable_denom: String,

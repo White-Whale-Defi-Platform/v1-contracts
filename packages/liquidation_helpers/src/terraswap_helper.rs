@@ -8,7 +8,7 @@ use crate::tax::{deduct_tax, compute_tax };
 /// @dev Returns a Cosmos Msg to sell an mAsset (CW20)  via terraswap
 pub fn trade_cw20_on_terraswap(
     pair_address: String,
-    masset_to_sell_addr: String,
+    asset_to_sell_addr: String,
     amount: Uint128
 ) -> StdResult<CosmosMsg> {
 
@@ -17,7 +17,7 @@ pub fn trade_cw20_on_terraswap(
         funds: vec![],
         msg: to_binary(&terraswap::pair::ExecuteMsg::Swap {
             offer_asset: terraswap::asset::Asset {
-                info: terraswap::asset::AssetInfo::Token { contract_addr: masset_to_sell_addr  },
+                info: terraswap::asset::AssetInfo::Token { contract_addr: asset_to_sell_addr  },
                 amount: amount
             } ,
             belief_price: None,

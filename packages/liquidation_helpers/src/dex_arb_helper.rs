@@ -10,7 +10,7 @@ use terraswap::asset::{AssetInfo};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub ust_arb_strategy: String,
+    pub ust_vault_address: String,
     pub astroport_router: String,
     pub stable_denom: String,
     pub terraswap_pools: PoolInfo,
@@ -21,7 +21,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UpdateConfigMsg {
     pub owner: Option<String>,
-    pub ust_arb_strategy: Option<String>,
+    pub ust_vault_address: Option<String>,
     pub astroport_router: Option<String>,
 }
 
@@ -36,22 +36,12 @@ pub enum ExecuteMsg {
         dex: DexInfo,
         new_asset: PoolInfo
     },
-    ArbBetweenTerraswapAndLoop {
+    InitiateArbitrage {
         buy_side: DexInfo,
+        sell_side: DexInfo,
         ust_to_borrow: Uint256,
         asset: AssetInfo
     },
-    ArbBetweenTerraswapAndAstroport {
-        buy_side: DexInfo,
-        ust_to_borrow: Uint256,
-        asset: AssetInfo
-    },
-    ArbBetweenLoopAndAstroport {
-        buy_side: DexInfo,
-        ust_to_borrow: Uint256,
-        asset: AssetInfo
-    },
-
     /// Callbacks; only callable by the contract itself.
     Callback(CallbackMsg),
 }
@@ -62,6 +52,7 @@ pub enum ExecuteMsg {
 pub enum CallbackMsg {
     InitiateArbCallback {
         buy_side: DexInfo,
+        sell_side: DexInfo,
         asset: AssetInfo
 
     },
@@ -100,11 +91,11 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
-    pub ust_arb_strategy: String,
+    pub ust_vault_address: String,
     pub astroport_router: String,
     pub stable_denom: String,
-    pub terraswap_pools: PoolInfo,
-    pub loop_pools: PoolInfo,
+    pub terraswap_pools: Vec<PoolInfo>,
+    pub loop_pools: Vec<PoolInfo>,
 }
 
 

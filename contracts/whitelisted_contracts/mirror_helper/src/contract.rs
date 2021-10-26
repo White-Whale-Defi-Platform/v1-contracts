@@ -28,14 +28,14 @@ use whitewhale_liquidation_helpers::flashloan_helper::build_flash_loan_msg;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
 
     let config = Config {
             owner:  deps.api.addr_validate(&msg.owner)?,
-            ust_arb_strategy: deps.api.addr_validate(&msg.ust_arb_strategy)?,
+            ust_vault_address: deps.api.addr_validate(&msg.ust_vault_address)?,
             mirror_mint_contract: deps.api.addr_validate(&msg.mirror_mint_contract)?,
             stable_denom: msg.stable_denom,
             massets_supported: vec![]
@@ -177,10 +177,10 @@ pub fn handle_update_config(
 
     // UPDATE :: ADDRESSES IF PROVIDED
     config.owner = option_string_to_addr(deps.api, new_config.owner, config.owner)?;
-    config.ust_arb_strategy = option_string_to_addr(
+    config.ust_vault_address = option_string_to_addr(
         deps.api,
-        new_config.ust_arb_strategy,
-        config.ust_arb_strategy,
+        new_config.ust_vault_address,
+        config.ust_vault_address,
     )?;
     config.mirror_mint_contract = option_string_to_addr(
         deps.api,
@@ -306,7 +306,7 @@ pub fn handle_liquidate_mirror_position(
         max_loss_amount: max_loss_amount
     }.to_cosmos_msg(&env.contract.address)?)?;
 
-    let flash_loan_msg = build_flash_loan_msg( config.ust_arb_strategy.to_string(),
+    let flash_loan_msg = build_flash_loan_msg( config.ust_vault_address.to_string(),
                                                 config.stable_denom,
                                                 ust_to_borrow,
                                                 callback_binary )?;
@@ -477,7 +477,7 @@ pub fn after_massets_sell_callback(
     // COSMOS MSGS :: 
     // 1. Send UST Back to the UST arb strategy
     // 2. Update Indexes and deposit UST Back into Anchor
-    let send_native_asset_msg = build_send_native_asset_msg( deps.as_ref(), config.ust_arb_strategy.clone(), &config.stable_denom, cur_ust_balance.into() )?;
+    let send_native_asset_msg = build_send_native_asset_msg( deps.as_ref(), config.ust_vault_address.clone(), &config.stable_denom, cur_ust_balance.into() )?;
 
     STATE.save(deps.storage, &state)?;
 
@@ -497,7 +497,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 
     Ok(ConfigResponse {
         owner: config.owner.to_string(),
-        ust_arb_strategy: config.ust_arb_strategy.to_string(),
+        ust_vault_address: config.ust_vault_address.to_string(),
         mirror_mint_contract: config.mirror_mint_contract.to_string(),
         stable_denom: config.stable_denom,
         massets_supported: config.massets_supported

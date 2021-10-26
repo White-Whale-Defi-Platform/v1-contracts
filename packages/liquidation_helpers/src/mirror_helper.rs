@@ -10,7 +10,7 @@ use crate::asset::{AssetInfo};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub ust_arb_strategy: String,
+    pub ust_vault_address: String,
     pub mirror_mint_contract: String,
     pub stable_denom: String,
     pub massets_supported: Vec<MAssetInfo>
@@ -19,7 +19,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UpdateConfigMsg {
     pub owner: Option<String>,
-    pub ust_arb_strategy: Option<String>,
+    pub ust_vault_address: Option<String>,
     pub mirror_mint_contract: Option<String>,
 }
 
@@ -102,7 +102,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
-    pub ust_arb_strategy: String,
+    pub ust_vault_address: String,
     pub mirror_mint_contract: String,
     pub stable_denom: String,
     pub massets_supported: Vec<MAssetInfo>

@@ -8,7 +8,7 @@ use cosmwasm_bignumber::{Decimal256, Uint256};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub ust_arb_strategy: String,
+    pub ust_vault_address: String,
     pub red_bank_addr: String,
     pub astroport_router: String,
     pub stable_denom: String,
@@ -17,7 +17,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UpdateConfigMsg {
     pub owner: Option<String>,
-    pub ust_arb_strategy: Option<String>,
+    pub ust_vault_address: Option<String>,
     pub red_bank_addr: Option<String>,
     pub astroport_router: Option<String>,
 }
@@ -97,7 +97,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
-    pub ust_arb_strategy: String,
+    pub ust_vault_address: String,
     pub red_bank_addr: String,
     pub astroport_router: String,
     pub stable_denom: String,

@@ -4,7 +4,8 @@ members = [
     "contracts/bluna-vault",
     "contracts/whitelisted_contracts/mars_helper",
     "contracts/whitelisted_contracts/mars_fields_helper",
-    "contracts/whitelisted_contracts/mirror_helper"
+    "contracts/whitelisted_contracts/mirror_helper",
+    "contracts/whitelisted_contracts/arbitrage_helper"
     # "contracts/*"
     ]
 
