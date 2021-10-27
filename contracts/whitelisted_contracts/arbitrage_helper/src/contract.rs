@@ -294,54 +294,43 @@ pub fn initiate_arb_callback(
     }
 
 
-    // Add the specific Cosmos Msg to buy the debt asset to be paid back to the Response
+    // Add the specific Cosmos Msg 
     match buy_side.clone() {
         DexInfo::Astroport { } => { 
             if asset_type == "native".to_string() {
                 let trade_msg =  trade_native_for_native_on_astroport(deps.as_ref(), config.astroport_router.to_string(), config.stable_denom, ust_amount.into(), asset_identifer.clone() )?;  
-                response = response
-                .add_message(trade_msg)
-                .add_attribute("astroport_buy_native", asset_identifer.to_string());    
+                response = response.add_message(trade_msg).add_attribute("astroport_buy_native", asset_identifer.to_string());    
             }
             else {
                 let trade_msg =  trade_native_for_cw20_on_astroport(deps.as_ref(), config.astroport_router.to_string(), config.stable_denom, ust_amount.into(), deps.api.addr_validate(&asset_identifer)? )?;  
-                response = response
-                .add_message(trade_msg)
-                .add_attribute("astroport_buy_cw20", asset_identifer.to_string());    
+                response = response.add_message(trade_msg).add_attribute("astroport_buy_cw20", asset_identifer.to_string());    
             }            
         },
         DexInfo::Terraswap { } => { 
-            let mut pair_address: String;
+            let mut pair_address= "".to_string();
             for pool_ in config.terraswap_pools.iter() {
                 if pool_.asset_token == asset.clone() {
                     pair_address =  pool_.pair_address.to_string();
                 }
             }
-            if pair_address.clone().is_empty() {
+            if pair_address.clone() == "".to_string() {
                 return Err(StdError::generic_err("Terraswap pair info not found for the asset to be arbitraged"));
             }
             let trade_msg =  trade_native_on_terraswap(deps.as_ref(), pair_address, config.stable_denom, ust_amount.into() )?;  
-            response = response
-            .add_message(trade_msg)
-            .add_attribute("terraswap_buy", asset_identifer.to_string());  
+            response = response.add_message(trade_msg).add_attribute("terraswap_buy", asset_identifer.to_string());  
         },
         DexInfo::Loop { } => { 
-            let pair_address_ : Option<String>;
+            let mut pair_address_ = "".to_string();
             for pool_ in config.loop_pools.iter() {
                 if pool_.asset_token == asset.clone() {
-                    pair_address_ =  Some(pool_.pair_address.to_string());
+                    pair_address_ =  pool_.pair_address.to_string();
                 }
+            }            
+            if pair_address_.clone() == "".to_string() {
+                return Err(StdError::generic_err("Loop pair info not found for the asset to be arbitraged"));
             }
-            
-            if let Some(pair_address_) = x {
-                    let trade_msg =  trade_native_on_terraswap(deps.as_ref(), pair_address_, config.stable_denom, ust_amount.into() )?;  
-                    response = response
-                    .add_message(trade_msg)
-                    .add_attribute("loop_buy", asset_identifer.to_string());          
-            } 
-            else {
-                return Err(StdError::generic_err("Terraswap pair info not found for the asset to be arbitraged"));
-            }
+            let trade_msg =  trade_native_on_terraswap(deps.as_ref(), pair_address_, config.stable_denom, ust_amount.into() )?;  
+            response = response.add_message(trade_msg).add_attribute("loop_buy", asset_identifer.to_string());          
         },
     }
 
@@ -378,15 +367,15 @@ pub fn after_buy_callback(
     let asset_type: String;
     let asset_identifer: String;
     let asset_balance: Uint256;
-    match  asset {
+    match  asset.clone() {
         AssetInfo::NativeToken { denom } => {
             asset_type = "native".to_string();
-            asset_identifer = denom;
+            asset_identifer = denom.clone();
             asset_balance = query_balance(&deps.querier, env.contract.address.clone(),  denom.clone() )?.into();
         }
         AssetInfo::Token { contract_addr } => {
             asset_type = "cw20".to_string();
-            asset_identifer = contract_addr;
+            asset_identifer = contract_addr.clone();
             asset_balance = query_token_balance(&deps.querier, deps.api.addr_validate( &contract_addr.clone() )? , env.contract.address.clone() )?.into();
         }
     }
@@ -395,7 +384,7 @@ pub fn after_buy_callback(
     match sell_side.clone() {
         DexInfo::Astroport { } => { 
             if asset_type == "native".to_string() {
-                let trade_msg =  trade_native_for_native_on_astroport(deps.as_ref(), config.astroport_router.to_string(), asset_identifer, asset_balance.into(), config.stable_denom )?;  
+                let trade_msg =  trade_native_for_native_on_astroport(deps.as_ref(), config.astroport_router.to_string(), asset_identifer.clone(), asset_balance.into(), config.stable_denom )?;  
                 response = response.add_message(trade_msg).add_attribute("astroport_sell_native", asset_identifer.to_string());    
             }
             else {
@@ -404,34 +393,40 @@ pub fn after_buy_callback(
             }            
         },
         DexInfo::Terraswap { } => { 
-            let pair_address : String;
+            let mut pair_address = "".to_string();
             for pool_ in config.terraswap_pools.iter() {
                 if pool_.asset_token == asset.clone() {
                     pair_address =  pool_.pair_address.to_string();
                 }
             }
+            if pair_address.clone() == "".to_string() {
+                return Err(StdError::generic_err("Loop pair info not found for the asset to be arbitraged"));
+            }
             let trade_msg: CosmosMsg;
             if asset_type == "native".to_string() { 
-                trade_msg =  trade_native_on_terraswap(deps.as_ref(), pair_address, asset_identifer, asset_balance.into() )?;  
+                trade_msg =  trade_native_on_terraswap(deps.as_ref(), pair_address, asset_identifer.clone(), asset_balance.into() )?;  
             }
            else { 
-                trade_msg =  trade_cw20_on_terraswap( pair_address, asset_identifer, asset_balance.into() )?;  
+                trade_msg =  trade_cw20_on_terraswap( pair_address, asset_identifer.clone(), asset_balance.into() )?;  
             }
-            response = response.add_message(trade_msg).add_attribute("terraswap_sell", asset_identifer.to_string());  
+            response = response.add_message(trade_msg).add_attribute("terraswap_sell", asset_identifer.clone().to_string());  
         },
         DexInfo::Loop { } => { 
-            let pair_address : String;
+            let mut pair_address = "".to_string();
             for pool_ in config.loop_pools.iter() {
                 if pool_.asset_token == asset.clone() {
                     pair_address =  pool_.pair_address.to_string();
                 }
             }
+            if pair_address.clone() == "".to_string() {
+                return Err(StdError::generic_err("Loop pair info not found for the asset to be arbitraged"));
+            }
             let trade_msg: CosmosMsg;
             if asset_type == "native".to_string() { 
-                trade_msg =  trade_native_on_terraswap(deps.as_ref(), pair_address, asset_identifer, asset_balance.into() )?;  
+                trade_msg =  trade_native_on_terraswap(deps.as_ref(), pair_address, asset_identifer.clone(), asset_balance.into() )?;  
             }
            else { 
-                trade_msg =  trade_cw20_on_terraswap( pair_address, asset_identifer, asset_balance.into() )?;  
+                trade_msg =  trade_cw20_on_terraswap( pair_address, asset_identifer.clone(), asset_balance.into() )?;  
             }
             response = response.add_message(trade_msg).add_attribute("loop_sell", asset_identifer.to_string());  
         },
