@@ -12,7 +12,7 @@ use std::cmp::min;
 use white_whale::query::terraswap::{query_lp_token, query_pool};
 
 use crate::error::TerraswapWrapperError;
-use crate::msg::{ExecuteMsg, InitMsg, QueryMsg, WithdrawableProfitsResponse, ConfigResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, WithdrawableProfitsResponse, ConfigResponse};
 use crate::state::{State, ADMIN, DEPOSIT_INFO, STATE, TRADER};
 
 type TerraswapWrapperResult = Result<Response, TerraswapWrapperError>;
@@ -27,7 +27,7 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: InitMsg,
+    msg: InstantiateMsg,
 ) -> StdResult<Response> {
     if msg.max_deposit.info != msg.min_profit.info {
         return Err(StdError::generic_err(
@@ -274,7 +274,10 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse>{
     let state = STATE.load(deps.storage)?;
     Ok(ConfigResponse{
         terraswap_pool_addr: state.terraswap_pool_addr.to_string(),
-        lp_token_addr: state.lp_token_addr.to_string()
+        lp_token_addr: state.lp_token_addr.to_string(),
+        max_deposit: state.max_deposit,
+        min_profit: state.min_profit,
+        slippage: state.slippage
     })
 }
 
