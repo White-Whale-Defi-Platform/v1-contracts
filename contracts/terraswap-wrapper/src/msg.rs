@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{Decimal, Uint128, CanonicalAddr};
 use terraswap::asset::Asset;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -30,10 +30,17 @@ pub enum QueryMsg {
     // Pair {},
     // Pool {},
     WithdrawableProfits {},
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct WithdrawableProfitsResponse {
     pub amount: Asset,
     pub lp_amount: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ConfigResponse {
+    pub terraswap_pool_addr: String, 
+    pub lp_token_addr: String
 }
