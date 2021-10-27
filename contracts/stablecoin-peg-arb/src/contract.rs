@@ -19,7 +19,7 @@ use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
 
 use crate::error::StableArbError;
-use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InitMsg, QueryMsg};
+use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
 
 use crate::querier::query_market_price;
 
@@ -28,7 +28,12 @@ use crate::state::{State, ADMIN, ARB_BASE_ASSET, STATE};
 type VaultResult = Result<Response<TerraMsgWrapper>, StableArbError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
+pub fn instantiate(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
+) -> VaultResult {
     let state = State {
         trader: deps.api.addr_canonicalize(info.sender.as_str())?,
         vault_address: deps.api.addr_canonicalize(&msg.vault_address)?,
@@ -384,8 +389,8 @@ pub fn try_query_config(deps: Deps) -> StdResult<ArbBaseAsset> {
 //     use terra_cosmwasm::TerraRoute;
 //     use terraswap::asset::AssetInfo;
 
-//     fn get_test_init_msg() -> InitMsg {
-//         InitMsg {
+//     fn get_test_init_msg() -> InstantiateMsg {
+//         InstantiateMsg {
 //             pool_address: "test_pool".to_string(),
 //             anchor_money_market_address: "test_mm".to_string(),
 //             aust_address: "test_aust".to_string(),
@@ -429,7 +434,7 @@ pub fn try_query_config(deps: Deps) -> StdResult<ArbBaseAsset> {
 //         let custom_token_symbol = String::from("MyLP");
 
 //         // Define a custom Init Msg with the custom token info provided
-//         let msg = InitMsg {
+//         let msg = InstantiateMsg {
 //             pool_address: "test_pool".to_string(),
 //             anchor_money_market_address: "test_mm".to_string(),
 //             aust_address: "test_aust".to_string(),

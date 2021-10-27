@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use terraswap::asset::Asset;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {
+pub struct InstantiateMsg {
     pub pool_address: String,
     pub bluna_hub_address: String,
     pub bluna_address: String,

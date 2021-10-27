@@ -18,8 +18,8 @@ use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 
-pub(crate) fn instantiate_msg() -> InitMsg {
-    InitMsg {
+pub(crate) fn instantiate_msg() -> InstantiateMsg {
+    InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),
@@ -145,7 +145,7 @@ fn test_init_with_non_default_vault_lp_token() {
     let custom_token_symbol = String::from("MyLP");
 
     // Define a custom Init Msg with the custom token info provided
-    let msg = InitMsg {
+    let msg = InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),

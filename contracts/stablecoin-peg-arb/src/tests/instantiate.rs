@@ -14,8 +14,8 @@ use crate::tests::common::{TEST_CREATOR, VAULT_CONTRACT};
 use crate::msg::*;
 use crate::tests::mock_querier::mock_dependencies;
 
-pub(crate) fn instantiate_msg() -> InitMsg {
-    InitMsg {
+pub(crate) fn instantiate_msg() -> InstantiateMsg {
+    InstantiateMsg {
         trader: "test_trader".to_string(),
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
@@ -30,7 +30,7 @@ pub(crate) fn instantiate_msg() -> InitMsg {
  * Mocks instantiation.
  */
 pub fn mock_instantiate(deps: DepsMut) {
-    let msg = InitMsg {
+    let msg = InstantiateMsg {
         trader: "test_trader".to_string(),
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
@@ -41,8 +41,8 @@ pub fn mock_instantiate(deps: DepsMut) {
     };
 
     let info = mock_info(TEST_CREATOR, &[]);
-    let _res =
-        instantiate(deps, mock_env(), info, msg).expect("contract successfully handles InitMsg");
+    let _res = instantiate(deps, mock_env(), info, msg)
+        .expect("contract successfully handles InstantiateMsg");
 }
 
 /**

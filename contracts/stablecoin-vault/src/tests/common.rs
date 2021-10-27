@@ -1,11 +1,10 @@
 use cosmwasm_std::testing::mock_env;
-use terraswap::asset::{ AssetInfo};
 use cosmwasm_std::{Env, Timestamp};
+use terraswap::asset::AssetInfo;
 
 pub(crate) const LP_TOKEN: &str = "lp_token";
 pub(crate) const ARB_CONTRACT: &str = "arb_contract_address";
 pub(crate) const TEST_CREATOR: &str = "creator";
-
 
 pub fn mock_base_assetinfo() -> AssetInfo {
     AssetInfo::NativeToken {

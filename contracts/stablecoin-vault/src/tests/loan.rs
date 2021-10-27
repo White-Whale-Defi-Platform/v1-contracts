@@ -27,7 +27,7 @@ pub fn mock_flash_loan(deps: DepsMut) {
     
     let info = mock_info(TEST_CREATOR, &[]);
     let _res =
-        instantiate(deps, mock_env(), info, msg).expect("contract successfully handles InitMsg");
+        instantiate(deps, mock_env(), info, msg).expect("contract successfully handles InstantiateMsg");
     // Set mock value on profit check
     // Update balances of caller and vault
     

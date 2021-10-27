@@ -39,7 +39,7 @@ const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 type VaultResult = Result<Response, StableVaultError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
+pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateMsg) -> VaultResult {
     let state = State {
         anchor_money_market_address: deps
             .api
@@ -166,7 +166,7 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
         return Err(StableVaultError::NotCallback {});
     }
     match msg {
-        CallbackMsg::AfterSuccessfulLoanCallback {} => after_successful_trade_callback(deps, env),
+        CallbackMsg::AfterSuccessfulLoanCallback {} => after_successful_loan_callback(deps, env),
         // Possibility to add more callbacks in future.
     }
 }
@@ -498,7 +498,7 @@ pub fn encapsule_payload(deps: Deps, env: Env, response: Response) -> VaultResul
         // After borrower actions, deposit the received funds back into
         // Anchor if applicable
         .add_message(after_loan_msg)
-        // Call the profit-check again to cancle the borrow if
+        // Call the profit-check again to cancel the borrow if
         // no profit is made.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps
@@ -582,7 +582,7 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
 //  CALLBACK FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
+fn after_successful_loan_callback(deps: DepsMut, env: Env) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     let stable_denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let stables_in_contract =
