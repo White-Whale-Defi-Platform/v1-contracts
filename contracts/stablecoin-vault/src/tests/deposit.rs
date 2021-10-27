@@ -12,7 +12,7 @@ use white_whale::fee::*;
 use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::ust_vault::msg::*;
 
-use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
+use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR, mock_base_assetinfo};
 
 use crate::tests::mock_querier::mock_dependencies;
 
@@ -41,23 +41,11 @@ pub(crate) fn instantiate_msg() -> InitMsg {
 /**
  * Mocks instantiation.
  */
-pub fn mock_instantiate(deps: DepsMut) {
-    let msg = InitMsg {
-        anchor_money_market_address: "test_mm".to_string(),
-        aust_address: "test_aust".to_string(),
-        profit_check_address: "test_profit_check".to_string(),
-        community_fund_addr: "community_fund".to_string(),
-        warchest_addr: "warchest".to_string(),
-        asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
-        token_code_id: 0u64,
-        warchest_fee: Decimal::percent(10u64),
-        community_fund_fee: Decimal::permille(5u64),
-        max_community_fund_fee: Uint128::from(1000000u64),
-        stable_cap: Uint128::from(100_000_000u64),
-        vault_lp_token_name: None,
-        vault_lp_token_symbol: None,
+pub fn mock_deposit(deps: DepsMut) {
+    let msg = ExecuteMsg::ProvideLiquidity {
+        asset: Asset {
+            info: mock_base_assetinfo();
+        }
     };
 
     let info = mock_info(TEST_CREATOR, &[]);
