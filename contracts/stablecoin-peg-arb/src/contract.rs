@@ -35,7 +35,6 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> VaultResult {
     let state = State {
-        trader: deps.api.addr_canonicalize(info.sender.as_str())?,
         vault_address: deps.api.addr_canonicalize(&msg.vault_address)?,
         seignorage_address: deps.api.addr_canonicalize(&msg.seignorage_address)?,
         pool_address: deps.api.addr_canonicalize(&msg.pool_address)?,
@@ -71,8 +70,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
                 .add_attribute("previous admin", previous_admin)
                 .add_attribute("admin", admin))
         }
-        // TODO: We could ommit the trader entirely, lets discuss!
-        ExecuteMsg::SetTrader { trader } => set_trader(deps, info, trader),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
 }
@@ -327,22 +324,6 @@ fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
 //----------------------------------------------------------------------------------------
 //  GOVERNANCE CONTROLLED SETTERS
 //----------------------------------------------------------------------------------------
-
-pub fn set_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> VaultResult {
-    // Only the admin should be able to call this
-    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-
-    let mut state = STATE.load(deps.storage)?;
-    // Get the old trader
-    let previous_trader = deps.api.addr_humanize(&state.trader)?.to_string();
-    // Store the new trader, validating it is indeed an address along the way
-    state.trader = deps.api.addr_canonicalize(&trader)?;
-    STATE.save(deps.storage, &state)?;
-    // Respond and note the previous traders address
-    Ok(Response::new()
-        .add_attribute("trader", trader)
-        .add_attribute("previous trader", previous_trader))
-}
 
 pub fn set_vault_addr(deps: DepsMut, msg_info: MessageInfo, vault_address: String) -> VaultResult {
     // Only the admin should be able to call this

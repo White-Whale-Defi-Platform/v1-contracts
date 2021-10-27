@@ -16,7 +16,6 @@ use crate::tests::mock_querier::mock_dependencies;
 
 pub(crate) fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
-        trader: "test_trader".to_string(),
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
         pool_address: "terraswap_pool".to_string(),
@@ -31,7 +30,6 @@ pub(crate) fn instantiate_msg() -> InstantiateMsg {
  */
 pub fn mock_instantiate(deps: DepsMut) {
     let msg = InstantiateMsg {
-        trader: "test_trader".to_string(),
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
         pool_address: "terraswap_pool".to_string(),
@@ -61,7 +59,6 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            trader: deps.api.addr_canonicalize(&"test_trader").unwrap(),
             vault_address: deps.api.addr_canonicalize(&VAULT_CONTRACT).unwrap(),
             seignorage_address: deps.api.addr_canonicalize(&"seignorage").unwrap(),
             pool_address: deps.api.addr_canonicalize(&"terraswap_pool ").unwrap(),
