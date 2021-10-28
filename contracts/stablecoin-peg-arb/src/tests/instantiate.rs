@@ -1,6 +1,6 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::Api;
-use cosmwasm_std::{coins, from_binary, to_binary, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
+use cosmwasm_std::{DepsMut};
 
 use crate::contract::{execute, instantiate};
 use crate::state::{State, ARB_BASE_ASSET, STATE};

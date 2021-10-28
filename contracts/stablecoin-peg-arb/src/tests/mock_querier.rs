@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
     from_binary, from_slice, to_binary, Coin, ContractResult, Empty, OwnedDeps, Querier,
