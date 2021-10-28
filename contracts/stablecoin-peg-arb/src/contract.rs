@@ -216,7 +216,7 @@ pub fn try_arb_below_peg(
 }
 
 // Attempt to perform an arbitrage operation with the assumption that
-// the currency to be arb'd is below peg. Needed funds should be provided
+// the currency to be arb'd is above peg. Needed funds should be provided
 // by the earlier stablecoin vault flashloan call.
 pub fn try_arb_above_peg(
     deps: DepsMut,
