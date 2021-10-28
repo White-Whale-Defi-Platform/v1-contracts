@@ -167,6 +167,7 @@ pub fn try_arb_below_peg(
     }
 
     // Simulate first tx with Terra Market Module
+    // lent_coin already takes transfer tax into account. 
     let expected_luna_received =
         query_market_price(deps.as_ref(), lent_coin.clone(), ask_denom.clone())?;
 

@@ -201,7 +201,7 @@ pub fn handle_flashloan(
 
     // Check if sender is whitelisted
     if !whitelisted_contracts.contains(&deps.api.addr_canonicalize(&info.sender.to_string())?) {
-        // Chech if non-whitelisted are allowed to borrow
+        // Check if non-whitelisted are allowed to borrow
         if state.allow_non_whitelisted {
             whitelisted = false;
         } else {
@@ -246,7 +246,7 @@ pub fn handle_flashloan(
             .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
     }
 
-    // Make shure contract receives their expected share by adding taxes to expected amount.
+    // Make shure contract receives their expected share by adding taxes to expected send amount.
     let expected_tax = requested_asset.compute_tax(&deps.querier)?;
     requested_asset.amount += expected_tax;
 
