@@ -42,7 +42,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> ProfitCheckResult {
     match msg {
-        ExecuteMsg::AfterTrade {} => after_trade(deps, info),
+        ExecuteMsg::AfterTrade { loan_fee } => after_trade(deps, info, loan_fee),
         ExecuteMsg::BeforeTrade {} => before_trade(deps, info),
         ExecuteMsg::SetVault { vault_address } => set_vault_address(deps, info, vault_address),
     }
@@ -68,7 +68,7 @@ pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
 }
 
 // Checks if balance increased after the trade
-pub fn after_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
+pub fn after_trade(deps: DepsMut, info: MessageInfo, loan_fee: Uint128) -> ProfitCheckResult {
     let mut conf = CONFIG.load(deps.storage)?;
     if deps.api.addr_canonicalize(&info.sender.to_string())? != conf.vault_address {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
@@ -76,7 +76,7 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
 
     let balance = get_vault_value(deps.as_ref())?;
 
-    if balance < conf.last_balance {
+    if balance < conf.last_balance + loan_fee {
         return Err(ProfitCheckError::CancelLosingTrade {});
     }
 
@@ -296,7 +296,9 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             vault_info,
-            ExecuteMsg::AfterTrade {},
+            ExecuteMsg::AfterTrade {
+                loan_fee: Uint128::zero(),
+            },
         );
         match res {
             Err(..) => {}
@@ -352,7 +354,15 @@ mod tests {
                 .unwrap();
         assert_eq!(res.last_balance, initial_balance);
 
-        let res = execute(deps.as_mut(), env, vault_info, ExecuteMsg::AfterTrade {}).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env,
+            vault_info,
+            ExecuteMsg::AfterTrade {
+                loan_fee: Uint128::zero(),
+            },
+        )
+        .unwrap();
         assert_eq!(0, res.messages.len())
     }
 
@@ -403,7 +413,14 @@ mod tests {
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res = execute(deps.as_mut(), env.clone(), info, ExecuteMsg::AfterTrade {});
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            ExecuteMsg::AfterTrade {
+                loan_fee: Uint128::zero(),
+            },
+        );
         match res {
             Err(..) => {}
             _ => panic!("unexpected"),
@@ -413,7 +430,16 @@ mod tests {
             sender: vault_address.clone(),
             funds: vec![],
         };
-        let _res = execute(deps.as_mut(), env, vault_info, ExecuteMsg::AfterTrade {}).unwrap();
+        // TODO: this throws error as vault_address is not in the deps. Whats the best way to solve this?
+        let _res = execute(
+            deps.as_mut(),
+            env,
+            vault_info,
+            ExecuteMsg::AfterTrade {
+                loan_fee: Uint128::zero(),
+            },
+        )
+        .unwrap();
     }
 
     #[test]

@@ -23,15 +23,13 @@ pub(crate) fn instantiate_msg() -> InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),
-        community_fund_addr: "community_fund".to_string(),
         warchest_addr: "warchest".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
         token_code_id: 0u64,
         warchest_fee: Decimal::percent(10u64),
-        community_fund_fee: Decimal::permille(5u64),
-        max_community_fund_fee: Uint128::from(1000000u64),
+        flash_loan_fee: Decimal::permille(5u64),
         stable_cap: Uint128::from(100_000_000u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
@@ -46,15 +44,13 @@ pub fn mock_instantiate(deps: DepsMut) {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),
-        community_fund_addr: "community_fund".to_string(),
         warchest_addr: "warchest".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
         token_code_id: 0u64,
         warchest_fee: Decimal::percent(10u64),
-        community_fund_fee: Decimal::permille(5u64),
-        max_community_fund_fee: Uint128::from(1000000u64),
+        flash_loan_fee: Decimal::permille(5u64),
         stable_cap: Uint128::from(100_000_000u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
@@ -85,6 +81,7 @@ fn successful_initialization() {
             aust_address: deps.api.addr_canonicalize("test_aust").unwrap(),
             profit_check_address: deps.api.addr_canonicalize("test_profit_check").unwrap(),
             whitelisted_contracts: vec![],
+            allow_non_whitelisted: false,
         }
     );
 
@@ -110,12 +107,9 @@ fn successful_update_fee() {
     // update fees
     let info = mock_info(TEST_CREATOR, &[]);
     let msg = ExecuteMsg::SetFee {
-        community_fund_fee: Some(CappedFee {
-            fee: Fee {
+        flash_loan_fee: Some(Fee {
                 share: Decimal::percent(1),
-            },
-            max_fee: Uint128::from(1_000_000u64),
-        }),
+            }),
         warchest_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
@@ -128,8 +122,7 @@ fn successful_update_fee() {
     let res = query(deps.as_ref(), mock_env(), QueryMsg::Fees {}).unwrap();
     let fee_response: FeeResponse = from_binary(&res).unwrap();
     let fees: VaultFee = fee_response.fees;
-    assert_eq!(Decimal::percent(1), fees.community_fund_fee.fee.share);
-    assert_eq!(Uint128::from(1_000_000u64), fees.community_fund_fee.max_fee);
+    assert_eq!(Decimal::percent(1), fees.flash_loan_fee.share);
     assert_eq!(Decimal::percent(2), fees.warchest_fee.share);
 }
 
@@ -160,15 +153,13 @@ fn test_init_with_non_default_vault_lp_token() {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),
-        community_fund_addr: "community_fund".to_string(),
         warchest_addr: "warchest".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
         token_code_id: 10u64,
         warchest_fee: Decimal::percent(10u64),
-        community_fund_fee: Decimal::permille(5u64),
-        max_community_fund_fee: Uint128::from(1000000u64),
+        flash_loan_fee: Decimal::permille(5u64),
         stable_cap: Uint128::from(1000_000_000u64),
         vault_lp_token_name: Some(custom_token_name.clone()),
         vault_lp_token_symbol: Some(custom_token_symbol.clone()),
