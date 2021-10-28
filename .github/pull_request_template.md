@@ -10,7 +10,7 @@
 <!--- Describe your changes in detail. Why is this change required? What problem does it solve? -->
 
 
-## :hammer_and_wrench: How to test
+## :hammer_and_wrench: How to test (if applicable)
 <!--- Describe the steps the reviewer needs to take to verify the changes -->
 
 
