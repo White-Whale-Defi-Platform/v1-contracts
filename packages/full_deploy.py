@@ -29,9 +29,9 @@ create = False
 
 if create:
     # profit_check.create()
-    vault.create()
-    profit_check.set_vault(vault.address)
-    ust_arb.create()
+    # vault.create()
+    # profit_check.set_vault(vault.address)
+    # ust_arb.create()
     vault.add_to_whitelist(ust_arb.address)
 
 # ust_arb.call_arb(1)
@@ -39,11 +39,10 @@ if create:
 # profit_check.get_vault()
 # vault.query_vault_value()
 # deployer.send_funds(ust_arb.address, [Coin("uusd", 10000000)])
-# vault.provide_liquidity(100_000_000_000)
+vault.provide_liquidity(100_000_000_000)
 
-community_fund.simulate_deposit(1_000_000)
+# community_fund.simulate_deposit(1_000_000)
 
-# ust_arb.call_vault(2000_000_000)
 # vault.withdraw_all()
 # vault.query_vault_value()
 
