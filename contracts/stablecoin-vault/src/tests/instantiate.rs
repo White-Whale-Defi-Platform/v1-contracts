@@ -108,8 +108,8 @@ fn successful_update_fee() {
     let info = mock_info(TEST_CREATOR, &[]);
     let msg = ExecuteMsg::SetFee {
         flash_loan_fee: Some(Fee {
-                share: Decimal::percent(1),
-            }),
+            share: Decimal::percent(1),
+        }),
         warchest_fee: Some(Fee {
             share: Decimal::percent(2),
         }),

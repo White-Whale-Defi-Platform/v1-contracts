@@ -19,8 +19,7 @@ use white_whale::fee::{Fee, VaultFee};
 use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::ust_vault::msg::{
-    EstimateWithdrawFeeResponse, FeeResponse, ValueResponse,
-    VaultQueryMsg as QueryMsg,
+    EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
 
 use white_whale::tax::compute_tax;
