@@ -7,7 +7,7 @@ use cosmwasm_std::Uint128;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub owner: String,
-    pub anchor_token: String,
+    pub whale_token: String,
     pub genesis_time: u64,
 }
 
@@ -16,7 +16,7 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     UpdateConfig {
         owner: Option<String>,
-        anchor_token: Option<String>,
+        whale_token: Option<String>,
         genesis_time: Option<u64>,
     },
     RegisterVestingAccounts {
@@ -56,7 +56,7 @@ pub enum QueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
     pub owner: String,
-    pub anchor_token: String,
+    pub whale_token: String,
     pub genesis_time: u64,
 }
 
