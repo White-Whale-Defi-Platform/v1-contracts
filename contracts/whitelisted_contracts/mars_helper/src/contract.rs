@@ -14,6 +14,7 @@ use whitewhale_liquidation_helpers::helper::{
     build_send_cw20_token_msg, build_send_native_asset_msg, option_string_to_addr,
     get_denom_amount_from_coins, query_balance, query_token_balance
 };
+use whitewhale_liquidation_helpers::nft_minter::ExecuteMsg as MinterExecuteMsg;
 use whitewhale_liquidation_helpers::tax::{
     compute_tax, deduct_tax
 };
@@ -592,6 +593,25 @@ fn build_liquidate_cw20_asset_loan_on_red_bank(
 
     Ok(build_send_cw20_token_msg(red_bank_addr,debt_asset_addr,amount_to_repay.into(),msg_ )?)
 }
+
+
+
+fn build_mint_nft_msg(
+    nft_minter: String,
+    user_address: String,
+    liquidated_amount: Uint256
+) -> StdResult<CosmosMsg> {
+
+    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr:nft_minter,
+        funds: vec![],
+        msg: to_binary(&MinterExecuteMsg::MintNft {
+            user_address: user_address,
+            liquidated_amount: liquidated_amount
+        })?,
+    }))
+}
+
 
 
 

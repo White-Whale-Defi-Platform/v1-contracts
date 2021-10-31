@@ -1,16 +1,21 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, StdError, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, WasmMsg
+    to_binary, StdError, Binary, Deps, DepsMut, Env, MessageInfo,
+    Response, StdResult, WasmMsg, ReplyOn, SubMsg, Reply, Addr, CosmosMsg
 };
 
+// use schemars::schema::Metadata;
 use whitewhale_liquidation_helpers::nft_minter::{
     InstantiateMsg, ExecuteMsg, QueryMsg, ConfigResponse, LiquidationHelpersInfo
 };
-
-use crate::state::{ Config, CONFIG};
+use whitewhale_liquidation_helpers::metadata::{Metadata,Trait};
+use whitewhale_liquidation_nft::msg::{InstantiateMsg as Cw721InstantiateMsg, ExecuteMsg as Cw721ExecuteMsg, MintMsg as Cw721MintMsg};
+use crate::response::MsgInstantiateContractResponse;
+use protobuf::Message;
+use crate::state::{ Config, TmpNftInfo, CONFIG, TMP_NFT_INFO};
 use cosmwasm_bignumber::{Uint256};
+
 
 
 
@@ -26,6 +31,7 @@ pub fn instantiate(
 
     let config = Config {
             owner:  deps.api.addr_validate(&msg.owner)?,
+            cw721_code_id: msg.cw721_code_id,
             whitewhale_liquidators: vec![],
     };
 
@@ -38,14 +44,15 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> StdResult<Response> {
     match msg {
         ExecuteMsg::UpdateOwner { owner } => handle_update_owner(deps, info, owner),
-        ExecuteMsg::AddLiquidator { new_liquidator } => handle_add_liquidator(deps, info, new_liquidator),
-        ExecuteMsg::MintNft { user_address, liquidated_amount } => handle_mint_nft(deps, _env, info, user_address, liquidated_amount ),
+        ExecuteMsg::AddLiquidator { new_liquidator, metadata, symbol, token_uri } => handle_initialize_liquidator(deps, env, info, new_liquidator, metadata, symbol, token_uri),
+        ExecuteMsg::UpdateLiquidator { cur_liquidator, new_liquidator , metadata, token_uri } => handle_update_metadata(deps, env, info, cur_liquidator, new_liquidator , metadata, token_uri),
+        ExecuteMsg::MintNft { user_address, liquidated_amount } => handle_mint_nft(deps, env, info, user_address, liquidated_amount ),
     }
 }
 
@@ -69,7 +76,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 
 /// @dev Admin function to update Configuration parameters
-/// @param new_config : Same as UpdateConfigMsg struct
 pub fn handle_update_owner(
     deps: DepsMut,
     info: MessageInfo,
@@ -90,14 +96,17 @@ pub fn handle_update_owner(
 }
 
 
-/// @dev Admin function to add a new Fields strategy address
-/// @param new_asset : 
-pub fn handle_add_liquidator(
+
+pub fn handle_initialize_liquidator(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
-    new_liquidator: LiquidationHelpersInfo
+    new_liquidator: String,
+    metadata: Metadata,
+    symbol: String,
+    token_uri: String
 ) -> StdResult<Response> {
-    let mut config = CONFIG.load(deps.storage)?;
+    let config = CONFIG.load(deps.storage)?;
 
     // CHECK :: Only owner can call this function
     if info.sender != config.owner.clone() {
@@ -105,22 +114,125 @@ pub fn handle_add_liquidator(
     }
 
     for whitewhale_liquidator in config.whitewhale_liquidators.iter() {
-        if new_liquidator.liquidator_contract == whitewhale_liquidator.liquidator_contract {
-            return Err(StdError::generic_err("Already Supported"));
+        if new_liquidator == whitewhale_liquidator.liquidator_contract {
+            return Err(StdError::generic_err("Liquidator already Supported"));
         }
     }
 
-    config.whitewhale_liquidators.push(  new_liquidator );
+    TMP_NFT_INFO.save(
+        deps.storage,
+        &TmpNftInfo {
+            liquidator_addr: new_liquidator.clone(),
+            metadata: metadata.clone(),
+            token_uri: token_uri.clone()
+        },
+    )?;
 
-    CONFIG.save(deps.storage, &config)?;
-    Ok(Response::new().add_attribute("action", "nft_minter::ExecuteMsg::AddLiquidator"))
+    Ok(Response::new()
+        .add_attributes(vec![
+            ("action", "add_liquidator"),
+            ("liquidator_address", &new_liquidator),
+            ("nft_symbol", &symbol),
+        ])
+        .add_submessage(SubMsg {
+            id: 1,
+            gas_limit: None,
+            msg: WasmMsg::Instantiate {
+                code_id: config.cw721_code_id,
+                funds: vec![],
+                admin: None,
+                label: "".to_string(),
+                msg: to_binary(&Cw721InstantiateMsg {
+                           name: metadata.name.unwrap(),
+                           symbol: symbol,
+                           minter: env.contract.address.to_string(),
+                })?,
+            }
+            .into(),
+            reply_on: ReplyOn::Success,
+        }))
+}
+
+
+/// This just stores the result for future query
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    let tmp_nft_info = TMP_NFT_INFO.load(deps.storage)?;
+
+    let res: MsgInstantiateContractResponse =
+        Message::parse_from_bytes(msg.result.unwrap().data.unwrap().as_slice()).map_err(|_| {
+            StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
+        })?;
+
+    let nft_contract = res.get_contract_address();
+
+    let mut config = CONFIG.load(deps.storage)?;
+    config.whitewhale_liquidators.push(  LiquidationHelpersInfo {
+        liquidator_contract: tmp_nft_info.liquidator_addr,
+        nft_contract_addr: nft_contract.to_string(),
+        total_minted: 0u64,
+        metadata: tmp_nft_info.metadata,
+        token_uri: tmp_nft_info.token_uri
+    } );
+
+
+    CONFIG.save(deps.storage,&config)?;
+
+    Ok(Response::new().add_attributes(vec![
+        ("nft_address", nft_contract.to_string()),
+    ]))
 }
 
 
 
+pub fn handle_update_metadata(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    cur_liquidator: String,
+    new_liquidator: Option<String>,
+    metadata: Option<Metadata>,
+    token_uri: Option<String>
+) -> StdResult<Response> {
+    let mut config = CONFIG.load(deps.storage)?;
+    let mut check = false;
 
-/// @dev 
-/// @param  : 
+    // CHECK :: Only owner can call this function
+    if info.sender != config.owner.clone() {
+        return Err(StdError::generic_err("Unauthorized"));
+    }
+
+    let mut response = Response::new().add_attributes(vec![
+        ("action", "updated_Liquidator"), ("liquidator", "cur_liquidator"),
+    ]);
+
+    for mut whitewhale_liquidator in config.whitewhale_liquidators.iter_mut() {
+        if cur_liquidator == whitewhale_liquidator.liquidator_contract {
+            if let Some(new_liquidator) = new_liquidator.clone() {
+                whitewhale_liquidator.liquidator_contract = new_liquidator.clone();
+                response = response.add_attribute("new_liquidator", new_liquidator.clone());
+            }
+            if let Some(metadata) = metadata.clone() {
+                whitewhale_liquidator.metadata = metadata;
+                response = response.add_attribute("metadata_updated", "true");
+            }
+            if let Some(token_uri) = token_uri.clone() {
+                whitewhale_liquidator.token_uri = token_uri.clone();
+                response = response.add_attribute("updated_token_uri", token_uri);
+            }
+            check = true;
+        }
+    }
+
+    if !check {
+        return Err(StdError::generic_err("Liquidator not Supported"));
+    }
+    CONFIG.save(deps.storage,&config)?;
+    Ok(response)
+}
+
+
+
 pub fn handle_mint_nft(
     deps: DepsMut,
     env: Env,
@@ -128,25 +240,39 @@ pub fn handle_mint_nft(
     user_address: String,
     liquidated_amount: Uint256
 ) -> StdResult<Response> {
-    let config = CONFIG.load(deps.storage)?;
+    let mut config = CONFIG.load(deps.storage)?;
+
+    let mut response = Response::new().add_attributes(vec![
+        ("action", "mint_nft"), ("liquidator", &info.sender.to_string()),
+    ]);
 
     let mut is_valid_call = false;
-    for whitewhale_liquidator in config.whitewhale_liquidators.iter() {
+    for mut whitewhale_liquidator in config.whitewhale_liquidators.iter_mut() {
         if info.sender.to_string() == whitewhale_liquidator.liquidator_contract {
+            let nft_mint_msg = build_mint_msg(
+                env.block.time.seconds(),
+                whitewhale_liquidator.nft_contract_addr.clone().to_string(),
+                whitewhale_liquidator.total_minted.clone() + 1u64,
+                whitewhale_liquidator.token_uri.clone(),
+                whitewhale_liquidator.metadata.clone(),
+                user_address,
+                liquidated_amount.clone(),
+            )?;
+            response = response.add_message(nft_mint_msg);
+            whitewhale_liquidator.total_minted +=1u64;
             is_valid_call = true;
             break;
         }
     }
 
-    // let flash_loan_msg = build_flash_loan_msg( config.ust_vault_address.to_string(),
-    //                                             config.stable_denom,
-    //                                             ust_to_borrow,
-    //                                             callback_binary )?;
+    if !is_valid_call  {
+        return Err(StdError::generic_err("Liquidator not Supported"));
+    }
 
-    Ok(Response::new()
-    // .add_message(flash_loan_msg)
-    .add_attribute("action", "nft_minter::ExecuteMsg::MintNFT"))
-                                            
+
+    CONFIG.save(deps.storage,&config)?;
+
+    Ok(response)                        
 }
 
 
@@ -174,17 +300,65 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 //-----------------------------------------------------------
 
 
-// fn build_mint_msg(
-//     nft_addr: String,
-//     user_addr: String,
-// ) -> StdResult<CosmosMsg> {
+/// Helper Function. Returns CosmosMsg to mint the NFT
+pub fn build_mint_msg(
+    timestamp: u64,
+    nft_contract_addr: String,
+    token_id: u64,
+    token_uri: String,
+    metadata: Metadata,
+    user_addr: String,
+    liquidated_amount: Uint256
+) -> StdResult<CosmosMsg> {
 
-//     Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-//         contract_addr: fields_addr,
-//         funds: vec![],
-//         msg: to_binary(&MartianFieldsLiquidationMsg::Liquidate {
-//             user: user_addr
-//         })?,
-//     }))
+    let mut attributes_vec = vec![];
+    let user_attribute = Trait {
+        display_type: None,
+        trait_type: "liquidated_user".to_string(),
+        value: user_addr.clone(),
+    };
+    attributes_vec.push(user_attribute);
 
-// }
+    let amount_attribute = Trait {
+        display_type: None,
+        trait_type: "liquidated_amount".to_string(),
+        value: liquidated_amount.to_string(),
+    };
+    attributes_vec.push(amount_attribute);
+
+    let time_attribute = Trait {
+        display_type: None,
+        trait_type: "timestamp".to_string(),
+        value: timestamp.to_string(),
+    };
+    attributes_vec.push(time_attribute);
+
+
+
+    let extension_ = Metadata {
+        image: metadata.image.clone(),
+        image_data: None,
+        external_url: None,
+        description: metadata.description.clone(),
+        name: Some(metadata.name.clone().unwrap() + &" #".to_string() + &token_id.to_string()),
+        attributes: Some(attributes_vec),
+        background_color: None,
+        animation_url: None,
+        youtube_url: None,
+    };
+
+    let mint_msg = Cw721MintMsg {
+        token_id: token_id.to_string(),
+        owner: user_addr,
+        name: metadata.name.unwrap() + &" #".to_string() + &token_id.to_string(),
+        description: metadata.description,
+        image: Some(token_uri),
+        extension: extension_,
+    };
+
+    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: nft_contract_addr.to_string(),
+        msg: to_binary(&Cw721ExecuteMsg::Mint(mint_msg))?,
+        funds: vec![],
+    }))
+}

@@ -17,7 +17,8 @@ use whitewhale_liquidation_helpers::helper::{
 use whitewhale_liquidation_helpers::tax::{ compute_tax};
 use whitewhale_liquidation_helpers::asset::{AssetInfo };
 use whitewhale_liquidation_helpers::terraswap_helper::{trade_cw20_on_terraswap, trade_native_on_terraswap };
-    
+use whitewhale_liquidation_helpers::nft_minter::ExecuteMsg as MinterExecuteMsg;
+
 use crate::state::{ Config, State, CONFIG, STATE};
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use whitewhale_liquidation_helpers::flashloan_helper::build_flash_loan_msg;
@@ -579,6 +580,23 @@ fn build_liquidate_position(
 
 
 
+
+
+fn build_mint_nft_msg(
+    nft_minter: String,
+    user_address: String,
+    liquidated_amount: Uint256
+) -> StdResult<CosmosMsg> {
+
+    Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr:nft_minter,
+        funds: vec![],
+        msg: to_binary(&MinterExecuteMsg::MintNft {
+            user_address: user_address,
+            liquidated_amount: liquidated_amount
+        })?,
+    }))
+}
 
 
 
