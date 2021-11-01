@@ -1518,7 +1518,20 @@ fn snapshot_poll() {
     .unwrap_err();
     assert_eq!(ContractError::SnapshotHeight {}, snapshot_err);
 
-    // change time
+    // change time to after the poll should have ended.
+    creator_env.block.height = 22345 + 10;
+
+    let snapshot_err = execute(
+        deps.as_mut(),
+        creator_env.clone(),
+        creator_info.clone(),
+        ExecuteMsg::SnapshotPoll { poll_id: 1 },
+    )
+    .unwrap_err();
+
+    assert_eq!(ContractError::PollNotInProgress {}, snapshot_err);
+
+    // change time back to before contract ends
     creator_env.block.height = 22345 - 10;
 
     deps.querier.with_token_balances(&[(
