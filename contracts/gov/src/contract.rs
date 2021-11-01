@@ -723,6 +723,10 @@ pub fn snapshot_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, 
         return Err(ContractError::PollNotInProgress {});
     }
 
+    if env.block.height > a_poll.end_height {
+        return Err(ContractError::PollNotInProgress {})
+    }
+
     let time_to_end = a_poll.end_height - env.block.height;
 
     if time_to_end > config.snapshot_period {
