@@ -11,12 +11,12 @@ pub enum CommunityFundError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
-    #[error("not enough funds")]
+    #[error("Not enough funds.")]
     NotEnoughFunds {},
 
-    #[error("Too many tokens. Deposit only accepts UST.")]
-    DepositTooManyTokens {},
+    #[error("Too many tokens. Deposit only accepts WHALE.")]
+    WrongDepositTooManyTokens {},
 
-    #[error("Deposit only accepts UST.")]
-    DepositOnlyUST {},
+    #[error("Deposit only accepts WHALE.")]
+    WrongDepositToken {},
 }
