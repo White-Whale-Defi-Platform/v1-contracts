@@ -41,9 +41,9 @@ pub struct WithdrawableProfitsResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
-    pub terraswap_pool_addr: String, 
+    pub terraswap_pool_addr: String,
     pub lp_token_addr: String,
     pub max_deposit: Asset,
     pub min_profit: Asset,
-    pub slippage: Decimal
+    pub slippage: Decimal,
 }

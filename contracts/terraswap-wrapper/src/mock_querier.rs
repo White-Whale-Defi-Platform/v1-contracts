@@ -1,14 +1,14 @@
 #![allow(dead_code)]
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_slice, to_binary, from_binary, Api, Coin, Binary, ContractResult, Empty, OwnedDeps, Querier, Uint128, QuerierResult,
-    QueryRequest, SystemError, SystemResult, WasmQuery,
+    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Empty, OwnedDeps,
+    Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use cosmwasm_storage::to_length_prefixed;
-use std::collections::HashMap;
-use terraswap::asset::{Asset, AssetInfoRaw, AssetInfo, PairInfo, PairInfoRaw};
-use terraswap::pair::{PoolResponse};
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
+use std::collections::HashMap;
+use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
+use terraswap::pair::PoolResponse;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -101,33 +101,31 @@ impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-
-                // Handle calls for Pair Info 
-                if contract_addr == &String::from("PAIR0000")
-                {
+                // Handle calls for Pair Info
+                if contract_addr == &String::from("PAIR0000") {
                     println!("{:?}", request);
 
-                    if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()){
-                        let msg_pool = PoolResponse{
+                    if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
+                        let msg_pool = PoolResponse {
                             assets: [
-                                Asset{
+                                Asset {
                                     amount: Uint128::from(10000u128),
                                     info: AssetInfo::NativeToken {
                                         denom: "whale".to_string(),
                                     },
                                 },
-                                Asset{
+                                Asset {
                                     amount: Uint128::from(10000u128),
                                     info: AssetInfo::NativeToken {
                                         denom: "uusd".to_string(),
                                     },
-                                }
+                                },
                             ],
-                        total_share: Uint128::from(1000u128)
+                            total_share: Uint128::from(1000u128),
                         };
                         return SystemResult::Ok(ContractResult::from(to_binary(&msg_pool)));
                     }
-                    
+
                     let msg_balance = PairInfo {
                         asset_infos: [
                             AssetInfo::NativeToken {
@@ -140,51 +138,48 @@ impl WasmMockQuerier {
                         contract_addr: "PAIR0000".to_string(),
                         liquidity_token: "liquidity0000".to_string(),
                     };
-                    
+
                     return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)));
-                }
-                else{
-                match from_binary(&msg).unwrap() {
-                    Cw20QueryMsg::Balance { address } => {
-                        let balances: &HashMap<String, Uint128> =
-                            match self.token_querier.balances.get(contract_addr) {
-                                Some(balances) => balances,
+                } else {
+                    match from_binary(&msg).unwrap() {
+                        Cw20QueryMsg::Balance { address } => {
+                            let balances: &HashMap<String, Uint128> =
+                                match self.token_querier.balances.get(contract_addr) {
+                                    Some(balances) => balances,
+                                    None => {
+                                        return SystemResult::Err(SystemError::InvalidRequest {
+                                            error: format!(
+                                                "No balance info exists for the contract {}",
+                                                contract_addr
+                                            ),
+                                            request: msg.as_slice().into(),
+                                        })
+                                    }
+                                };
+
+                            let balance = match balances.get(&address) {
+                                Some(v) => *v,
                                 None => {
-                                    return SystemResult::Err(SystemError::InvalidRequest {
-                                        error: format!(
-                                            "No balance info exists for the contract {}",
-                                            contract_addr
-                                        ),
-                                        request: msg.as_slice().into(),
-                                    })
+                                    return SystemResult::Ok(ContractResult::Ok(
+                                        to_binary(&Cw20BalanceResponse {
+                                            balance: Uint128::zero(),
+                                        })
+                                        .unwrap(),
+                                    ));
                                 }
                             };
 
-                        let balance = match balances.get(&address) {
-                            Some(v) => *v,
-                            None => {
-                                return SystemResult::Ok(ContractResult::Ok(
-                                    to_binary(&Cw20BalanceResponse {
-                                        balance: Uint128::zero(),
-                                    })
-                                    .unwrap(),
-                                ));
-                            }
-                        };
-
-                        SystemResult::Ok(ContractResult::Ok(
-                            to_binary(&Cw20BalanceResponse { balance }).unwrap(),
-                        ))
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_binary(&Cw20BalanceResponse { balance }).unwrap(),
+                            ))
+                        }
+                        _ => panic!("DO NOT ENTER HERE"),
                     }
-                    _ => panic!("DO NOT ENTER HERE"),
                 }
-                }
-            },
+            }
             QueryRequest::Wasm(WasmQuery::Raw { contract_addr, key }) => {
                 let key: &[u8] = key.as_slice();
                 let prefix_pair_info = to_length_prefixed(b"pair_info").to_vec();
-                
-                
 
                 if key.to_vec() == prefix_pair_info {
                     let pair_info: PairInfo =

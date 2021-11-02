@@ -1,8 +1,8 @@
 use crate::contract::{execute, instantiate, query};
+use crate::mock_querier::mock_dependencies;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::testing::{mock_env, mock_info};
-use crate::mock_querier::{mock_dependencies};
-use cosmwasm_std::{from_binary, Decimal, Uint128 };
+use cosmwasm_std::{from_binary, Decimal, Uint128};
 use terraswap::asset::{Asset, AssetInfo};
 
 fn init_msg() -> InstantiateMsg {
@@ -21,10 +21,9 @@ fn init_msg() -> InstantiateMsg {
             },
             amount: Uint128::from(100000u128),
         },
-        slippage: Decimal::one()
+        slippage: Decimal::one(),
     }
 }
-
 
 #[test]
 fn proper_initialization() {
@@ -50,8 +49,8 @@ fn test_set_trader() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let trader_msg = ExecuteMsg::SetTrader{
-        trader: "trader".to_string()
+    let trader_msg = ExecuteMsg::SetTrader {
+        trader: "trader".to_string(),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, trader_msg).unwrap();
 }
@@ -65,22 +64,21 @@ fn test_deposit() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-
-    let deposit_msg = ExecuteMsg::Deposit{
+    let deposit_msg = ExecuteMsg::Deposit {
         funds: vec![
-            Asset{
+            Asset {
                 amount: Uint128::from(10000u128),
                 info: AssetInfo::NativeToken {
                     denom: "whale".to_string(),
                 },
             },
-            Asset{
+            Asset {
                 amount: Uint128::from(10000u128),
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
                 },
-            }
-        ]
+            },
+        ],
     };
     let _res = execute(deps.as_mut(), mock_env(), info, deposit_msg).unwrap();
 }
@@ -94,22 +92,21 @@ fn test_deposit_fails_for_non_trader_account() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-
-    let deposit_msg = ExecuteMsg::Deposit{
+    let deposit_msg = ExecuteMsg::Deposit {
         funds: vec![
-            Asset{
+            Asset {
                 amount: Uint128::from(10000u128),
                 info: AssetInfo::NativeToken {
                     denom: "whale".to_string(),
                 },
             },
-            Asset{
+            Asset {
                 amount: Uint128::from(10000u128),
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
                 },
-            }
-        ]
+            },
+        ],
     };
     let _res = execute(deps.as_mut(), mock_env(), info, deposit_msg).unwrap_err();
 }
@@ -123,22 +120,21 @@ fn test_withdraw_fails_for_non_trader() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-
-    let withdraw_msg = ExecuteMsg::Withdraw{
+    let withdraw_msg = ExecuteMsg::Withdraw {
         funds: vec![
-            Asset{
+            Asset {
                 amount: Uint128::from(10000u128),
                 info: AssetInfo::NativeToken {
                     denom: "whale".to_string(),
                 },
             },
-            Asset{
+            Asset {
                 amount: Uint128::from(10000u128),
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
                 },
-            }
-        ]
+            },
+        ],
     };
     let _res = execute(deps.as_mut(), mock_env(), info, withdraw_msg).unwrap_err();
 }
@@ -152,22 +148,21 @@ fn test_withdraw() {
 
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-
-    let withdraw_msg = ExecuteMsg::Withdraw{
+    let withdraw_msg = ExecuteMsg::Withdraw {
         funds: vec![
-            Asset{
+            Asset {
                 amount: Uint128::from(10000u128),
                 info: AssetInfo::NativeToken {
                     denom: "whale".to_string(),
                 },
             },
-            Asset{
+            Asset {
                 amount: Uint128::from(10000u128),
                 info: AssetInfo::NativeToken {
                     denom: "uusd".to_string(),
                 },
-            }
-        ]
+            },
+        ],
     };
     let res = execute(deps.as_mut(), mock_env(), info, withdraw_msg).unwrap();
     assert_eq!(1, res.messages.len());

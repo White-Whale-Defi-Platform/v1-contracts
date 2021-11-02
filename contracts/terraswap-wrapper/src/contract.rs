@@ -12,7 +12,9 @@ use std::cmp::min;
 use white_whale::query::terraswap::{query_lp_token, query_pool};
 
 use crate::error::TerraswapWrapperError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, WithdrawableProfitsResponse, ConfigResponse};
+use crate::msg::{
+    ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, WithdrawableProfitsResponse,
+};
 use crate::state::{State, ADMIN, DEPOSIT_INFO, STATE, TRADER};
 
 type TerraswapWrapperResult = Result<Response, TerraswapWrapperError>;
@@ -266,18 +268,18 @@ fn set_min_profit(deps: DepsMut, info: MessageInfo, asset: Asset) -> TerraswapWr
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::WithdrawableProfits {} => to_binary(&query_withdrawable_profits(deps, env)?),
-        QueryMsg::Config {} => to_binary(&query_config(deps)?)
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
     }
 }
 
-fn query_config(deps: Deps) -> StdResult<ConfigResponse>{
+fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = STATE.load(deps.storage)?;
-    Ok(ConfigResponse{
+    Ok(ConfigResponse {
         terraswap_pool_addr: state.terraswap_pool_addr.to_string(),
         lp_token_addr: state.lp_token_addr.to_string(),
         max_deposit: state.max_deposit,
         min_profit: state.min_profit,
-        slippage: state.slippage
+        slippage: state.slippage,
     })
 }
 
