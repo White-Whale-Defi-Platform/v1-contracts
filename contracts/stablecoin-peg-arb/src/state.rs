@@ -11,7 +11,6 @@ use white_whale::deposit_info::ArbBaseAsset;
 // The Arb State contains configuration options for the vault including
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
-    pub trader: CanonicalAddr,
     pub vault_address: CanonicalAddr,
     pub seignorage_address: CanonicalAddr,
     pub pool_address: CanonicalAddr,

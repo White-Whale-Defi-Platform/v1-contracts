@@ -1,4 +1,4 @@
-use crate::fee::{CappedFee, Fee, VaultFee};
+use crate::fee::{Fee, VaultFee};
 use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
 };
@@ -9,17 +9,15 @@ use std::fmt;
 use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {
+pub struct InstantiateMsg {
     pub anchor_money_market_address: String,
     pub aust_address: String,
     pub profit_check_address: String,
-    pub community_fund_addr: String,
     pub warchest_addr: String,
     pub asset_info: AssetInfo,
     pub token_code_id: u64,
     pub warchest_fee: Decimal,
-    pub community_fund_fee: Decimal,
-    pub max_community_fund_fee: Uint128,
+    pub flash_loan_fee: Decimal,
     pub stable_cap: Uint128,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
@@ -36,7 +34,7 @@ pub enum ExecuteMsg {
         stable_cap: Uint128,
     },
     SetFee {
-        community_fund_fee: Option<CappedFee>,
+        flash_loan_fee: Option<Fee>,
         warchest_fee: Option<Fee>,
     },
     SetAdmin {
@@ -47,6 +45,12 @@ pub enum ExecuteMsg {
     },
     RemoveFromWhitelist {
         contract_addr: String,
+    },
+    UpdateState {
+        anchor_money_market_address: Option<String>,
+        aust_address: Option<String>,
+        profit_check_address: Option<String>,
+        allow_non_whitelisted: Option<bool>,
     },
     FlashLoan {
         payload: FlashLoanPayload,
@@ -94,7 +98,6 @@ pub enum VaultQueryMsg {
     Config {},
     Pool {},
     Fees {},
-    EstimateDepositFee { amount: Uint128 },
     EstimateWithdrawFee { amount: Uint128 },
     VaultValue {},
 }

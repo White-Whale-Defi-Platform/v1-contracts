@@ -7,8 +7,7 @@ use std::fmt;
 use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {
-    pub trader: String,
+pub struct InstantiateMsg {
     pub vault_address: String,
     pub seignorage_address: String,
     pub pool_address: String,
@@ -30,9 +29,6 @@ pub enum ExecuteMsg {
     },
     SetAdmin {
         admin: String,
-    },
-    SetTrader {
-        trader: String,
     },
     Callback(CallbackMsg),
 }

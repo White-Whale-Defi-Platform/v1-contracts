@@ -18,6 +18,7 @@ pub struct State {
     pub aust_address: CanonicalAddr,
     pub profit_check_address: CanonicalAddr,
     pub whitelisted_contracts: Vec<CanonicalAddr>,
+    pub allow_non_whitelisted: bool,
 }
 
 pub const ADMIN: Admin = Admin::new("admin");

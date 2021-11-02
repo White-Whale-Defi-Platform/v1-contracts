@@ -15,14 +15,14 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
-use white_whale::fee::{CappedFee, Fee, VaultFee};
+use white_whale::fee::{Fee, VaultFee};
 use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::ust_vault::msg::{
-    EstimateDepositFeeResponse, EstimateWithdrawFeeResponse, FeeResponse, ValueResponse,
-    VaultQueryMsg as QueryMsg,
+    EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
 
+use white_whale::tax::compute_tax;
 use white_whale::ust_vault::msg::*;
 
 use crate::error::StableVaultError;
@@ -39,7 +39,7 @@ const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 type VaultResult = Result<Response, StableVaultError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> VaultResult {
+pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateMsg) -> VaultResult {
     let state = State {
         anchor_money_market_address: deps
             .api
@@ -47,6 +47,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> 
         aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
         profit_check_address: deps.api.addr_canonicalize(&msg.profit_check_address)?,
         whitelisted_contracts: vec![],
+        allow_non_whitelisted: false,
     };
 
     // Store the initial config
@@ -61,16 +62,12 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InitMsg) -> 
     FEE.save(
         deps.storage,
         &VaultFee {
-            community_fund_fee: CappedFee {
-                fee: Fee {
-                    share: msg.community_fund_fee,
-                },
-                max_fee: msg.max_community_fund_fee,
+            flash_loan_fee: Fee {
+                share: msg.flash_loan_fee,
             },
             warchest_fee: Fee {
                 share: msg.warchest_fee,
             },
-            community_fund_addr: deps.api.addr_canonicalize(&msg.community_fund_addr)?,
             warchest_addr: deps.api.addr_canonicalize(&msg.warchest_addr)?,
         },
     )?;
@@ -144,14 +141,27 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
                 .add_attribute("admin", admin))
         }
         ExecuteMsg::SetFee {
-            community_fund_fee,
+            flash_loan_fee,
             warchest_fee,
-        } => set_fee(deps, info, community_fund_fee, warchest_fee),
+        } => set_fee(deps, info, flash_loan_fee, warchest_fee),
         ExecuteMsg::AddToWhitelist { contract_addr } => add_to_whitelist(deps, info, contract_addr),
         ExecuteMsg::RemoveFromWhitelist { contract_addr } => {
             remove_from_whitelist(deps, info, contract_addr)
         }
         ExecuteMsg::FlashLoan { payload } => handle_flashloan(deps, env, info, payload),
+        ExecuteMsg::UpdateState {
+            anchor_money_market_address,
+            aust_address,
+            profit_check_address,
+            allow_non_whitelisted,
+        } => update_state(
+            deps,
+            info,
+            anchor_money_market_address,
+            aust_address,
+            profit_check_address,
+            allow_non_whitelisted,
+        ),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
 }
@@ -166,7 +176,7 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
         return Err(StableVaultError::NotCallback {});
     }
     match msg {
-        CallbackMsg::AfterSuccessfulLoanCallback {} => after_successful_trade_callback(deps, env),
+        CallbackMsg::AfterSuccessfulLoanCallback {} => after_successful_loan_callback(deps, env),
         // Possibility to add more callbacks in future.
     }
 }
@@ -183,14 +193,22 @@ pub fn handle_flashloan(
 ) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
+    let fees = FEE.load(deps.storage)?;
     let whitelisted_contracts = state.whitelisted_contracts;
-
+    let whitelisted: bool;
     // Check if requested asset is base token of vault
     deposit_info.assert(&payload.requested_asset.info)?;
 
     // Check if sender is whitelisted
     if !whitelisted_contracts.contains(&deps.api.addr_canonicalize(&info.sender.to_string())?) {
-        return Err(StableVaultError::NotWhitelisted {});
+        // Check if non-whitelisted are allowed to borrow
+        if state.allow_non_whitelisted {
+            whitelisted = false;
+        } else {
+            return Err(StableVaultError::NotWhitelisted {});
+        }
+    } else {
+        whitelisted = true;
     }
 
     // Do we have enough funds?
@@ -228,9 +246,17 @@ pub fn handle_flashloan(
             .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
     }
 
-    // Make shure contract receives their expected share by adding taxes to expected amount.
+    // Make shure contract receives their expected share by adding taxes to expected send amount.
     let expected_tax = requested_asset.compute_tax(&deps.querier)?;
     requested_asset.amount += expected_tax;
+
+    // If caller not whitelisted, calculate flashloan fee
+    let loan_fee: Uint128;
+    if whitelisted {
+        loan_fee = Uint128::zero();
+    } else {
+        loan_fee = fees.flash_loan_fee.compute(requested_asset.amount);
+    }
 
     // Construct transfer of funds msg
     let loan_msg = requested_asset.into_msg(&deps.querier, info.sender.clone())?;
@@ -246,14 +272,13 @@ pub fn handle_flashloan(
     response = response.add_message(return_call);
 
     // Call encapsulate function
-    encapsule_payload(deps.as_ref(), env, response)
+    encapsule_payload(deps.as_ref(), env, response, loan_fee)
 }
 
 // This function should be called alongside a deposit of UST into the contract.
 pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset) -> VaultResult {
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
-    let fee_config = FEE.load(deps.storage)?;
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let denom = deposit_info.clone().get_denom()?;
 
@@ -265,21 +290,8 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
     attrs.push(("Action:", String::from("Deposit to vault")));
     attrs.push(("Received funds:", asset.to_string()));
 
-    // Get fee and msg
-    let deposit_fee = get_community_fee(deps.as_ref(), asset.amount)?;
-    let community_fund_fee_msg = fee_config.community_fund_fee.msg(
-        deps.as_ref(),
-        asset.amount,
-        denom.clone(),
-        deps.api
-            .addr_humanize(&fee_config.community_fund_addr)?
-            .to_string(),
-    )?;
-
     // Received deposit to vault
-    let deposit: Uint128 = asset.amount - deposit_fee;
-    attrs.push(("Community fee:", deposit_fee.to_string()));
-    attrs.push(("Deposit accounting for fee:", deposit.to_string()));
+    let deposit: Uint128 = asset.amount;
 
     // Get total value in Vault
     let (total_deposits_in_ust, stables_in_contract, _) =
@@ -294,7 +306,8 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         deposit
     } else {
         // WARNING: This could causes issues if total_deposits_in_ust - asset.amount is really small
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - asset.amount)
+        // total_deposits_in_ust > deposit as total_deposits_in_ust includes deposit
+        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
     };
 
     // mint LP token to sender
@@ -307,10 +320,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         funds: vec![],
     });
 
-    let response = Response::new()
-        .add_attributes(attrs)
-        .add_message(msg)
-        .add_message(community_fund_fee_msg);
+    let response = Response::new().add_attributes(attrs).add_message(msg);
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
     if stables_in_contract > info.stable_cap * Decimal::percent(150) {
@@ -328,8 +338,10 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
     Ok(response)
 }
 
-/// Attempt to withdraw deposits. Fees are calculated and deducted. The refund is taken out of  
-/// Anchor if possible. Luna holdings are not eligible for withdrawal.
+/// Attempt to withdraw deposits. Fees are calculated and deducted in lp tokens.
+/// This allowes the war-chest to accumulate a stake in the vault.
+/// The refund is taken out of Anchor if possible.
+/// Luna holdings are not eligible for withdrawal.
 pub fn try_withdraw_liquidity(
     deps: DepsMut,
     env: Env,
@@ -348,9 +360,12 @@ pub fn try_withdraw_liquidity(
     let lp_addr = deps.api.addr_humanize(&info.liquidity_token)?;
     let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
     let (total_value, _, uaust_value_in_contract) = compute_total_value(deps.as_ref(), &info)?;
-    let share_ratio: Decimal = Decimal::from_ratio(amount, total_share);
+    // Get warchest fee in LP tokens
+    let warchest_fee = get_warchest_fee(deps.as_ref(), amount)?;
+    // Share with fee deducted.
+    let share_ratio: Decimal = Decimal::from_ratio(amount - warchest_fee, total_share);
     let mut refund_amount: Uint128 = total_value * share_ratio;
-    attrs.push(("Pre-fee received:", refund_amount.to_string()));
+    attrs.push(("Post-fee received:", refund_amount.to_string()));
 
     // Init response
     let mut response = Response::new();
@@ -409,37 +424,26 @@ pub fn try_withdraw_liquidity(
         attrs.push(("After Anchor withdraw:", refund_amount.to_string()));
     };
 
-    // Compute community fund fee
-    let community_fund_fee = get_community_fee(deps.as_ref(), refund_amount)?;
-    let community_fund_fee_msg = fee_config.community_fund_fee.msg(
-        deps.as_ref(),
-        refund_amount,
-        denom.clone(),
-        deps.api
-            .addr_humanize(&fee_config.community_fund_addr)?
-            .to_string(),
-    )?;
-    attrs.push(("Community fund fee:", community_fund_fee.to_string()));
+    // LP token warchest Asset
+    let lp_token_warchest_fee = Asset {
+        info: AssetInfo::Token {
+            contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
+        },
+        amount: warchest_fee,
+    };
 
-    // Compute warchest fee
-    let warchest_fee = get_warchest_fee(deps.as_ref(), refund_amount)?;
+    // Construct warchest fee msg.
     let warchest_fee_msg = fee_config.warchest_fee.msg(
         deps.as_ref(),
-        refund_amount,
-        denom.clone(),
-        deps.api
-            .addr_humanize(&fee_config.warchest_addr)?
-            .to_string(),
+        lp_token_warchest_fee,
+        deps.api.addr_humanize(&fee_config.warchest_addr)?,
     )?;
     attrs.push(("War chest fee:", warchest_fee.to_string()));
-    // Net return after all the fees
-    let net_refund_amount = refund_amount - community_fund_fee - warchest_fee;
-    attrs.push(("Pre-tax received", net_refund_amount.to_string()));
 
     // Construct refund message
     let refund_asset = Asset {
         info: AssetInfo::NativeToken { denom },
-        amount: net_refund_amount,
+        amount: refund_amount,
     };
     let refund_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender,
@@ -449,14 +453,16 @@ pub fn try_withdraw_liquidity(
     // LP burn msg
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
-        msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
+        // Burn exludes fee
+        msg: to_binary(&Cw20ExecuteMsg::Burn {
+            amount: (amount - warchest_fee),
+        })?,
         funds: vec![],
     });
 
     Ok(response
         .add_message(refund_msg)
         .add_message(burn_msg)
-        .add_message(community_fund_fee_msg)
         .add_message(warchest_fee_msg)
         .add_attribute("action:", "withdraw_liquidity")
         .add_attributes(attrs))
@@ -470,7 +476,12 @@ pub fn try_withdraw_liquidity(
 /// This function prevents callers from doing unprofitable actions
 /// with the vault funds and makes shure the funds are returned by
 /// the borrower.
-pub fn encapsule_payload(deps: Deps, env: Env, response: Response) -> VaultResult {
+pub fn encapsule_payload(
+    deps: Deps,
+    env: Env,
+    response: Response,
+    loan_fee: Uint128,
+) -> VaultResult {
     let state = STATE.load(deps.storage)?;
 
     let total_response: Response = Response::new();
@@ -498,14 +509,14 @@ pub fn encapsule_payload(deps: Deps, env: Env, response: Response) -> VaultResul
         // After borrower actions, deposit the received funds back into
         // Anchor if applicable
         .add_message(after_loan_msg)
-        // Call the profit-check again to cancle the borrow if
+        // Call the profit-check again to cancel the borrow if
         // no profit is made.
         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps
                 .api
                 .addr_humanize(&state.profit_check_address)?
                 .to_string(),
-            msg: to_binary(&ProfitCheckMsg::AfterTrade {})?,
+            msg: to_binary(&ProfitCheckMsg::AfterTrade { loan_fee })?,
             funds: vec![],
         })))
 }
@@ -560,12 +571,6 @@ pub fn compute_total_value(
     Ok((total_deposits_in_ust, stable_amount, aust_value_in_ust))
 }
 
-pub fn get_community_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
-    let fee_config = FEE.load(deps.storage)?;
-    let fee = fee_config.community_fund_fee.compute(amount);
-    Ok(fee)
-}
-
 pub fn get_warchest_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let fee_config = FEE.load(deps.storage)?;
     let fee = fee_config.warchest_fee.compute(amount);
@@ -573,16 +578,19 @@ pub fn get_warchest_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
 }
 
 pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
-    let community_fund_fee = get_community_fee(deps, amount)?;
     let warchest_fee = get_warchest_fee(deps, amount)?;
-    Ok(community_fund_fee + warchest_fee)
+    let anchor_withdraw_fee = compute_tax(
+        deps,
+        &Coin::new((amount - warchest_fee).u128(), String::from("uusd")),
+    )?;
+    Ok(warchest_fee + anchor_withdraw_fee)
 }
 
 //----------------------------------------------------------------------------------------
 //  CALLBACK FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
+fn after_successful_loan_callback(deps: DepsMut, env: Env) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     let stable_denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let stables_in_contract =
@@ -629,6 +637,40 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 //----------------------------------------------------------------------------------------
 //  GOVERNANCE CONTROLLED SETTERS
 //----------------------------------------------------------------------------------------
+
+pub fn update_state(
+    deps: DepsMut,
+    info: MessageInfo,
+    anchor_money_market_address: Option<String>,
+    aust_address: Option<String>,
+    profit_check_address: Option<String>,
+    allow_non_whitelisted: Option<bool>,
+) -> VaultResult {
+    // Only the admin should be able to call this
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    let api = deps.api;
+
+    if let Some(anchor_money_market_address) = anchor_money_market_address {
+        state.anchor_money_market_address = api.addr_canonicalize(&anchor_money_market_address)?;
+    }
+
+    if let Some(aust_address) = aust_address {
+        state.aust_address = api.addr_canonicalize(&aust_address)?;
+    }
+
+    if let Some(profit_check_address) = profit_check_address {
+        state.profit_check_address = api.addr_canonicalize(&profit_check_address)?;
+    }
+
+    if let Some(allow_non_whitelisted) = allow_non_whitelisted {
+        state.allow_non_whitelisted = allow_non_whitelisted;
+    }
+
+    STATE.save(deps.storage, &state)?;
+    Ok(Response::new().add_attribute("Update:", "Successfull"))
+}
 
 pub fn set_stable_cap(deps: DepsMut, msg_info: MessageInfo, stable_cap: Uint128) -> VaultResult {
     // Only the admin should be able to call this
@@ -701,15 +743,15 @@ pub fn remove_from_whitelist(
 pub fn set_fee(
     deps: DepsMut,
     msg_info: MessageInfo,
-    community_fund_fee: Option<CappedFee>,
+    flash_loan_fee: Option<Fee>,
     warchest_fee: Option<Fee>,
 ) -> VaultResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
     // TODO: Evaluate this.
     let mut fee_config = FEE.load(deps.storage)?;
-    if let Some(fee) = community_fund_fee {
-        fee_config.community_fund_fee = fee;
+    if let Some(fee) = flash_loan_fee {
+        fee_config.flash_loan_fee = fee;
     }
     if let Some(fee) = warchest_fee {
         fee_config.warchest_fee = fee;
@@ -729,7 +771,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Pool {} => to_binary(&try_query_pool(deps)?),
         QueryMsg::Fees {} => to_binary(&query_fees(deps)?),
         QueryMsg::VaultValue {} => to_binary(&query_total_value(deps)?),
-        QueryMsg::EstimateDepositFee { amount } => to_binary(&estimate_deposit_fee(deps, amount)?),
         QueryMsg::EstimateWithdrawFee { amount } => {
             to_binary(&estimate_withdraw_fee(deps, amount)?)
         }
@@ -739,17 +780,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_fees(deps: Deps) -> StdResult<FeeResponse> {
     Ok(FeeResponse {
         fees: FEE.load(deps.storage)?,
-    })
-}
-
-// Fees not including tax.
-pub fn estimate_deposit_fee(deps: Deps, amount: Uint128) -> StdResult<EstimateDepositFeeResponse> {
-    let fee = get_community_fee(deps, amount)?;
-    Ok(EstimateDepositFeeResponse {
-        fee: vec![Coin {
-            denom: DEPOSIT_INFO.load(deps.storage)?.get_denom()?,
-            amount: fee,
-        }],
     })
 }
 

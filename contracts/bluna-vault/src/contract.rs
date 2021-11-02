@@ -15,7 +15,7 @@ use white_whale::msg::create_terraswap_msg;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 
-use crate::msg::{HandleMsg, InitMsg, PoolResponse};
+use crate::msg::{HandleMsg, InstantiateMsg, PoolResponse};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{State, LUNA_DENOM, POOL_INFO, STATE};
@@ -34,7 +34,7 @@ pub fn instantiate(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    msg: InitMsg,
+    msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let state = State {
         owner: deps.api.addr_canonicalize(info.sender.as_str())?,
@@ -340,7 +340,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Pool {} => to_binary(&try_query_pool(deps)?),
         QueryMsg::Fees {} => to_binary(""),
         // TODO: Finish fee calculation and estimation
-        QueryMsg::EstimateDepositFee { .. } => to_binary(""),
+        // QueryMsg::EstimateDepositFee { .. } => to_binary(""),
         QueryMsg::EstimateWithdrawFee { .. } => to_binary(""),
         QueryMsg::VaultValue { .. } => to_binary(""),
     }
@@ -372,8 +372,8 @@ mod tests {
     use cosmwasm_std::testing::{mock_dependencies, mock_env};
     use cosmwasm_std::Api;
 
-    fn get_test_init_msg() -> InitMsg {
-        InitMsg {
+    fn get_test_init_msg() -> InstantiateMsg {
+        InstantiateMsg {
             pool_address: "test_pool".to_string(),
             bluna_hub_address: "test_mm".to_string(),
             bluna_address: "test_aust".to_string(),
@@ -407,7 +407,7 @@ mod tests {
         let custom_token_symbol = String::from("MyLP");
 
         // Define a custom Init Msg with the custom token info provided
-        let msg = InitMsg {
+        let msg = InstantiateMsg {
             pool_address: "test_pool".to_string(),
             bluna_hub_address: "test_mm".to_string(),
             bluna_address: "test_aust".to_string(),

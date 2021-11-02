@@ -13,6 +13,7 @@ from white_whale.deploy import get_deployer
 from terra_sdk.core.coins import Coin
 from white_whale.contracts.stable_vault_2 import *
 from white_whale.contracts.stable_arb import *
+from white_whale.contracts.community import *
 
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
@@ -23,14 +24,14 @@ deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=std_fee)
 profit_check = ProfitCheckContract(deployer)
 vault = StableVaultContract_2(deployer)
 ust_arb = StableArbContract(deployer)
-
+community_fund = CommunityContract(deployer)
 create = False
 
 if create:
     # profit_check.create()
-    vault.create()
-    profit_check.set_vault(vault.address)
-    ust_arb.create()
+    # vault.create()
+    # profit_check.set_vault(vault.address)
+    # ust_arb.create()
     vault.add_to_whitelist(ust_arb.address)
 
 # ust_arb.call_arb(1)
@@ -38,10 +39,10 @@ if create:
 # profit_check.get_vault()
 # vault.query_vault_value()
 # deployer.send_funds(ust_arb.address, [Coin("uusd", 10000000)])
-vault.provide_liquidity(5000_000_000)
+vault.provide_liquidity(100_000_000_000)
 
+# community_fund.simulate_deposit(1_000_000)
 
-# ust_arb.call_vault(2000_000_000)
 # vault.withdraw_all()
 # vault.query_vault_value()
 

@@ -14,9 +14,8 @@ use crate::tests::common::{TEST_CREATOR, VAULT_CONTRACT};
 use crate::msg::*;
 use crate::tests::mock_querier::mock_dependencies;
 
-pub(crate) fn instantiate_msg() -> InitMsg {
-    InitMsg {
-        trader: "test_trader".to_string(),
+pub(crate) fn instantiate_msg() -> InstantiateMsg {
+    InstantiateMsg {
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
         pool_address: "terraswap_pool".to_string(),
@@ -30,8 +29,7 @@ pub(crate) fn instantiate_msg() -> InitMsg {
  * Mocks instantiation.
  */
 pub fn mock_instantiate(deps: DepsMut) {
-    let msg = InitMsg {
-        trader: "test_trader".to_string(),
+    let msg = InstantiateMsg {
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
         pool_address: "terraswap_pool".to_string(),
@@ -41,8 +39,8 @@ pub fn mock_instantiate(deps: DepsMut) {
     };
 
     let info = mock_info(TEST_CREATOR, &[]);
-    let _res =
-        instantiate(deps, mock_env(), info, msg).expect("contract successfully handles InitMsg");
+    let _res = instantiate(deps, mock_env(), info, msg)
+        .expect("contract successfully handles InstantiateMsg");
 }
 
 /**
@@ -61,7 +59,6 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            trader: deps.api.addr_canonicalize(&"test_trader").unwrap(),
             vault_address: deps.api.addr_canonicalize(&VAULT_CONTRACT).unwrap(),
             seignorage_address: deps.api.addr_canonicalize(&"seignorage").unwrap(),
             pool_address: deps.api.addr_canonicalize(&"terraswap_pool ").unwrap(),
