@@ -1,15 +1,18 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-    WasmMsg,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError,
+    StdResult, Uint128, WasmMsg,
 };
 
 use cw20::Cw20ExecuteMsg;
 
-use crate::error::ContractError;
+use crate::error::TreasuryError;
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, ADMIN, STATE};
+use crate::state::{State, ADMIN, STATE, VAULT_ASSETS};
+use crate::vault_assets::{get_identifier, VaultAsset};
+use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
+type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
     The War Chest behaves similarly to a community fund with the provisio that funds in the War Chest are specifically to be used
@@ -23,14 +26,8 @@ pub fn instantiate(
     _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
-) -> Result<Response, ContractError> {
-    STATE.save(
-        deps.storage,
-        &State {
-            whale_token_addr: deps.api.addr_canonicalize(&msg.whale_token_addr)?,
-            spend_limit: msg.spend_limit,
-        },
-    )?;
+) -> TreasuryResult {
+    STATE.save(deps.storage, &State { traders: vec![] })?;
     let admin_addr = Some(deps.api.addr_validate(&msg.admin_addr)?);
     ADMIN.set(deps, admin_addr)?;
 
@@ -42,17 +39,129 @@ pub fn instantiate(
 // designated how each ExecutionMsg or QueryMsg will be handled.
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(
-    deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    msg: ExecuteMsg,
-) -> Result<Response, ContractError> {
+pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> TreasuryResult {
     match msg {
         ExecuteMsg::Deposit {} => Ok(Response::default()),
         ExecuteMsg::Spend { recipient, amount } => spend(deps, info, recipient, amount),
-        ExecuteMsg::UpdateSpendLimit { spend_limit } => update_spend_limit(deps, info, spend_limit),
+        ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
+        ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
+        ExecuteMsg::TraderAction { target, msgs } => execute_action(deps, info, target, msgs),
+        ExecuteMsg::UpdateAssets { to_add, to_remove } => update_assets(deps, info, to_add, to_remove),
     }
+}
+
+pub fn execute_action(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    target: String,
+    msgs: Vec<CosmosMsg<Empty>>,
+) -> TreasuryResult {
+    let mut state = STATE.load(deps.storage)?;
+    if !state
+        .traders
+        .contains(&deps.api.addr_canonicalize(msg_info.sender.as_str())?)
+    {
+        return Err(TreasuryError::SenderNotWhitelisted {});
+    }
+
+    Ok(Response::new().add_messages(msgs))
+}
+
+pub fn update_assets(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    to_add: Vec<VaultAsset>,
+    to_remove: Vec<AssetInfo>,
+) -> TreasuryResult {
+    // Only Admin can call this method
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    for new_asset in to_add {
+        // update function for new or existing keys
+        let insert = |vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> {
+            match vault_asset {
+                Some(_) => Err(StdError::generic_err("Asset already present.")),
+                None => {
+                    new_asset.asset.amount = Uint128::zero();
+                    Ok(new_asset)
+                }
+            }
+        };
+        VAULT_ASSETS.update(
+            deps.storage,
+            get_identifier(new_asset.asset.info).as_str(),
+            insert,
+        )?;
+    }
+
+    for asset_id in to_remove {
+        VAULT_ASSETS.remove(deps.storage, get_identifier(asset_id).as_str());
+    }
+
+    Ok(Response::new().add_attribute("action", "update_cw20_token_list").add_message(msg: impl Into<CosmosMsg<T>>))
+}
+
+pub fn add_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    if state
+        .traders
+        .contains(&deps.api.addr_canonicalize(&trader)?)
+    {
+        return Err(TreasuryError::AlreadyInList {});
+    }
+
+    // Add contract to whitelist.
+    state.traders.push(deps.api.addr_canonicalize(&trader)?);
+    STATE.save(deps.storage, &state)?;
+
+    // Respond and note the change
+    Ok(Response::new().add_attribute("Added contract to whitelist: ", trader))
+}
+
+pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    if !state
+        .traders
+        .contains(&deps.api.addr_canonicalize(&trader)?)
+    {
+        return Err(TreasuryError::NotInList {});
+    }
+
+    // Remove contract from whitelist.
+    let canonical_addr = deps.api.addr_canonicalize(&trader)?;
+    state.traders.retain(|addr| *addr != canonical_addr);
+    STATE.save(deps.storage, &state)?;
+
+    // Respond and note the change
+    Ok(Response::new().add_attribute("Removed contract from whitelist: ", trader))
+}
+
+pub fn add_asset(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    new_vault_asset: VaultAsset,
+) -> TreasuryResult {
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    // update function for new or existing keys
+    let insert = |vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> {
+        match vault_asset {
+            Some(_) => Err(StdError::generic_err("Asset already present.")),
+            None => Ok(new_vault_asset),
+        }
+    };
+    VAULT_ASSETS.update(&deps.storage, new_vault_asset.asset.info, insert)?;
+
+    // Add contract to whitelist.
+    state.traders.push(deps.api.addr_canonicalize(&trader)?);
+    STATE.save(deps.storage, &state)?;
+
+    // Respond and note the change
+    Ok(Response::new().add_attribute("Added contract to whitelist: ", trader))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -78,7 +187,7 @@ pub fn spend(
     info: MessageInfo,
     recipient: String,
     amount: Uint128,
-) -> Result<Response, ContractError> {
+) -> TreasuryResult {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let state = STATE.load(deps.storage)?;
@@ -107,7 +216,7 @@ pub fn update_spend_limit(
     deps: DepsMut,
     info: MessageInfo,
     spend_limit: Uint128,
-) -> Result<Response, ContractError> {
+) -> TreasuryResult {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
     let mut state = STATE.load(deps.storage)?;
     let previous_spend_limit = state.spend_limit;

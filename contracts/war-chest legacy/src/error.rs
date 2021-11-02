@@ -3,7 +3,7 @@ use cw_controllers::AdminError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum TreasuryError {
+pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -12,15 +12,6 @@ pub enum TreasuryError {
 
     #[error("Cannot spend more than spend_limit")]
     TooMuchSpend {},
-
-    #[error("Trader already added")]
-    AlreadyInList {},
-
-    #[error("Trader not found in list")]
-    NotInList {},
-
-    #[error("Sender is not whitelisted")]
-    SenderNotWhitelisted {},
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }

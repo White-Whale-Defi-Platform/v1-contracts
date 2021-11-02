@@ -27,11 +27,9 @@ cosmwasm-storage = { version = "0.16.0" }
 cw-storage-plus = "0.8.0"
 cw2 = "0.8.1"
 cw20 = { version = "0.8" }
-terraswap = "2.4.0"
 cw-controllers = { version = "0.8" }
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-white-whale = { version = "1.0.0", path = "../../packages/white_whale" }
 thiserror = { version = "1.0.26" }
 
 [dev-dependencies]

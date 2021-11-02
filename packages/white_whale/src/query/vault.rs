@@ -1,3 +1,5 @@
+// Not used
+
 use cosmwasm_std::{
     to_binary, QueryMsg, Addr, Coin, Decimal, Deps, QueryRequest, StdResult, Uint128, WasmQuery,
 };
