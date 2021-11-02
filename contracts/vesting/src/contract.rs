@@ -27,7 +27,7 @@ pub fn instantiate(
         deps.storage,
         &Config {
             owner: deps.api.addr_canonicalize(&msg.owner)?,
-            anchor_token: deps.api.addr_canonicalize(&msg.anchor_token)?,
+            whale_token: deps.api.addr_canonicalize(&msg.whale_token)?,
             genesis_time: msg.genesis_time,
         },
     )?;
@@ -44,9 +44,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             match msg {
                 ExecuteMsg::UpdateConfig {
                     owner,
-                    anchor_token,
+                    whale_token,
                     genesis_time,
-                } => update_config(deps, owner, anchor_token, genesis_time),
+                } => update_config(deps, owner, whale_token, genesis_time),
                 ExecuteMsg::RegisterVestingAccounts { vesting_accounts } => {
                     register_vesting_accounts(deps, vesting_accounts)
                 }
@@ -67,7 +67,7 @@ fn assert_owner_privilege(storage: &dyn Storage, api: &dyn Api, sender: Addr) ->
 pub fn update_config(
     deps: DepsMut,
     owner: Option<String>,
-    anchor_token: Option<String>,
+    whale_token: Option<String>,
     genesis_time: Option<u64>,
 ) -> StdResult<Response> {
     let mut config = read_config(deps.storage)?;
@@ -75,8 +75,8 @@ pub fn update_config(
         config.owner = deps.api.addr_canonicalize(&owner)?;
     }
 
-    if let Some(anchor_token) = anchor_token {
-        config.anchor_token = deps.api.addr_canonicalize(&anchor_token)?;
+    if let Some(whale_token) = whale_token {
+        config.whale_token = deps.api.addr_canonicalize(&whale_token)?;
     }
 
     if let Some(genesis_time) = genesis_time {
@@ -135,7 +135,7 @@ pub fn claim(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> 
         vec![]
     } else {
         vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps.api.addr_humanize(&config.anchor_token)?.to_string(),
+            contract_addr: deps.api.addr_humanize(&config.whale_token)?.to_string(),
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
                 recipient: address.to_string(),
@@ -200,7 +200,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = read_config(deps.storage)?;
     let resp = ConfigResponse {
         owner: deps.api.addr_humanize(&state.owner)?.to_string(),
-        anchor_token: deps.api.addr_humanize(&state.anchor_token)?.to_string(),
+        whale_token: deps.api.addr_humanize(&state.whale_token)?.to_string(),
         genesis_time: state.genesis_time,
     };
 
