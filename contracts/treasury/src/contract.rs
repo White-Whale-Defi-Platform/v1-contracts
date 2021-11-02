@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response, StdError,
-    StdResult, Uint128, WasmMsg,
+    to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
+    StdError, StdResult, Uint128, WasmMsg,
 };
 
 use cw20::Cw20ExecuteMsg;
@@ -46,7 +46,9 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
         ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
         ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
         ExecuteMsg::TraderAction { target, msgs } => execute_action(deps, info, target, msgs),
-        ExecuteMsg::UpdateAssets { to_add, to_remove } => update_assets(deps, info, to_add, to_remove),
+        ExecuteMsg::UpdateAssets { to_add, to_remove } => {
+            update_assets(deps, info, to_add, to_remove)
+        }
     }
 }
 
@@ -98,7 +100,9 @@ pub fn update_assets(
         VAULT_ASSETS.remove(deps.storage, get_identifier(asset_id).as_str());
     }
 
-    Ok(Response::new().add_attribute("action", "update_cw20_token_list").add_message(msg: impl Into<CosmosMsg<T>>))
+    Ok(Response::new()
+        .add_attribute("action", "update_cw20_token_list")
+        .add_message(msg: impl Into<CosmosMsg<T>>))
 }
 
 pub fn add_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
@@ -140,30 +144,6 @@ pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> Tr
     Ok(Response::new().add_attribute("Removed contract from whitelist: ", trader))
 }
 
-pub fn add_asset(
-    deps: DepsMut,
-    msg_info: MessageInfo,
-    new_vault_asset: VaultAsset,
-) -> TreasuryResult {
-    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-
-    // update function for new or existing keys
-    let insert = |vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> {
-        match vault_asset {
-            Some(_) => Err(StdError::generic_err("Asset already present.")),
-            None => Ok(new_vault_asset),
-        }
-    };
-    VAULT_ASSETS.update(&deps.storage, new_vault_asset.asset.info, insert)?;
-
-    // Add contract to whitelist.
-    state.traders.push(deps.api.addr_canonicalize(&trader)?);
-    STATE.save(deps.storage, &state)?;
-
-    // Respond and note the change
-    Ok(Response::new().add_attribute("Added contract to whitelist: ", trader))
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -173,11 +153,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = STATE.load(deps.storage)?;
+    let traders: Vec<CanonicalAddr> = state.traders;
     let resp = ConfigResponse {
-        whale_token_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
-        spend_limit: state.spend_limit,
+        traders: traders
+            .iter()
+            .map(|&trader| -> String { deps.api.addr_humanize(&trader).unwrap().to_string() })
+            .collect(),
     };
-
     Ok(resp)
 }
 
@@ -191,40 +173,19 @@ pub fn spend(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let state = STATE.load(deps.storage)?;
-    if state.spend_limit < amount {
-        return Err(ContractError::TooMuchSpend {});
-    }
 
-    let whale_token_addr = deps.api.addr_humanize(&state.whale_token_addr)?.to_string();
-    Ok(Response::new()
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: whale_token_addr,
-            funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: recipient.clone(),
-                amount,
-            })?,
-        }))
-        .add_attributes(vec![
-            ("action", "spend"),
-            ("recipient", recipient.as_str()),
-            ("amount", &amount.to_string()),
-        ]))
-}
-
-pub fn update_spend_limit(
-    deps: DepsMut,
-    info: MessageInfo,
-    spend_limit: Uint128,
-) -> TreasuryResult {
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-    let mut state = STATE.load(deps.storage)?;
-    let previous_spend_limit = state.spend_limit;
-    state.spend_limit = spend_limit;
-    STATE.save(deps.storage, &state)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "update_spend_limit")
-        .add_attribute("previous spend limit", previous_spend_limit.to_string())
-        .add_attribute("spend limit", spend_limit.to_string()))
+    Ok(Response::new())
+    // .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+    //     contract_addr: whale_token_addr,
+    //     funds: vec![],
+    //     msg: to_binary(&Cw20ExecuteMsg::Transfer {
+    //         recipient: recipient.clone(),
+    //         amount,
+    //     })?,
+    // }))
+    // .add_attributes(vec![
+    //     ("action", "spend"),
+    //     ("recipient", recipient.as_str()),
+    //     ("amount", &amount.to_string()),
+    // ]))
 }

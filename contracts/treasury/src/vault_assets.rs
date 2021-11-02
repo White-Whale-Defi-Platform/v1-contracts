@@ -16,6 +16,7 @@ use white_whale::tax::reverse_decimal;
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct VaultAsset {
     // TODO: make this Raw variant
+    // CHECK: do we want to change this to AssetInfo?
     pub asset: Asset,
     // The value reference provides the tooling to get the value of the holding
     // relative to the base asset.
