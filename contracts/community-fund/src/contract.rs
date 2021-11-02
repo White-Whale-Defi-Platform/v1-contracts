@@ -1,16 +1,11 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
-    Response, StdResult, SubMsg, Uint128, WasmMsg,
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
-use terraswap::asset::{Asset, AssetInfo};
-use terraswap::pair::ExecuteMsg as PairExecuteMsg;
-use terraswap::querier::{query_balance, query_token_balance};
 
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
-use white_whale::denom::{UST_DENOM, WHALE_DENOM};
-use white_whale::msg::AnchorMsg;
-use white_whale::query::anchor::query_aust_exchange_rate;
+use white_whale::denom::WHALE_DENOM;
 
 use crate::error::CommunityFundError;
 use crate::msg::InstantiateMsg;
@@ -21,7 +16,7 @@ use crate::state::{State, ADMIN, STATE};
     It is controlled by the governance contract and serves to grow its holdings and give grants to proposals.
 */
 
-type CommunityFundResult = Result<Response, CommunityFundError>;
+pub(crate) type CommunityFundResult = Result<Response, CommunityFundError>;
 
 pub fn instantiate(
     deps: DepsMut,
@@ -49,9 +44,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> C
         ExecuteMsg::Burn { amount } => burn_whale(deps.as_ref(), info, amount),
         ExecuteMsg::Deposit {} => deposit(deps, &env, info),
         ExecuteMsg::SetAdmin { admin } => {
-            let admin_addr = deps.api.addr_validate(&admin)?;
+            let new_admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
-            ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
+            ADMIN.execute_update_admin(deps, info, Some(new_admin_addr))?;
             Ok(Response::default()
                 .add_attribute("previous admin", previous_admin)
                 .add_attribute("admin", admin))
@@ -82,6 +77,7 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
 
+    //TODO(javier): should we check if there are enough tokens to burn??
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
@@ -95,11 +91,11 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
 pub fn deposit(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> CommunityFundResult {
     if msg_info.funds.len() > 1 {
         return Err(CommunityFundError::WrongDepositTooManyTokens {});
-    } else if msg_info.funds.first()?.denom != WHALE_DENOM {
+    } else if msg_info.funds[0].denom != WHALE_DENOM {
         return Err(CommunityFundError::WrongDepositToken {});
     }
 
-    let mut state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
 
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: state.whale_token_addr.to_string(),
@@ -107,7 +103,7 @@ pub fn deposit(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> CommunityFund
         msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
             owner: msg_info.sender.to_string(),
             recipient: env.contract.address.to_string(),
-            amount: msg_info.funds.first()?.amount,
+            amount: msg_info.funds[0].amount,
         })?,
     });
 

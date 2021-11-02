@@ -11,9 +11,6 @@ pub enum CommunityFundError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
-    #[error("Not enough funds.")]
-    NotEnoughFunds {},
-
     #[error("Too many tokens. Deposit only accepts WHALE.")]
     WrongDepositTooManyTokens {},
 
