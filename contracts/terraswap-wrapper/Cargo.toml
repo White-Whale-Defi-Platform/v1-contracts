@@ -30,6 +30,10 @@ serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"
 thiserror = { version = "1.0.21" }
 white-whale = { version = "1.0.0", path = "../../packages/white_whale" }
+terra-cosmwasm = { version = "2.2.0" }
+
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16" }
+terra-cosmwasm = { version = "2.2.0" }
+

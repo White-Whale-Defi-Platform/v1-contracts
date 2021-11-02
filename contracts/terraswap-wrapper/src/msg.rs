@@ -30,10 +30,20 @@ pub enum QueryMsg {
     // Pair {},
     // Pool {},
     WithdrawableProfits {},
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct WithdrawableProfitsResponse {
     pub amount: Asset,
     pub lp_amount: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ConfigResponse {
+    pub terraswap_pool_addr: String,
+    pub lp_token_addr: String,
+    pub max_deposit: Asset,
+    pub min_profit: Asset,
+    pub slippage: Decimal,
 }
