@@ -59,7 +59,7 @@ impl VaultAsset {
                     proxy,
                 } => {
                     // Check if we have a Token
-                    if let AssetInfo::Token { contract_addr } = self.asset.info {
+                    if let AssetInfo::Token { contract_addr } = &self.asset.info {
                         return lp_value(deps, pool_address, proxy, holdings);
                     } else {
                         return Err(StdError::generic_err("Can't have a native LP token"));
@@ -109,14 +109,14 @@ pub fn lp_value(
     let total_lp = pool_info.total_share;
     let share = holdings / total_lp;
 
-    let asset_1 = pool_info.assets[0];
-    let asset_2 = pool_info.assets[1];
+    let asset_1 = &pool_info.assets[0];
+    let asset_2 = &pool_info.assets[1];
 
     // load the assets
     let mut vault_asset_1: VaultAsset =
-        VAULT_ASSETS.load(deps.storage, get_identifier(asset_1.info).as_str())?;
+        VAULT_ASSETS.load(deps.storage, get_identifier(&asset_1.info).as_str())?;
     let mut vault_asset_2: VaultAsset =
-        VAULT_ASSETS.load(deps.storage, get_identifier(asset_2.info).as_str())?;
+        VAULT_ASSETS.load(deps.storage, get_identifier(&asset_2.info).as_str())?;
 
     // set the amounts to the LP holdings
     vault_asset_1.asset.amount = share * asset_1.amount;
@@ -157,9 +157,9 @@ impl Proxy {
     }
 }
 
-pub fn get_identifier(asset_info: AssetInfo) -> String {
+pub fn get_identifier(asset_info: &AssetInfo) -> &String {
     match asset_info {
-        AssetInfo::NativeToken { denom } => denom,
-        AssetInfo::Token { contract_addr } => contract_addr,
+        AssetInfo::NativeToken { denom } => &denom,
+        AssetInfo::Token { contract_addr } => &contract_addr,
     }
 }

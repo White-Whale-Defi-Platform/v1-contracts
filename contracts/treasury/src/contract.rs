@@ -102,7 +102,7 @@ pub fn update_assets(
 
     Ok(Response::new()
         .add_attribute("action", "update_cw20_token_list")
-        .add_message(msg: impl Into<CosmosMsg<T>>))
+        )
 }
 
 pub fn add_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
