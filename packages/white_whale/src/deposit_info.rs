@@ -3,7 +3,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use terraswap::asset::AssetInfo;
-
+// New type for abstraction
+pub type ArbBaseAsset = DepositInfo;
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositInfo {
     pub asset_info: AssetInfo,

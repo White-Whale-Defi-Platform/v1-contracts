@@ -20,7 +20,7 @@ std_fee = StdFee(5000000, "1500000uusd")
 deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=std_fee)
 
 print("store contract")
-code_id = deployer.store_contract(contract_name="buy_and_burn")
+code_id = deployer.store_contract(contract_name="community_fund")
 print(f"stored {code_id}")
 print("instantiate contract")
 contract_address = deployer.instantiate_contract(code_id=code_id, init_msg={
@@ -30,7 +30,6 @@ contract_address = deployer.instantiate_contract(code_id=code_id, init_msg={
     "aust_addr": aust,
     "anchor_deposit_threshold": str(int(10)*int(10**6)),
     "anchor_withdraw_threshold": str(int(1)*int(10**4)),
-    "anchor_deposit_ratio": "0.5"
 })
 print(f'instantiated {contract_address}')
 

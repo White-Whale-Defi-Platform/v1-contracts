@@ -1,8 +1,9 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
-    Uint128,
+    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
+    StdError, StdResult, Uint128, WasmQuery,
 };
-use terraswap::querier::query_balance;
+
+use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg};
 
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};
@@ -41,7 +42,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> ProfitCheckResult {
     match msg {
-        ExecuteMsg::AfterTrade {} => after_trade(deps, info),
+        ExecuteMsg::AfterTrade { loan_fee } => after_trade(deps, info, loan_fee),
         ExecuteMsg::BeforeTrade {} => before_trade(deps, info),
         ExecuteMsg::SetVault { vault_address } => set_vault_address(deps, info, vault_address),
     }
@@ -54,23 +55,28 @@ pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
+    if conf.last_balance != Uint128::zero() {
+        return Err(ProfitCheckError::Nonzero {});
+    }
+
     conf.last_profit = Uint128::zero();
-    conf.last_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
+
+    conf.last_balance = get_vault_value(deps.as_ref())?;
     CONFIG.save(deps.storage, &conf)?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attribute("value before trade: ", conf.last_balance.to_string()))
 }
 
 // Checks if balance increased after the trade
-pub fn after_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
+pub fn after_trade(deps: DepsMut, info: MessageInfo, loan_fee: Uint128) -> ProfitCheckResult {
     let mut conf = CONFIG.load(deps.storage)?;
     if deps.api.addr_canonicalize(&info.sender.to_string())? != conf.vault_address {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
+    let balance = get_vault_value(deps.as_ref())?;
 
-    if balance < conf.last_balance {
+    if balance < conf.last_balance + loan_fee {
         return Err(ProfitCheckError::CancelLosingTrade {});
     }
 
@@ -78,7 +84,7 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
     conf.last_balance = Uint128::zero();
     CONFIG.save(deps.storage, &conf)?;
 
-    Ok(Response::default())
+    Ok(Response::default().add_attribute("value after trade: ", balance.to_string()))
 }
 
 // Set address of UST vault
@@ -124,6 +130,15 @@ pub fn try_query_vault_address(deps: Deps) -> StdResult<VaultResponse> {
     Ok(VaultResponse {
         vault_address: deps.api.addr_humanize(&conf.vault_address)?,
     })
+}
+
+pub fn get_vault_value(deps: Deps) -> StdResult<Uint128> {
+    let config = CONFIG.load(deps.storage)?;
+    let response: ValueResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: deps.api.addr_humanize(&config.vault_address)?.to_string(),
+        msg: to_binary(&VaultQueryMsg::VaultValue {})?,
+    }))?;
+    Ok(response.total_ust_value)
 }
 
 #[cfg(test)]
@@ -253,7 +268,9 @@ mod tests {
             deps.as_mut(),
             env.clone(),
             vault_info,
-            ExecuteMsg::AfterTrade {},
+            ExecuteMsg::AfterTrade {
+                loan_fee: Uint128::zero(),
+            },
         );
         match res {
             Err(..) => {}
@@ -309,7 +326,15 @@ mod tests {
                 .unwrap();
         assert_eq!(res.last_balance, initial_balance);
 
-        let res = execute(deps.as_mut(), env, vault_info, ExecuteMsg::AfterTrade {}).unwrap();
+        let res = execute(
+            deps.as_mut(),
+            env,
+            vault_info,
+            ExecuteMsg::AfterTrade {
+                loan_fee: Uint128::zero(),
+            },
+        )
+        .unwrap();
         assert_eq!(0, res.messages.len())
     }
 
@@ -360,7 +385,14 @@ mod tests {
         let res = instantiate(deps.as_mut(), env.clone(), info.clone(), msg.clone()).unwrap();
         assert_eq!(0, res.messages.len());
 
-        let res = execute(deps.as_mut(), env.clone(), info, ExecuteMsg::AfterTrade {});
+        let res = execute(
+            deps.as_mut(),
+            env.clone(),
+            info,
+            ExecuteMsg::AfterTrade {
+                loan_fee: Uint128::zero(),
+            },
+        );
         match res {
             Err(..) => {}
             _ => panic!("unexpected"),
@@ -370,7 +402,16 @@ mod tests {
             sender: vault_address.clone(),
             funds: vec![],
         };
-        let _res = execute(deps.as_mut(), env, vault_info, ExecuteMsg::AfterTrade {}).unwrap();
+        // TODO: this throws error as vault_address is not in the deps. Whats the best way to solve this?
+        let _res = execute(
+            deps.as_mut(),
+            env,
+            vault_info,
+            ExecuteMsg::AfterTrade {
+                loan_fee: Uint128::zero(),
+            },
+        )
+        .unwrap();
     }
 
     #[test]

@@ -14,12 +14,11 @@ use crate::pool_info::PoolInfoRaw;
 // The Stablecoin-vault State contains configuration options for the vault including
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
-    pub trader: CanonicalAddr,
-    pub pool_address: CanonicalAddr,
     pub anchor_money_market_address: CanonicalAddr,
     pub aust_address: CanonicalAddr,
-    pub seignorage_address: CanonicalAddr,
     pub profit_check_address: CanonicalAddr,
+    pub whitelisted_contracts: Vec<CanonicalAddr>,
+    pub allow_non_whitelisted: bool,
 }
 
 pub const ADMIN: Admin = Admin::new("admin");

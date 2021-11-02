@@ -12,7 +12,7 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     BeforeTrade {},
-    AfterTrade {},
+    AfterTrade { loan_fee: Uint128 },
     SetVault { vault_address: String },
 }
 

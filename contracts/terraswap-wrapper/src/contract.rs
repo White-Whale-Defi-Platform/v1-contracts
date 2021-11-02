@@ -12,7 +12,7 @@ use std::cmp::min;
 use white_whale::query::terraswap::{query_lp_token, query_pool};
 
 use crate::error::TerraswapWrapperError;
-use crate::msg::{ExecuteMsg, InitMsg, QueryMsg, WithdrawableProfitsResponse};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, WithdrawableProfitsResponse};
 use crate::state::{State, ADMIN, DEPOSIT_INFO, STATE, TRADER};
 
 type TerraswapWrapperResult = Result<Response, TerraswapWrapperError>;
@@ -27,7 +27,7 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: InitMsg,
+    msg: InstantiateMsg,
 ) -> StdResult<Response> {
     if msg.max_deposit.info != msg.min_profit.info {
         return Err(StdError::generic_err(
@@ -287,10 +287,10 @@ fn query_value(deps: Deps, info: AssetInfo, share: Decimal) -> StdResult<Asset> 
     let price = Decimal::from_ratio(pool.assets[1].amount, pool.assets[0].amount); // price [X/UST]
     let mut value = pool.assets[1].amount * share;
     value += pool.assets[0].amount * share * price;
-    return Ok(Asset {
+    Ok(Asset {
         info,
         amount: value,
-    });
+    })
 }
 
 // Withdrawable profit is the value of the holdings - max_deposit in either the asset denom(X) or the base denom(UST)

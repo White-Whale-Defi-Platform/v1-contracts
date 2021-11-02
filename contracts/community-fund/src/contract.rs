@@ -146,7 +146,7 @@ pub fn deposit(deps: DepsMut, env: &Env) -> CommunityFundResult {
         amount: deposit.amount,
     };
 
-    state.last_deposit_in_uusd = deposit.amount;
+    state.last_deposit_in_uusd = deposit_asset.deduct_tax(&deps.querier)?.amount;
     STATE.save(deps.storage, &state)?;
     Ok(try_deposit_to_anchor_as_submsg(
         deps.api

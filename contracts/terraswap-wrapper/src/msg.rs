@@ -5,7 +5,7 @@ use cosmwasm_std::{Decimal, Uint128};
 use terraswap::asset::Asset;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InitMsg {
+pub struct InstantiateMsg {
     pub terraswap_pool_addr: String,
     pub trader: String,
     pub max_deposit: Asset,

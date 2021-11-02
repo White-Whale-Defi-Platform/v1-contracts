@@ -13,4 +13,7 @@ pub enum ProfitCheckError {
 
     #[error("Cancel losing trade.")]
     CancelLosingTrade {},
+
+    #[error("Last balance is non-zero, you can only call this function once.")]
+    Nonzero {},
 }

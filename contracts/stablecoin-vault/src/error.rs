@@ -25,4 +25,10 @@ pub enum StableVaultError {
 
     #[error("Not enough funds to perform trade")]
     Broke {},
+
+    #[error("The requesting contract is not whitelisted.")]
+    NotWhitelisted {},
+
+    #[error("The requesting contract already whitelisted.")]
+    AlreadyWhitelisted {},
 }
