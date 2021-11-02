@@ -1,4 +1,4 @@
-use crate::contract::{burn_whale, deposit, execute, instantiate, query};
+use crate::contract::{burn_whale, deposit, execute, spend_whale, instantiate, query};
 use crate::error::CommunityFundError;
 use crate::msg::InstantiateMsg;
 use crate::state::{State, ADMIN, STATE};
@@ -82,6 +82,38 @@ fn test_admin_query() {
         deps.api.addr_validate(TEST_CREATOR).unwrap()
     )
 }
+
+
+#[test]
+fn unsuccessful_spend_tokens() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let info = MessageInfo {
+        sender: deps.api.addr_validate("unauthorized").unwrap(),
+        funds: vec![],
+    };
+
+    let res = spend_whale(deps.as_ref(), info, "recipient".to_string(), Uint128::from(100u128));
+    match res {
+        Err(CommunityFundError::Admin(_)) => (),
+        _ => panic!("Must return CommunityFundError::Admin"),
+    }
+}
+
+#[test]
+fn successful_spend_tokens() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let info = MessageInfo {
+        sender: deps.api.addr_validate(TEST_CREATOR).unwrap(),
+        funds: vec![],
+    };
+
+    spend_whale(deps.as_ref(), info, "recipient".to_string(), Uint128::from(100u128)).unwrap();
+}
+
 
 #[test]
 fn unsuccessful_burn_tokens() {
