@@ -11,7 +11,8 @@ members = [
     "contracts/vesting",
     "contracts/treasury",
     "contracts/treasury-dapps/terraswap",
-    "contracts/treasury-dapps/template"
+    "contracts/treasury-dapps/template",
+    "contracts/treasury-dapps/federator"
 ]
 
 [profile.release]

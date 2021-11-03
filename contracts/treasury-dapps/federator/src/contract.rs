@@ -28,9 +28,6 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: Instantiate
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DAppResult {
     match msg {
         // TODO: Add functions
-        ExecuteMsg::ProvideLiquidity{ pool_id, amount,} => provide_liquidity(deps, env, info, pool_id, amount),
-        ExecuteMsg::WithdrawLiquidity{ pool_id, amount,} => withdraw_liquidity(deps, env, info, pool_id, main_asset_id , amount),
-        ExecuteMsg::SwapAsset{ offer_id, ask_id, amount} => terraswap_swap(deps, env, info, offer_id, ask_id, amount),
         ExecuteMsg::UpdateConfig {
             treasury_address,
             trader,
@@ -70,20 +67,6 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //----------------------------------------------------------------------------------------
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
-
-pub fn provide_liquidity(deps: Deps, msg_info: MessageInfo, ) -> DAppResult {
-    // get assets from address_book
-    // Query treasury for assets
-    // 
-    Ok(Response::new())
-}
-
-pub fn provide_liquidity(deps: Deps, msg_info: MessageInfo, ) -> DAppResult {
-    // get assets from address_book
-    // Query treasury for assets
-    // 
-    Ok(Response::new())
-}
 
 // TODO: implement
 
@@ -168,6 +151,3 @@ pub fn try_query_config(deps: Deps) -> StdResult<State> {
     let state = STATE.load(deps.storage)?;
     Ok(state)
 }
-
-
-// https://users.rust-lang.org/t/updating-object-fields-given-dynamic-json/39049/2
