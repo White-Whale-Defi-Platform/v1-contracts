@@ -16,7 +16,7 @@ use crate::state::{State, ADMIN, STATE};
     It is controlled by the governance contract and serves to grow its holdings and give grants to proposals.
 */
 
-pub(crate) type CommunityFundResult = Result<Response, CommunityFundError>;
+type CommunityFundResult = Result<Response, CommunityFundError>;
 
 pub fn instantiate(
     deps: DepsMut,
@@ -97,7 +97,18 @@ pub fn deposit(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> CommunityFund
 
     let state = STATE.load(deps.storage)?;
 
-    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    let mut messages: Vec<CosmosMsg> = vec![];
+    let allowance_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: state.whale_token_addr.to_string(),
+        funds: vec![],
+        msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
+            spender: env.contract.address.to_string(),
+            amount: msg_info.funds[0].amount,
+            expires: None,
+        })?,
+    });
+
+    let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: state.whale_token_addr.to_string(),
         funds: vec![],
         msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
@@ -107,7 +118,10 @@ pub fn deposit(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> CommunityFund
         })?,
     });
 
-    Ok(Response::new().add_message(msg))
+    messages.push(allowance_msg);
+    messages.push(transfer_msg);
+
+    Ok(Response::new().add_messages(messages))
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {

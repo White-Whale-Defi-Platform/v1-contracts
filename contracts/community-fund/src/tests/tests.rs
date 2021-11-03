@@ -1,11 +1,9 @@
-use crate::contract::{burn_whale, deposit, execute, spend_whale, instantiate, query};
+use crate::contract::{burn_whale, deposit, execute, instantiate, query, spend_whale};
 use crate::error::CommunityFundError;
 use crate::msg::InstantiateMsg;
 use crate::state::{State, ADMIN, STATE};
-use cosmwasm_std::coin;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::Uint128;
-use cosmwasm_std::{from_binary, Api, DepsMut, MessageInfo};
+use cosmwasm_std::{coin, from_binary, Api, DepsMut, MessageInfo, WasmMsg, CosmosMsg, Uint128};
 use cw_controllers::AdminResponse;
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 use white_whale::denom::WHALE_DENOM;
@@ -83,7 +81,6 @@ fn test_admin_query() {
     )
 }
 
-
 #[test]
 fn unsuccessful_spend_tokens() {
     let mut deps = mock_dependencies(&[]);
@@ -94,7 +91,12 @@ fn unsuccessful_spend_tokens() {
         funds: vec![],
     };
 
-    let res = spend_whale(deps.as_ref(), info, "recipient".to_string(), Uint128::from(100u128));
+    let res = spend_whale(
+        deps.as_ref(),
+        info,
+        "recipient".to_string(),
+        Uint128::from(100u128),
+    );
     match res {
         Err(CommunityFundError::Admin(_)) => (),
         _ => panic!("Must return CommunityFundError::Admin"),
@@ -111,9 +113,14 @@ fn successful_spend_tokens() {
         funds: vec![],
     };
 
-    spend_whale(deps.as_ref(), info, "recipient".to_string(), Uint128::from(100u128)).unwrap();
+    spend_whale(
+        deps.as_ref(),
+        info,
+        "recipient".to_string(),
+        Uint128::from(100u128),
+    )
+    .unwrap();
 }
-
 
 #[test]
 fn unsuccessful_burn_tokens() {
@@ -192,7 +199,8 @@ fn successful_deposit() {
         funds: vec![coin(1000u128, WHALE_DENOM)],
     };
 
-    deposit(deps.as_mut(), &env, info).unwrap();
+    let res = deposit(deps.as_mut(), &env, info).unwrap();
+    assert_eq!(2, res.messages.len());
 }
 
 #[test]
