@@ -41,11 +41,10 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> TreasuryResult {
     match msg {
-        ExecuteMsg::Deposit {} => Ok(Response::default()),
         ExecuteMsg::Spend { recipient, amount } => spend(deps, info, recipient, amount),
         ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
         ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
-        ExecuteMsg::TraderAction { target, msgs } => execute_action(deps, info, target, msgs),
+        ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),
         ExecuteMsg::UpdateAssets { to_add, to_remove } => {
             update_assets(deps, info, to_add, to_remove)
         }
@@ -55,10 +54,9 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
 pub fn execute_action(
     deps: DepsMut,
     msg_info: MessageInfo,
-    target: String,
     msgs: Vec<CosmosMsg<Empty>>,
 ) -> TreasuryResult {
-    let mut state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     if !state
         .traders
         .contains(&deps.api.addr_canonicalize(msg_info.sender.as_str())?)
@@ -78,31 +76,27 @@ pub fn update_assets(
     // Only Admin can call this method
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
-    for new_asset in to_add {
+    for new_asset in to_add.into_iter() {
+        let id = get_identifier(&new_asset.asset.info).as_str();
         // update function for new or existing keys
         let insert = |vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> {
             match vault_asset {
                 Some(_) => Err(StdError::generic_err("Asset already present.")),
                 None => {
-                    new_asset.asset.amount = Uint128::zero();
-                    Ok(new_asset)
+                    let mut asset = new_asset.clone();
+                    asset.asset.amount = Uint128::zero();
+                    Ok(asset.clone())
                 }
             }
         };
-        VAULT_ASSETS.update(
-            deps.storage,
-            get_identifier(new_asset.asset.info).as_str(),
-            insert,
-        )?;
+        VAULT_ASSETS.update(deps.storage, id, insert)?;
     }
 
     for asset_id in to_remove {
-        VAULT_ASSETS.remove(deps.storage, get_identifier(asset_id).as_str());
+        VAULT_ASSETS.remove(deps.storage, get_identifier(&asset_id).as_str());
     }
 
-    Ok(Response::new()
-        .add_attribute("action", "update_cw20_token_list")
-        )
+    Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
 }
 
 pub fn add_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
@@ -148,6 +142,8 @@ pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> Tr
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
+        QueryMsg::GetTotalValue {} => to_binary("placeholder"),
+        QueryMsg::GetHoldingValue { identifier } => to_binary("placeholder"),
     }
 }
 
@@ -157,7 +153,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let resp = ConfigResponse {
         traders: traders
             .iter()
-            .map(|&trader| -> String { deps.api.addr_humanize(&trader).unwrap().to_string() })
+            .map(|trader| -> String { deps.api.addr_humanize(&trader).unwrap().to_string() })
             .collect(),
     };
     Ok(resp)

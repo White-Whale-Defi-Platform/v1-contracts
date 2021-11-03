@@ -13,13 +13,11 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Deposit {},
     Spend {
         recipient: String,
         amount: Uint128,
     },
     TraderAction {
-        target: String,
         msgs: Vec<CosmosMsg<Empty>>,
     },
     AddTrader {
@@ -32,7 +30,7 @@ pub enum ExecuteMsg {
     RemoveTrader {
         trader: String,
     },
-    UpdateBalances {},
+    // UpdateBalances {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

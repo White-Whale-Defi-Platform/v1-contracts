@@ -27,6 +27,8 @@ ust_arb = StableArbContract(deployer)
 community_fund = CommunityContract(deployer)
 create = False
 
+community_fund.create()
+
 if create:
     profit_check.create()
     vault.create()

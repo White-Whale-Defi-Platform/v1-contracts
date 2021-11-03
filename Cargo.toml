@@ -9,7 +9,9 @@ members = [
     "contracts/stablecoin-vault",
     "contracts/terraswap-wrapper",
     "contracts/vesting",
-    "contracts/treasury"
+    "contracts/treasury",
+    "contracts/treasury-dapps/terraswap",
+    "contracts/treasury-dapps/template"
 ]
 
 [profile.release]

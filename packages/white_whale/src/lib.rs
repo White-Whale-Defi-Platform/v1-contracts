@@ -10,3 +10,4 @@ pub mod query;
 pub mod tax;
 pub mod trader;
 pub mod ust_vault;
+pub mod convert;
