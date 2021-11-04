@@ -3,7 +3,7 @@ use crate::error::CommunityFundError;
 use crate::msg::InstantiateMsg;
 use crate::state::{State, ADMIN, STATE};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{coin, from_binary, Api, DepsMut, MessageInfo, WasmMsg, CosmosMsg, Uint128};
+use cosmwasm_std::{coin, from_binary, Api, DepsMut, MessageInfo, Uint128};
 use cw_controllers::AdminResponse;
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 use white_whale::denom::WHALE_DENOM;
@@ -82,7 +82,7 @@ fn test_admin_query() {
 }
 
 #[test]
-fn unsuccessful_spend_tokens() {
+fn unsuccessful_spend_tokens_unauthorized() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
@@ -104,6 +104,28 @@ fn unsuccessful_spend_tokens() {
 }
 
 #[test]
+fn unsuccessful_spend_tokens_not_enough_tokens() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let info = MessageInfo {
+        sender: deps.api.addr_validate(TEST_CREATOR).unwrap(),
+        funds: vec![],
+    };
+
+    let res = spend_whale(
+        deps.as_ref(),
+        info,
+        "recipient".to_string(),
+        Uint128::from(100u128),
+    );
+    match res {
+        Err(CommunityFundError::InsufficientFunds(_, _)) => (),
+        _ => panic!("Must return CommunityFundError::InsufficientFunds"),
+    }
+}
+
+#[test]
 fn successful_spend_tokens() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
@@ -112,6 +134,8 @@ fn successful_spend_tokens() {
         sender: deps.api.addr_validate(TEST_CREATOR).unwrap(),
         funds: vec![],
     };
+
+    //send whale tokens before spending
 
     spend_whale(
         deps.as_ref(),
@@ -123,7 +147,7 @@ fn successful_spend_tokens() {
 }
 
 #[test]
-fn unsuccessful_burn_tokens() {
+fn unsuccessful_burn_tokens_unauthorized() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
@@ -136,6 +160,23 @@ fn unsuccessful_burn_tokens() {
     match res {
         Err(CommunityFundError::Admin(_)) => (),
         _ => panic!("Must return CommunityFundError::Admin"),
+    }
+}
+
+#[test]
+fn unsuccessful_burn_tokens_not_enough_tokens() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let info = MessageInfo {
+        sender: deps.api.addr_validate(TEST_CREATOR).unwrap(),
+        funds: vec![],
+    };
+
+    let res = burn_whale(deps.as_ref(), info, Uint128::from(100u128));
+    match res {
+        Err(CommunityFundError::InsufficientFunds(_, _)) => (),
+        _ => panic!("Must return CommunityFundError::InsufficientFunds"),
     }
 }
 

@@ -63,6 +63,21 @@ pub fn spend_whale(
 ) -> CommunityFundResult {
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
+
+    let fund_whale_balance = deps
+        .querier
+        .query_balance(
+            deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
+            WHALE_DENOM,
+        )?
+        .amount;
+    if amount > fund_whale_balance {
+        return Err(CommunityFundError::InsufficientFunds(
+            amount,
+            fund_whale_balance,
+        ));
+    };
+
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
@@ -77,7 +92,20 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
 
-    //TODO(javier): should we check if there are enough tokens to burn??
+    let fund_whale_balance = deps
+        .querier
+        .query_balance(
+            deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
+            WHALE_DENOM,
+        )?
+        .amount;
+    if amount > fund_whale_balance {
+        return Err(CommunityFundError::InsufficientFunds(
+            amount,
+            fund_whale_balance,
+        ));
+    };
+
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
