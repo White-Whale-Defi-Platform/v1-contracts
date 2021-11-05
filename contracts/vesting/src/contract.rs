@@ -1,20 +1,20 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
+use crate::state::{Config, State, ALLOCATIONS, CONFIG, STATE};
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Storage, Uint128, WasmMsg,
+    from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo,
+    Response, StdError, StdResult, Storage, Uint128, WasmMsg,
+};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
+use white_whale::vesting::{
+    AllocationInfo, AllocationResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    ReceiveMsg, StateResponse, Schedule, SimulateWithdrawResponse,
 };
 
-use crate::common::OrderBy;
-use crate::msg::{
-    ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, VestingAccount, VestingAccountResponse,
-    VestingAccountsResponse, VestingInfo,
-};
-use crate::state::{
-    read_config, read_vesting_info, read_vesting_infos, store_config, store_vesting_info, Config,
-};
-use cw20::Cw20ExecuteMsg;
+//----------------------------------------------------------------------------------------
+// Entry Points
+//----------------------------------------------------------------------------------------
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -23,196 +23,236 @@ pub fn instantiate(
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
-    store_config(
+    CONFIG.save(
         deps.storage,
         &Config {
-            owner: deps.api.addr_canonicalize(&msg.owner)?,
-            whale_token: deps.api.addr_canonicalize(&msg.whale_token)?,
-            genesis_time: msg.genesis_time,
+            owner: deps.api.addr_validate(&msg.owner)?,
+            whale_token: deps.api.addr_validate(&msg.whale_token)?,
+            default_unlock_schedule: msg.default_unlock_schedule,
         },
     )?;
-
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> StdResult<Response> {
     match msg {
-        ExecuteMsg::Claim {} => claim(deps, env, info),
-        _ => {
-            assert_owner_privilege(deps.storage, deps.api, info.sender)?;
-            match msg {
-                ExecuteMsg::UpdateConfig {
-                    owner,
-                    whale_token,
-                    genesis_time,
-                } => update_config(deps, owner, whale_token, genesis_time),
-                ExecuteMsg::RegisterVestingAccounts { vesting_accounts } => {
-                    register_vesting_accounts(deps, vesting_accounts)
-                }
-                _ => panic!("DO NOT ENTER HERE"),
-            }
+        ExecuteMsg::Receive(cw20_msg) => handle_receive_cw20(deps, env, info, cw20_msg),
+        ExecuteMsg::Withdraw {} => handle_withdraw(deps, env, info),
+        ExecuteMsg::TransferOwnership { new_owner } => {
+            handle_transfer_ownership(deps, env, info, new_owner)
         }
     }
 }
 
-fn assert_owner_privilege(storage: &dyn Storage, api: &dyn Api, sender: Addr) -> StdResult<()> {
-    if read_config(storage)?.owner != api.addr_canonicalize(sender.as_str())? {
-        return Err(StdError::generic_err("unauthorized"));
-    }
-
-    Ok(())
-}
-
-pub fn update_config(
+fn handle_receive_cw20(
     deps: DepsMut,
-    owner: Option<String>,
-    whale_token: Option<String>,
-    genesis_time: Option<u64>,
+    env: Env,
+    info: MessageInfo,
+    cw20_msg: Cw20ReceiveMsg,
 ) -> StdResult<Response> {
-    let mut config = read_config(deps.storage)?;
-    if let Some(owner) = owner {
-        config.owner = deps.api.addr_canonicalize(&owner)?;
+    match from_binary(&cw20_msg.msg)? {
+        ReceiveMsg::CreateAllocations { allocations } => handle_create_allocations(
+            deps,
+            env,
+            info.clone(),
+            cw20_msg.sender,
+            info.sender,
+            cw20_msg.amount,
+            allocations,
+        ),
     }
-
-    if let Some(whale_token) = whale_token {
-        config.whale_token = deps.api.addr_canonicalize(&whale_token)?;
-    }
-
-    if let Some(genesis_time) = genesis_time {
-        config.genesis_time = genesis_time;
-    }
-
-    store_config(deps.storage, &config)?;
-
-    Ok(Response::new().add_attributes(vec![("action", "update_config")]))
-}
-
-fn assert_vesting_schedules(vesting_schedules: &[(u64, u64, Uint128)]) -> StdResult<()> {
-    for vesting_schedule in vesting_schedules.iter() {
-        if vesting_schedule.0 >= vesting_schedule.1 {
-            return Err(StdError::generic_err(
-                "end_time must bigger than start_time",
-            ));
-        }
-    }
-
-    Ok(())
-}
-
-pub fn register_vesting_accounts(
-    deps: DepsMut,
-    vesting_accounts: Vec<VestingAccount>,
-) -> StdResult<Response> {
-    let config: Config = read_config(deps.storage)?;
-    for vesting_account in vesting_accounts.iter() {
-        assert_vesting_schedules(&vesting_account.schedules)?;
-
-        let vesting_address = deps.api.addr_canonicalize(&vesting_account.address)?;
-        store_vesting_info(
-            deps.storage,
-            &vesting_address,
-            &VestingInfo {
-                last_claim_time: config.genesis_time,
-                schedules: vesting_account.schedules.clone(),
-            },
-        )?;
-    }
-
-    Ok(Response::new().add_attributes(vec![("action", "register_vesting_accounts")]))
-}
-
-pub fn claim(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
-    let current_time = env.block.time.nanos() / 1_000_000_000;
-    let address = info.sender;
-    let address_raw = deps.api.addr_canonicalize(&address.to_string())?;
-
-    let config: Config = read_config(deps.storage)?;
-    let mut vesting_info: VestingInfo = read_vesting_info(deps.storage, &address_raw)?;
-
-    let claim_amount = compute_claim_amount(current_time, &vesting_info);
-    let messages: Vec<CosmosMsg> = if claim_amount.is_zero() {
-        vec![]
-    } else {
-        vec![CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps.api.addr_humanize(&config.whale_token)?.to_string(),
-            funds: vec![],
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: address.to_string(),
-                amount: claim_amount,
-            })?,
-        })]
-    };
-
-    vesting_info.last_claim_time = current_time;
-    store_vesting_info(deps.storage, &address_raw, &vesting_info)?;
-
-    Ok(Response::new().add_messages(messages).add_attributes(vec![
-        ("action", "claim"),
-        ("address", address.as_str()),
-        ("claim_amount", claim_amount.to_string().as_str()),
-        ("last_claim_time", current_time.to_string().as_str()),
-    ]))
-}
-
-fn compute_claim_amount(current_time: u64, vesting_info: &VestingInfo) -> Uint128 {
-    let mut claimable_amount: Uint128 = Uint128::zero();
-    for s in vesting_info.schedules.iter() {
-        if s.0 > current_time || s.1 < vesting_info.last_claim_time {
-            continue;
-        }
-
-        // min(s.1, current_time) - max(s.0, last_claim_time)
-        let passed_time =
-            std::cmp::min(s.1, current_time) - std::cmp::max(s.0, vesting_info.last_claim_time);
-
-        // prevent zero time_period case
-        let time_period = s.1 - s.0;
-        let release_amount_per_time: Decimal = Decimal::from_ratio(s.2, time_period);
-
-        claimable_amount += Uint128::from(passed_time as u128) * release_amount_per_time;
-    }
-
-    claimable_amount
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => Ok(to_binary(&query_config(deps)?)?),
-        QueryMsg::VestingAccount { address } => {
-            Ok(to_binary(&query_vesting_account(deps, address)?)?)
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::State {} => to_binary(&query_state(deps)?),
+        QueryMsg::Allocation { account } => to_binary(&query_allocation(deps, env, account)?),
+        QueryMsg::AllAllocations { limit, start_after } => {
+            to_binary(&query_all_allocations(deps, env, limit, start_after)?)
         }
-        QueryMsg::VestingAccounts {
-            start_after,
-            limit,
-            order_by,
-        } => Ok(to_binary(&query_vesting_accounts(
-            deps,
-            start_after,
-            limit,
-            order_by,
-        )?)?),
+        QueryMsg::SimulateWithdraw { account, timestamp } => {
+            to_binary(&query_simulate_withdraw(deps, env, account, timestamp)?)
+        }
     }
 }
 
+//----------------------------------------------------------------------------------------
+// Execute Points
+//----------------------------------------------------------------------------------------
+
+fn handle_transfer_ownership(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    new_owner: String,
+) -> StdResult<Response> {
+    let mut config = CONFIG.load(deps.storage)?;
+
+    // CHECK :: Only owner can call
+    if info.sender != config.owner {
+        return Err(StdError::generic_err("Unauthorized"));
+    }
+
+    config.owner = deps.api.addr_validate(&new_owner)?;
+    CONFIG.save(deps.storage, &config)?;
+    Ok(Response::new())
+}
+
+
+
+fn handle_create_allocations(
+    deps: DepsMut,
+    env: Env,
+    _info: MessageInfo,
+    creator: String,
+    deposit_token: Addr,
+    deposit_amount: Uint128,
+    allocations: Vec<(String, AllocationInfo)>,
+) -> StdResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+
+    // CHECK :: Only owner can create allocations
+    if deps.api.addr_validate(&creator)? != config.owner {
+        return Err(StdError::generic_err("Only owner can create allocations"));
+    }
+
+    // CHECK :: Only WHALE Token can be  can be deposited
+    if deposit_token != config.whale_token {
+        return Err(StdError::generic_err("Only WHALE token can be deposited"));
+    }
+
+    // CHECK :: Number of WHALE Tokens sent need to be equal to the sum of newly vested balances 
+    if deposit_amount != allocations.iter().map(|params| params.1.total_amount).sum() {
+        return Err(StdError::generic_err("WHALE deposit amount mismatch"));
+    }
+
+    for allocation in allocations {
+        let (user_unchecked, params) = allocation;
+
+        let user = deps.api.addr_validate(&user_unchecked)?;
+
+        match ALLOCATIONS.load(deps.storage, &user) {
+            Ok(..) => {
+                return Err(StdError::generic_err("Allocation already exists for user"));
+            }
+            Err(..) => {
+                ALLOCATIONS.save(deps.storage, &user, &params)?;
+            }
+        }
+    }
+
+    Ok(Response::default())
+}
+
+
+
+
+
+fn handle_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
+    let mut allocation = ALLOCATIONS.load(deps.storage, &info.sender)?;
+
+    // Check :: Is valid request ?
+    if allocation.total_amount == Uint128::zero()
+        || allocation.total_amount == allocation.withdrawn_amount
+    {
+        return Err(StdError::generic_err("No unlocked WHALE to be withdrawn"));
+    }
+
+    let withdrawable_amount = compute_withdraw_amounts(
+        env.block.time.seconds(),
+        &allocation,
+        config.default_unlock_schedule,
+    );
+
+    // Check :: Is valid request ?
+    if withdrawable_amount == Uint128::zero() {
+        return Err(StdError::generic_err("No unlocked WHALE to be withdrawn"));
+    }
+
+    // Init Response
+    let mut response = Response::new().add_attribute("action", "withdraw");
+
+    // UPDATE :: state & allocation
+    allocation.withdrawn_amount += withdrawable_amount;
+    state.remaining_whale_tokens -= withdrawable_amount;
+
+    // SAVE :: state & allocation
+    STATE.save(deps.storage, &state)?;
+    ALLOCATIONS.save(deps.storage, &info.sender, &allocation)?;
+
+    let mut msgs: Vec<WasmMsg> = vec![];
+
+    response = response
+        .add_message(WasmMsg::Execute {
+            contract_addr: config.whale_token.to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: info.sender.to_string(),
+                amount: withdrawable_amount,
+            })?,
+            funds: vec![],
+        })
+        .add_attribute("user", info.sender.to_string())
+        .add_attribute("withdrawn_amount", withdrawable_amount.to_string());
+
+    Ok(response)
+}
+
+
+
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
-    let state = read_config(deps.storage)?;
-    let resp = ConfigResponse {
-        owner: deps.api.addr_humanize(&state.owner)?.to_string(),
-        whale_token: deps.api.addr_humanize(&state.whale_token)?.to_string(),
-        genesis_time: state.genesis_time,
-    };
-
-    Ok(resp)
+    let config = CONFIG.load(deps.storage)?;
+    Ok(ConfigResponse {
+        owner: config.owner.to_string(),
+        whale_token: config.whale_token.to_string(),
+        default_unlock_schedule: config.default_unlock_schedule,
+    })
 }
 
-pub fn query_vesting_account(deps: Deps, address: String) -> StdResult<VestingAccountResponse> {
-    let info = read_vesting_info(deps.storage, &deps.api.addr_canonicalize(&address)?)?;
-    let resp = VestingAccountResponse { address, info };
-
-    Ok(resp)
+pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
+    let state = STATE.load(deps.storage)?;
+    Ok(StateResponse {
+        total_whale_deposited: state.total_whale_deposited,
+        remaining_whale_tokens: state.remaining_whale_tokens,
+    })
 }
+
+fn query_allocation(deps: Deps, _env: Env, account: String) -> StdResult<AllocationResponse> {
+    let user_address = deps.api.addr_validate(&account)?;
+    let allocation_info = ALLOCATIONS.load(deps.storage, &user_address)?;
+
+    Ok(AllocationResponse {
+        total_amount: allocation_info.total_amount,
+        withdrawn_amount:  allocation_info.withdrawn_amount,
+        vest_schedule: allocation_info.vest_schedule,
+    })
+}
+
+
+fn query_simulate_withdraw(
+    deps: Deps,
+    env: Env,
+    account: String,
+) -> StdResult<SimulateWithdrawResponse> {
+    let user_address = deps.api.addr_validate(&account)?;
+    let allocation_info = ALLOCATIONS.load(deps.storage, &user_address)?;
+
+    let config = CONFIG.load(deps.storage)?;
+    let mut status = STATUS.load(deps.storage, &account_checked)?;
+
+    Ok(helpers::compute_withdraw_amounts(
+        env.block.time.seconds(),
+        &params,
+        &mut status,
+        config.default_unlock_schedule,
+    ))
+}
+
+
 
 pub fn query_vesting_accounts(
     deps: Deps,
@@ -244,28 +284,4 @@ pub fn query_vesting_accounts(
     Ok(VestingAccountsResponse {
         vesting_accounts: vesting_account_responses?,
     })
-}
-
-#[test]
-fn test_assert_vesting_schedules() {
-    // valid
-    assert_vesting_schedules(&[
-        (100u64, 101u64, Uint128::from(100u128)),
-        (100u64, 110u64, Uint128::from(100u128)),
-        (100u64, 200u64, Uint128::from(100u128)),
-    ])
-    .unwrap();
-
-    // invalid
-    let res = assert_vesting_schedules(&[
-        (100u64, 100u64, Uint128::from(100u128)),
-        (100u64, 110u64, Uint128::from(100u128)),
-        (100u64, 200u64, Uint128::from(100u128)),
-    ]);
-    match res {
-        Err(StdError::GenericErr { msg, .. }) => {
-            assert_eq!(msg, "end_time must bigger than start_time")
-        }
-        _ => panic!("DO NOT ENTER HERE"),
-    }
 }
