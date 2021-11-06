@@ -117,7 +117,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
                 }),
             })?,
             funds: vec![],
-            label: "".to_string(),
+            label: "White Whale Stablecoin Vault LP".to_string(),
         }
         .into(),
         gas_limit: None,

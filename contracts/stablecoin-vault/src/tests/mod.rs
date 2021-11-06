@@ -1,6 +1,6 @@
 // use crate::error::StableVaultError;
 
 mod common;
-mod instantiate;
+pub mod instantiate;
 #[cfg(test)]
 mod mock_querier;

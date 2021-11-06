@@ -7,3 +7,4 @@ mod staking;
 mod validators;
 mod voting;
 mod integration_test;
+pub mod tswap_mock;
