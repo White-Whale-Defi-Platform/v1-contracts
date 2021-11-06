@@ -14,11 +14,11 @@ use white_whale::ust_vault::msg::*;
 
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
-use crate::tests::mock_querier::mock_dependencies;
+// use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 
-pub(crate) fn instantiate_msg() -> InstantiateMsg {
+pub fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
