@@ -1,16 +1,17 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 
-use crate::state::{Config, State, ALLOCATIONS, CONFIG, STATE};
+use crate::state::{Config, ALLOCATIONS, CONFIG, STATE};
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Api, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo,
-    Response, StdError, StdResult, Storage, Uint128, WasmMsg,
+    from_binary, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo,
+    Response, StdError, StdResult,  Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use white_whale::vesting::{
     AllocationInfo, AllocationResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
     ReceiveMsg, StateResponse, Schedule, SimulateWithdrawResponse,
 };
+use std::cmp;
 
 //----------------------------------------------------------------------------------------
 // Entry Points
@@ -27,6 +28,7 @@ pub fn instantiate(
         deps.storage,
         &Config {
             owner: deps.api.addr_validate(&msg.owner)?,
+            refund_recepient: deps.api.addr_validate(&msg.refund_recepient)?,
             whale_token: deps.api.addr_validate(&msg.whale_token)?,
             default_unlock_schedule: msg.default_unlock_schedule,
         },
@@ -39,6 +41,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
     match msg {
         ExecuteMsg::Receive(cw20_msg) => handle_receive_cw20(deps, env, info, cw20_msg),
         ExecuteMsg::Withdraw {} => handle_withdraw(deps, env, info),
+        ExecuteMsg::Terminate { user_address } => handle_terminate(deps, env, info, user_address),
         ExecuteMsg::TransferOwnership { new_owner } => {
             handle_transfer_ownership(deps, env, info, new_owner)
         }
@@ -70,9 +73,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::State {} => to_binary(&query_state(deps)?),
         QueryMsg::Allocation { account } => to_binary(&query_allocation(deps, env, account)?),
-        QueryMsg::AllAllocations { limit, start_after } => {
-            to_binary(&query_all_allocations(deps, env, limit, start_after)?)
-        }
         QueryMsg::SimulateWithdraw { account, timestamp } => {
             to_binary(&query_simulate_withdraw(deps, env, account, timestamp)?)
         }
@@ -83,6 +83,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 // Execute Points
 //----------------------------------------------------------------------------------------
 
+/// @dev Admin function to transfer contract ownership
+/// @params new_owner : New admin
 fn handle_transfer_ownership(
     deps: DepsMut,
     _env: Env,
@@ -102,10 +104,14 @@ fn handle_transfer_ownership(
 }
 
 
-
+/// @dev Admin function to store new allocations
+/// @params creator : User address who called this function
+/// @params deposit_token : Token address being deposited 
+/// @params deposit_amount : Number of tokens sent along-with function call
+/// @params allocations : Vector containing allocations  data
 fn handle_create_allocations(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     _info: MessageInfo,
     creator: String,
     deposit_token: Addr,
@@ -130,16 +136,16 @@ fn handle_create_allocations(
     }
 
     for allocation in allocations {
-        let (user_unchecked, params) = allocation;
+        let (user_unchecked, allocation_info) = allocation;
 
         let user = deps.api.addr_validate(&user_unchecked)?;
 
         match ALLOCATIONS.load(deps.storage, &user) {
             Ok(..) => {
-                return Err(StdError::generic_err("Allocation already exists for user"));
+                return Err(StdError::generic_err(format!("Allocation already exists for user {}",user)));
             }
             Err(..) => {
-                ALLOCATIONS.save(deps.storage, &user, &params)?;
+                ALLOCATIONS.save(deps.storage, &user, &allocation_info)?;
             }
         }
     }
@@ -148,9 +154,7 @@ fn handle_create_allocations(
 }
 
 
-
-
-
+/// @dev Facilitates withdrawal of unlocked WHALE Tokens
 fn handle_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Response> {
     let config = CONFIG.load(deps.storage)?;
     let mut state = STATE.load(deps.storage)?;
@@ -163,14 +167,20 @@ fn handle_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Resp
         return Err(StdError::generic_err("No unlocked WHALE to be withdrawn"));
     }
 
-    let withdrawable_amount = compute_withdraw_amounts(
+    let SimulateWithdrawResponse {
+        total_whale_locked: _,
+        total_whale_unlocked: _,
+        total_whale_vested: _,
+        withdrawn_amount: _,
+        withdrawable_amount
+    } =  compute_withdraw_amounts(
         env.block.time.seconds(),
         &allocation,
         config.default_unlock_schedule,
     );
 
     // Check :: Is valid request ?
-    if withdrawable_amount == Uint128::zero() {
+    if withdrawable_amount.is_zero() {
         return Err(StdError::generic_err("No unlocked WHALE to be withdrawn"));
     }
 
@@ -184,8 +194,6 @@ fn handle_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Resp
     // SAVE :: state & allocation
     STATE.save(deps.storage, &state)?;
     ALLOCATIONS.save(deps.storage, &info.sender, &allocation)?;
-
-    let mut msgs: Vec<WasmMsg> = vec![];
 
     response = response
         .add_message(WasmMsg::Execute {
@@ -203,16 +211,83 @@ fn handle_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Resp
 }
 
 
+/// @dev Admin function to facilitate termination of the allocation schedule 
+fn handle_terminate(deps: DepsMut, env: Env, info: MessageInfo, user_address: String) -> StdResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+    let mut state = STATE.load(deps.storage)?;
+    let mut allocation = ALLOCATIONS.load(deps.storage, &deps.api.addr_validate( &user_address )? )?;
 
+    let unlock_schedule = match &allocation.unlock_schedule {
+        Some(schedule) => schedule,
+        None => &config.default_unlock_schedule,
+    };
+
+    let timestamp = env.block.time.seconds();
+    let whale_unlocked =
+        compute_vested_or_unlocked_amount(timestamp, allocation.total_amount, &unlock_schedule);
+    let whale_vested =
+        compute_vested_or_unlocked_amount(timestamp, allocation.total_amount, &allocation.vest_schedule);
+
+    // Calculate WHALE tokens to be refunded, claimed by the user
+    let whale_to_refund = allocation.total_amount - whale_unlocked;
+    let withdrawable_whale = whale_vested - allocation.withdrawn_amount;
+
+    // Set the total allocation amount to the current unlocked amount
+    // This means user will not get any new tokens and the currently
+    // unlocked tokens will vest based on the vesting schedule
+    allocation.total_amount = whale_unlocked;
+
+    // Update state
+    state.total_whale_deposited -= whale_to_refund;
+    state.remaining_whale_tokens -= withdrawable_whale;
+
+    // SAVE :: state & allocation
+    STATE.save(deps.storage, &state)?;
+    ALLOCATIONS.save(deps.storage, &info.sender, &allocation)?;
+
+    let mut msgs: Vec<WasmMsg> = vec![];
+
+    msgs.push(WasmMsg::Execute {
+            contract_addr: config.whale_token.to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: info.sender.to_string(),
+                amount: withdrawable_whale,
+            })?,
+            funds: vec![],
+        });
+    msgs.push(WasmMsg::Execute {
+            contract_addr: config.whale_token.to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: config.refund_recepient.to_string(),
+                amount: whale_to_refund,
+            })?,
+            funds: vec![],
+    });
+
+    Ok(Response::new()
+        .add_messages(msgs)
+        .add_attribute("new_total_allocation", allocation.total_amount)
+        .add_attribute("whale_refunded", whale_to_refund)
+        .add_attribute("whale_claimed", withdrawable_whale))
+}
+
+
+//----------------------------------------------------------------------------------------
+// Handle Queries
+//----------------------------------------------------------------------------------------
+
+/// @dev Config Query
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse {
         owner: config.owner.to_string(),
+        refund_recepient: config.refund_recepient.to_string(),
         whale_token: config.whale_token.to_string(),
         default_unlock_schedule: config.default_unlock_schedule,
     })
 }
 
+/// @dev State Query
 pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     let state = STATE.load(deps.storage)?;
     Ok(StateResponse {
@@ -221,6 +296,7 @@ pub fn query_state(deps: Deps) -> StdResult<StateResponse> {
     })
 }
 
+/// @dev Allocation Query
 fn query_allocation(deps: Deps, _env: Env, account: String) -> StdResult<AllocationResponse> {
     let user_address = deps.api.addr_validate(&account)?;
     let allocation_info = ALLOCATIONS.load(deps.storage, &user_address)?;
@@ -229,59 +305,103 @@ fn query_allocation(deps: Deps, _env: Env, account: String) -> StdResult<Allocat
         total_amount: allocation_info.total_amount,
         withdrawn_amount:  allocation_info.withdrawn_amount,
         vest_schedule: allocation_info.vest_schedule,
+        unlock_schedule: allocation_info.unlock_schedule
     })
 }
 
 
+/// @dev Query function to fetch allocation state at any future timestamp
+/// @params account : Account address whose allocation state is to be calculated
+/// @params timestamp : Timestamp at which allocation state is to be calculated
 fn query_simulate_withdraw(
     deps: Deps,
     env: Env,
     account: String,
+    timestamp: Option<u64>
 ) -> StdResult<SimulateWithdrawResponse> {
     let user_address = deps.api.addr_validate(&account)?;
     let allocation_info = ALLOCATIONS.load(deps.storage, &user_address)?;
-
     let config = CONFIG.load(deps.storage)?;
-    let mut status = STATUS.load(deps.storage, &account_checked)?;
 
-    Ok(helpers::compute_withdraw_amounts(
-        env.block.time.seconds(),
-        &params,
-        &mut status,
+    let timestamp_ = match timestamp {
+                            Some(timestamp) => {
+                                if timestamp < env.block.time.seconds() {
+                                    env.block.time.seconds() 
+                                } else {
+                                    timestamp
+                                }
+                                
+                            }
+                            None => { env.block.time.seconds() }
+                        };
+
+    Ok(compute_withdraw_amounts(
+        timestamp_,
+        &allocation_info,
         config.default_unlock_schedule,
     ))
 }
 
+//----------------------------------------------------------------------------------------
+// Helper functions
+//----------------------------------------------------------------------------------------
 
 
-pub fn query_vesting_accounts(
-    deps: Deps,
-    start_after: Option<String>,
-    limit: Option<u32>,
-    order_by: Option<OrderBy>,
-) -> StdResult<VestingAccountsResponse> {
-    let vesting_infos = if let Some(start_after) = start_after {
-        read_vesting_infos(
-            deps.storage,
-            Some(deps.api.addr_canonicalize(&start_after)?),
-            limit,
-            order_by,
-        )?
-    } else {
-        read_vesting_infos(deps.storage, None, limit, order_by)?
+/// @dev Helper function. Calculates the current allocation state based on timestamp
+/// @params timestamp : Timestamp for which simulation is to be made
+/// @params params : Allocation schedule
+/// @params default_unlock_schedule : Default unlock schedule
+pub fn compute_withdraw_amounts(
+    timestamp: u64,
+    params: &AllocationInfo,
+    default_unlock_schedule: Schedule,
+) -> SimulateWithdrawResponse {
+    let unlock_schedule = match &params.unlock_schedule {
+        Some(schedule) => schedule,
+        None => &default_unlock_schedule,
     };
 
-    let vesting_account_responses: StdResult<Vec<VestingAccountResponse>> = vesting_infos
-        .iter()
-        .map(|vesting_account| {
-            Ok(VestingAccountResponse {
-                address: deps.api.addr_humanize(&vesting_account.0)?.to_string(),
-                info: vesting_account.1.clone(),
-            })
-        })
-        .collect();
+    // "Free" amount is the smaller between vested amount and unlocked amount
+    let whale_unlocked =
+        compute_vested_or_unlocked_amount(timestamp, params.total_amount, unlock_schedule);
+    let whale_vested =
+        compute_vested_or_unlocked_amount(timestamp, params.total_amount, &params.vest_schedule);
 
-    Ok(VestingAccountsResponse {
-        vesting_accounts: vesting_account_responses?,
-    })
+    let whale_free = cmp::min(whale_vested, whale_unlocked);
+
+    // Withdrawable amount is unlocked amount minus the amount already withdrawn
+    let whale_withdrawable = whale_free - params.withdrawn_amount;
+
+    SimulateWithdrawResponse {
+        total_whale_locked: params.total_amount,
+        total_whale_unlocked: whale_unlocked,
+        total_whale_vested: whale_vested,
+        withdrawn_amount: params.withdrawn_amount,
+        withdrawable_amount:whale_withdrawable
+    }
+}
+
+
+/// @dev Helper function. Calculated unlocked / vested amount for an allocation
+/// @params timestamp : Timestamp for which calculation is to be made
+/// @params amount : Total number of tokens reserved for this allocation schedule
+/// @params schedule : Allocation schedule
+pub fn compute_vested_or_unlocked_amount(
+    timestamp: u64,
+    amount: Uint128,
+    schedule: &Schedule,
+) -> Uint128 {
+
+    // Before the end of cliff period, no token will be vested/unlocked
+    if timestamp < schedule.start_time + schedule.cliff {
+        Uint128::zero()
+    } 
+    // After the end of cliff, tokens vest/unlock linearly between start time and end time
+    else if timestamp < schedule.start_time + schedule.duration {
+        amount.multiply_ratio(timestamp - schedule.start_time, schedule.duration)
+    }
+    // After end time, all tokens are fully vested/unlocked
+     else {
+        amount
+    }
 }

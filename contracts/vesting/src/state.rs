@@ -4,8 +4,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use white_whale::vesting::{AllocationInfo, Schedule};
 
-const PREFIX_KEY_VESTING_INFO: &[u8] = b"vesting_info";
-
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const STATE: Item<State> = Item::new("state");
 pub const ALLOCATIONS: Map<&Addr, AllocationInfo> = Map::new("vested_allocations");
@@ -14,6 +12,8 @@ pub const ALLOCATIONS: Map<&Addr, AllocationInfo> = Map::new("vested_allocations
 pub struct Config {
     /// Account which can create new allocations
     pub owner: Addr,
+    /// Account which will receive refunds upon allocation terminations
+    pub refund_recepient: Addr,    
     /// Address of WHALE token
     pub whale_token: Addr,
     /// By default, unlocking starts at WhiteWhale launch, with a cliff of 12 months and a duration of 12 months.

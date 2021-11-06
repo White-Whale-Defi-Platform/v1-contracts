@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Uint128};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 pub struct InstantiateMsg {
     /// Account which can create new allocations
     pub owner: String,
+    /// Account which will receive refunds upon allocation terminations
+    pub refund_recepient: String,
     /// Address of WHALE token
     pub whale_token: String,
     /// By default, unlocking starts at WhiteWhale launch, with a cliff of 12 months and a duration of 12 months.
@@ -21,6 +23,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Claim withdrawable WHALE
     Withdraw {},
+    /// Terminates the allocation
+    Terminate {user_address: String},
     /// Update addresses of owner
     TransferOwnership { new_owner: String },
 }
@@ -45,11 +49,6 @@ pub enum QueryMsg {
     Allocation {
         account: String,
     },
-    // Retrieve all allocations (Iteratable)
-    AllAllocations {
-        limit: u64,
-        start_after: String,
-    },
     // Simulate how many WHALE will be released if a withdrawal is attempted
     SimulateWithdraw {
         account: String,
@@ -72,7 +71,11 @@ pub struct StateResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SimulateWithdrawResponse {
     /// Total number of WHALE tokens allocated to this account
-    pub total_vested_amount: Uint128,
+    pub total_whale_locked: Uint128,
+    /// Total number of WHALE tokens that have been unlocked till now 
+    pub total_whale_unlocked: Uint128,
+    /// Total number of WHALE tokens that have been vested till now 
+    pub total_whale_vested: Uint128,
     /// Number of WHALE tokens that have been withdrawn by the beneficiary
     pub withdrawn_amount: Uint128,
     /// Number of WHALE tokens that can be withdrawn by the beneficiary post the provided timestamp
@@ -87,6 +90,8 @@ pub struct AllocationInfo {
     pub withdrawn_amount: Uint128,
     /// Parameters controlling the vesting process
     pub vest_schedule: Schedule,
+    /// Parameters controlling the unlocking process
+    pub unlock_schedule: Option<Schedule>,
 }
 
 // Parameters describing a typical vesting schedule
@@ -94,6 +99,8 @@ pub struct AllocationInfo {
 pub struct Schedule {
     /// Timestamp of when vesting is to be started
     pub start_time: u64,
+    /// Number of seconds starting UST during which no token will be vested/unlocked
+    pub cliff: u64,    
     /// Number of seconds taken by tokens to be fully vested
     pub duration: u64,
 }
