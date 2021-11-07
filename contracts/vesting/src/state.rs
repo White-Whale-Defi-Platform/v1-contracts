@@ -13,7 +13,7 @@ pub struct Config {
     /// Account which can create new allocations
     pub owner: Addr,
     /// Account which will receive refunds upon allocation terminations
-    pub refund_recepient: Addr,    
+    pub refund_recepient: Addr,
     /// Address of WHALE token
     pub whale_token: Addr,
     /// By default, unlocking starts at WhiteWhale launch, with a cliff of 12 months and a duration of 12 months.
@@ -27,4 +27,13 @@ pub struct State {
     pub total_whale_deposited: Uint128,
     /// Currently available WHALE Tokens
     pub remaining_whale_tokens: Uint128,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        State {
+            total_whale_deposited: Uint128::zero(),
+            remaining_whale_tokens: Uint128::zero(),
+        }
+    }
 }

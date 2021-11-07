@@ -3,7 +3,28 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
-      "description": "Implementation of cw20 receive msg",
+      "description": "Admin function. Update addresses of owner",
+      "type": "object",
+      "required": [
+        "transfer_ownership"
+      ],
+      "properties": {
+        "transfer_ownership": {
+          "type": "object",
+          "required": [
+            "new_owner"
+          ],
+          "properties": {
+            "new_owner": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Admin function. Implementation of cw20 receive msg to create new allocations",
       "type": "object",
       "required": [
         "receive"
@@ -42,27 +63,6 @@
           ],
           "properties": {
             "user_address": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Update addresses of owner",
-      "type": "object",
-      "required": [
-        "transfer_ownership"
-      ],
-      "properties": {
-        "transfer_ownership": {
-          "type": "object",
-          "required": [
-            "new_owner"
-          ],
-          "properties": {
-            "new_owner": {
               "type": "string"
             }
           }

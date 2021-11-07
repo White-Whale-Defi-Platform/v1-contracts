@@ -19,14 +19,14 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    /// Implementation of cw20 receive msg
+    /// Admin function. Update addresses of owner
+    TransferOwnership { new_owner: String },
+    /// Admin function. Implementation of cw20 receive msg to create new allocations
     Receive(Cw20ReceiveMsg),
     /// Claim withdrawable WHALE
     Withdraw {},
     /// Terminates the allocation
     Terminate {user_address: String},
-    /// Update addresses of owner
-    TransferOwnership { new_owner: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -3,9 +3,9 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use white_whale::vesting::{ InstantiateMsg, ReceiveMsg, 
-    ConfigResponse, ExecuteMsg, QueryMsg, StateResponse,
-    SimulateWithdrawResponse, AllocationInfo, Schedule
+use white_whale::vesting::{
+    AllocationInfo, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, ReceiveMsg, Schedule,
+    SimulateWithdrawResponse, StateResponse,
 };
 
 fn main() {
