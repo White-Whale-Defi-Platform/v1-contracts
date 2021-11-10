@@ -1,4 +1,4 @@
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{mock_env, mock_dependencies, mock_info};
 use cosmwasm_std::{from_binary, to_binary, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
 use cosmwasm_std::{Api, Decimal, Uint128};
 
@@ -195,7 +195,7 @@ fn test_init_with_non_default_vault_lp_token() {
                 })
                 .unwrap(),
                 funds: vec![],
-                label: "".to_string(),
+                label: "White Whale Stablecoin Vault LP".to_string(),
             }
             .into(),
             gas_limit: None,
