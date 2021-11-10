@@ -27,6 +27,9 @@ use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
 use crate::tests::tswap_mock::{contract_receiver_mock, MockInstantiateMsg};
 use crate::tests::poll::{create_poll_msg};
 use white_whale::ust_vault::msg::InstantiateMsg as VaultInstantiateMsg;
+
+use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
+
 // Custom Vault Instant msg func which takes code ID 
 pub fn instantiate_msg(token_code_id: u64) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
@@ -44,6 +47,16 @@ pub fn instantiate_msg(token_code_id: u64) -> VaultInstantiateMsg {
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
     }
+}
+
+pub fn contract_whale_token() -> Box<dyn Contract<Empty>> {
+    // Instantiate WHALE Token Contract
+    let whale_token_contract = ContractWrapper::new(
+        cw20_base::contract::execute,
+        cw20_base::contract::instantiate,
+        cw20_base::contract::query,
+    );
+    Box::new(whale_token_contract)
 }
 
 pub fn contract_gov() -> Box<dyn Contract<Empty>> {
@@ -103,6 +116,45 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
     let vault_msg = instantiate_msg(terraswap_id);
     // Next prepare the Gov contract InstantiateMsg
     let gov_msg = gov_instan_msg();
+
+    let whale_token_id = router.store_code(contract_whale_token());
+
+    let msg = cw20_base::msg::InstantiateMsg {
+        name: "White Whale".to_string(),
+        symbol: "WHALE".to_string(),
+        decimals: 2,
+        initial_balances: vec![Cw20Coin {
+            address: owner.to_string(),
+            amount: Uint128::new(5000),
+        }],
+        mint: None,
+        marketing: None,
+    };
+    let whale_token_instance = router
+        .instantiate_contract(whale_token_id, owner.clone(), &msg, &[], "WHALE", None)
+        .unwrap();
+
+    // Create the gov staker account
+    let gov_staker = Addr::unchecked("gov_staker");
+    // Next, give the gov_staker some whale to stake with 
+    let msg = cw20::Cw20ExecuteMsg::Mint {
+        recipient: gov_staker.to_string(),
+        amount: Uint128::new(1000),
+    };
+    let res = router
+        .execute_contract(owner.clone(), whale_token_instance.clone(), &msg, &[])
+        .unwrap();
+
+    // set up cw20 helpers
+    let cash = Cw20Contract(whale_token_instance.clone());
+
+    // get staker balance
+    let staker_balance = cash.balance(&router, gov_staker.clone()).unwrap();
+    // Verify the funds have been received 
+    assert_eq!(staker_balance, Uint128::new(1000));
+
+
+
 
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
     let tswap_addr = router
@@ -168,6 +220,14 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
     };
     router.set_block(new_block);
 
+
+    // Still TODO:
+    // Registering a cw20 as the gov token, needs a mocked cw20 
+    // Staking voting tokens for a given address who votes on the poll
+    // vote on poll with cast vote
+    // end poll
+    // execute poll
+    // Below config call can confirm if it worked 
 
     // Get the new stable_cap
     let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::Config{};
