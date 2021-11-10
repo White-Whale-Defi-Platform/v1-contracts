@@ -96,6 +96,7 @@ pub struct FlashLoanPayload {
 #[serde(rename_all = "snake_case")]
 pub enum VaultQueryMsg {
     Config {},
+    State {},
     Pool {},
     Fees {},
     EstimateWithdrawFee { amount: Uint128 },
@@ -125,4 +126,12 @@ pub struct EstimateDepositFeeResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct EstimateWithdrawFeeResponse {
     pub fee: Vec<Coin>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct StateResponse {
+    pub anchor_money_market_address: String,
+    pub aust_address: String,   
+    pub profit_check_address: String,
+    pub allow_non_whitelisted: bool,
 }
