@@ -1,4 +1,4 @@
-use cosmwasm_std::{Uint128};
+use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -26,7 +26,7 @@ pub enum ExecuteMsg {
     /// Claim withdrawable WHALE
     Withdraw {},
     /// Terminates the allocation
-    Terminate {user_address: String},
+    Terminate { user_address: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -67,14 +67,13 @@ pub struct StateResponse {
     pub remaining_whale_tokens: Uint128,
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SimulateWithdrawResponse {
     /// Total number of WHALE tokens allocated to this account
     pub total_whale_locked: Uint128,
-    /// Total number of WHALE tokens that have been unlocked till now 
+    /// Total number of WHALE tokens that have been unlocked till now
     pub total_whale_unlocked: Uint128,
-    /// Total number of WHALE tokens that have been vested till now 
+    /// Total number of WHALE tokens that have been vested till now
     pub total_whale_vested: Uint128,
     /// Number of WHALE tokens that have been withdrawn by the beneficiary
     pub withdrawn_amount: Uint128,
@@ -100,7 +99,7 @@ pub struct Schedule {
     /// Timestamp of when vesting is to be started
     pub start_time: u64,
     /// Number of seconds starting UST during which no token will be vested/unlocked
-    pub cliff: u64,    
+    pub cliff: u64,
     /// Number of seconds taken by tokens to be fully vested
     pub duration: u64,
 }
