@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, Uint128, StdResult, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -16,9 +16,20 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    ProvideLiquidity { pool_id: String, main_asset_id: String, amount: Uint128 },
-    WithdrawLiquidity { pool_id: String, amount: Uint128 },
-    SwapAsset { offer_id: String, ask_id: String, amount: Uint128 },
+    ProvideLiquidity {
+        pool_id: String,
+        main_asset_id: String,
+        amount: Uint128,
+    },
+    WithdrawLiquidity {
+        pool_id: String,
+        amount: Uint128,
+    },
+    SwapAsset {
+        offer_id: String,
+        ask_id: String,
+        amount: Uint128,
+    },
     // Add methods
     UpdateConfig {
         treasury_address: Option<String>,

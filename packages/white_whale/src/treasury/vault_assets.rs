@@ -1,13 +1,17 @@
-use cosmwasm_std::{Addr, CosmosMsg, Decimal, Deps, StdError, StdResult, Uint128};
+use cosmwasm_std::{
+    to_binary, Addr, BankMsg, CosmosMsg, Uint128,Decimal, Deps, Empty, Env, Fraction, StdError, StdResult,
+     WasmMsg,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use crate::state::VAULT_ASSETS;
+use crate::query::terraswap::{pool_ratio, query_asset_balance, query_pool};
+use crate::tax::reverse_decimal;
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
 use terraswap::pair::PoolResponse;
 use terraswap::querier::query_supply;
-use white_whale::query::terraswap::{pool_ratio, query_pool};
-use white_whale::tax::reverse_decimal;
+use crate::treasury::state::*;
+
 // Example/contracts/mocks/mock_terraswap/terraswap_pair/src/contract.rs
 
 /// Every VaultAsset provides a way to determine its value relative to either
@@ -27,13 +31,12 @@ pub struct VaultAsset {
 pub enum ValueRef {
     // A pool address of the asset/base_asset pair
     Pool {
-        address: Addr,
+        pair_address: Addr,
     },
     // Liquidity pool addr to get fraction of owned liquidity
     // proxy to calculate value of both assets held by liquidity
     Liquidity {
         pool_address: Addr,
-        proxy: Proxy,
     },
     // Or a Proxy, the proxy also takes a Decimal (the multiplier)
     // Asset will be valued as if they are Proxy tokens
@@ -45,22 +48,28 @@ pub enum ValueRef {
 }
 
 impl VaultAsset {
-    pub fn value(&self, deps: Deps) -> StdResult<Uint128> {
+    pub fn value(&mut self, deps: Deps, env: &Env, set_holding: Option<Uint128>) -> StdResult<Uint128> {
         // Query how many of these tokens I hold.
         //let holdings = self.asset.info.query_pool(&deps.querier, deps.api, owner_addr)?;
-        let holdings = self.asset.amount;
+
+        let holding: Uint128;
+        match set_holding {
+            Some(setter) => holding = setter,
+            None => {
+                holding = query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?;
+            }
+        }
+        self.asset.amount = holding;
 
         // Is there a reference to calculate the value?
         if let Some(value_reference) = self.value_reference.as_ref() {
             match value_reference {
-                ValueRef::Pool { address } => return self.asset_value(deps, &address),
-                ValueRef::Liquidity {
-                    pool_address,
-                    proxy,
-                } => {
+                // A Pool refers to a swap pair that includes the base asset.
+                ValueRef::Pool { pair_address } => return self.asset_value(deps, &pair_address),
+                ValueRef::Liquidity { pool_address } => {
                     // Check if we have a Token
                     if let AssetInfo::Token { contract_addr } = &self.asset.info {
-                        return lp_value(deps, pool_address, proxy, holdings);
+                        return lp_value(deps, env, pool_address, holding);
                     } else {
                         return Err(StdError::generic_err("Can't have a native LP token"));
                     }
@@ -69,24 +78,22 @@ impl VaultAsset {
                     proxy_asset,
                     multiplier,
                     proxy_pool,
-                } => {
-                    // TODO
-                }
+                } => return proxy_value(deps, &env, proxy_asset, *multiplier, proxy_pool, holding),
             }
-        } else {
-            // No ValueRef so this should be the base token.
-            // TODO: Add error in case this is not true.
-            /*if base_asset != self.asset.info {
-                return Err(StdError::generic_err("No value conversion provided for this asset."));
-            }*/
-            return Ok(holdings);
         }
-
-        Ok(Uint128::zero())
+        // No ValueRef so this should be the base token.
+        // TODO: Add error in case this is not true.
+        /*if base_asset != self.asset.info {
+            return Err(StdError::generic_err("No value conversion provided for this asset."));
+        }*/
+        return Ok(holding);
     }
 
+    /// Calculates the value of an asset compared to some base asset
+    /// Requires one of the two assets to be the base asset.
+    /// TODO: make it match with base asset instead of this asset
     pub fn asset_value(&self, deps: Deps, pool_addr: &Addr) -> StdResult<Uint128> {
-        let pool_info: PoolResponse = query_pool(deps, pool_addr.clone())?;
+        let pool_info: PoolResponse = query_pool(deps, pool_addr)?;
         let ratio = Decimal::from_ratio(pool_info.assets[0].amount, pool_info.assets[1].amount);
         if self.asset.info == pool_info.assets[0].info {
             return Ok(self.asset.amount * reverse_decimal(ratio));
@@ -94,36 +101,6 @@ impl VaultAsset {
             return Ok(self.asset.amount * ratio);
         }
     }
-}
-
-pub fn lp_value(
-    deps: Deps,
-    pool_addr: &Addr,
-    proxy: &Proxy,
-    holdings: Uint128,
-) -> StdResult<Uint128> {
-    // Get LP pool info
-    let pool_info: PoolResponse = query_pool(deps, pool_addr.clone())?;
-
-    // Set total supply of LP tokens
-    let total_lp = pool_info.total_share;
-    let share = holdings / total_lp;
-
-    let asset_1 = &pool_info.assets[0];
-    let asset_2 = &pool_info.assets[1];
-
-    // load the assets
-    let mut vault_asset_1: VaultAsset =
-        VAULT_ASSETS.load(deps.storage, get_identifier(&asset_1.info).as_str())?;
-    let mut vault_asset_2: VaultAsset =
-        VAULT_ASSETS.load(deps.storage, get_identifier(&asset_2.info).as_str())?;
-
-    // set the amounts to the LP holdings
-    vault_asset_1.asset.amount = share * asset_1.amount;
-    vault_asset_2.asset.amount = share * asset_2.amount;
-
-    // Call value on these assets.
-    Ok(vault_asset_1.value(deps)? + vault_asset_2.value(deps)?)
 }
 
 /// The proxy struct acts as an Asset overwrite.
@@ -145,12 +122,12 @@ pub struct Proxy {
 impl Proxy {
     pub fn new(
         deps: Deps,
-        asset: AssetInfo,
         multiplier: Decimal,
+        proxy_asset: AssetInfo,
         proxy_pool: Option<Addr>,
     ) -> StdResult<Self> {
         Ok(Self {
-            proxy_asset: asset.to_raw(deps.api)?,
+            proxy_asset: proxy_asset.to_raw(deps.api)?,
             multiplier,
             proxy_pool,
         })

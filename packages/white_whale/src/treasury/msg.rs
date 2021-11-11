@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{CosmosMsg, Empty, Uint128};
 
-use crate::vault_assets::VaultAsset;
+use crate::treasury::vault_assets::VaultAsset;
 use terraswap::asset::AssetInfo;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -13,10 +13,6 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Spend {
-        recipient: String,
-        amount: Uint128,
-    },
     TraderAction {
         msgs: Vec<CosmosMsg<Empty>>,
     },

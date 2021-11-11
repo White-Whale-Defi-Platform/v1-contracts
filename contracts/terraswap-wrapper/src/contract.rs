@@ -103,7 +103,7 @@ fn deposit(
     let state = STATE.load(deps.storage)?;
     let pools = query_pool(
         deps.as_ref(),
-        deps.api.addr_humanize(&state.terraswap_pool_addr)?,
+        &deps.api.addr_humanize(&state.terraswap_pool_addr)?,
     )?
     .assets;
 
@@ -183,7 +183,7 @@ fn withdraw(deps: DepsMut, info: MessageInfo, funds: Vec<Asset>) -> TerraswapWra
     let state = STATE.load(deps.storage)?;
     let pool_response = query_pool(
         deps.as_ref(),
-        deps.api.addr_humanize(&state.terraswap_pool_addr)?,
+        &deps.api.addr_humanize(&state.terraswap_pool_addr)?,
     )?;
     let pools = pool_response.assets;
 
@@ -286,7 +286,7 @@ fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 // Returns total value of LP, given LP is [UST, X]
 fn query_value(deps: Deps, info: AssetInfo, share: Decimal) -> StdResult<Asset> {
     let state = STATE.load(deps.storage)?;
-    let pool: PoolResponse = query_pool(deps, deps.api.addr_humanize(&state.terraswap_pool_addr)?)?;
+    let pool: PoolResponse = query_pool(deps, &deps.api.addr_humanize(&state.terraswap_pool_addr)?)?;
 
     if pool.assets[0].info == info {
         let price = Decimal::from_ratio(pool.assets[0].amount, pool.assets[1].amount); // price [UST/X]
@@ -312,7 +312,7 @@ fn query_value(deps: Deps, info: AssetInfo, share: Decimal) -> StdResult<Asset> 
 
 fn query_withdrawable_profits(deps: Deps, env: Env) -> StdResult<WithdrawableProfitsResponse> {
     let state = STATE.load(deps.storage)?;
-    let pool: PoolResponse = query_pool(deps, deps.api.addr_humanize(&state.terraswap_pool_addr)?)?;
+    let pool: PoolResponse = query_pool(deps, &deps.api.addr_humanize(&state.terraswap_pool_addr)?)?;
     let lp_balance: Uint128 = query_token_balance(
         &deps.querier,
         deps.api.addr_humanize(&state.lp_token_addr)?,

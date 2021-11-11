@@ -60,8 +60,7 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
     match msg {
         CallbackMsg::AfterSuccessfulActionCallback {} => {
             after_successful_action_callback(deps, env)
-        }
-        // Possibility to add more callbacks.
+        } // Possibility to add more callbacks.
     }
 }
 //----------------------------------------------------------------------------------------
