@@ -13,10 +13,4 @@ pub enum CommunityFundError {
 
     #[error("There're not enough tokens in the fund, {0} > {1}.")]
     InsufficientFunds(Uint128, Uint128),
-
-    #[error("Too many tokens. Deposit only accepts WHALE.")]
-    WrongDepositTooManyTokens {},
-
-    #[error("Deposit only accepts WHALE.")]
-    WrongDepositToken {},
 }
