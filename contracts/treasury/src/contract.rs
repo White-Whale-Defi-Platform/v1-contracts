@@ -4,14 +4,13 @@ use cosmwasm_std::{
     to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
     StdError, StdResult, Uint128, WasmMsg,
 };
-
 use cw20::Cw20ExecuteMsg;
 
 use crate::error::TreasuryError;
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, ADMIN, STATE, VAULT_ASSETS};
-use crate::vault_assets::{get_identifier, VaultAsset};
+use white_whale::treasury::state::{State, ADMIN, STATE, VAULT_ASSETS};
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
+use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
 type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
@@ -41,7 +40,6 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> TreasuryResult {
     match msg {
-        ExecuteMsg::Spend { recipient, amount } => spend(deps, info, recipient, amount),
         ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
         ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
         ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),
@@ -139,11 +137,11 @@ pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> Tr
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
-        QueryMsg::GetTotalValue {} => to_binary("placeholder"),
-        QueryMsg::GetHoldingValue { identifier } => to_binary("placeholder"),
+        QueryMsg::GetTotalValue {} => to_binary(&compute_total_value(deps, env)?),
+        QueryMsg::GetHoldingValue { identifier } => to_binary(&compute_holding_value(deps, &env, identifier)?),
     }
 }
 
@@ -159,29 +157,13 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(resp)
 }
 
-// Transfer WHALE to specified recipient
-pub fn spend(
-    deps: DepsMut,
-    info: MessageInfo,
-    recipient: String,
-    amount: Uint128,
-) -> TreasuryResult {
-    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+pub fn compute_holding_value(deps: Deps, env: &Env, holding: String) -> StdResult<Uint128> {
+    let vault_asset: VaultAsset = VAULT_ASSETS.load(deps.storage, holding.as_str())?;
+    let value = vault_asset.value(deps, env, None);
+    Ok(value?)
+}
 
-    let state = STATE.load(deps.storage)?;
+pub fn compute_total_value(deps: Deps, env: Env) -> StdResult<Uint128> {
 
-    Ok(Response::new())
-    // .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-    //     contract_addr: whale_token_addr,
-    //     funds: vec![],
-    //     msg: to_binary(&Cw20ExecuteMsg::Transfer {
-    //         recipient: recipient.clone(),
-    //         amount,
-    //     })?,
-    // }))
-    // .add_attributes(vec![
-    //     ("action", "spend"),
-    //     ("recipient", recipient.as_str()),
-    //     ("amount", &amount.to_string()),
-    // ]))
+    
 }
