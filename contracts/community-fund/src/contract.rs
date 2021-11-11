@@ -42,7 +42,6 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> C
             spend_whale(deps.as_ref(), info, recipient, amount)
         }
         ExecuteMsg::Burn { amount } => burn_whale(deps.as_ref(), info, amount),
-        ExecuteMsg::Deposit {} => deposit(deps, &env, info),
         ExecuteMsg::SetAdmin { admin } => {
             let new_admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
@@ -113,43 +112,6 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
             msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
         })),
     )
-}
-
-// Deposits WHALE tokens into the contract
-pub fn deposit(deps: DepsMut, env: &Env, msg_info: MessageInfo) -> CommunityFundResult {
-    if msg_info.funds.len() > 1 {
-        return Err(CommunityFundError::WrongDepositTooManyTokens {});
-    } else if msg_info.funds[0].denom != WHALE_DENOM {
-        return Err(CommunityFundError::WrongDepositToken {});
-    }
-
-    let state = STATE.load(deps.storage)?;
-
-    let mut messages: Vec<CosmosMsg> = vec![];
-    let allowance_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.whale_token_addr.to_string(),
-        funds: vec![],
-        msg: to_binary(&Cw20ExecuteMsg::IncreaseAllowance {
-            spender: env.contract.address.to_string(),
-            amount: msg_info.funds[0].amount,
-            expires: None,
-        })?,
-    });
-
-    let transfer_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.whale_token_addr.to_string(),
-        funds: vec![],
-        msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
-            owner: msg_info.sender.to_string(),
-            recipient: env.contract.address.to_string(),
-            amount: msg_info.funds[0].amount,
-        })?,
-    });
-
-    messages.push(allowance_msg);
-    messages.push(transfer_msg);
-
-    Ok(Response::new().add_messages(messages))
 }
 
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {

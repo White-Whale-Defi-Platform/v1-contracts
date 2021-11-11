@@ -7,7 +7,6 @@ use serde::{Deserialize, Serialize};
 pub enum ExecuteMsg {
     Spend { recipient: String, amount: Uint128 },
     Burn { amount: Uint128 },
-    Deposit {},
     SetAdmin { admin: String },
 }
 
