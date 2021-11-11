@@ -31,4 +31,7 @@ pub enum StableVaultError {
 
     #[error("The requesting contract already whitelisted.")]
     AlreadyWhitelisted {},
+
+    #[error("You can not deposit into the vault during a flashloan.")]
+    DepositDuringLoan {},
 }
