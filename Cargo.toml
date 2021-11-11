@@ -6,6 +6,7 @@ members = [
     "contracts/stablecoin-vault/peg-arb",
     "contracts/side-contracts/gov",
     "contracts/side-contracts/vesting",
+    "contracts/luna-vault",
 
 ]
 
