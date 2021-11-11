@@ -216,7 +216,7 @@ pub fn handle_flashloan(
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (total_value, stables_availabe, _) = compute_total_value(deps.as_ref(), &pool_info)?;
-    let mut requested_asset = payload.requested_asset;
+    let requested_asset = payload.requested_asset;
 
     if total_value < requested_asset.amount + Uint128::from(FEE_BUFFER) {
         return Err(StableVaultError::Broke {});
