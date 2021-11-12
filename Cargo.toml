@@ -8,6 +8,7 @@ members = [
     "contracts/side-contracts/vesting",
     "contracts/side-contracts/community-fund",
     "contracts/treasury/treasury",
+    "contracts/treasury/treasury-dapps/terraswap",
     "contracts/luna-vault",
 
 ]
