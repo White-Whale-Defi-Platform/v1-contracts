@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Decimal,
-    Deps, DepsMut, Env, Fraction, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult,
-    SubMsg, Uint128, WasmMsg,
+    Deps, DepsMut, Env, Fraction, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdError,
+    StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use protobuf::Message;
 
@@ -17,12 +17,14 @@ use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
 use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
+use white_whale::profit_check::msg::LastBalanceResponse;
+use white_whale::profit_check::msg::QueryMsg as ProfitCheckQueryMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::ust_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
 
-use white_whale::tax::compute_tax;
+use white_whale::tax::{compute_tax, into_msg_without_tax};
 use white_whale::ust_vault::msg::*;
 
 use crate::error::StableVaultError;
@@ -214,7 +216,7 @@ pub fn handle_flashloan(
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (total_value, stables_availabe, _) = compute_total_value(deps.as_ref(), &pool_info)?;
-    let mut requested_asset = payload.requested_asset;
+    let requested_asset = payload.requested_asset;
 
     if total_value < requested_asset.amount + Uint128::from(FEE_BUFFER) {
         return Err(StableVaultError::Broke {});
@@ -246,10 +248,6 @@ pub fn handle_flashloan(
             .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
     }
 
-    // Make shure contract receives their expected share by adding taxes to expected send amount.
-    let expected_tax = requested_asset.compute_tax(&deps.querier)?;
-    requested_asset.amount += expected_tax;
-
     // If caller not whitelisted, calculate flashloan fee
     let loan_fee: Uint128;
     if whitelisted {
@@ -258,8 +256,8 @@ pub fn handle_flashloan(
         loan_fee = fees.flash_loan_fee.compute(requested_asset.amount);
     }
 
-    // Construct transfer of funds msg
-    let loan_msg = requested_asset.into_msg(&deps.querier, info.sender.clone())?;
+    // Construct transfer of funds msg, tax is accounted for by buffer
+    let loan_msg = into_msg_without_tax(requested_asset, info.sender.clone())?;
     response = response.add_message(loan_msg);
 
     // Construct return call with received binary
@@ -281,6 +279,19 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
     let state = STATE.load(deps.storage)?;
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let denom = deposit_info.clone().get_denom()?;
+
+    // User is not able to deposit into the vault if he is using the flashloan
+    let profit_check_response: LastBalanceResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: deps
+                .api
+                .addr_humanize(&state.profit_check_address)?
+                .to_string(),
+            msg: to_binary(&ProfitCheckQueryMsg::LastBalance {})?,
+        }))?;
+    if profit_check_response.last_balance != Uint128::zero() {
+        return Err(StableVaultError::DepositDuringLoan {});
+    }
 
     // Init vector for logging
     let mut attrs = vec![];
@@ -352,6 +363,19 @@ pub fn try_withdraw_liquidity(
     let state = STATE.load(deps.storage)?;
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let fee_config = FEE.load(deps.storage)?;
+
+    // User is not able to withdraw from the vault if he is using the flashloan
+    let profit_check_response: LastBalanceResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: deps
+                .api
+                .addr_humanize(&state.profit_check_address)?
+                .to_string(),
+            msg: to_binary(&ProfitCheckQueryMsg::LastBalance {})?,
+        }))?;
+    if profit_check_response.last_balance != Uint128::zero() {
+        return Err(StableVaultError::DepositDuringLoan {});
+    }
 
     // Logging var
     let mut attrs = vec![];
@@ -474,7 +498,7 @@ pub fn try_withdraw_liquidity(
 
 /// Helper method which encapsules the requested funds.
 /// This function prevents callers from doing unprofitable actions
-/// with the vault funds and makes shure the funds are returned by
+/// with the vault funds and makes sure the funds are returned by
 /// the borrower.
 pub fn encapsule_payload(
     deps: Deps,
