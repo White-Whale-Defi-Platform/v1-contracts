@@ -1,5 +1,9 @@
-use cosmwasm_std::{Coin, Decimal, Deps, Fraction, StdResult, Uint128};
+use cosmwasm_std::{
+    to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, Deps, Fraction, StdResult, Uint128, WasmMsg,
+};
+use cw20::Cw20ExecuteMsg;
 use terra_cosmwasm::TerraQuerier;
+use terraswap::asset::{Asset, AssetInfo};
 
 pub fn deduct_tax(deps: Deps, coin: Coin) -> StdResult<Coin> {
     let tax_amount = compute_tax(deps, &coin)?;
@@ -22,4 +26,23 @@ pub fn compute_tax(deps: Deps, coin: &Coin) -> StdResult<Uint128> {
 
 pub fn reverse_decimal(decimal: Decimal) -> Decimal {
     decimal.inv().unwrap_or_default()
+}
+
+pub fn into_msg_without_tax(asset: Asset, recipient: Addr) -> StdResult<CosmosMsg> {
+    let amount = asset.amount;
+
+    match &asset.info {
+        AssetInfo::Token { contract_addr } => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: contract_addr.to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: recipient.to_string(),
+                amount,
+            })?,
+            funds: vec![],
+        })),
+        AssetInfo::NativeToken { denom } => Ok(CosmosMsg::Bank(BankMsg::Send {
+            to_address: recipient.to_string(),
+            amount: vec![Coin::new(asset.amount.u128(), denom)],
+        })),
+    }
 }
