@@ -5,6 +5,8 @@ members = [
     "contracts/stablecoin-vault/vault",
     "contracts/stablecoin-vault/peg-arb",
     "contracts/side-contracts/vesting",
+    "contracts/side-contracts/lp_staking",
+    "contracts/side-contracts/lp_staking_proxy",
     "contracts/treasury/treasury",
     "contracts/treasury/dapps/terraswap-dapp",
 ]

@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "State",
+  "type": "object",
+  "required": [
+    "current_cycle",
+    "current_cycle_rewards",
+    "global_reward_index",
+    "last_distributed",
+    "total_bond_amount"
+  ],
+  "properties": {
+    "current_cycle": {
+      "description": "Keeps track of the WHALE distribution cycle",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "current_cycle_rewards": {
+      "description": "Number of WHALE tokens to be distributed during the current cycle",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "global_reward_index": {
+      "description": "Used to calculate WHALE rewards accured over time elapsed. Ratio =  Total distributed WHALE tokens / total bond amount",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal256"
+        }
+      ]
+    },
+    "last_distributed": {
+      "description": "Timestamp at which the global_reward_index was last updated",
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "total_bond_amount": {
+      "description": "Total number of WHALE-UST LP tokens staked with the contract",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Decimal256": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal256(1_000_000_000_000_000_000) == 1.0 The greatest possible value that can be represented is 115792089237316195423570985008687907853269984665640564039457.584007913129639935 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "Uint256": {
+      "type": "string"
+    }
+  }
+}
