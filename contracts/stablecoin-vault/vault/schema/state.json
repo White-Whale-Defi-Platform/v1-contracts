@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "State",
+  "type": "object",
+  "required": [
+    "allow_non_whitelisted",
+    "anchor_money_market_address",
+    "aust_address",
+    "profit_check_address",
+    "whitelisted_contracts"
+  ],
+  "properties": {
+    "allow_non_whitelisted": {
+      "type": "boolean"
+    },
+    "anchor_money_market_address": {
+      "$ref": "#/definitions/CanonicalAddr"
+    },
+    "aust_address": {
+      "$ref": "#/definitions/CanonicalAddr"
+    },
+    "profit_check_address": {
+      "$ref": "#/definitions/CanonicalAddr"
+    },
+    "whitelisted_contracts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CanonicalAddr"
+      }
+    }
+  },
+  "definitions": {
+    "Binary": {
+      "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
+      "type": "string"
+    },
+    "CanonicalAddr": {
+      "$ref": "#/definitions/Binary"
+    }
+  }
+}

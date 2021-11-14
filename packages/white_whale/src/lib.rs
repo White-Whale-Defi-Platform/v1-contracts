@@ -9,5 +9,6 @@ pub mod profit_check;
 pub mod query;
 pub mod tax;
 pub mod trader;
+pub mod treasury;
 pub mod ust_vault;
 pub mod vesting;
