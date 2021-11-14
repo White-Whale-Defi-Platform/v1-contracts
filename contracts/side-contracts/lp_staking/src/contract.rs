@@ -150,7 +150,7 @@ pub fn bond(deps: DepsMut, env: Env, sender_addr: Addr, amount: Uint128) -> StdR
 /// @params new_owner : New owner address
 pub fn update_config(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     new_owner: String,
 ) -> StdResult<Response> {
@@ -174,7 +174,7 @@ pub fn update_config(
 pub fn update_reward_schedule(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     period_start: u64,
     period_finish: u64,
     amount: Uint128,
