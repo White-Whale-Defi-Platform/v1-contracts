@@ -12,3 +12,6 @@ pub mod trader;
 pub mod treasury;
 pub mod ust_vault;
 pub mod vesting;
+pub mod helpers;
+pub mod lp_staking;
+pub mod generator_proxy;
