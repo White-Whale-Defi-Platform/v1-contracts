@@ -5,8 +5,7 @@ use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use astroport::generator_proxy::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
-
-use whale_lp_staking_proxy::state::{Config};
+use whale_lp_staking_proxy::state::Config;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -21,5 +20,4 @@ fn main() {
     export_schema(&schema_for!(MigrateMsg), &out_dir);
 
     export_schema(&schema_for!(Config), &out_dir);
-
 }

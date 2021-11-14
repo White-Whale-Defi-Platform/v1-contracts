@@ -4,7 +4,7 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
-use white_whale::helpers::{get_cw20_balance};
+use white_whale::helpers::get_cw20_balance;
 
 use white_whale::lp_staking::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,

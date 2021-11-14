@@ -5,13 +5,13 @@ use cosmwasm_std::{
 use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg};
 
 use crate::error::ContractError;
+use crate::state::{Config, CONFIG};
+use cw2::set_contract_version;
+use white_whale::generator_proxy::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use white_whale::lp_staking::{
     Cw20HookMsg as WhaleCw20HookMsg, ExecuteMsg as WhaleExecuteMsg, QueryMsg as WhaleQueryMsg,
     StakerInfoResponse,
 };
-use crate::state::{Config, CONFIG};
-use white_whale::generator_proxy::{Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use cw2::set_contract_version;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "astroport-generator-proxy-to-whale";
