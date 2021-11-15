@@ -342,6 +342,7 @@ pub fn end_poll(deps: DepsMut, env: Env, poll_id: u64) -> Result<Response, Contr
             //Threshold: More than 50% of the tokens that participated in the vote
             // (after excluding “Abstain” votes) need to have voted in favor of the proposal (“Yes”).
             poll_status = PollStatus::Passed;
+            rejected_reason = "Poll Passed";
             passed = true;
         } else {
             rejected_reason = "Threshold not reached";

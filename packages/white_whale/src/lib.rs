@@ -12,4 +12,5 @@ pub mod tax;
 pub mod trader;
 pub mod treasury;
 pub mod ust_vault;
+pub mod test_helpers;
 pub mod vesting;

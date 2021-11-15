@@ -49,22 +49,10 @@
     {
       "type": "object",
       "required": [
-        "deposit"
+        "set_admin"
       ],
       "properties": {
-        "deposit": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "update_admin"
-      ],
-      "properties": {
-        "update_admin": {
+        "set_admin": {
           "type": "object",
           "required": [
             "admin"
@@ -72,46 +60,6 @@
           "properties": {
             "admin": {
               "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "update_anchor_deposit_threshold"
-      ],
-      "properties": {
-        "update_anchor_deposit_threshold": {
-          "type": "object",
-          "required": [
-            "threshold"
-          ],
-          "properties": {
-            "threshold": {
-              "$ref": "#/definitions/Uint128"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "update_anchor_withdraw_threshold"
-      ],
-      "properties": {
-        "update_anchor_withdraw_threshold": {
-          "type": "object",
-          "required": [
-            "threshold"
-          ],
-          "properties": {
-            "threshold": {
-              "$ref": "#/definitions/Uint128"
             }
           }
         }

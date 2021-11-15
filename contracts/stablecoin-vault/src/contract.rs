@@ -119,7 +119,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
                 }),
             })?,
             funds: vec![],
-            label: "".to_string(),
+            label: "White Whale Stablecoin Vault LP".to_string(),
         }
         .into(),
         gas_limit: None,
@@ -792,6 +792,7 @@ pub fn set_fee(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&try_query_config(deps)?),
+        QueryMsg::State {} => to_binary(&try_query_state(deps)?),
         QueryMsg::Pool {} => to_binary(&try_query_pool(deps)?),
         QueryMsg::Fees {} => to_binary(&query_fees(deps)?),
         QueryMsg::VaultValue {} => to_binary(&query_total_value(deps)?),
@@ -823,6 +824,10 @@ pub fn estimate_withdraw_fee(
 pub fn try_query_config(deps: Deps) -> StdResult<PoolInfo> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     info.to_normal(deps)
+}
+pub fn try_query_state(deps: Deps) -> StdResult<State> {
+    let state: State = STATE.load(deps.storage)?;
+    Ok(state)
 }
 
 pub fn try_query_pool(deps: Deps) -> StdResult<PoolResponse> {
