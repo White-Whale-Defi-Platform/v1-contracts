@@ -1,15 +1,12 @@
-use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
-    WasmMsg,
-};
+use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_binary, Uint128, WasmMsg};
 use cw20::Cw20ExecuteMsg;
+use terraswap::querier::query_token_balance;
 
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
-use white_whale::denom::WHALE_DENOM;
 
 use crate::error::CommunityFundError;
 use crate::msg::InstantiateMsg;
-use crate::state::{State, ADMIN, STATE};
+use crate::state::{ADMIN, State, STATE};
 
 /*
     The Community fund holds the protocol treasury and has control over the protocol owned liquidity.
@@ -63,13 +60,13 @@ pub fn spend_whale(
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
 
-    let fund_whale_balance = deps
-        .querier
-        .query_balance(
-            deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
-            WHALE_DENOM,
-        )?
-        .amount;
+    let account_addr = deps.api.addr_canonicalize(&info.sender.to_string())?;
+
+    let fund_whale_balance = query_token_balance(
+        &deps.querier,
+        deps.api.addr_humanize(&state.whale_token_addr)?,
+        deps.api.addr_humanize(&account_addr)?,
+    )?;
     if amount > fund_whale_balance {
         return Err(CommunityFundError::InsufficientFunds(
             amount,
@@ -91,13 +88,14 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
 
-    let fund_whale_balance = deps
-        .querier
-        .query_balance(
-            deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
-            WHALE_DENOM,
-        )?
-        .amount;
+    let account_addr = deps.api.addr_canonicalize(&info.sender.to_string())?;
+
+    let fund_whale_balance = query_token_balance(
+        &deps.querier,
+        deps.api.addr_humanize(&state.whale_token_addr)?,
+        deps.api.addr_humanize(&account_addr)?,
+    )?;
+
     if amount > fund_whale_balance {
         return Err(CommunityFundError::InsufficientFunds(
             amount,
