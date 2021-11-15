@@ -23,15 +23,14 @@ pub const STATE: Item<State> = Item::new("\u{0}{5}state");
 pub const ADDRESS_BOOK: Map<&str, String> = Map::new("address_book");
 
 // Loads token address from address book. Throws error if its a native token
-pub fn load_contract_addr(deps: Deps, id: &String) -> StdResult<Addr> {
-    Ok(deps
-        .api
-        .addr_validate(ADDRESS_BOOK.load(deps.storage, id.as_str())?.as_str())?)
+pub fn load_contract_addr(deps: Deps, id: &str) -> StdResult<Addr> {
+    deps.api
+        .addr_validate(ADDRESS_BOOK.load(deps.storage, id)?.as_str())
 }
 
 // Returns the asset info for an address book entry.
-pub fn get_asset_info(deps: Deps, id: &String) -> StdResult<AssetInfo> {
-    let address_or_denom = ADDRESS_BOOK.load(deps.storage, id.as_str())?;
+pub fn get_asset_info(deps: Deps, id: &str) -> StdResult<AssetInfo> {
+    let address_or_denom = ADDRESS_BOOK.load(deps.storage, id)?;
     return if is_denom(address_or_denom.as_str()) {
         Ok(AssetInfo::NativeToken {
             denom: address_or_denom,

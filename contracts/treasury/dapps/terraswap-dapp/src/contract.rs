@@ -1,10 +1,9 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, Fraction,
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, Fraction,
     MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 
 use cw20::Cw20ExecuteMsg;
-use cw_storage_plus::Map;
 use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
 
@@ -185,7 +184,8 @@ pub fn withdraw_liquidity(
 
     Ok(Response::new().add_message(send_to_treasury(vec![pair_call], &treasury_address)?))
 }
-// TODO: add slippage and belief price
+
+#[allow(clippy::too_many_arguments)]
 pub fn terraswap_swap(
     deps: Deps,
     _env: Env,
@@ -300,7 +300,7 @@ pub fn try_query_config(deps: Deps) -> StdResult<State> {
 }
 
 pub fn try_query_addressbook(deps: Deps, id: String) -> StdResult<String> {
-     ADDRESS_BOOK.load(deps.storage, id.as_str())
+    ADDRESS_BOOK.load(deps.storage, id.as_str())
 }
 
 //----------------------------------------------------------------------------------------
@@ -309,7 +309,7 @@ pub fn try_query_addressbook(deps: Deps, id: String) -> StdResult<String> {
 
 pub fn has_sufficient(
     deps: Deps,
-    id: &String,
+    id: &str,
     address: &Addr,
     required: Uint128,
 ) -> Result<(), DAppError> {

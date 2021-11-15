@@ -16,7 +16,7 @@ impl Fee {
     }
 
     pub fn msg(&self, deps: Deps, asset: Asset, recipient: Addr) -> StdResult<CosmosMsg> {
-        Ok(asset.into_msg(&deps.querier, recipient)?)
+        asset.into_msg(&deps.querier, recipient)
     }
 }
 
