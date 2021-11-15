@@ -5,7 +5,6 @@
   "required": [
     "pool_address",
     "seignorage_address",
-    "trader",
     "vault_address"
   ],
   "properties": {
@@ -13,9 +12,6 @@
       "$ref": "#/definitions/CanonicalAddr"
     },
     "seignorage_address": {
-      "$ref": "#/definitions/CanonicalAddr"
-    },
-    "trader": {
       "$ref": "#/definitions/CanonicalAddr"
     },
     "vault_address": {
