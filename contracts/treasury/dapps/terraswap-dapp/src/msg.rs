@@ -46,4 +46,7 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Config {},
+    AddressBook {
+        id: String,
+    },
 }

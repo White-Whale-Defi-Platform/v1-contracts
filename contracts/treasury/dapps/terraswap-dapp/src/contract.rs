@@ -4,6 +4,7 @@ use cosmwasm_std::{
 };
 
 use cw20::Cw20ExecuteMsg;
+use cw_storage_plus::Map;
 use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
 
@@ -288,6 +289,7 @@ pub fn update_config(
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&try_query_config(deps)?),
+        QueryMsg::AddressBook { id } => to_binary(&try_query_addressbook(deps, id)?),
         // Todo: add addressbook query
     }
 }
@@ -295,6 +297,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn try_query_config(deps: Deps) -> StdResult<State> {
     let state = STATE.load(deps.storage)?;
     Ok(state)
+}
+
+pub fn try_query_addressbook(deps: Deps, id: String) -> StdResult<String> {
+     ADDRESS_BOOK.load(deps.storage, id.as_str())
 }
 
 //----------------------------------------------------------------------------------------
