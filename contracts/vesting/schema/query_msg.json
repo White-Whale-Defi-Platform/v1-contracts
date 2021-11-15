@@ -17,16 +17,28 @@
     {
       "type": "object",
       "required": [
-        "vesting_account"
+        "state"
       ],
       "properties": {
-        "vesting_account": {
+        "state": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "allocation"
+      ],
+      "properties": {
+        "allocation": {
           "type": "object",
           "required": [
-            "address"
+            "account"
           ],
           "properties": {
-            "address": {
+            "account": {
               "type": "string"
             }
           }
@@ -37,49 +49,30 @@
     {
       "type": "object",
       "required": [
-        "vesting_accounts"
+        "simulate_withdraw"
       ],
       "properties": {
-        "vesting_accounts": {
+        "simulate_withdraw": {
           "type": "object",
+          "required": [
+            "account"
+          ],
           "properties": {
-            "limit": {
+            "account": {
+              "type": "string"
+            },
+            "timestamp": {
               "type": [
                 "integer",
                 "null"
               ],
-              "format": "uint32",
+              "format": "uint64",
               "minimum": 0.0
-            },
-            "order_by": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/OrderBy"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "start_after": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           }
         }
       },
       "additionalProperties": false
     }
-  ],
-  "definitions": {
-    "OrderBy": {
-      "type": "string",
-      "enum": [
-        "asc",
-        "desc"
-      ]
-    }
-  }
+  ]
 }

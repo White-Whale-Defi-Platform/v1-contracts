@@ -7,7 +7,6 @@ sys.path.append(pathlib.Path(__file__).parent.resolve())
 
 from terra_sdk.core.auth import StdFee
 from white_whale.deploy import get_deployer
-from white_whale.address.bombay.anchor import anchor_money_market, aust
 from white_whale.address.bombay.white_whale import whale_token, whale_ust_pool, governance, community_fund
 
 import pathlib
@@ -25,11 +24,6 @@ print(f"stored {code_id}")
 print("instantiate contract")
 contract_address = deployer.instantiate_contract(code_id=code_id, init_msg={
     "whale_token_addr": whale_token,
-    "whale_pair_addr": whale_ust_pool,
-    "anchor_money_market_addr": anchor_money_market,
-    "aust_addr": aust,
-    "anchor_deposit_threshold": str(int(10)*int(10**6)),
-    "anchor_withdraw_threshold": str(int(1)*int(10**4)),
 })
 print(f'instantiated {contract_address}')
 

@@ -55,6 +55,7 @@ pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
+    // last_balance call can not be reset until after the loan.
     if conf.last_balance != Uint128::zero() {
         return Err(ProfitCheckError::Nonzero {});
     }

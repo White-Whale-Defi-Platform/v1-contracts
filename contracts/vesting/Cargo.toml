@@ -13,11 +13,16 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cw20 = { version = "0.8" }
+white-whale = { version = "1.0.0", path = "../../packages/white_whale" }
+
 cosmwasm-std = { version = "0.16", features = ["iterator"] }
-cosmwasm-storage = { version = "0.16", features = ["iterator"] }
+cw-storage-plus = "0.8.0"
+cw20 = { version = "0.8" }
+
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16", default-features = false  }
+cw-multi-test = "0.8.0"
+cw20-base = { version = "0.8", features = ["library"] }
