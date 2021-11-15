@@ -1,28 +1,26 @@
 #![cfg(test)]
 
-use cosmwasm_std::{coins, Addr, BlockInfo, Empty, Uint128, Decimal, Timestamp, to_binary};
+use cosmwasm_std::{Addr, BlockInfo, Empty, Uint128, Decimal, Timestamp, to_binary};
 use cosmwasm_std::testing::{ mock_env, MockApi, MockStorage};
 use cw_multi_test::{App, Contract, BankKeeper, ContractWrapper, Executor};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg};
 
 use crate::tests::common::{
-    mock_env_height, DEFAULT_EXPIRATION_PERIOD, DEFAULT_PROPOSAL_DEPOSIT, DEFAULT_TIMELOCK_PERIOD,
-    DEFAULT_VOTING_PERIOD,DEFAULT_THRESHOLD, DEFAULT_QUORUM, DEFAULT_FIX_PERIOD, TEST_CREATOR, TEST_VOTER, TEST_VOTER_2, TEST_VOTER_3, VOTING_TOKEN,
+    DEFAULT_EXPIRATION_PERIOD, DEFAULT_TIMELOCK_PERIOD,
+    DEFAULT_VOTING_PERIOD,DEFAULT_THRESHOLD, DEFAULT_QUORUM, DEFAULT_FIX_PERIOD,
 };
 use crate::state::{
-    bank_read, poll_voter_read, state_read, Cw20HookMsg, OrderBy, PollExecuteMsg, PollResponse,
-    PollStatus, PollsResponse, StakerResponse, State, VoteOption, VoterInfo, VotersResponse,
+    Cw20HookMsg, PollExecuteMsg, VoteOption,
 };
 
 use stablecoin_vault::contract::{execute, instantiate, query, reply};
-use terraswap::asset::{Asset, AssetInfo};
-use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
+use terraswap::asset::{AssetInfo};
 use crate::tests::tswap_mock::{contract_receiver_mock, MockInstantiateMsg};
 use white_whale::ust_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 use stablecoin_vault::pool_info::{PoolInfo};
 
-use cw20::{Cw20Coin, Cw20Contract, Cw20ReceiveMsg, Cw20ExecuteMsg};
+use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 
 // Custom Vault Instant msg func which takes code ID 
 pub fn instantiate_msg(token_code_id: u64) -> VaultInstantiateMsg {
@@ -179,7 +177,7 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
     let transfer_owner_msg = white_whale::ust_vault::msg::ExecuteMsg::SetAdmin{
         admin: gov_addr.to_string()
     };
-    let res = router
+    let _ = router
         .execute_contract(owner.clone(), vault_addr.clone(), &transfer_owner_msg, &[])
         .unwrap();
     
@@ -188,7 +186,7 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
     let msg = ExecuteMsg::RegisterContracts {
         whale_token: whale_token_instance.to_string(),
     };
-    let res = router
+    let _ = router
         .execute_contract(gov_staker.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
@@ -203,7 +201,7 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         amount: Uint128::new(1000),
         msg: to_binary(&msg).unwrap(),
     };
-    let res = router
+    let _ = router
         .execute_contract(gov_staker.clone(), whale_token_instance.clone(), &send_msg, &[])
         .unwrap();
 
@@ -254,7 +252,7 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         vote: VoteOption::Yes,
         amount: Uint128::new(1000),
     };
-    let res = router
+    let _ = router
         .execute_contract(gov_staker.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
@@ -269,13 +267,13 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
 
     // End poll 
     let msg = ExecuteMsg::EndPoll { poll_id: 1 };
-    let res = router
+    let _ = router
         .execute_contract(gov_addr.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
     // Then execute
     let msg = ExecuteMsg::ExecutePoll { poll_id: 1 };
-    let res = router
+    let _ = router
         .execute_contract(owner.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
@@ -390,7 +388,7 @@ fn gov_can_update_vault_config_through_polls(){
     let transfer_owner_msg = white_whale::ust_vault::msg::ExecuteMsg::SetAdmin{
         admin: gov_addr.to_string()
     };
-    let res = router
+    let _ = router
         .execute_contract(owner.clone(), vault_addr.clone(), &transfer_owner_msg, &[])
         .unwrap();
     
@@ -399,7 +397,7 @@ fn gov_can_update_vault_config_through_polls(){
     let msg = ExecuteMsg::RegisterContracts {
         whale_token: whale_token_instance.to_string(),
     };
-    let res = router
+    let _ = router
         .execute_contract(gov_staker.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
@@ -414,7 +412,7 @@ fn gov_can_update_vault_config_through_polls(){
         amount: Uint128::new(1000),
         msg: to_binary(&msg).unwrap(),
     };
-    let res = router
+    let _ = router
         .execute_contract(gov_staker.clone(), whale_token_instance.clone(), &send_msg, &[])
         .unwrap();
 
@@ -466,7 +464,7 @@ fn gov_can_update_vault_config_through_polls(){
         vote: VoteOption::Yes,
         amount: Uint128::new(1000),
     };
-    let res = router
+    let _ = router
         .execute_contract(gov_staker.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
@@ -481,13 +479,13 @@ fn gov_can_update_vault_config_through_polls(){
 
     // End poll 
     let msg = ExecuteMsg::EndPoll { poll_id: 1 };
-    let res = router
+    let _ = router
         .execute_contract(gov_addr.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
     // Then execute
     let msg = ExecuteMsg::ExecutePoll { poll_id: 1 };
-    let res = router
+    let _ = router
         .execute_contract(owner.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 

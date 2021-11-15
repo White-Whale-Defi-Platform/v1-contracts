@@ -80,7 +80,7 @@ pub fn mock_pair_info() {
         ],
         contract_addr: "pair0000".to_string(),
         liquidity_token: "liquidity0000".to_string(),
-    });
+        }).unwrap_or_default();
 }
 
 pub fn mock_pool_info() {
@@ -100,5 +100,5 @@ pub fn mock_pool_info() {
             },
         ],
         total_share: Uint128::from(1000u128),
-    });
+    }).unwrap_or_default();
 }
