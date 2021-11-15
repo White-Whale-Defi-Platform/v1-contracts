@@ -504,7 +504,7 @@ fn expire_poll() {
         vec![
             attr("action", "end_poll"),
             attr("poll_id", "1"),
-            attr("rejected_reason", ""),
+            attr("rejected_reason", "Poll Passed"),
             attr("passed", "true"),
         ]
     );
@@ -740,7 +740,7 @@ fn successful_end_poll() {
         vec![
             attr("action", "end_poll"),
             attr("poll_id", "1"),
-            attr("rejected_reason", ""),
+            attr("rejected_reason", "Poll Passed"),
             attr("passed", "true"),
         ]
     );
@@ -1415,7 +1415,7 @@ fn execute_poll_with_order() {
         vec![
             attr("action", "end_poll"),
             attr("poll_id", "1"),
-            attr("rejected_reason", ""),
+            attr("rejected_reason", "Poll Passed"),
             attr("passed", "true"),
         ]
     );
@@ -2037,7 +2037,7 @@ fn successful_end_poll_with_controlled_quorum() {
         vec![
             attr("action", "end_poll"),
             attr("poll_id", "1"),
-            attr("rejected_reason", ""),
+            attr("rejected_reason", "Poll Passed"),
             attr("passed", "true"),
         ]
     );

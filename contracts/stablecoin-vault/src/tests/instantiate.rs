@@ -1,4 +1,4 @@
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{mock_env, mock_dependencies, mock_info};
 use cosmwasm_std::{from_binary, to_binary, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
 use cosmwasm_std::{Api, Decimal, Uint128};
 
@@ -14,11 +14,11 @@ use white_whale::ust_vault::msg::*;
 
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
-use crate::tests::mock_querier::mock_dependencies;
+// use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 
-pub(crate) fn instantiate_msg() -> InstantiateMsg {
+pub fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
@@ -195,7 +195,7 @@ fn test_init_with_non_default_vault_lp_token() {
                 })
                 .unwrap(),
                 funds: vec![],
-                label: "".to_string(),
+                label: "White Whale Stablecoin Vault LP".to_string(),
             }
             .into(),
             gas_limit: None,
