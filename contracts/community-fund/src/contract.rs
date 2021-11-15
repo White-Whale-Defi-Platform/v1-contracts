@@ -60,12 +60,12 @@ pub fn spend_whale(
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
 
-    let account_addr = deps.api.addr_canonicalize(&info.sender.to_string())?;
+    let account_addr = deps.api.addr_validate(&info.sender.to_string())?;
 
     let fund_whale_balance = query_token_balance(
         &deps.querier,
         deps.api.addr_humanize(&state.whale_token_addr)?,
-        deps.api.addr_humanize(&account_addr)?,
+        account_addr,
     )?;
     if amount > fund_whale_balance {
         return Err(CommunityFundError::InsufficientFunds(
@@ -88,12 +88,12 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
     ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
 
-    let account_addr = deps.api.addr_canonicalize(&info.sender.to_string())?;
+    let account_addr = deps.api.addr_validate(&info.sender.to_string())?;
 
     let fund_whale_balance = query_token_balance(
         &deps.querier,
         deps.api.addr_humanize(&state.whale_token_addr)?,
-        deps.api.addr_humanize(&account_addr)?,
+        account_addr,
     )?;
 
     if amount > fund_whale_balance {
