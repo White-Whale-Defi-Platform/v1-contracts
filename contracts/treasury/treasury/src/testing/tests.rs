@@ -1,10 +1,10 @@
 use crate::contract::{execute, instantiate, query};
 use crate::error::TreasuryError;
-use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{from_binary, to_binary, CosmosMsg, SubMsg, Uint128, WasmMsg};
 use cw20::Cw20ExecuteMsg;
 use cw_controllers::AdminError;
+use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn init_msg() -> InstantiateMsg {
     InstantiateMsg {}
@@ -24,7 +24,7 @@ fn proper_initialization() {
 }
 
 #[test]
-fn test_update_admin (){
+fn test_update_admin() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
     let info = mock_info("addr0000", &[]);
@@ -49,7 +49,6 @@ fn test_update_admin (){
         Err(_) => panic!("Should not error"),
     }
 }
-
 
 #[test]
 fn test_add_trader() {

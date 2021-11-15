@@ -25,9 +25,8 @@ pub struct State {
 #[serde(rename_all = "snake_case")]
 pub enum Cw20HookMsg {
     WithdrawLiquidity {},
-    Swap{},
+    Swap {},
 }
-
 
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");

@@ -3,7 +3,7 @@ use cw20::Cw20ReceiveMsg;
 use cw_multi_test::{Contract, ContractWrapper};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use terraswap::asset::{AssetInfo, Asset};
+use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -33,7 +33,7 @@ pub struct PoolResponse {
 pub struct PairResponse {
     pub asset_infos: [AssetInfo; 2],
     pub contract_addr: String,
-    pub liquidity_token: String
+    pub liquidity_token: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
@@ -60,16 +60,18 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
             }
         },
         |_, _, _, _: MockInstantiateMsg| -> StdResult<Response> { Ok(Response::default()) },
-        |_, _, msg: MockQueryMsg| -> StdResult<Binary> {  match msg {
+        |_, _, msg: MockQueryMsg| -> StdResult<Binary> {
+            match msg {
                 MockQueryMsg::Pair {} => Ok(to_binary(&mock_pair_info())?),
                 MockQueryMsg::Pool {} => Ok(to_binary(&mock_pool_info())?),
-        }},
+            }
+        },
     );
     Box::new(contract)
 }
 
 pub fn mock_pair_info() {
-    to_binary(&PairResponse{
+    to_binary(&PairResponse {
         asset_infos: [
             AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
@@ -80,7 +82,8 @@ pub fn mock_pair_info() {
         ],
         contract_addr: "pair0000".to_string(),
         liquidity_token: "liquidity0000".to_string(),
-        }).unwrap_or_default();
+    })
+    .unwrap_or_default();
 }
 
 pub fn mock_pool_info() {
@@ -100,5 +103,6 @@ pub fn mock_pool_info() {
             },
         ],
         total_share: Uint128::from(1000u128),
-    }).unwrap_or_default();
+    })
+    .unwrap_or_default();
 }

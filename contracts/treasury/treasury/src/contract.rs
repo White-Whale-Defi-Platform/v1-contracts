@@ -45,7 +45,7 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
             Ok(Response::default()
                 .add_attribute("previous admin", previous_admin)
                 .add_attribute("admin", admin))
-        },
+        }
         ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
         ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
         ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),

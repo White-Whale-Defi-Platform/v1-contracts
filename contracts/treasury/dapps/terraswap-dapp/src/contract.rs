@@ -1,14 +1,14 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, Fraction,
+    entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Empty, Env, Fraction,
     MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
 };
 
 use cw20::Cw20ExecuteMsg;
-use terraswap::asset::{Asset};
+use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
 
 use crate::error::DAppError;
-use crate::msg::{CallbackMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{get_asset_info, load_contract_addr, State, ADDRESS_BOOK, ADMIN, STATE};
 use crate::terraswap_msg::*;
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
@@ -40,15 +40,26 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
             pool_id,
             main_asset_id,
             amount,
-        } => provide_liquidity(deps.as_ref(),info, main_asset_id, pool_id, amount),
+        } => provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
         ExecuteMsg::WithdrawLiquidity { pool_id, amount } => {
-            withdraw_liquidity(deps.as_ref(), pool_id, amount)
+            withdraw_liquidity(deps.as_ref(), info, pool_id, amount)
         }
         ExecuteMsg::SwapAsset {
             offer_id,
             pool_id,
             amount,
-        } => terraswap_swap(deps.as_ref(), env, info, offer_id, pool_id, amount),
+            max_spread,
+            belief_price,
+        } => terraswap_swap(
+            deps.as_ref(),
+            env,
+            info,
+            offer_id,
+            pool_id,
+            amount,
+            max_spread,
+            belief_price,
+        ),
         ExecuteMsg::UpdateConfig {
             treasury_address,
             trader,
@@ -66,26 +77,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
         ExecuteMsg::UpdateAddressBook { to_add, to_remove } => {
             update_address_book(deps, info, to_add, to_remove)
         }
-        ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
 }
 
-//----------------------------------------------------------------------------------------
-//  PRIVATE FUNCTIONS
-//----------------------------------------------------------------------------------------
-
-// TODO: Callback to be implemented
-fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> DAppResult {
-    // Callback functions can only be called this contract itself
-    if info.sender != env.contract.address {
-        return Err(DAppError::NotCallback {});
-    }
-    match msg {
-        CallbackMsg::AfterSuccessfulActionCallback {} => {
-            after_successful_action_callback(deps, env)
-        } // Possibility to add more callbacks.
-    }
-}
 //----------------------------------------------------------------------------------------
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
@@ -111,6 +105,7 @@ pub fn provide_liquidity(
     // Get lp token address
     let pair_address = load_contract_addr(deps, &pool_id)?;
 
+    // Get pool info
     let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
     let asset_1 = &pool_info.assets[0];
     let asset_2 = &pool_info.assets[1];
@@ -119,6 +114,7 @@ pub fn provide_liquidity(
 
     let mut second_asset: Asset;
 
+    // Determine second asset and required amount to do a 50/50 LP
     let main_asset_info = get_asset_info(deps, &main_asset_id)?;
     if asset_2.info.equal(&main_asset_info) {
         second_asset = asset_1.clone();
@@ -154,10 +150,14 @@ pub fn provide_liquidity(
 
 pub fn withdraw_liquidity(
     deps: Deps,
+    msg_info: MessageInfo,
     lp_token_id: String,
     amount: Uint128,
 ) -> DAppResult {
     let state = STATE.load(deps.storage)?;
+    if msg_info.sender != deps.api.addr_humanize(&state.trader)? {
+        return Err(DAppError::Unauthorized {});
+    }
     let treasury_address = deps.api.addr_humanize(&state.treasury_address)?;
 
     // get lp token address
@@ -188,30 +188,41 @@ pub fn withdraw_liquidity(
 pub fn terraswap_swap(
     deps: Deps,
     _env: Env,
-    _info: MessageInfo,
+    msg_info: MessageInfo,
     offer_id: String,
-    _pool_id: String,
+    pool_id: String,
     amount: Uint128,
+    max_spread: Option<Decimal>,
+    belief_price: Option<Decimal>,
 ) -> DAppResult {
-    // Check if treasury has enough to swap
     let state = STATE.load(deps.storage)?;
     let treasury_address = deps.api.addr_humanize(&state.treasury_address)?;
 
+    // Check if caller is trader
+    if msg_info.sender != deps.api.addr_humanize(&state.trader)? {
+        return Err(DAppError::Unauthorized {});
+    }
+
+    // Check if treasury has enough to swap
     has_sufficient(deps, &offer_id, &treasury_address, amount)?;
 
-    Ok(Response::new())
-    // Construct swap
-    // Send
-}
+    let pair_address = load_contract_addr(deps, &pool_id)?;
 
-//----------------------------------------------------------------------------------------
-//  CALLBACK FUNCTION HANDLERS
-//----------------------------------------------------------------------------------------
+    let offer_asset_info = get_asset_info(deps, &offer_id)?;
 
-// After the arb this function returns the funds to the vault.
-fn after_successful_action_callback(_deps: DepsMut, _env: Env) -> DAppResult {
-    // Fill
-    Ok(Response::new())
+    let swap_msg = vec![asset_into_swap_msg(
+        deps,
+        pair_address,
+        Asset {
+            info: offer_asset_info,
+            amount,
+        },
+        max_spread,
+        belief_price,
+        None,
+    )?];
+
+    Ok(Response::new().add_message(send_to_treasury(swap_msg, &treasury_address)?))
 }
 
 //----------------------------------------------------------------------------------------
@@ -286,6 +297,10 @@ pub fn try_query_config(deps: Deps) -> StdResult<State> {
     Ok(state)
 }
 
+//----------------------------------------------------------------------------------------
+//  UTIL FUNCTIONS
+//----------------------------------------------------------------------------------------
+
 pub fn has_sufficient(
     deps: Deps,
     id: &String,
@@ -300,5 +315,3 @@ pub fn has_sufficient(
     }
     Ok(())
 }
-
-// https://users.rust-lang.org/t/updating-object-fields-given-dynamic-json/39049/2

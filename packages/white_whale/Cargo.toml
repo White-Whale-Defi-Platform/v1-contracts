@@ -26,5 +26,6 @@ cw20 = { version = "0.8" }
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"
+cw-controllers = { version = "0.8" }
 thiserror = { version = "1.0.26" }
 cw-multi-test = { version = "0.8"}

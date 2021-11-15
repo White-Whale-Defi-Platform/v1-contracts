@@ -131,7 +131,7 @@ pub struct EstimateWithdrawFeeResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StateResponse {
     pub anchor_money_market_address: String,
-    pub aust_address: String,   
+    pub aust_address: String,
     pub profit_check_address: String,
     pub allow_non_whitelisted: bool,
 }
