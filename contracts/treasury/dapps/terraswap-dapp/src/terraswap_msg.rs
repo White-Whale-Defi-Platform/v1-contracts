@@ -7,12 +7,12 @@ use white_whale::tax::compute_tax;
 
 pub fn deposit_lp_msg(
     deps: Deps,
-    assets: [Asset; 2],
+    mut assets: [Asset; 2],
     pair_addr: Addr,
 ) -> StdResult<Vec<CosmosMsg<Empty>>> {
     let mut msgs: Vec<CosmosMsg<Empty>> = vec![];
     let mut coins: Vec<Coin> = vec![];
-    for asset in assets.iter() {
+    for asset in assets.iter_mut() {
         match &asset.info {
             AssetInfo::Token { contract_addr } => {
                 msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -25,7 +25,10 @@ pub fn deposit_lp_msg(
                     funds: vec![],
                 }));
             }
-            AssetInfo::NativeToken { .. } => coins.push(asset.deduct_tax(&deps.querier)?),
+            AssetInfo::NativeToken { .. } => {
+                coins.push(asset.deduct_tax(&deps.querier)?);
+                asset.amount = asset.deduct_tax(&deps.querier)?.amount;
+            }
         }
     }
 

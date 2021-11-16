@@ -99,9 +99,6 @@ pub fn provide_liquidity(
 
     let treasury_address = deps.api.addr_humanize(&state.treasury_address)?;
 
-    // Check if treasury holds enough of this asset
-    has_sufficient(deps, &main_asset_id, &treasury_address, amount)?;
-
     // Get lp token address
     let pair_address = load_contract_addr(deps, &pool_id)?;
 
@@ -112,36 +109,37 @@ pub fn provide_liquidity(
 
     let ratio = Decimal::from_ratio(asset_1.amount, asset_2.amount);
 
+    let main_asset_info = get_asset_info(deps, &main_asset_id)?;
+    let main_asset = Asset {
+        info: main_asset_info,
+        amount,
+    };
+    let mut first_asset: Asset;
     let mut second_asset: Asset;
+    // Calculate actual received by lp pool
+    // let after_tax = deduct_tax_if_coin(deps,&main_asset)?;
 
     // Determine second asset and required amount to do a 50/50 LP
-    let main_asset_info = get_asset_info(deps, &main_asset_id)?;
-    if asset_2.info.equal(&main_asset_info) {
-        second_asset = asset_1.clone();
-        second_asset.amount = ratio * amount;
+    if asset_2.info.equal(&main_asset.info) {
+        first_asset = asset_1.clone();
+        first_asset.amount = ratio * amount;
+        second_asset = main_asset;
     } else {
         second_asset = asset_2.clone();
         second_asset.amount = ratio.inv().unwrap_or_default() * amount;
+        first_asset = main_asset;
     }
 
-    // Does the treasury have enough of the second asset?
+    // Does the treasury have enough of these assets?
+    let first_asset_balance =
+        query_asset_balance(deps, &first_asset.info, treasury_address.clone())?;
     let second_asset_balance =
         query_asset_balance(deps, &second_asset.info, treasury_address.clone())?;
-    if second_asset_balance < second_asset.amount {
+    if second_asset_balance < second_asset.amount || first_asset_balance < first_asset.amount {
         return Err(DAppError::Broke {});
     }
 
-    let msgs: Vec<CosmosMsg> = deposit_lp_msg(
-        deps,
-        [
-            Asset {
-                info: main_asset_info,
-                amount,
-            },
-            second_asset,
-        ],
-        pair_address,
-    )?;
+    let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, [first_asset, second_asset], pair_address)?;
 
     // Deposit lp msg either returns a bank send msg or it returns a
     // increase allowance msg that will be called by the contract.
@@ -243,7 +241,7 @@ pub fn update_address_book(
         // update function for new or existing keys
         let insert = |vault_asset: Option<String>| -> StdResult<String> {
             match vault_asset {
-                // Todo: is there a better way to just leave the data untouched? 
+                // Todo: is there a better way to just leave the data untouched?
                 Some(present) => Ok(present),
                 None => Ok(new_address),
             }

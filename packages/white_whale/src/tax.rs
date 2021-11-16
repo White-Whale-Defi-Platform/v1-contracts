@@ -46,3 +46,16 @@ pub fn into_msg_without_tax(asset: Asset, recipient: Addr) -> StdResult<CosmosMs
         })),
     }
 }
+
+pub fn deduct_tax_if_coin(deps: Deps, asset: &Asset) -> StdResult<Asset> {
+    match &asset.info {
+        AssetInfo::Token { .. } => Ok(asset.clone()),
+        AssetInfo::NativeToken { denom } => Ok(Asset {
+            amount: asset.amount.checked_sub(compute_tax(
+                deps,
+                &Coin::new(asset.amount.u128(), denom.clone()),
+            )?)?,
+            info: asset.info.clone(),
+        }),
+    }
+}

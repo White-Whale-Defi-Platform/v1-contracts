@@ -32,7 +32,7 @@ if create:
 
 
 terraswap_dapp.query_config()
-terraswap_dapp.swap("ust", "luna_ust_pair", int(100000))
-terraswap_dapp.add_liquidity()
+# terraswap_dapp.swap("ust", "luna_ust_pair", int(100000))
+terraswap_dapp.provide_liquidity("luna_ust_pair", "luna", int(100000000))
 
 exit()
