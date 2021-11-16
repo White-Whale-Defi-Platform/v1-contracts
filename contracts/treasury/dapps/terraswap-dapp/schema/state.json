@@ -3,22 +3,14 @@
   "title": "State",
   "type": "object",
   "required": [
-    "pool_address",
-    "seignorage_address",
     "trader",
-    "vault_address"
+    "treasury_address"
   ],
   "properties": {
-    "pool_address": {
-      "$ref": "#/definitions/CanonicalAddr"
-    },
-    "seignorage_address": {
-      "$ref": "#/definitions/CanonicalAddr"
-    },
     "trader": {
       "$ref": "#/definitions/CanonicalAddr"
     },
-    "vault_address": {
+    "treasury_address": {
       "$ref": "#/definitions/CanonicalAddr"
     }
   },

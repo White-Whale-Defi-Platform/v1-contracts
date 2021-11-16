@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     entry_point, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, Fraction,
-    MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
+    MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
 
 use cw20::Cw20ExecuteMsg;
@@ -8,7 +8,7 @@ use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
 
 use crate::error::DAppError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 use crate::state::{get_asset_info, load_contract_addr, State, ADDRESS_BOOK, ADMIN, STATE};
 use crate::terraswap_msg::*;
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
@@ -243,7 +243,8 @@ pub fn update_address_book(
         // update function for new or existing keys
         let insert = |vault_asset: Option<String>| -> StdResult<String> {
             match vault_asset {
-                Some(_) => Err(StdError::generic_err("Asset already present.")),
+                // Todo: is there a better way to just leave the data untouched? 
+                Some(present) => Ok(present),
                 None => Ok(new_address),
             }
         };
@@ -294,9 +295,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn try_query_config(deps: Deps) -> StdResult<State> {
+pub fn try_query_config(deps: Deps) -> StdResult<StateResponse> {
     let state = STATE.load(deps.storage)?;
-    Ok(state)
+    match state {
+        State {
+            treasury_address,
+            trader,
+        } => {
+            return Ok(StateResponse {
+                treasury_address: deps.api.addr_humanize(&treasury_address)?.into_string(),
+                trader: deps.api.addr_humanize(&trader)?.into_string(),
+            })
+        }
+    }
 }
 
 pub fn try_query_addressbook(deps: Deps, id: String) -> StdResult<String> {

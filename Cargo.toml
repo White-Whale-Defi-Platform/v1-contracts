@@ -1,7 +1,7 @@
 [workspace]
 members = [
     "packages/*", 
-    "contracts/gov",
+    # "contracts/gov",
     # "contracts/bluna-vault",
     # "contracts/community-fund",
     "contracts/profit-check",

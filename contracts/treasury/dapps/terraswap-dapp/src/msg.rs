@@ -48,3 +48,9 @@ pub enum QueryMsg {
     Config {},
     AddressBook { id: String },
 }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct StateResponse {
+    pub treasury_address: String,
+    pub trader: String,
+}

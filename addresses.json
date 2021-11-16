@@ -9,11 +9,15 @@
         "community_fund": "terra1ugx7u99t8nqvhrt40ka759kqxy4j4r3n5v5l9j",
         "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v",
         "stablecoin_peg_arb": "terra1w677vh58v2t5u7dcpwu73yjct6tpa547ztsdaz",
+        "treasury": "terra1k4jt6gzkqe0hzupashwq3ljmz37qg9ksl2fydq",
+        "terraswap_dapp": "terra1sg6spf8xncvsc26nnfmdes9vtjkv2nxwfgdxu5",
         "code_id": {
             "token_code_id": "148",
             "profit_check": "",
             "stablecoin_vault": "",
-            "stablecoin_peg_arb":""
+            "stablecoin_peg_arb": "",
+            "treasury": "19978",
+            "terraswap_dapp": "19995"
         }
     },
     "columbus-5": {
@@ -23,15 +27,18 @@
         "governance": "terra13zkn22u6fs550xdmx2s2mydesd0ym4jk3r4um3",
         "whale_token": "terra1php5m8a6qd68z02t3zpw4jv2pj4vgw4wz0t8mz",
         "whale_ust_pool": "terra13zkn22u6fs550xdmx2s2mydesd0ym4jk3r4um3",
-        "community_fund": "terra1vjjs2cekma9s0axev989e68lkdx7mgjl0pnaak", 
+        "community_fund": "terra1vjjs2cekma9s0axev989e68lkdx7mgjl0pnaak",
         "war_chest": "terra1vjjs2cekma9s0axev989e68lkdx7mgjl0pnaak",
         "stablecoin_peg_arb": "terra1m7ewqlgkxtyq7fn8mgsx2lpuu4r02xd0qcq02l",
+        "treasury": "",
+        "terraswap_dapp": "",
         "code_id": {
             "token_code_id": "3",
             "profit_check": "",
             "stablecoin_vault": "",
-            "stablecoin_peg_arb":""
+            "stablecoin_peg_arb": "",
+            "treasury": "",
+            "terraswap_dapp": ""
         }
     }
-
 }
