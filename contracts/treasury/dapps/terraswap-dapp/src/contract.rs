@@ -41,9 +41,10 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
             main_asset_id,
             amount,
         } => provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
-        ExecuteMsg::WithdrawLiquidity { lp_token_id, amount } => {
-            withdraw_liquidity(deps.as_ref(), info, lp_token_id, amount)
-        }
+        ExecuteMsg::WithdrawLiquidity {
+            lp_token_id,
+            amount,
+        } => withdraw_liquidity(deps.as_ref(), info, lp_token_id, amount),
         ExecuteMsg::SwapAsset {
             offer_id,
             pool_id,
@@ -169,13 +170,13 @@ pub fn withdraw_liquidity(
 
     // cw20 send message to be called on the lp token
     let cw20_msg = Cw20ExecuteMsg::Send {
-        contract: lp_token_address.into_string(),
+        contract: pair_address.into_string(),
         amount,
         msg: withdraw_msg,
     };
 
     let pair_call = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: pair_address.to_string(),
+        contract_addr: lp_token_address.into_string(),
         msg: to_binary(&cw20_msg)?,
         funds: vec![],
     });

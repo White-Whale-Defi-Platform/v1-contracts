@@ -10,14 +10,14 @@
         "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v",
         "stablecoin_peg_arb": "terra1w677vh58v2t5u7dcpwu73yjct6tpa547ztsdaz",
         "treasury": "terra1k4jt6gzkqe0hzupashwq3ljmz37qg9ksl2fydq",
-        "terraswap_dapp": "terra1ht44gsj323rjzygpv03v44r2cmxssgex5efvtk",
+        "terraswap_dapp": "terra1na9tfcmdn6n3szg6lg5zlcut236wm5v49a0mju",
         "code_id": {
             "token_code_id": "148",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
             "treasury": "19978",
-            "terraswap_dapp": "20114"
+            "terraswap_dapp": "20120"
         }
     },
     "columbus-5": {

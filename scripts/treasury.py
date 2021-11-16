@@ -23,16 +23,16 @@ deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
 treasury = TreasuryContract(deployer)
 terraswap_dapp = TerraswapDAppContract(deployer)
 
-create = False
+create = True
 
 if create:
     # treasury.create()
     terraswap_dapp.create()
     treasury.add_trader(terraswap_dapp.address)
 
-
 terraswap_dapp.query_config()
 # terraswap_dapp.swap("ust", "luna_ust_pair", int(100000))
-terraswap_dapp.provide_liquidity("luna_ust_pair", "luna", int(100000000))
+# terraswap_dapp.provide_liquidity("luna_ust_pair", "luna", int(100000000))
+terraswap_dapp.withdraw_liquidity("luna_ust", 10000)
 
 exit()
