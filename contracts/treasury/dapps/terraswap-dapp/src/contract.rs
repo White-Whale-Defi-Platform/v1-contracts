@@ -41,8 +41,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
             main_asset_id,
             amount,
         } => provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
-        ExecuteMsg::WithdrawLiquidity { pool_id, amount } => {
-            withdraw_liquidity(deps.as_ref(), info, pool_id, amount)
+        ExecuteMsg::WithdrawLiquidity { lp_token_id, amount } => {
+            withdraw_liquidity(deps.as_ref(), info, lp_token_id, amount)
         }
         ExecuteMsg::SwapAsset {
             offer_id,

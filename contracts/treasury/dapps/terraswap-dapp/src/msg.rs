@@ -18,7 +18,7 @@ pub enum ExecuteMsg {
         amount: Uint128,
     },
     WithdrawLiquidity {
-        pool_id: String,
+        lp_token_id: String,
         amount: Uint128,
     },
     SwapAsset {
