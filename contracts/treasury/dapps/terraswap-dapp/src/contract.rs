@@ -139,7 +139,7 @@ pub fn provide_liquidity(
         return Err(DAppError::Broke {});
     }
 
-    let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, [first_asset, second_asset], pair_address)?;
+    let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, [second_asset, first_asset], pair_address)?;
 
     // Deposit lp msg either returns a bank send msg or it returns a
     // increase allowance msg that will be called by the contract.
