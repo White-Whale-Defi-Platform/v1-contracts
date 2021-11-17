@@ -85,7 +85,7 @@ pub fn update_assets(
         // update function for new or existing keys
         let insert = |vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> {
             match vault_asset {
-                Some(_) => Err(StdError::generic_err("Asset already present.")),
+                Some(keep) => Ok(keep),
                 None => {
                     let mut asset = new_asset.clone();
                     asset.asset.amount = Uint128::zero();
@@ -145,9 +145,9 @@ pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> Tr
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::GetConfig {} => to_binary(&query_config(deps)?),
-        QueryMsg::GetTotalValue {} => to_binary(&compute_total_value(deps, env)?),
-        QueryMsg::GetHoldingValue { identifier } => {
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::TotalValue {} => to_binary(&compute_total_value(deps, env)?),
+        QueryMsg::HoldingValue { identifier } => {
             to_binary(&compute_holding_value(deps, &env, identifier)?)
         }
     }
