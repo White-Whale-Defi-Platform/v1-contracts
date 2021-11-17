@@ -803,6 +803,7 @@ pub fn query_fees(deps: Deps) -> StdResult<FeeResponse> {
     })
 }
 
+// amount in UST. Equal to the value of the offered LP tokens
 pub fn estimate_withdraw_fee(
     deps: Deps,
     amount: Uint128,
