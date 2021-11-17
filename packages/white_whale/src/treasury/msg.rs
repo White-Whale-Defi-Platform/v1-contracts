@@ -36,6 +36,7 @@ pub enum QueryMsg {
     Config {},
     TotalValue {},
     HoldingValue { identifier: String },
+    VaultAssetConfig { identifier: String},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

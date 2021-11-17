@@ -19,5 +19,4 @@ fn main() {
     export_schema(&schema_for!(State), &out_dir);
     export_schema(&schema_for!(ConfigResponse), &out_dir);
     export_schema(&schema_for!(VaultAsset), &out_dir)
-
 }

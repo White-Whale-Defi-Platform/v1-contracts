@@ -30,7 +30,6 @@ pub enum ValueRef {
         pair_address: Addr,
     },
     // Liquidity pool addr to get fraction of owned liquidity
-    // proxy to calculate value of both assets held by liquidity
     Liquidity {
         pool_address: Addr,
     },
@@ -50,8 +49,7 @@ impl VaultAsset {
         env: &Env,
         set_holding: Option<Uint128>,
     ) -> StdResult<Uint128> {
-        // Query how many of these tokens I hold.
-        //let holdings = self.asset.info.query_pool(&deps.querier, deps.api, owner_addr)?;
+        // Query how many of these tokens I hold if not set.
 
         let holding: Uint128;
         match set_holding {

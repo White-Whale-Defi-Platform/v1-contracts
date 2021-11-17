@@ -45,6 +45,26 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "vault_asset_config"
+      ],
+      "properties": {
+        "vault_asset_config": {
+          "type": "object",
+          "required": [
+            "identifier"
+          ],
+          "properties": {
+            "identifier": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }

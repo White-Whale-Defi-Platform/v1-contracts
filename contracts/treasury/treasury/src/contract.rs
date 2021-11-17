@@ -83,9 +83,8 @@ pub fn update_assets(
     for new_asset in to_add.into_iter() {
         let id = get_identifier(&new_asset.asset.info).as_str();
         // update function for new or existing keys
-        let insert = |_vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> {
-                Ok(new_asset.clone())
-        };
+        let insert =
+            |_vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> { Ok(new_asset.clone()) };
         VAULT_ASSETS.update(deps.storage, id, insert)?;
     }
 
@@ -142,6 +141,9 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::TotalValue {} => to_binary(&compute_total_value(deps, env)?),
         QueryMsg::HoldingValue { identifier } => {
             to_binary(&compute_holding_value(deps, &env, identifier)?)
+        },
+        QueryMsg::VaultAssetConfig { identifier } => {
+            to_binary(&VAULT_ASSETS.load(deps.storage, identifier.as_str())?)
         }
     }
 }
