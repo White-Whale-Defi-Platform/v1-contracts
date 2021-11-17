@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    StdResult, Uint128,
 };
 
 use crate::error::TreasuryError;
@@ -83,15 +83,8 @@ pub fn update_assets(
     for new_asset in to_add.into_iter() {
         let id = get_identifier(&new_asset.asset.info).as_str();
         // update function for new or existing keys
-        let insert = |vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> {
-            match vault_asset {
-                Some(keep) => Ok(keep),
-                None => {
-                    let mut asset = new_asset.clone();
-                    asset.asset.amount = Uint128::zero();
-                    Ok(asset)
-                }
-            }
+        let insert = |_vault_asset: Option<VaultAsset>| -> StdResult<VaultAsset> {
+                Ok(new_asset.clone())
         };
         VAULT_ASSETS.update(deps.storage, id, insert)?;
     }
