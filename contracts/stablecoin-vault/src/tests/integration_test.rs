@@ -124,7 +124,7 @@ fn stablecoin_vault_fees_are_allocated() {
     let msg = cw20_base::msg::InstantiateMsg {
         name: "White Whale".to_string(),
         symbol: "WHALE".to_string(),
-        decimals: 2,
+        decimals: 6,
         initial_balances: vec![Cw20Coin {
             address: owner.to_string(),
             amount: Uint128::new(5000),

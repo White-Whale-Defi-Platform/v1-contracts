@@ -1,5 +1,6 @@
 use cosmwasm_std::{from_binary, to_binary, Binary, Empty, Response, StdResult, Uint128};
 use cw20::Cw20ReceiveMsg;
+use cw20::{TokenInfoResponse};
 use cw_multi_test::{Contract, ContractWrapper};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -41,6 +42,7 @@ pub struct PairResponse {
 pub enum MockQueryMsg {
     Pair {},
     Pool {},
+    TokenInfo {},
 }
 
 pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
@@ -63,6 +65,7 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
         |_, _, msg: MockQueryMsg| -> StdResult<Binary> {  match msg {
                 MockQueryMsg::Pair {} => Ok(to_binary(&mock_pair_info())?),
                 MockQueryMsg::Pool {} => Ok(to_binary(&mock_pool_info())?),
+                MockQueryMsg::TokenInfo {} => Ok(to_binary(&mock_token_info())?),
         }},
     );
     Box::new(contract)
@@ -101,4 +104,14 @@ pub fn mock_pool_info() {
         ],
         total_share: Uint128::from(1000u128),
     }).unwrap_or_default();
+}
+
+pub fn mock_token_info() -> TokenInfoResponse {
+    let resp: TokenInfoResponse = TokenInfoResponse{
+        name: "White Whale".to_string(),
+        symbol: "WHALE".to_string(),
+        decimals: 6,
+        total_supply: Uint128::from(100_000_000_000_000u128),
+    };
+    return resp;
 }

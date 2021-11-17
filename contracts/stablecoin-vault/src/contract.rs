@@ -312,14 +312,19 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         &deps.querier,
         deps.api.addr_humanize(&info.liquidity_token)?,
     )?;
+    println!("Made it here {:?}", total_share);
+
     let share = if total_share == Uint128::zero() {
         // Initial share = collateral amount
         deposit
     } else {
         // WARNING: This could causes issues if total_deposits_in_ust - asset.amount is really small
         // total_deposits_in_ust > deposit as total_deposits_in_ust includes deposit
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
+        // TODO: NOTE; due to the above comment I have added +1 to the total_deposits_in_ust - asset.amount
+        // This is hacky and should not go into master, maybe the better answer is to just check if 0 
+        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit+Uint128::from(1u64))
     };
+
 
     // mint LP token to sender
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -588,7 +593,6 @@ pub fn compute_total_value(
             .addr_humanize(&state.anchor_money_market_address)?
             .to_string(),
     )?;
-
     let aust_value_in_ust = aust_exchange_rate * aust_amount;
 
     let total_deposits_in_ust = stable_amount + aust_value_in_ust;
