@@ -7,7 +7,7 @@ use cw_storage_plus::{Item, Map};
 
 use crate::query::terraswap::query_pool;
 use crate::treasury::vault_assets::{get_identifier, VaultAsset};
-use terraswap::asset::AssetInfoRaw;
+use terraswap::asset::AssetInfo;
 use terraswap::pair::PoolResponse;
 
 pub static LUNA_DENOM: &str = "uluna";
@@ -50,7 +50,7 @@ pub fn lp_value(deps: Deps, env: &Env, pool_addr: &Addr, holdings: Uint128) -> S
 pub fn proxy_value(
     deps: Deps,
     env: &Env,
-    proxy_asset: &AssetInfoRaw,
+    proxy_asset_info: &AssetInfo,
     mut multiplier: Decimal,
     proxy_pool: &Option<Addr>,
     holding: Uint128,
@@ -67,7 +67,7 @@ pub fn proxy_value(
             let asset_2 = &pool_info.assets[1];
             let ratio = Decimal::from_ratio(asset_1.amount, asset_2.amount);
 
-            if asset_1.info == proxy_asset.to_normal(deps.api)? {
+            if &asset_1.info == proxy_asset_info {
                 // asset_1 is luna
                 // luna/bluna
                 multiplier = ratio;
@@ -78,17 +78,17 @@ pub fn proxy_value(
             }
 
             let proxy_holding = holding * multiplier;
-            let mut proxy_asset: VaultAsset = VAULT_ASSETS.load(
+            let mut proxy_vault_asset: VaultAsset = VAULT_ASSETS.load(
                 deps.storage,
-                get_identifier(&proxy_asset.to_normal(deps.api)?).as_str(),
+                get_identifier(&proxy_asset_info).as_str(),
             )?;
-            proxy_asset.value(deps, env, Some(proxy_holding))
+            proxy_vault_asset.value(deps, env, Some(proxy_holding))
         }
         // If no proxy pool is given, use the current multiplier
         None => {
             let mut proxy_vault_asset: VaultAsset = VAULT_ASSETS.load(
                 deps.storage,
-                get_identifier(&proxy_asset.to_normal(deps.api)?).as_str(),
+                get_identifier(&proxy_asset_info).as_str(),
             )?;
             proxy_vault_asset.asset.amount = holding * multiplier;
             // call value on proxy asset

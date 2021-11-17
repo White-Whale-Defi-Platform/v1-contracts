@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use crate::query::terraswap::{query_asset_balance, query_pool};
 use crate::tax::reverse_decimal;
 use crate::treasury::state::*;
-use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
+use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::PoolResponse;
 
 // Example/contracts/mocks/mock_terraswap/terraswap_pair/src/contract.rs
@@ -14,9 +14,8 @@ use terraswap::pair::PoolResponse;
 /// the base asset or equivalent to a certain amount of some other asset,
 /// which in its turn can be decomposed into some base asset value.
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct VaultAsset {
-    // TODO: make this Raw variant
-    // CHECK: do we want to change this to AssetInfo?
     pub asset: Asset,
     // The value reference provides the tooling to get the value of the holding
     // relative to the base asset.
@@ -24,6 +23,7 @@ pub struct VaultAsset {
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum ValueRef {
     // A pool address of the asset/base_asset pair
     Pool {
@@ -37,7 +37,7 @@ pub enum ValueRef {
     // Or a Proxy, the proxy also takes a Decimal (the multiplier)
     // Asset will be valued as if they are Proxy tokens
     Proxy {
-        proxy_asset: AssetInfoRaw,
+        proxy_asset: AssetInfo,
         multiplier: Decimal,
         proxy_pool: Option<Addr>,
     },
@@ -112,9 +112,10 @@ impl VaultAsset {
 /// For example: AssetInfo = bluna, BaseAsset = uusd, Proxy: Luna/ust pool
 /// proxy_pool = bluna/luna, multiplier = proxy_pool bluna price
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub struct Proxy {
     // Proxy asset
-    proxy_asset: AssetInfoRaw,
+    proxy_asset: AssetInfo,
     // Can be set to some constant or set to price,
     multiplier: Decimal,
     // LP pool to get multiplier
@@ -123,13 +124,12 @@ pub struct Proxy {
 
 impl Proxy {
     pub fn new(
-        deps: Deps,
         multiplier: Decimal,
         proxy_asset: AssetInfo,
         proxy_pool: Option<Addr>,
     ) -> StdResult<Self> {
         Ok(Self {
-            proxy_asset: proxy_asset.to_raw(deps.api)?,
+            proxy_asset,
             multiplier,
             proxy_pool,
         })
