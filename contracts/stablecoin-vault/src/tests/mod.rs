@@ -7,3 +7,4 @@ mod integration_test;
 mod mock_querier;
 mod whitelist;
 mod pool;
+mod state;
