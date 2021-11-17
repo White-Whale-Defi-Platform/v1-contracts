@@ -1,5 +1,5 @@
-use cosmwasm_std::{Api, MessageInfo};
 use cosmwasm_std::testing::mock_env;
+use cosmwasm_std::{Api, MessageInfo};
 
 use white_whale::ust_vault::msg::ExecuteMsg;
 
@@ -56,8 +56,21 @@ fn successful_set_state() {
 
     let new_state = STATE.load(deps.as_mut().storage).unwrap();
     assert_ne!(original_state, new_state.clone());
-    assert_eq!(new_state.anchor_money_market_address, deps.api.addr_canonicalize("new_anchor_money_market_address").unwrap());
-    assert_eq!(new_state.aust_address, deps.api.addr_canonicalize("new_aust_address").unwrap());
-    assert_eq!(new_state.profit_check_address, deps.api.addr_canonicalize("new_profit_check_address").unwrap());
+    assert_eq!(
+        new_state.anchor_money_market_address,
+        deps.api
+            .addr_canonicalize("new_anchor_money_market_address")
+            .unwrap()
+    );
+    assert_eq!(
+        new_state.aust_address,
+        deps.api.addr_canonicalize("new_aust_address").unwrap()
+    );
+    assert_eq!(
+        new_state.profit_check_address,
+        deps.api
+            .addr_canonicalize("new_profit_check_address")
+            .unwrap()
+    );
     assert_eq!(new_state.allow_non_whitelisted, true);
 }
