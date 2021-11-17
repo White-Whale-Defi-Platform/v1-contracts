@@ -13,7 +13,6 @@ use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
-use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
 use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
