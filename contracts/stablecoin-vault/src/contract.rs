@@ -81,10 +81,6 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         stable_cap: msg.stable_cap,
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?,
-            AssetInfo::NativeToken {
-                denom: LUNA_DENOM.to_string(),
-            }
-            .to_raw(deps.api)?,
             AssetInfo::Token {
                 contract_addr: msg.aust_address,
             }
@@ -580,7 +576,7 @@ pub fn compute_total_value(
     };
     let stable_amount = query_balance(&deps.querier, info.contract_addr.clone(), stable_denom)?;
 
-    let aust_info = info.asset_infos[2].to_normal(deps.api)?;
+    let aust_info = info.asset_infos[1].to_normal(deps.api)?;
     let aust_amount = aust_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
     let aust_exchange_rate = query_aust_exchange_rate(
         deps,
@@ -832,7 +828,7 @@ pub fn try_query_state(deps: Deps) -> StdResult<State> {
 
 pub fn try_query_pool(deps: Deps) -> StdResult<PoolResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let assets: [Asset; 3] = info.query_pools(deps, info.contract_addr.clone())?;
+    let assets: [Asset; 2] = info.query_pools(deps, info.contract_addr.clone())?;
     let total_share: Uint128 = query_supply(
         &deps.querier,
         deps.api.addr_humanize(&info.liquidity_token)?,
