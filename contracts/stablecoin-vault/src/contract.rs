@@ -35,8 +35,8 @@ use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, STATE};
 
 const FEE_BUFFER: u64 = 10_000_000u64;
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
-const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
-const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
+pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
+pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 
 type VaultResult = Result<Response, StableVaultError>;
 
@@ -312,7 +312,6 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         &deps.querier,
         deps.api.addr_humanize(&info.liquidity_token)?,
     )?;
-    println!("Made it here {:?}", total_share);
 
     let share = if total_share == Uint128::zero() {
         // Initial share = collateral amount
@@ -368,7 +367,7 @@ pub fn try_withdraw_liquidity(
     let state = STATE.load(deps.storage)?;
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let fee_config = FEE.load(deps.storage)?;
-
+    println!("\n\n\n\n In withdraw");
     // User is not able to withdraw from the vault if he is using the flashloan
     let profit_check_response: LastBalanceResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
@@ -381,6 +380,8 @@ pub fn try_withdraw_liquidity(
     if profit_check_response.last_balance != Uint128::zero() {
         return Err(StableVaultError::DepositDuringLoan {});
     }
+    
+
 
     // Logging var
     let mut attrs = vec![];
@@ -566,7 +567,8 @@ pub fn receive_cw20(
             if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != info.liquidity_token {
                 return Err(StableVaultError::Unauthorized {});
             }
-
+            
+            println!("About to withdraw");
             try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
         }
     }

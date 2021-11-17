@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use cosmwasm_std::{to_binary, coins, Addr, BlockInfo, Empty, Uint128, Decimal, Timestamp};
+use cosmwasm_std::{to_binary, coins, Addr, BlockInfo, Empty, Uint128, Decimal, Timestamp, QueryRequest, BankQuery};
 use cosmwasm_std::testing::{ mock_env, MockApi, MockStorage};
 use cw_multi_test::{App, Contract, BankKeeper, ContractWrapper, Executor};
 use crate::contract::{execute, instantiate, query, reply};
@@ -81,14 +81,11 @@ pub fn mock_app() -> App<Empty> {
 
 
 #[test]
-// setup all contracts needed, and attempt to simply change the stable_cap AS-THE governance contract
-// this test attempts to send some WHALE token to a named address on creation
-// the gov_staker address then attempts to stake some tokens by sending a Cw20ExecuteMsg which contains a Cw20HookMsg for the gov contract
-// the gov_staker address then attempts to create a poll via the same method. The Poll contains the white_whale::ust_vault::msg::ExecuteMsg::SetStableCap message 
-// the gov_staker casts a Yes vote 
-// Time passing is simulated 
-// Poll is ended and then executed
-// Verification is done to ensure the proposed change in the gov vote has been performed
+// setup all the contracts needed for the Vault
+// Set the relevant vault for profit check contract 
+// Provide some liquidity with ProvideLiquidity
+// Remove some liqudiity with WithdrawLiquidity
+// Verify fees have been sent (not working)
 fn stablecoin_vault_fees_are_allocated() {
     
     // Create the owner account
@@ -210,8 +207,6 @@ fn stablecoin_vault_fees_are_allocated() {
         .instantiate_contract(vault_id, owner.clone(), &vault_msg, &[], "VAULT", Some(owner.to_string()))
         .unwrap();
 
-    println!("{:?}", vault_addr);
-    
 
     // Make a mock LP token
     let msg = cw20_base::msg::InstantiateMsg {
@@ -228,7 +223,8 @@ fn stablecoin_vault_fees_are_allocated() {
     let lp_token = router
         .instantiate_contract(cw20_code_id, vault_addr.clone(), &msg, &[], DEFAULT_LP_TOKEN_SYMBOL, Some(vault_addr.to_string()))
         .unwrap();
-    set_liq_token_addr(vault_addr.to_string());
+    // Set the address of the liquidity token mock
+    set_liq_token_addr(Addr::unchecked("Contract #7").to_string());
 
     // Need to give a mocked token to user
     // Prepare 
@@ -240,12 +236,13 @@ fn stablecoin_vault_fees_are_allocated() {
         .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
         .unwrap();
 
-    println!("{:?}", get_liq_token_addr());
 
     // Ensure addresses are not equal to each other
     assert_ne!(warchest_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
 
+
+    // Hook up the vault and profit check
     let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault{
         vault_address: vault_addr.to_string()
     };
@@ -253,7 +250,7 @@ fn stablecoin_vault_fees_are_allocated() {
         .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
         .unwrap();
 
-    
+    // Provide some liqudity in UST
     let msg = ExecuteMsg::ProvideLiquidity{
         asset: Asset {
             info: AssetInfo::NativeToken{denom: "uusd".to_string()},
@@ -266,8 +263,8 @@ fn stablecoin_vault_fees_are_allocated() {
     
     println!("{:?}", res.events);
     set_liq_token_addr(lp_token.to_string());
-    println!("{:?}", get_liq_token_addr());
 
+    // Withdraw some liquidity 
     let msg = Cw20HookMsg::WithdrawLiquidity {};
 
     // Prepare cw20 message with our attempt to withdraw tokens, this should incur a fee
@@ -279,8 +276,27 @@ fn stablecoin_vault_fees_are_allocated() {
     let res = router
         .execute_contract(owner.clone(), Addr::unchecked("Contract #7"), &send_msg, &[])
         .unwrap();
+    println!("{:?}", res.events);
 
-    
+    // Verify fees have been sent
+
+    let resp = router.wrap().query_balance(warchest_addr.to_string(), "uusd".to_string());
+    println!("{:?}", resp);
+    // assert_ne!(resp.unwrap().amount, Uint128::zero())
+    // set up a helper for UST
+    let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
+
+    // ensure our balances
+    let war_chest_bal = cash.balance(&router, warchest_addr.clone()).unwrap();
+    assert_eq!(war_chest_bal, Uint128::new(5000));
+
+    // let lp_other = Cw20Contract(lp.clone());
+
+    // // ensure our balances
+    // let war_chest_bal = cash.balance(&router, warchest_addr.clone()).unwrap();
+    // assert_eq!(war_chest_bal, Uint128::new(5000));
+    // let escrow_balance = cash.balance(&router, escrow_addr.clone()).unwrap();
+    // assert_eq!(escrow_balance, Uint128::zero());
 
 }
 

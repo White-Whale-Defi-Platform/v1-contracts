@@ -28,3 +28,9 @@ serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"
 thiserror = { version = "1.0.26" }
 cw-multi-test = { version = "0.8"}
+lazy_static = "1.4.0"
+
+[dev-dependencies]
+cw-multi-test = { version = "0.8"}
+stablecoin-vault = {version = "0.1.0", path = "../../contracts/stablecoin-vault"}
+cw20-base = { version = "0.8", features = ["library"] } 
