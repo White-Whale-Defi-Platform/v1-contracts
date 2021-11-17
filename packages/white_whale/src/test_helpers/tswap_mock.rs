@@ -1,12 +1,13 @@
-use cosmwasm_std::{from_binary, to_binary, Binary, Empty, Response, StdResult, Uint128};
+use cosmwasm_std::{from_binary, to_binary, Deps, Binary, Addr, Empty, Response, StdResult, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw20::{TokenInfoResponse, MinterResponse};
-use cw_multi_test::{Contract, ContractWrapper};
+use cw20::{TokenInfoResponse, MinterResponse, BalanceResponse};
+use terra_multi_test::{Contract, ContractWrapper};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use terraswap::asset::{AssetInfo, Asset};
 use lazy_static::lazy_static;
 use std::sync::RwLock;
+use cw_storage_plus::{Item, Map};
 
 lazy_static!{
     static ref token_addr: RwLock<String> = RwLock::new("string".to_string());
@@ -29,7 +30,14 @@ pub enum MockExecuteMsg {
         recipient: String, amount: Uint128
     },
     Send {
-         amount: Uint128
+         contract: String, amount: Uint128, msg: Binary
+    },
+    Burn {
+        amount: Uint128
+    },
+    Transfer {
+        recipient: String, amount: Uint128
+
     }
 }
 
@@ -54,14 +62,18 @@ pub enum MockQueryMsg {
     Pair {},
     Pool {},
     TokenInfo {},
+    Balance {
+        address: String
+    }
 }
 
+pub const BALANCES: Map<&Addr, Uint128> = Map::new("balance");
 
 
 
 pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        |_, _, _, msg: MockExecuteMsg| -> StdResult<Response> {
+        |deps, _, info, msg: MockExecuteMsg| -> StdResult<Response> {
             match msg {
                 MockExecuteMsg::Receive(Cw20ReceiveMsg {
                     sender: _,
@@ -80,24 +92,60 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
                     Ok(Response::new())
                 }
                 MockExecuteMsg::Send{
-                    
+                    contract,
+                    amount,
+                    msg
+                } => {
+                    Ok(Response::new().add_message(
+                        Cw20ReceiveMsg {
+                            sender: info.sender.into(),
+                            amount,
+                            msg,
+                        }
+                        .into_cosmos_msg(contract)?,))
+                },
+                MockExecuteMsg::Burn {
                     amount
                 } => {
                     Ok(Response::new())
+                },
+                MockExecuteMsg::Transfer{
+                    recipient,
+                    amount
+                } => {
+                    let rcpt_addr = deps.api.addr_validate(&recipient)?;
+                    BALANCES.update(
+                        deps.storage,
+                        &rcpt_addr,
+                        |balance: Option<Uint128>| -> StdResult<_> { Ok(balance.unwrap_or_default() + amount) },
+                    )?;
+                    Ok(Response::new().add_attribute("action", "transfer")
+                    .add_attribute("from", info.sender)
+                    .add_attribute("to", recipient)
+                    .add_attribute("amount", amount))
                 }
             }
         },
         |_, _, _, _: MockInstantiateMsg| -> StdResult<Response> { Ok(Response::default()) },
-        |_, _, msg: MockQueryMsg| -> StdResult<Binary> {  match msg {
+        |deps, _, msg: MockQueryMsg| -> StdResult<Binary> {  match msg {
                 MockQueryMsg::Pair {} => Ok(to_binary(&mock_pair_info())?),
                 MockQueryMsg::Pool {} => Ok(to_binary(&mock_pool_info())?),
                 MockQueryMsg::TokenInfo {} => Ok(to_binary(&mock_token_info())?),
+                MockQueryMsg::Balance {address } => Ok(to_binary(&mock_balance_info(deps, address))?),
         }},
     );
     Box::new(contract)
 }
 
-
+pub fn mock_balance_info(deps:Deps, address:String) -> BalanceResponse{
+    // let balance = BALANCES
+    //     .may_load(deps.storage, &deps.api.addr_validate(&addr).unwrap_or_default())
+    //     .unwrap_or_default();
+    let resp: BalanceResponse = BalanceResponse{
+        balance: Uint128::new(10)
+    };
+    return resp;
+}
 
 pub fn set_liq_token_addr(new_addr:String) -> String{
         let mut addr = token_addr.write().unwrap();

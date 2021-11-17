@@ -2,7 +2,7 @@ use cosmwasm_std::{from_binary, to_binary, Binary, Empty, Response, StdResult, U
 use cosmwasm_bignumber::{Decimal256, Uint256};
 
 use cw20::Cw20ReceiveMsg;
-use cw_multi_test::{Contract, ContractWrapper};
+use terra_multi_test::{Contract, ContractWrapper};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use terraswap::asset::{AssetInfo, Asset};

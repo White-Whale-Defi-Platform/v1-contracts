@@ -1,8 +1,9 @@
 #![cfg(test)]
 
 use cosmwasm_std::{to_binary, coins, Addr, BlockInfo, Empty, Uint128, Decimal, Timestamp, QueryRequest, BankQuery};
-use cosmwasm_std::testing::{ mock_env, MockApi, MockStorage};
-use cw_multi_test::{App, Contract, BankKeeper, ContractWrapper, Executor};
+use cosmwasm_std::testing::{ mock_env, MockApi, MockStorage, MockQuerier, MOCK_CONTRACT_ADDR};
+use terra_multi_test::{App, Contract, BankKeeper, ContractWrapper, Executor};
+use terra_mocks::TerraMockQuerier;
 use crate::contract::{execute, instantiate, query, reply};
 use white_whale::ust_vault::msg::{ExecuteMsg};
 use terraswap::pair::Cw20HookMsg;
@@ -13,6 +14,8 @@ use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use white_whale::test_helpers::tswap_mock::{contract_receiver_mock, MockInstantiateMsg, set_liq_token_addr, get_liq_token_addr};
 use white_whale::test_helpers::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
 use crate::contract::{DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
+use terra_cosmwasm::TerraQuerier;
+
 // Custom Vault Instant msg func which takes code ID 
 // TODO: Clean up func sig or remove
 pub fn instantiate_msg(token_code_id: u64, war_chest: String, profit_check_addr: String, anchor_addr:String, aust_address: String) -> VaultInstantiateMsg {
@@ -75,8 +78,12 @@ pub fn mock_app() -> App<Empty> {
     let env = mock_env();
     let api = MockApi::default();
     let bank = BankKeeper::new();
+    let custom_querier: TerraMockQuerier =
+        TerraMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, &[])]));
   
-    App::new(api, env.block, bank, MockStorage::new())
+    App::new(api, env.block, bank, MockStorage::new(), custom_querier)
+    // let custom_handler = CachingCustomHandler::<CustomMsg, Empty>::new();
+    // AppBuilder::new().with_custom(custom_handler).build()
   }
 
 
@@ -266,37 +273,28 @@ fn stablecoin_vault_fees_are_allocated() {
 
     // Withdraw some liquidity 
     let msg = Cw20HookMsg::WithdrawLiquidity {};
-
+    let withdraw_amount = Uint128::new(100);
     // Prepare cw20 message with our attempt to withdraw tokens, this should incur a fee
     let send_msg = Cw20ExecuteMsg::Send {
         contract: vault_addr.to_string(),
-        amount: Uint128::new(1),
+        amount: withdraw_amount,
         msg: to_binary(&msg).unwrap(),
     };
     let res = router
         .execute_contract(owner.clone(), Addr::unchecked("Contract #7"), &send_msg, &[])
         .unwrap();
     println!("{:?}", res.events);
-
-    // Verify fees have been sent
-
-    let resp = router.wrap().query_balance(warchest_addr.to_string(), "uusd".to_string());
-    println!("{:?}", resp);
+    
+    // let resp = router.wrap().query_all_balances(warchest_addr.clone());
+    // println!("{:?}", resp);
     // assert_ne!(resp.unwrap().amount, Uint128::zero())
     // set up a helper for UST
     let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
 
+    // Verify warchest has received some fees (WIP)
     // ensure our balances
-    let war_chest_bal = cash.balance(&router, warchest_addr.clone()).unwrap();
-    assert_eq!(war_chest_bal, Uint128::new(5000));
-
-    // let lp_other = Cw20Contract(lp.clone());
-
-    // // ensure our balances
-    // let war_chest_bal = cash.balance(&router, warchest_addr.clone()).unwrap();
-    // assert_eq!(war_chest_bal, Uint128::new(5000));
-    // let escrow_balance = cash.balance(&router, escrow_addr.clone()).unwrap();
-    // assert_eq!(escrow_balance, Uint128::zero());
+    let war_chest_bal = lp.balance(&router, warchest_addr.clone()).unwrap();
+    assert_eq!(war_chest_bal, withdraw_amount.checked_div(Uint128::new(10)).unwrap());
 
 }
 

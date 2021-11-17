@@ -29,8 +29,10 @@ terraswap = "2.4.0"
 thiserror = { version = "1.0.26" }
 cw-multi-test = { version = "0.8"}
 lazy_static = "1.4.0"
-
+terra-mocks = {git ="https://github.com/terra-money/cosmwasm-contracts.git", rev = "b25f4ac2d7bddaa3a18838cfe51d18e1ae855dcd", package = "terra-mocks"}
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}
 [dev-dependencies]
-cw-multi-test = { version = "0.8"}
+# cw-multi-test = { version = "0.8"}
 stablecoin-vault = {version = "0.1.0", path = "../../contracts/stablecoin-vault"}
 cw20-base = { version = "0.8", features = ["library"] } 
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}

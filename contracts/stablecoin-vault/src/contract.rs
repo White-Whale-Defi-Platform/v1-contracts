@@ -421,6 +421,7 @@ pub fn try_withdraw_liquidity(
                 .addr_humanize(&state.anchor_money_market_address)?
                 .to_string(),
         )?;
+
         if uaust_value_in_contract < refund_amount {
             // Withdraw all aUST left
             let withdraw_msg = anchor_withdraw_msg(
@@ -469,17 +470,21 @@ pub fn try_withdraw_liquidity(
         deps.api.addr_humanize(&fee_config.warchest_addr)?,
     )?;
     attrs.push(("War chest fee:", warchest_fee.to_string()));
-
+    
     // Construct refund message
     let refund_asset = Asset {
         info: AssetInfo::NativeToken { denom },
         amount: refund_amount,
     };
+    println!("Compute taxes");
+    let tax_assed = refund_asset.deduct_tax(&deps.querier)?;
+    println!("\n\n\n\n In withdraw about to prep the Bank tx to send funds");
+
     let refund_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender,
-        amount: vec![refund_asset.deduct_tax(&deps.querier)?],
+        amount: vec![tax_assed],
     });
-
+    println!("\n\n\n\n After refund");
     // LP burn msg
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
@@ -489,6 +494,7 @@ pub fn try_withdraw_liquidity(
         })?,
         funds: vec![],
     });
+    
 
     Ok(response
         .add_message(refund_msg)
@@ -568,7 +574,6 @@ pub fn receive_cw20(
                 return Err(StableVaultError::Unauthorized {});
             }
             
-            println!("About to withdraw");
             try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
         }
     }
