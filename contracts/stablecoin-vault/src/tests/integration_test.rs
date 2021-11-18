@@ -38,7 +38,7 @@ fn stablecoin_vault_fees_are_allocated() {
     let initial_block = BlockInfo {
         height: 0,
         time: Timestamp::from_seconds(1000),
-        chain_id: "terra-cosmwasm-testnet".to_string()
+        chain_id: "terra-cosmwasm-testnet".to_string(),
     };
     router.set_block(initial_block);
     // Lastly, store our terrswap mock which is a slimmed down Terraswap with no real functionality
@@ -81,7 +81,6 @@ fn stablecoin_vault_fees_are_allocated() {
         .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "aUST", None)
         .unwrap();
 
-
     // set up cw20 helpers
     let cash = Cw20Contract(whale_token_instance.clone());
 
@@ -91,7 +90,7 @@ fn stablecoin_vault_fees_are_allocated() {
     assert_eq!(owner_balance, Uint128::new(5000));
 
     // Setup Warchest
-    let chest_msg = InstantiateMsg{
+    let chest_msg = InstantiateMsg {
         admin_addr: owner.to_string(),
         whale_token_addr: whale_token_instance.to_string(),
         spend_limit: Uint128::from(1_000_000u128),
@@ -106,7 +105,14 @@ fn stablecoin_vault_fees_are_allocated() {
 
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
     let tswap_addr = router
-        .instantiate_contract(terraswap_id, owner.clone(), &MockInstantiateMsg{}, &[], "TSWAP", None)
+        .instantiate_contract(
+            terraswap_id,
+            owner.clone(),
+            &MockInstantiateMsg {},
+            &[],
+            "TSWAP",
+            None,
+        )
         .unwrap();
 
     let profit_check_msg = white_whale::profit_check::msg::InstantiateMsg {
@@ -118,7 +124,14 @@ fn stablecoin_vault_fees_are_allocated() {
 
     // Setup the warchest contract
     let warchest_addr = router
-        .instantiate_contract(warchest_id, owner.clone(), &chest_msg, &[], "WARCHEST", None)
+        .instantiate_contract(
+            warchest_id,
+            owner.clone(),
+            &chest_msg,
+            &[],
+            "WARCHEST",
+            None,
+        )
         .unwrap();
 
     // Setup the profit check contract
@@ -136,7 +149,14 @@ fn stablecoin_vault_fees_are_allocated() {
 
     // Next setup the vault with the gov contract as the 'owner'
     let vault_addr = router
-        .instantiate_contract(vault_id, owner.clone(), &vault_msg, &[], "VAULT", Some(owner.to_string()))
+        .instantiate_contract(
+            vault_id,
+            owner.clone(),
+            &vault_msg,
+            &[],
+            "VAULT",
+            Some(owner.to_string()),
+        )
         .unwrap();
 
 
@@ -222,7 +242,6 @@ fn stablecoin_vault_fees_are_allocated() {
     assert_eq!(war_chest_bal, withdraw_amount.checked_div(Uint128::new(10)).unwrap());
 
 }
-
 
 // Need to :
 //  Setup vault with specified fee share
