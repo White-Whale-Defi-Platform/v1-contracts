@@ -30,8 +30,10 @@ create = False
 if create:
     profit_check.create()
     vault.create()
-    ust_arb.create()
-    vault.add_to_whitelist(ust_arb.address)
+    ust_arb_terra.create()
+    vault.add_to_whitelist(ust_arb_terra.address)
+    ust_arb_astro.create()
+    vault.add_to_whitelist(ust_arb_astro.address)
 
 # ust_arb.call_arb(1)
 # print(vault.address)
