@@ -3,7 +3,6 @@ use cosmwasm_std::{
 };
 use terraswap::asset::{Asset, AssetInfo, PairInfo};
 use terraswap::pair::{PoolResponse, QueryMsg, SimulationResponse};
-use terraswap::querier::{query_balance, query_token_balance};
 
 pub fn simulate_swap(deps: Deps, pool_address: Addr, offer_coin: Coin) -> StdResult<Uint128> {
     let response: SimulationResponse =
@@ -25,7 +24,7 @@ pub fn simulate_swap(deps: Deps, pool_address: Addr, offer_coin: Coin) -> StdRes
 // perform a query for Pool information using the provided pool_address
 // return any response.
 // PoolResponse comes from terraswap and contains info on each of the assets as well as total share
-pub fn query_pool(deps: Deps, pool_address: &Addr) -> StdResult<PoolResponse> {
+pub fn query_pool(deps: Deps, pool_address: Addr) -> StdResult<PoolResponse> {
     let response: PoolResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: pool_address.to_string(),
         msg: to_binary(&QueryMsg::Pool {})?,
@@ -34,28 +33,23 @@ pub fn query_pool(deps: Deps, pool_address: &Addr) -> StdResult<PoolResponse> {
     Ok(response)
 }
 
+// perform a query for the LP Token Pair information using the provided pool_address
+// return only the address. TODO: Review if we should return the full response instead
+pub fn query_lp_token(deps: Deps, pool_address: Addr) -> StdResult<String> {
+    let response: PairInfo = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: pool_address.to_string(),
+        msg: to_binary(&QueryMsg::Pair {})?,
+    }))?;
+
+    Ok(response.liquidity_token)
+}
+
 pub fn pool_ratio(deps: Deps, pool_address: Addr) -> StdResult<Decimal> {
     let response: PoolResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: pool_address.to_string(),
         msg: to_binary(&QueryMsg::Pool {})?,
     }))?;
-    // [0,1]
+    // [ust,luna]
     let ratio = Decimal::from_ratio(response.assets[0].amount, response.assets[1].amount);
     Ok(ratio)
-}
-
-pub fn query_asset_balance(
-    deps: Deps,
-    asset_info: &AssetInfo,
-    address: Addr,
-) -> StdResult<Uint128> {
-    let amount = match asset_info.clone() {
-        AssetInfo::NativeToken { denom } => query_balance(&deps.querier, address, denom)?,
-        AssetInfo::Token { contract_addr } => query_token_balance(
-            &deps.querier,
-            deps.api.addr_validate(contract_addr.as_str())?,
-            address,
-        )?,
-    };
-    Ok(amount)
 }

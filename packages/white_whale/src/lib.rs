@@ -12,6 +12,7 @@ pub mod trader;
 pub mod treasury;
 pub mod ust_vault;
 pub mod vesting;
+pub mod astroport_helper;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(test)]
