@@ -1,12 +1,12 @@
 [package]
-name = "stablecoin-peg-arb"
+name = "stable-arb-terra"
 version = "0.1.0"
 authors = ["White Whale"]
 edition = "2018"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "stablecoin-peg-arb.wasm",
+  "stable-arb-terra.wasm",
   "hash.txt",
 ]
 
