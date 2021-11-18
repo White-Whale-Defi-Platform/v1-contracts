@@ -1,31 +1,107 @@
-#![cfg(test)]
-
-use crate::contract::{DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
-use crate::tests::common_integration::{
-    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_warchest,
-    instantiate_msg, mock_app,
-};
-use cosmwasm_std::{coins, to_binary, Addr, BlockInfo, Timestamp, Uint128};
+use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::{coins, Addr, BlockInfo, Timestamp, Uint128};
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
-use terraswap::pair::Cw20HookMsg;
+
 use war_chest::msg::InstantiateMsg;
+use white_whale::denom::UST_DENOM;
 use white_whale::test_helpers::anchor_mock::{
     contract_anchor_mock, MockInstantiateMsg as AnchorMsg,
 };
 use white_whale::test_helpers::tswap_mock::{
     contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
 };
-use white_whale::ust_vault::msg::ExecuteMsg;
+use white_whale::ust_vault::msg::FlashLoanPayload;
+use white_whale::ust_vault::msg::*;
+
+use crate::contract::{execute, DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
+use crate::error::StableVaultError;
+use crate::state::STATE;
+use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
+use crate::tests::common_integration::{
+    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_warchest,
+    instantiate_msg, mock_app,
+};
+use crate::tests::instantiate::mock_instantiate;
+use crate::tests::mock_querier::mock_dependencies;
+
+const INSTANTIATE_REPLY_ID: u8 = 1u8;
+
+/**
+ * Mocks call for loan. Should update balance of caller if successfull.
+ */
+/*pub fn mock_flash_loan(deps: DepsMut) {
+    let info = mock_info(TEST_CREATOR, &[]);
+    let _res = instantiate(deps, mock_env(), info, msg)
+        .expect("contract successfully handles InstantiateMsg");
+    // Set mock value on profit check
+    // Update balances of caller and vault
+}*/
+#[test]
+fn unsuccessful_flashloan_no_base_token() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let whitelisted_contracts = STATE
+        .load(deps.as_mut().storage)
+        .unwrap()
+        .whitelisted_contracts;
+    assert_eq!(0, whitelisted_contracts.len());
+
+    let msg = ExecuteMsg::FlashLoan {
+        payload: FlashLoanPayload {
+            requested_asset: Asset {
+                info: AssetInfo::NativeToken {
+                    denom: "uluna".to_string(),
+                },
+                amount: Default::default(),
+            },
+            callback: Default::default(),
+        },
+    };
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Err(StableVaultError::Std(_)) => (),
+        _ => panic!("Must return StdError::generic_err from DepositInfo::assert"),
+    }
+}
 
 #[test]
-// setup all the contracts needed for the Vault
-// Set the relevant vault for profit check contract
-// Provide some liquidity with ProvideLiquidity
-// Remove some liqudiity with WithdrawLiquidity
-// Verify fees have been sent (not working)
-fn stablecoin_vault_fees_are_allocated() {
+fn unsuccessful_flashloan_not_whitelisted() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let whitelisted_contracts = STATE
+        .load(deps.as_mut().storage)
+        .unwrap()
+        .whitelisted_contracts;
+    assert_eq!(0, whitelisted_contracts.len());
+
+    let msg = ExecuteMsg::FlashLoan {
+        payload: FlashLoanPayload {
+            requested_asset: Asset {
+                info: AssetInfo::NativeToken {
+                    denom: UST_DENOM.to_string(),
+                },
+                amount: Default::default(),
+            },
+            callback: Default::default(),
+        },
+    };
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Err(StableVaultError::NotWhitelisted {}) => (),
+        _ => panic!("Must return StableVaultError::NotWhitelisted"),
+    }
+}
+
+#[test]
+fn unsuccessful_flashloan_broke() {
     // Create the owner account
     let owner = Addr::unchecked("owner");
 
@@ -96,13 +172,6 @@ fn stablecoin_vault_fees_are_allocated() {
     assert_eq!(owner_balance, Uint128::new(5000));
 
     // Setup Warchest
-    let chest_msg = InstantiateMsg {
-        admin_addr: owner.to_string(),
-        whale_token_addr: whale_token_instance.to_string(),
-        spend_limit: Uint128::from(1_000_000u128),
-    };
-
-    // Setup Profit Check
     let chest_msg = InstantiateMsg {
         admin_addr: owner.to_string(),
         whale_token_addr: whale_token_instance.to_string(),
@@ -219,67 +288,34 @@ fn stablecoin_vault_fees_are_allocated() {
     let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault {
         vault_address: vault_addr.to_string(),
     };
-    let _ = router
+    router
         .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
         .unwrap();
 
-    // Provide some liqudity in UST
-    let msg = ExecuteMsg::ProvideLiquidity {
-        asset: Asset {
-            info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
+    // Whitelist contract
+    let msg = ExecuteMsg::AddToWhitelist {
+        contract_addr: ARB_CONTRACT.to_string(),
+    };
+    router
+        .execute_contract(owner.clone(), vault_addr.clone(), &msg, &[])
+        .unwrap();
+
+    let msg = ExecuteMsg::FlashLoan {
+        payload: FlashLoanPayload {
+            requested_asset: Asset {
+                info: AssetInfo::NativeToken {
+                    denom: UST_DENOM.to_string(),
+                },
+                amount: Uint128::new(1000),
             },
-            amount: Uint128::new(1000),
+            callback: Default::default(),
         },
     };
-    let res = router
-        .execute_contract(
-            owner.clone(),
-            vault_addr.clone(),
-            &msg,
-            &coins(1000, "uusd"),
-        )
-        .unwrap();
 
-    println!("{:?}", res.events);
-    set_liq_token_addr(lp_token.to_string());
+    let res = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
 
-    // Withdraw some liquidity
-    let msg = Cw20HookMsg::WithdrawLiquidity {};
-    let withdraw_amount = Uint128::new(100);
-    // Prepare cw20 message with our attempt to withdraw tokens, this should incur a fee
-    let send_msg = Cw20ExecuteMsg::Send {
-        contract: vault_addr.to_string(),
-        amount: withdraw_amount,
-        msg: to_binary(&msg).unwrap(),
-    };
-    let res = router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked("Contract #7"),
-            &send_msg,
-            &[],
-        )
-        .unwrap();
-    println!("{:?}", res.events);
-
-    // let resp = router.wrap().query_all_balances(warchest_addr.clone());
-    // println!("{:?}", resp);
-    // assert_ne!(resp.unwrap().amount, Uint128::zero())
-    // set up a helper for UST
-    let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
-
-    // Verify warchest has received some fees (WIP)
-    // ensure our balances
-    let war_chest_bal = lp.balance(&router, warchest_addr.clone()).unwrap();
-    assert_eq!(
-        war_chest_bal,
-        withdraw_amount.checked_div(Uint128::new(10)).unwrap()
-    );
+    match res {
+        Err(_) => (), //match StableVaultError::Broke
+        _ => panic!("Must return StableVaultError::Broke"),
+    }
 }
-
-// Need to :
-//  Setup vault with specified fee share
-// deposit N (maybe 100 tokens)
-// withdraw n
-// verify the share percent was done.
