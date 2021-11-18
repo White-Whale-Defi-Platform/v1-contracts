@@ -171,17 +171,10 @@ pub fn try_arb_below_peg(
     let expected_luna_received =
         query_market_price(deps.as_ref(), lent_coin.clone(), ask_denom.clone())?;
 
-    // TODO: We could ommit this
-    let residual_luna = query_balance(
-        &deps.querier,
-        env.contract.address.clone(),
-        ask_denom.clone(),
-    )?;
-
     // Construct offer for Astroport
     let offer_coin = Coin {
         denom: ask_denom.clone(),
-        amount: residual_luna + expected_luna_received,
+        amount: expected_luna_received,
     };
 
     // Market swap msg, swap STABLE -> LUNA
@@ -253,17 +246,10 @@ pub fn try_arb_above_peg(
         lent_coin.clone(),
     )?;
 
-    // TODO: We could ommit this
-    let residual_luna = query_balance(
-        &deps.querier,
-        env.contract.address.clone(),
-        LUNA_DENOM.to_string(),
-    )?;
-
     // Construct offer for Market Swap
     let offer_coin = Coin {
         denom: ask_denom,
-        amount: residual_luna + expected_luna_received,
+        amount: expected_luna_received,
     };
 
     // Astroport msg, swap STABLE -> LUNA
