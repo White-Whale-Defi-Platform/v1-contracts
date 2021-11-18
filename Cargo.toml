@@ -10,7 +10,8 @@ members = [
     "contracts/terraswap-wrapper",
     "contracts/vesting",
     "contracts/war-chest",
-    "contracts/tokenomics/airdrop"
+    "contracts/tokenomics/airdrop",
+    "contracts/tokenomics/lp_emissions_proxy"
 ]
 
 [profile.release]

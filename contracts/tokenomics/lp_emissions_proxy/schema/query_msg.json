@@ -3,78 +3,48 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "description": "Returns the contract configuration",
       "type": "object",
       "required": [
-        "config"
+        "deposit"
       ],
       "properties": {
-        "config": {
+        "deposit": {
           "type": "object"
         }
       },
       "additionalProperties": false
     },
     {
-      "description": "Returns the global state of the contract @param timestamp Optional value which can be passed to calculate global_reward_index at a certain timestamp",
       "type": "object",
       "required": [
-        "state"
+        "reward"
       ],
       "properties": {
-        "state": {
-          "type": "object",
-          "properties": {
-            "timestamp": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          }
+        "reward": {
+          "type": "object"
         }
       },
       "additionalProperties": false
     },
     {
-      "description": "Returns the state of a user's staked position (StakerInfo) @param timestamp Optional value which can be passed to calculate reward_index, pending_reward at a certain timestamp",
       "type": "object",
       "required": [
-        "staker_info"
+        "pending_token"
       ],
       "properties": {
-        "staker_info": {
-          "type": "object",
-          "required": [
-            "staker"
-          ],
-          "properties": {
-            "staker": {
-              "type": "string"
-            },
-            "timestamp": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          }
+        "pending_token": {
+          "type": "object"
         }
       },
       "additionalProperties": false
     },
     {
-      "description": "Helper function, returns the current timestamp",
       "type": "object",
       "required": [
-        "timestamp"
+        "reward_info"
       ],
       "properties": {
-        "timestamp": {
+        "reward_info": {
           "type": "object"
         }
       },

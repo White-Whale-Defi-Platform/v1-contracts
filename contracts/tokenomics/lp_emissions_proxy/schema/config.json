@@ -3,72 +3,32 @@
   "title": "Config",
   "type": "object",
   "required": [
-    "cycle_duration",
-    "init_timestamp",
-    "owner",
-    "reward_increase",
-    "staking_token",
-    "till_timestamp",
-    "whale_token"
+    "generator_contract_addr",
+    "lp_token_addr",
+    "pair_addr",
+    "reward_contract_addr",
+    "reward_token_addr"
   ],
   "properties": {
-    "cycle_duration": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+    "generator_contract_addr": {
+      "$ref": "#/definitions/Addr"
     },
-    "init_timestamp": {
-      "description": "Timestamp from which WHALE Rewards will start getting accrued against the staked LP tokens",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+    "lp_token_addr": {
+      "$ref": "#/definitions/Addr"
     },
-    "owner": {
-      "description": "Account who can update config",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Addr"
-        }
-      ]
+    "pair_addr": {
+      "$ref": "#/definitions/Addr"
     },
-    "reward_increase": {
-      "description": "Percent increase in Rewards per cycle",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Decimal256"
-        }
-      ]
+    "reward_contract_addr": {
+      "$ref": "#/definitions/Addr"
     },
-    "staking_token": {
-      "description": "WHALE-UST LP token address - accepted by the contract via Cw20ReceiveMsg function",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Addr"
-        }
-      ]
-    },
-    "till_timestamp": {
-      "description": "Timestamp till which WHALE Rewards will be accrued. No staking rewards are accrued beyond this timestamp",
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "whale_token": {
-      "description": "WHALE Token address",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Addr"
-        }
-      ]
+    "reward_token_addr": {
+      "$ref": "#/definitions/Addr"
     }
   },
   "definitions": {
     "Addr": {
       "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
-      "type": "string"
-    },
-    "Decimal256": {
-      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal256(1_000_000_000_000_000_000) == 1.0 The greatest possible value that can be represented is 115792089237316195423570985008687907853269984665640564039457.584007913129639935 (which is (2^128 - 1) / 10^18)",
       "type": "string"
     }
   }
