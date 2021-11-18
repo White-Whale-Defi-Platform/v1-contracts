@@ -35,7 +35,6 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: Instantiate
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DAppResult {
     match msg {
-        // TODO: Add functions
         ExecuteMsg::ProvideLiquidity {
             pool_id,
             main_asset_id,
@@ -85,6 +84,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
+/// Constructs and forwards the terraswap provide_liquidity message 
 pub fn provide_liquidity(
     deps: Deps,
     msg_info: MessageInfo,
@@ -117,8 +117,6 @@ pub fn provide_liquidity(
     };
     let mut first_asset: Asset;
     let mut second_asset: Asset;
-    // Calculate actual received by lp pool
-    // let after_tax = deduct_tax_if_coin(deps,&main_asset)?;
 
     // Determine second asset and required amount to do a 50/50 LP
     if asset_2.info.equal(&main_asset.info) {
@@ -142,11 +140,12 @@ pub fn provide_liquidity(
 
     let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, [second_asset, first_asset], pair_address)?;
 
-    // Deposit lp msg either returns a bank send msg or it returns a
-    // increase allowance msg that will be called by the contract.
+    // Deposit lp msg either returns a bank send msg or a
+    // increase allowance msg for each asset.  
     Ok(Response::new().add_message(send_to_treasury(msgs, &treasury_address)?))
 }
 
+/// Constructs withdraw liquidity msg and forwards it to treasury
 pub fn withdraw_liquidity(
     deps: Deps,
     msg_info: MessageInfo,
@@ -166,24 +165,27 @@ pub fn withdraw_liquidity(
     // Check if the treasury has enough lp tokens
     has_sufficient(deps, &lp_token_id, &treasury_address, amount)?;
 
+    // Msg that gets called on the pair address.
     let withdraw_msg: Binary = to_binary(&Cw20HookMsg::WithdrawLiquidity {})?;
 
-    // cw20 send message to be called on the lp token
+    // cw20 send message that transfers the LP tokens to the pair address
     let cw20_msg = Cw20ExecuteMsg::Send {
         contract: pair_address.into_string(),
         amount,
         msg: withdraw_msg,
     };
 
-    let pair_call = CosmosMsg::Wasm(WasmMsg::Execute {
+    // Call on LP token.
+    let lp_call = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: lp_token_address.into_string(),
         msg: to_binary(&cw20_msg)?,
         funds: vec![],
     });
 
-    Ok(Response::new().add_message(send_to_treasury(vec![pair_call], &treasury_address)?))
+    Ok(Response::new().add_message(send_to_treasury(vec![lp_call], &treasury_address)?))
 }
 
+/// Function constructs terraswap swap messages and forwards them to the treasury
 #[allow(clippy::too_many_arguments)]
 pub fn terraswap_swap(
     deps: Deps,
@@ -257,6 +259,7 @@ pub fn update_address_book(
     Ok(Response::new().add_attribute("action", "updated address book"))
 }
 
+/// Updates trader or treasury address
 pub fn update_config(
     deps: DepsMut,
     info: MessageInfo,
@@ -290,7 +293,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&try_query_config(deps)?),
         QueryMsg::AddressBook { id } => to_binary(&try_query_addressbook(deps, id)?),
-        // Todo: add addressbook query
     }
 }
 

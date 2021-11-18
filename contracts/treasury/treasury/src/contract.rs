@@ -55,6 +55,8 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
     }
 }
 
+/// Executes actions forwarded by whitelisted contracts
+/// This contracts acts as a proxy contract for the dApps
 pub fn execute_action(
     deps: DepsMut,
     msg_info: MessageInfo,
@@ -71,6 +73,7 @@ pub fn execute_action(
     Ok(Response::new().add_messages(msgs))
 }
 
+/// Update the stored vault asset information
 pub fn update_assets(
     deps: DepsMut,
     msg_info: MessageInfo,
@@ -95,6 +98,7 @@ pub fn update_assets(
     Ok(Response::new().add_attribute("action", "update_cw20_token_list"))
 }
 
+/// Add a contract to the whitelist
 pub fn add_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
@@ -114,6 +118,7 @@ pub fn add_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> Treas
     Ok(Response::new().add_attribute("Added contract to whitelist: ", trader))
 }
 
+/// Remove a contract from the whitelist
 pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
@@ -134,6 +139,7 @@ pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> Tr
     Ok(Response::new().add_attribute("Removed contract from whitelist: ", trader))
 }
 
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -148,6 +154,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+// Returns the whitelisted traders
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = STATE.load(deps.storage)?;
     let traders: Vec<CanonicalAddr> = state.traders;
@@ -160,12 +167,14 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(resp)
 }
 
+// Returns the value of a specified asset. 
 pub fn compute_holding_value(deps: Deps, env: &Env, holding: String) -> StdResult<Uint128> {
     let mut vault_asset: VaultAsset = VAULT_ASSETS.load(deps.storage, holding.as_str())?;
     let value = vault_asset.value(deps, env, None)?;
     Ok(value)
 }
 
+// TODO
 pub fn compute_total_value(_deps: Deps, _env: Env) -> StdResult<Uint128> {
     Ok(Uint128::zero())
 }
