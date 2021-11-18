@@ -3,5 +3,6 @@
 mod common;
 pub mod instantiate;
 #[cfg(test)]
-mod mock_querier;
 mod integration_test;
+#[cfg(test)]
+mod mock_querier;
