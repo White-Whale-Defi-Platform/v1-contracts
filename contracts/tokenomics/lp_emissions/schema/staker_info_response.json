@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StakerInfoResponse",
+  "type": "object",
+  "required": [
+    "bond_amount",
+    "pending_reward",
+    "reward_index",
+    "staker"
+  ],
+  "properties": {
+    "bond_amount": {
+      "description": "WHALE-UST LP tokens deposited by the user",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "pending_reward": {
+      "description": "Pending WHALE rewards which are yet to be claimed",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint256"
+        }
+      ]
+    },
+    "reward_index": {
+      "description": "WHALE rewards / bond_amount ratio.  Used to calculate WHALE rewards accured over time elapsed",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal256"
+        }
+      ]
+    },
+    "staker": {
+      "description": "User address",
+      "type": "string"
+    }
+  },
+  "definitions": {
+    "Decimal256": {
+      "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal256(1_000_000_000_000_000_000) == 1.0 The greatest possible value that can be represented is 115792089237316195423570985008687907853269984665640564039457.584007913129639935 (which is (2^128 - 1) / 10^18)",
+      "type": "string"
+    },
+    "Uint256": {
+      "type": "string"
+    }
+  }
+}
