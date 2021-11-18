@@ -4,7 +4,7 @@ use cosmwasm_std::{
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 
-use white_whale::helpers::{get_cw20_balance, option_string_to_addr, zero_address};
+use white_whale::tokenomics::helpers::get_cw20_balance;
 
 use white_whale::tokenomics::lp_emissions::{
     ConfigResponse, Cw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
@@ -150,7 +150,7 @@ pub fn bond(deps: DepsMut, env: Env, sender_addr: Addr, amount: Uint128) -> StdR
 /// @params new_owner : New owner address
 pub fn update_config(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     new_owner: String,
 ) -> StdResult<Response> {
@@ -174,7 +174,7 @@ pub fn update_config(
 pub fn update_reward_schedule(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     period_start: u64,
     period_finish: u64,
     amount: Uint128,

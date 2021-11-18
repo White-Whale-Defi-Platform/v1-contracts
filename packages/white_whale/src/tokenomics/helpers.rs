@@ -70,7 +70,7 @@ pub fn get_denom_amount_from_coins(coins: &[Coin], denom: &str) -> Uint256 {
 }
 
 // CW20
-pub fn cw20_get_balance(
+pub fn get_cw20_balance(
     querier: &QuerierWrapper,
     token_address: Addr,
     account_addr: Addr,
