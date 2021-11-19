@@ -4,12 +4,16 @@ use cosmwasm_std::{
     from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Empty, OwnedDeps,
     Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
+use cosmwasm_bignumber::{Decimal256, Uint256};
+
 use cosmwasm_storage::to_length_prefixed;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;
 use white_whale::profit_check::msg::LastBalanceResponse;
+use white_whale::test_helpers::anchor_mock::{mock_epoch_state};
+use white_whale::query::anchor::{AnchorQuery, EpochStateResponse};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -25,6 +29,16 @@ pub fn mock_dependencies(
         querier: custom_querier,
     }
 }
+
+// #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+// #[serde(rename_all = "snake_case")]
+// pub enum MockQueryMsg {
+//     Balance {},
+//     EpochState {
+//         distributed_interest,
+//         block_height
+//     } 
+// }
 
 pub struct WasmMockQuerier {
     base: MockQuerier<Empty>,
@@ -111,6 +125,36 @@ impl WasmMockQuerier {
                         last_balance: Uint128::zero()
                     })));
                 }
+                // Handle calls for Profit Check; LastBalance
+                if contract_addr == &String::from("test_mm") {
+                    println!("{:?}", request);
+
+                    // Handle Anchor EpochStateQuery
+                    if msg == &Binary::from(r#"{"epoch_state":{}}"#.as_bytes()) {
+                        return SystemResult::Ok(ContractResult::from(to_binary(&EpochStateResponse{
+                            exchange_rate: Decimal256::percent(120),
+                            aterra_supply: Uint256::from(1000000u64)
+                        })));
+                    }
+                    return SystemResult::Ok(ContractResult::from(to_binary(&EpochStateResponse{
+                        exchange_rate: Decimal256::percent(120),
+                        aterra_supply: Uint256::from(1000000u64)
+                    })));
+                }
+                // Handle calls for Profit Check; LastBalance
+                if contract_addr == &String::from("test_aust") {
+                    println!("{:?}", request);
+
+                    // Handle Anchor EpochStateQuery
+                    if msg == &Binary::from(r#"{"epoch_state":{}}"#.as_bytes()) {
+                        return SystemResult::Ok(ContractResult::from(to_binary(&mock_epoch_state())));
+                    }
+
+                    
+                    return SystemResult::Ok(ContractResult::from(to_binary(&Cw20BalanceResponse {
+                        balance: Uint128::zero(),
+                    })));
+                }
                 // Handle calls for Pair Info
                 if contract_addr == &String::from("PAIR0000") {
                     println!("{:?}", request);
@@ -152,6 +196,15 @@ impl WasmMockQuerier {
                     return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)));
                 } else {
                     match from_binary(&msg).unwrap() {
+                        // AnchorQuery::EpochState{ distributed_interest, aterra_supply} => {
+                            
+                        //     return SystemResult::Ok(ContractResult::Ok(
+                        //         to_binary(&EpochStateResponse{
+                        //             exchange_rate: Decimal256::percent(120),
+                        //             aterra_supply: Uint256::from(1000000u64)
+                        //         }).unwrap()
+                        //     ))
+                        // }
          
                         Cw20QueryMsg::Balance { address } => {
                             let balances: &HashMap<String, Uint128> =

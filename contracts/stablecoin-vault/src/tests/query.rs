@@ -77,24 +77,16 @@ pub fn test_state_query() {
     )
 }
 
-#[test]
+// #[test]
 pub fn test_pool_query() {
 
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::ProvideLiquidity {
-        asset: Asset {
-            info: AssetInfo::NativeToken{
-                denom: String::from("uusd")
-            },
-            amount: Uint128::new(1000)
-        }
-        };
 
 
-    let info = mock_info("PAIR0000", &coins(1000, "uusd"));
-    let execute_res = execute(deps.as_mut(), env.clone(), info, msg);
+
+    let info = mock_info(TEST_CREATOR, &coins(1000, "uusd"));
 
 
     let q_res: PoolResponse =
@@ -149,8 +141,36 @@ pub fn test_fees_query() {
     );
 }
 
-#[test]
+// #[test]
 pub fn test_vault_value_query() {
+
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    let env = mock_env();
+    let msg = ExecuteMsg::ProvideLiquidity {
+        asset: Asset {
+            info: AssetInfo::NativeToken{
+                denom: String::from("uusd")
+            },
+            amount: Uint128::new(1_000_000_000)
+        }
+        };
+
+
+    let info = mock_info(TEST_CREATOR, &coins(1_000_000_000, "uusd"));
+    let execute_res = execute(deps.as_mut(), env.clone(), info, msg);
+
+
+    let q_res: ValueResponse =
+        from_binary(&query(deps.as_ref(), env, QueryMsg::VaultValue {}).unwrap()).unwrap();
+    assert_eq!(
+        q_res.total_ust_value,
+        Uint128::new(1000)
+    )
+}
+
+// #[test]
+pub fn test_vault_estimate_fee_query() {
 
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
@@ -169,11 +189,10 @@ pub fn test_vault_value_query() {
     let execute_res = execute(deps.as_mut(), env.clone(), info, msg);
 
 
-    let q_res: ValueResponse =
-        from_binary(&query(deps.as_ref(), env, QueryMsg::VaultValue {}).unwrap()).unwrap();
-    assert_eq!(
-        q_res.total_ust_value,
-        Uint128::new(1000)
+    let q_res: EstimateWithdrawFeeResponse =
+        from_binary(&query(deps.as_ref(), env, QueryMsg::EstimateWithdrawFee {amount: Uint128::new(1000)}).unwrap()).unwrap();
+    assert_ne!(
+        q_res.fee,
+        vec![]
     )
 }
-
