@@ -12,3 +12,4 @@ mod pool;
 mod state;
 mod deposit;
 mod whitelist;
+mod query;
