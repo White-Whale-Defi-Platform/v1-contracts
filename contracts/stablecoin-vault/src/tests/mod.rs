@@ -10,4 +10,5 @@ mod integration_test;
 mod mock_querier;
 mod pool;
 mod state;
+mod deposit;
 mod whitelist;
