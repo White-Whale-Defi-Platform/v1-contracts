@@ -81,7 +81,7 @@ pub enum CallbackMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolResponse {
-    pub assets: [Asset; 3],
+    pub assets: [Asset; 2],
     pub total_value_in_ust: Uint128,
     pub total_share: Uint128,
 }

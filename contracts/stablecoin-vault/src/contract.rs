@@ -13,7 +13,6 @@ use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
-use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
 use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
@@ -81,10 +80,6 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         stable_cap: msg.stable_cap,
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?,
-            AssetInfo::NativeToken {
-                denom: LUNA_DENOM.to_string(),
-            }
-            .to_raw(deps.api)?,
             AssetInfo::Token {
                 contract_addr: msg.aust_address,
             }
@@ -592,7 +587,7 @@ pub fn compute_total_value(
     };
     let stable_amount = query_balance(&deps.querier, info.contract_addr.clone(), stable_denom)?;
 
-    let aust_info = info.asset_infos[2].to_normal(deps.api)?;
+    let aust_info = info.asset_infos[1].to_normal(deps.api)?;
     let aust_amount = aust_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
     let aust_exchange_rate = query_aust_exchange_rate(
         deps,
@@ -819,6 +814,7 @@ pub fn query_fees(deps: Deps) -> StdResult<FeeResponse> {
     })
 }
 
+// amount in UST. Equal to the value of the offered LP tokens
 pub fn estimate_withdraw_fee(
     deps: Deps,
     amount: Uint128,
@@ -844,7 +840,7 @@ pub fn try_query_state(deps: Deps) -> StdResult<State> {
 
 pub fn try_query_pool(deps: Deps) -> StdResult<PoolResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let assets: [Asset; 3] = info.query_pools(deps, info.contract_addr.clone())?;
+    let assets: [Asset; 2] = info.query_pools(deps, info.contract_addr.clone())?;
     let total_share: Uint128 = query_supply(
         &deps.querier,
         deps.api.addr_humanize(&info.liquidity_token)?,

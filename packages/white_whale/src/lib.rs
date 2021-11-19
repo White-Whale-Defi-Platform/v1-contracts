@@ -10,5 +10,7 @@ pub mod query;
 pub mod tax;
 pub mod trader;
 pub mod ust_vault;
-pub mod test_helpers;
 pub mod vesting;
+pub mod astroport_helper;
+#[cfg(test)]
+pub mod test_helpers;
