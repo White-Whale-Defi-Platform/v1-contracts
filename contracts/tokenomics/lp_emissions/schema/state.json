@@ -25,10 +25,20 @@
       "minimum": 0.0
     },
     "leftover": {
-      "$ref": "#/definitions/Uint128"
+      "description": "Number of WHALE tokens that are yet to be distributed",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     },
     "reward_rate_per_token": {
-      "$ref": "#/definitions/Decimal"
+      "description": "Number of WHALE tokens distributed per staked LP token",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal"
+        }
+      ]
     },
     "total_bond_amount": {
       "description": "Total number of WHALE-UST LP tokens staked with the contract",

@@ -5,6 +5,8 @@
   "required": [
     "global_reward_index",
     "last_distributed",
+    "leftover",
+    "reward_rate_per_token",
     "total_bond_amount"
   ],
   "properties": {
@@ -21,6 +23,22 @@
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "leftover": {
+      "description": "Number of WHALE tokens that are yet to be distributed",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
+    },
+    "reward_rate_per_token": {
+      "description": "Number of WHALE tokens distributed per staked LP tokens",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Decimal"
+        }
+      ]
     },
     "total_bond_amount": {
       "description": "Total number of WHALE-UST LP tokens deposited in the contract",
