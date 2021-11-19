@@ -11,7 +11,6 @@ fn mock_app() -> App {
     let env = mock_env();
     let bank = BankKeeper::new();
     let storage = MockStorage::new();
-    // let tmq = TerraMockQuerier::new(MockQuerier::new(&[]));
 
     App::new(api, env.block, bank, storage)
 }
