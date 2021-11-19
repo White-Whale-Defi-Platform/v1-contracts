@@ -20,7 +20,7 @@ const INSTANTIATE_REPLY_ID: u8 = 1u8;
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
 
 
-// #[test]
+#[test]
 pub fn mock_deposit() {
 
     let mut deps = mock_dependencies(&[]);
