@@ -106,12 +106,6 @@ pub fn test_pool_query() {
                     denom: "uusd".to_string(),
                 },
             },
-            Asset {
-                amount: Uint128::from(10000u128),
-                info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
-            },
         ]
     );
     assert_eq!(
