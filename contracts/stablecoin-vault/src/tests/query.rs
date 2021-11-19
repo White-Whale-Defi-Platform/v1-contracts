@@ -145,6 +145,35 @@ pub fn test_fees_query() {
     );
     assert_eq!(
         q_res.fees.flash_loan_fee.share,
-        Decimal::percent(5u64)
+        Decimal::permille(5u64)
     );
 }
+
+#[test]
+pub fn test_vault_value_query() {
+
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    let env = mock_env();
+    let msg = ExecuteMsg::ProvideLiquidity {
+        asset: Asset {
+            info: AssetInfo::NativeToken{
+                denom: String::from("uusd")
+            },
+            amount: Uint128::new(1000)
+        }
+        };
+
+
+    let info = mock_info(TEST_CREATOR, &coins(1000, "uusd"));
+    let execute_res = execute(deps.as_mut(), env.clone(), info, msg);
+
+
+    let q_res: ValueResponse =
+        from_binary(&query(deps.as_ref(), env, QueryMsg::VaultValue {}).unwrap()).unwrap();
+    assert_eq!(
+        q_res.total_ust_value,
+        Uint128::new(1000)
+    )
+}
+
