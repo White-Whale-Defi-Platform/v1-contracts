@@ -16,6 +16,7 @@ use white_whale::ust_vault::msg::*;
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
+pub(crate) const WARCHEST_FEE: u64 = 10u64;
 
 pub fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
@@ -27,7 +28,7 @@ pub fn instantiate_msg() -> InstantiateMsg {
             denom: "uusd".to_string(),
         },
         token_code_id: 0u64,
-        warchest_fee: Decimal::percent(10u64),
+        warchest_fee: Decimal::percent(WARCHEST_FEE),
         flash_loan_fee: Decimal::permille(5u64),
         stable_cap: Uint128::from(100_000_000u64),
         vault_lp_token_name: None,
