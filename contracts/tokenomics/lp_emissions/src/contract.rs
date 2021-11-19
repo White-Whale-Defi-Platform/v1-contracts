@@ -105,15 +105,25 @@ pub fn receive_cw20(
             period_finish,
             amount,
         }) => {
-            // only staking token contract can execute this message
-            if config.staking_token != info.sender.as_str() {
-                return Err(StdError::generic_err("unauthorized"));
+            // Only WHALE token contract can execute this message
+            if config.whale_token != info.sender.as_str() {
+                return Err(StdError::generic_err(
+                    "Unauthorized : Only WHALE Token is allowed",
+                ));
             }
-            // only staking token contract can execute this message
+            // Only owner can update the schedule
             if config.owner != cw20_msg.sender {
-                return Err(StdError::generic_err("Only owner can call"));
+                return Err(StdError::generic_err("Only owner can update the schedule"));
             }
-            update_reward_schedule(deps, env, info, period_start, period_finish, amount)
+            update_reward_schedule(
+                deps,
+                env,
+                info,
+                period_start,
+                period_finish,
+                amount,
+                cw20_msg.amount.into(),
+            )
         }
 
         Err(_) => Err(StdError::generic_err("data should be given")),
@@ -177,35 +187,37 @@ pub fn update_reward_schedule(
     _info: MessageInfo,
     period_start: u64,
     period_finish: u64,
-    amount: Uint128,
+    amount_to_distribute: Uint128,
+    amount_sent: Uint128,
 ) -> StdResult<Response> {
     let mut config: Config = CONFIG.load(deps.storage)?;
     let mut state: State = STATE.load(deps.storage)?;
 
-    let balance = get_cw20_balance(
-        &deps.querier,
-        config.whale_token.clone(),
-        env.contract.address.clone(),
-    )?;
-
-    // contract must have enough tokens which can be used as incentives
-    if balance < amount {
-        return Err(StdError::generic_err("insufficient funds on contract"));
-    }
-
     // Compute global reward
     compute_reward(&config, &mut state, env.block.time.seconds());
 
+    // Invalid Period
+    if period_start > period_finish {
+        return Err(StdError::generic_err("Invalid Period"));
+    }
+
+    // contract must have enough tokens which can be used as incentives
+    if amount_sent + state.leftover < amount_to_distribute {
+        return Err(StdError::generic_err("insufficient funds on contract"));
+    }
+
     // update distribution schedule (leftover is added to distribution amount)
-    config.distribution_schedule = (period_start, period_finish, amount + state.leftover);
+    config.distribution_schedule = (period_start, period_finish, amount_to_distribute);
 
     CONFIG.save(deps.storage, &config)?;
     STATE.save(deps.storage, &state)?;
 
     Ok(Response::new().add_attributes(vec![
         ("action", "update_reward_schedule"),
-        ("contract_balance", balance.to_string().as_str()),
-        ("amount", amount.to_string().as_str()),
+        (
+            "whale_to_distribute",
+            amount_to_distribute.to_string().as_str(),
+        ),
         (
             "total_bond_amount",
             state.total_bond_amount.to_string().as_str(),
@@ -350,6 +362,8 @@ pub fn query_state(deps: Deps, env: Env, timestamp: Option<u64>) -> StdResult<St
         last_distributed: state.last_distributed,
         total_bond_amount: state.total_bond_amount,
         global_reward_index: state.global_reward_index,
+        leftover: state.leftover,
+        reward_rate_per_token: state.reward_rate_per_token,
     })
 }
 
@@ -412,18 +426,22 @@ fn decrease_bond_amount(state: &mut State, staker_info: &mut StakerInfo, amount:
     staker_info.bond_amount = staker_info.bond_amount - amount;
 }
 
+/// @dev Updates State's leftover and reward_rate_per_token params
 fn compute_state_extra(config: &Config, state: &mut State, timestamp: u64) {
     let s = config.distribution_schedule;
+
+    // not started yet
     if timestamp <= s.0 {
-        // not started yet
         state.leftover = s.2;
         state.reward_rate_per_token = Decimal::zero();
-    } else if timestamp >= s.1 {
-        // already finished
+    }
+    // already finished
+    else if timestamp >= s.1 {
         state.leftover = Uint128::zero();
         state.reward_rate_per_token = Decimal::zero();
-    } else {
-        // s.0 < timestamp < s.1
+    }
+    // s.0 < timestamp < s.1
+    else {
         let duration = s.1 - s.0;
         let distribution_rate: Decimal = Decimal::from_ratio(s.2, duration);
         let time_left = s.1 - timestamp;

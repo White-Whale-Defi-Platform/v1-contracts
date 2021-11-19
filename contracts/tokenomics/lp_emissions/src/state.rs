@@ -33,7 +33,9 @@ pub struct State {
     pub total_bond_amount: Uint128,
     /// Used to calculate WHALE rewards accured over time elapsed. Ratio =  Total distributed WHALE tokens / total bond amount
     pub global_reward_index: Decimal,
+    /// Number of WHALE tokens that are yet to be distributed
     pub leftover: Uint128,
+    /// Number of WHALE tokens distributed per staked LP token
     pub reward_rate_per_token: Decimal,
 }
 
