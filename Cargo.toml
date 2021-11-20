@@ -13,7 +13,9 @@ members = [
     "contracts/war-chest",
     "contracts/tokenomics/airdrop",
     "contracts/tokenomics/lp_emissions_proxy",
-    "contracts/tokenomics/lp_emissions"
+    "contracts/tokenomics/lp_emissions",
+    "contracts/treasury/treasury",
+    "contracts/treasury/dapps/terraswap"
 ]
 
 [profile.release]
