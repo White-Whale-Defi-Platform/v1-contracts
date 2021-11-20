@@ -10,7 +10,10 @@ members = [
     "contracts/stablecoin-vault",
     # "contracts/terraswap-wrapper",
     "contracts/vesting",
-    "contracts/war-chest"
+    "contracts/war-chest",
+    "contracts/tokenomics/airdrop",
+    "contracts/tokenomics/lp_emissions_proxy",
+    "contracts/tokenomics/lp_emissions"
 ]
 
 [profile.release]
