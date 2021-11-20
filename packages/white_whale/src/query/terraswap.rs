@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     to_binary, Addr, Coin, Decimal, Deps, QueryRequest, StdResult, Uint128, WasmQuery,
 };
-use terraswap::asset::{Asset, AssetInfo, PairInfo};
+use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::{PoolResponse, QueryMsg, SimulationResponse};
 use terraswap::querier::{query_balance, query_token_balance};
 

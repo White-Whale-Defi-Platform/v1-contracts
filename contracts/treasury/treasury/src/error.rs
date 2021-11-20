@@ -10,13 +10,10 @@ pub enum TreasuryError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
-    #[error("Cannot spend more than spend_limit")]
-    TooMuchSpend {},
-
-    #[error("Trader already added")]
+    #[error("Trader is already whitelisted")]
     AlreadyInList {},
 
-    #[error("Trader not found in list")]
+    #[error("Trader not found in whitelist")]
     NotInList {},
 
     #[error("Sender is not whitelisted")]

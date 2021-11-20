@@ -80,7 +80,7 @@ pub fn proxy_value(
             let proxy_holding = holding * multiplier;
             let mut proxy_vault_asset: VaultAsset = VAULT_ASSETS.load(
                 deps.storage,
-                get_identifier(&proxy_asset_info).as_str(),
+                get_identifier(proxy_asset_info).as_str(),
             )?;
             proxy_vault_asset.value(deps, env, Some(proxy_holding))
         }
@@ -88,7 +88,7 @@ pub fn proxy_value(
         None => {
             let mut proxy_vault_asset: VaultAsset = VAULT_ASSETS.load(
                 deps.storage,
-                get_identifier(&proxy_asset_info).as_str(),
+                get_identifier(proxy_asset_info).as_str(),
             )?;
             proxy_vault_asset.asset.amount = holding * multiplier;
             // call value on proxy asset

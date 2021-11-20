@@ -84,7 +84,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-/// Constructs and forwards the terraswap provide_liquidity message 
+/// Constructs and forwards the terraswap provide_liquidity message
 pub fn provide_liquidity(
     deps: Deps,
     msg_info: MessageInfo,
@@ -141,7 +141,7 @@ pub fn provide_liquidity(
     let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, [second_asset, first_asset], pair_address)?;
 
     // Deposit lp msg either returns a bank send msg or a
-    // increase allowance msg for each asset.  
+    // increase allowance msg for each asset.
     Ok(Response::new().add_message(send_to_treasury(msgs, &treasury_address)?))
 }
 
@@ -270,14 +270,13 @@ pub fn update_config(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    let api = deps.api;
 
     if let Some(treasury_address) = treasury_address {
-        state.treasury_address = api.addr_canonicalize(&treasury_address)?;
+        state.treasury_address = deps.api.addr_canonicalize(&treasury_address)?;
     }
 
     if let Some(trader) = trader {
-        state.trader = api.addr_canonicalize(&trader)?;
+        state.trader = deps.api.addr_canonicalize(&trader)?;
     }
 
     STATE.save(deps.storage, &state)?;
@@ -298,17 +297,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn try_query_config(deps: Deps) -> StdResult<StateResponse> {
     let state = STATE.load(deps.storage)?;
-    match state {
-        State {
-            treasury_address,
-            trader,
-        } => {
-            return Ok(StateResponse {
-                treasury_address: deps.api.addr_humanize(&treasury_address)?.into_string(),
-                trader: deps.api.addr_humanize(&trader)?.into_string(),
-            })
-        }
-    }
+
+    Ok(StateResponse {
+        treasury_address: deps
+            .api
+            .addr_humanize(&state.treasury_address)?
+            .into_string(),
+        trader: deps.api.addr_humanize(&state.trader)?.into_string(),
+    })
 }
 
 pub fn try_query_addressbook(deps: Deps, id: String) -> StdResult<String> {

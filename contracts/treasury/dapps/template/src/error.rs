@@ -17,9 +17,6 @@ pub enum DAppError {
     #[error("Call is not a callback!")]
     NotCallback {},
 
-    #[error("The requested funds have the wrong denom")]
-    WrongDenom {},
-
     #[error("Not enough funds to perform arb-trade")]
     Broke {},
 }
