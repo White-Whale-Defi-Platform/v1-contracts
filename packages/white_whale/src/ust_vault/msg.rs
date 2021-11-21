@@ -95,9 +95,9 @@ pub struct FlashLoanPayload {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum VaultQueryMsg {
-    Config {},
+    PoolConfig {},
+    PoolState {},
     State {},
-    Pool {},
     Fees {},
     EstimateWithdrawFee { amount: Uint128 },
     VaultValue {},

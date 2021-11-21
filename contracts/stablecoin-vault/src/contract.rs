@@ -607,7 +607,12 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
         deps,
         &Coin::new((amount - warchest_fee).u128(), String::from("uusd")),
     )?;
-    Ok(warchest_fee + anchor_withdraw_fee)
+    let stable_transfer_fee = compute_tax(
+        deps,
+        &Coin::new((amount - warchest_fee - anchor_withdraw_fee).u128(), String::from("uusd")),
+    )?;
+    // Two transfers (anchor -> vault -> user) so ~2x tax. 
+    Ok(warchest_fee + anchor_withdraw_fee + stable_transfer_fee)
 }
 
 //----------------------------------------------------------------------------------------
@@ -791,9 +796,9 @@ pub fn set_fee(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&try_query_config(deps)?),
+        QueryMsg::PoolConfig {} => to_binary(&try_query_config(deps)?),
+        QueryMsg::PoolState {} => to_binary(&try_query_pool_state(deps)?),
         QueryMsg::State {} => to_binary(&try_query_state(deps)?),
-        QueryMsg::Pool {} => to_binary(&try_query_pool(deps)?),
         QueryMsg::Fees {} => to_binary(&query_fees(deps)?),
         QueryMsg::VaultValue {} => to_binary(&query_total_value(deps)?),
         QueryMsg::EstimateWithdrawFee { amount } => {
@@ -832,7 +837,7 @@ pub fn try_query_state(deps: Deps) -> StdResult<State> {
     Ok(state)
 }
 
-pub fn try_query_pool(deps: Deps) -> StdResult<PoolResponse> {
+pub fn try_query_pool_state(deps: Deps) -> StdResult<PoolResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let assets: [Asset; 2] = info.query_pools(deps, info.contract_addr.clone())?;
     let total_share: Uint128 = query_supply(
