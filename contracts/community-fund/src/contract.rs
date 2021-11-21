@@ -1,4 +1,7 @@
-use cosmwasm_std::{Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_binary, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    WasmMsg,
+};
 use cw20::Cw20ExecuteMsg;
 use terraswap::querier::query_token_balance;
 
@@ -6,7 +9,7 @@ use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 
 use crate::error::CommunityFundError;
 use crate::msg::InstantiateMsg;
-use crate::state::{ADMIN, State, STATE};
+use crate::state::{State, ADMIN, STATE};
 
 /*
     The Community fund holds the protocol treasury and has control over the protocol owned liquidity.
@@ -33,7 +36,12 @@ pub fn instantiate(
     Ok(Response::default())
 }
 
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> CommunityFundResult {
+pub fn execute(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> CommunityFundResult {
     match msg {
         ExecuteMsg::Spend { recipient, amount } => {
             spend_whale(deps.as_ref(), info, recipient, amount)

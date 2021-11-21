@@ -200,14 +200,12 @@ pub fn handle_claim(
     user_info.claimed_amount = claim_amount;
     user_info.timestamp = env.block.time.seconds();
 
-    let mut messages = vec![];
-
     // TRANSFER WHALE IF CLAIMS ARE ALLOWED (i.e LP Boostrap auction has concluded)
-    messages.push(build_transfer_cw20_token_msg(
+    let messages = vec![build_transfer_cw20_token_msg(
         recipient.clone(),
         config.whale_token_address.to_string(),
         user_info.claimed_amount,
-    )?);
+    )?];
 
     USERS.save(deps.storage, &recipient, &user_info)?;
     STATE.save(deps.storage, &state)?;
