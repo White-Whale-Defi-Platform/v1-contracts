@@ -9,9 +9,8 @@ use terraswap::asset::AssetInfo;
 
 use white_whale::deposit_info::ArbBaseAsset;
 
-use crate::tests::common::{TEST_CREATOR, VAULT_CONTRACT};
-
 use crate::msg::*;
+use crate::tests::common::{TEST_CREATOR, VAULT_CONTRACT};
 use crate::tests::mock_querier::mock_dependencies;
 
 pub(crate) fn instantiate_msg() -> InstantiateMsg {
@@ -46,8 +45,7 @@ pub fn mock_instantiate(deps: DepsMut) {
 /**
  * Tests successful instantiation of the contract.
  */
-// TODO: Test candidate to fix
-    // #[test]
+#[test]
 fn successful_initialization() {
     let mut deps = mock_dependencies(&[]);
 
@@ -62,7 +60,7 @@ fn successful_initialization() {
         State {
             vault_address: deps.api.addr_canonicalize(&VAULT_CONTRACT).unwrap(),
             seignorage_address: deps.api.addr_canonicalize(&"seignorage").unwrap(),
-            pool_address: deps.api.addr_canonicalize(&"terraswap_pool ").unwrap(),
+            pool_address: deps.api.addr_canonicalize(&"terraswap_pool").unwrap(),
         }
     );
 
