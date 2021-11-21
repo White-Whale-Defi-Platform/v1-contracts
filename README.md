@@ -10,19 +10,7 @@ A novel decentralised arbitrage platform built on the [Terra](https://terra.mone
 | [`stable-arb-terra`](contracts/stable-arb-terra)           | UST arbitrage contract (using Terraswap LPs) |
 | [`stable-arb-astro`](contracts/stable-arb-astro)           | UST arbitrage contract (using Terraswap LPs) |
 | [`profit-check`](contracts/profit-check)                   | Profit checker for the UST vault             |
-| [`treasury`](contracts/treasury/treasury)                  | Treasury contract                            |
 | [`vesting`](contracts/vesting)                             | $WHALE vesting contract                      |
-
-## Treasury contracts
-
-Relative path: ../contracts/treasury
-
-| Name                                                       | Description                                      |
-| ---------------------------------------------------------- | ------------------------------------------------ |
-| [`treasury`](contracts/treasury/treasury)                  | Treasury contract, acts as proxy                 |
-| [`terraswap-dapp`](contracts/treasury/dapps/terraswap)     | Terraswap message generator contract             |
-| [`astroport-dapp`](contracts/treasury/dapps/astroport)     | Astroport message generator contract             |
-| [`terraswap-dapp`](contracts/treasury/dapps/terraswap)     | Terraswap message generator contract             |
 
 
 ## Tokenomics contracts
@@ -31,9 +19,19 @@ Relative path: ../contracts/tokenomics
 
 | Name                                                           | Description                                      |
 | -------------------------------------------------------------- | ------------------------------------------------ |
-| [`airdrop`](contracts/tokenomics/airdrop)                      | Airdrop contract                                 |
 | [`lp_emissions_proxy`](contracts/tokenomics/lp_emissions_proxy)| Rewards generator proxy for liquidity providers  |
 | [`lp_emissions`](contracts/tokenomics/lp_emissions)            | $WHALE LP emissions contract                     |
+## Treasury contracts
+
+THESE CONTRACTS ARE STILL WIP, DO NOT AUDIT!
+
+Relative path: ../contracts/treasury
+
+| Name                                                       | Description                                      |
+| ---------------------------------------------------------- | ------------------------------------------------ |
+| [`treasury`](contracts/treasury/treasury)                  | Treasury contract, acts as proxy                 |
+| [`terraswap-dapp`](contracts/treasury/dapps/terraswap)     | Terraswap message generator contract             |
+| [`astroport-dapp`](contracts/treasury/dapps/astroport)     | Astroport message generator contract             |
 
 ## Running this contract
 
