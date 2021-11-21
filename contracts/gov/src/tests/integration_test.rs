@@ -1,28 +1,26 @@
 #![cfg(test)]
 
-use cosmwasm_std::{Addr, BlockInfo, Empty, Uint128, Decimal, Timestamp, to_binary};
-use cosmwasm_std::testing::{ mock_env, MockApi, MockStorage};
-use cw_multi_test::{App, Contract, BankKeeper, ContractWrapper, Executor};
+use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
+use cosmwasm_std::{to_binary, Addr, BlockInfo, Decimal, Empty, Timestamp, Uint128};
+use cw_multi_test::{App, BankKeeper, Contract, ContractWrapper, Executor};
 
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 
+use crate::state::{Cw20HookMsg, PollExecuteMsg, VoteOption};
 use crate::tests::common::{
-    DEFAULT_EXPIRATION_PERIOD, DEFAULT_TIMELOCK_PERIOD,
-    DEFAULT_VOTING_PERIOD,DEFAULT_THRESHOLD, DEFAULT_QUORUM, DEFAULT_FIX_PERIOD,
-};
-use crate::state::{
-    Cw20HookMsg, PollExecuteMsg, VoteOption,
+    DEFAULT_EXPIRATION_PERIOD, DEFAULT_FIX_PERIOD, DEFAULT_QUORUM, DEFAULT_THRESHOLD,
+    DEFAULT_TIMELOCK_PERIOD, DEFAULT_VOTING_PERIOD,
 };
 
-use stablecoin_vault::contract::{execute, instantiate, query, reply};
-use terraswap::asset::{AssetInfo};
 use crate::tests::tswap_mock::{contract_receiver_mock, MockInstantiateMsg};
+use stablecoin_vault::contract::{execute, instantiate, query, reply};
+use stablecoin_vault::pool_info::PoolInfo;
+use terraswap::asset::AssetInfo;
 use white_whale::ust_vault::msg::InstantiateMsg as VaultInstantiateMsg;
-use stablecoin_vault::pool_info::{PoolInfo};
 
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 
-// Custom Vault Instant msg func which takes code ID 
+// Custom Vault Instant msg func which takes code ID
 pub fn instantiate_msg(token_code_id: u64) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
@@ -60,31 +58,26 @@ pub fn contract_gov() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn contract_stablecoin_vault() -> Box<dyn Contract<Empty>>{
-    let contract = ContractWrapper::new_with_empty(
-        execute,
-        instantiate,
-        query,
-    ).with_reply(reply);
+pub fn contract_stablecoin_vault() -> Box<dyn Contract<Empty>> {
+    let contract = ContractWrapper::new_with_empty(execute, instantiate, query).with_reply(reply);
     Box::new(contract)
 }
-
 
 pub fn mock_app() -> App<Empty> {
     let env = mock_env();
     let api = MockApi::default();
     let bank = BankKeeper::new();
-  
+
     App::new(api, env.block, bank, MockStorage::new())
-  }
+}
 
 #[test]
 // setup all contracts needed, and attempt to simply change the stable_cap AS-THE governance contract
 // this test attempts to send some WHALE token to a named address on creation
 // the gov_staker address then attempts to stake some tokens by sending a Cw20ExecuteMsg which contains a Cw20HookMsg for the gov contract
-// the gov_staker address then attempts to create a poll via the same method. The Poll contains the white_whale::ust_vault::msg::ExecuteMsg::SetStableCap message 
-// the gov_staker casts a Yes vote 
-// Time passing is simulated 
+// the gov_staker address then attempts to create a poll via the same method. The Poll contains the white_whale::ust_vault::msg::ExecuteMsg::SetStableCap message
+// the gov_staker casts a Yes vote
+// Time passing is simulated
 // Poll is ended and then executed
 // Verification is done to ensure the proposed change in the gov vote has been performed
 fn gov_can_update_the_stable_cap_parameter_of_vault() {
@@ -94,18 +87,18 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
     let owner = Addr::unchecked("owner");
     // Create the gov staker account
     let gov_staker = Addr::unchecked("gov_staker");
-    // Define a mock_app to be used for storing code and instantiating 
+    // Define a mock_app to be used for storing code and instantiating
     let mut router = mock_app();
-    // Store the stablecoin vault as a code object 
+    // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
-    // Store the gov contract as a code object 
+    // Store the gov contract as a code object
     let gov_id = router.store_code(contract_gov());
 
     // Set the block height and time, we will later modify this to simulate time passing
     let initial_block = BlockInfo {
         height: 0,
         time: Timestamp::from_seconds(1000),
-        chain_id: "terra-cosmwasm-testnet".to_string()
+        chain_id: "terra-cosmwasm-testnet".to_string(),
     };
     router.set_block(initial_block);
     // Lastly, store our terrswap mock which is a slimmed down Terraswap with no real functionality
@@ -143,19 +136,24 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         .instantiate_contract(whale_token_id, owner.clone(), &msg, &[], "WHALE", None)
         .unwrap();
 
-
     // set up cw20 helpers
     let cash = Cw20Contract(whale_token_instance.clone());
 
     // get staker balance
     let staker_balance = cash.balance(&router, gov_staker.clone()).unwrap();
-    // Verify the funds have been received 
+    // Verify the funds have been received
     assert_eq!(staker_balance, Uint128::new(5000));
-
 
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
     let tswap_addr = router
-        .instantiate_contract(terraswap_id, owner.clone(), &MockInstantiateMsg{}, &[], "TSWAP", None)
+        .instantiate_contract(
+            terraswap_id,
+            owner.clone(),
+            &MockInstantiateMsg {},
+            &[],
+            "TSWAP",
+            None,
+        )
         .unwrap();
 
     // Setup the gov contract
@@ -163,26 +161,31 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         .instantiate_contract(gov_id, owner.clone(), &gov_msg, &[], "GOV", None)
         .unwrap();
 
-    
     // Next setup the vault with the gov contract as the 'owner'
     let vault_addr = router
-        .instantiate_contract(vault_id, owner.clone(), &vault_msg, &[], "VAULT", Some(owner.to_string()))
+        .instantiate_contract(
+            vault_id,
+            owner.clone(),
+            &vault_msg,
+            &[],
+            "VAULT",
+            Some(owner.to_string()),
+        )
         .unwrap();
     // Ensure addresses are not equal to each other
     assert_ne!(gov_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
     assert_ne!(gov_addr, tswap_addr);
 
-    // Pass ownership of vault to gov 
-    let transfer_owner_msg = white_whale::ust_vault::msg::ExecuteMsg::SetAdmin{
-        admin: gov_addr.to_string()
+    // Pass ownership of vault to gov
+    let transfer_owner_msg = white_whale::ust_vault::msg::ExecuteMsg::SetAdmin {
+        admin: gov_addr.to_string(),
     };
     let _ = router
         .execute_contract(owner.clone(), vault_addr.clone(), &transfer_owner_msg, &[])
         .unwrap();
-    
 
-    // Register our whale token as the gov token 
+    // Register our whale token as the gov token
     let msg = ExecuteMsg::RegisterContracts {
         whale_token: whale_token_instance.to_string(),
     };
@@ -190,7 +193,7 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         .execute_contract(gov_staker.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
-    // TODO: maybe a check here later 
+    // TODO: maybe a check here later
 
     // Define the stake voting tokens msg and wrap it in a Cw20ExecuteMsg
     let msg = Cw20HookMsg::StakeVotingTokens {};
@@ -202,31 +205,36 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         msg: to_binary(&msg).unwrap(),
     };
     let _ = router
-        .execute_contract(gov_staker.clone(), whale_token_instance.clone(), &send_msg, &[])
+        .execute_contract(
+            gov_staker.clone(),
+            whale_token_instance.clone(),
+            &send_msg,
+            &[],
+        )
         .unwrap();
 
-
     // Get the current stable_cap to later compare with
-    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::Config{};
-    let pool_response:PoolInfo = router.wrap()
-        .query_wasm_smart(vault_addr.clone(), &config_msg).unwrap();
+    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::Config {};
+    let pool_response: PoolInfo = router
+        .wrap()
+        .query_wasm_smart(vault_addr.clone(), &config_msg)
+        .unwrap();
     let original_stable_cap: Uint128 = pool_response.stable_cap;
 
-    // TODO: Improve such that a Poll is created with the Gov contract and the Poll contains a message to 
+    // TODO: Improve such that a Poll is created with the Gov contract and the Poll contains a message to
     // change the slippage param on the vault
     // This would be the proper way to update it as it is not expected
     let stable_cap_change_msg = to_binary(&white_whale::ust_vault::msg::ExecuteMsg::SetStableCap {
         stable_cap: Uint128::from(new_stable_cap_value),
-    }).unwrap();
+    })
+    .unwrap();
 
     // push two execute msgs to the list
-    let execute_msgs: Vec<PollExecuteMsg> = vec![
-        PollExecuteMsg {
-            order: 1u64,
-            contract: vault_addr.to_string(),
-            msg: stable_cap_change_msg,
-        }
-    ]; 
+    let execute_msgs: Vec<PollExecuteMsg> = vec![PollExecuteMsg {
+        order: 1u64,
+        contract: vault_addr.to_string(),
+        msg: stable_cap_change_msg,
+    }];
 
     // Define the create poll msg and wrap it in a Cw20ExecuteMsg
     let create_msg = Cw20HookMsg::CreatePoll {
@@ -241,12 +249,17 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         msg: to_binary(&create_msg).unwrap(),
     };
     let res = router
-        .execute_contract(gov_staker.clone(), whale_token_instance.clone(), &send_msg, &[])
+        .execute_contract(
+            gov_staker.clone(),
+            whale_token_instance.clone(),
+            &send_msg,
+            &[],
+        )
         .unwrap();
 
     println!("{:?}", res.events);
 
-    // Get gov staker to vote yes 
+    // Get gov staker to vote yes
     let msg = ExecuteMsg::CastVote {
         poll_id: 1,
         vote: VoteOption::Yes,
@@ -256,16 +269,16 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         .execute_contract(gov_staker.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
-    // Now simulate passing of time 
+    // Now simulate passing of time
     // Set the block height and time, we will later modify this to simulate time passing
     let new_block = BlockInfo {
-        height: DEFAULT_VOTING_PERIOD+DEFAULT_TIMELOCK_PERIOD+1,
-        time: Timestamp::from_seconds(DEFAULT_VOTING_PERIOD+DEFAULT_TIMELOCK_PERIOD+1),
-        chain_id: "terra-cosmwasm-testnet".to_string()
+        height: DEFAULT_VOTING_PERIOD + DEFAULT_TIMELOCK_PERIOD + 1,
+        time: Timestamp::from_seconds(DEFAULT_VOTING_PERIOD + DEFAULT_TIMELOCK_PERIOD + 1),
+        chain_id: "terra-cosmwasm-testnet".to_string(),
     };
     router.set_block(new_block);
 
-    // End poll 
+    // End poll
     let msg = ExecuteMsg::EndPoll { poll_id: 1 };
     let _ = router
         .execute_contract(gov_addr.clone(), gov_addr.clone(), &msg, &[])
@@ -277,46 +290,50 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         .execute_contract(owner.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
-
     // Get the new stable_cap
-    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::Config{};
-    let pool_response:PoolInfo = router.wrap()
-        .query_wasm_smart(vault_addr.clone(), &config_msg).unwrap();
+    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::Config {};
+    let pool_response: PoolInfo = router
+        .wrap()
+        .query_wasm_smart(vault_addr.clone(), &config_msg)
+        .unwrap();
     let new_stable_cap: Uint128 = pool_response.stable_cap;
     // Ensure the stable cap has been updated to a new value
-    assert_ne!(original_stable_cap, new_stable_cap, "The original stable cap logged before gov proposal is the same as the new stable cap");
-    assert_eq!(new_stable_cap, Uint128::from(new_stable_cap_value), "The new stable cap is not set to the expected value")
+    assert_ne!(
+        original_stable_cap, new_stable_cap,
+        "The original stable cap logged before gov proposal is the same as the new stable cap"
+    );
+    assert_eq!(
+        new_stable_cap,
+        Uint128::from(new_stable_cap_value),
+        "The new stable cap is not set to the expected value"
+    )
 }
 
 // Can set fee
 #[test]
-fn gov_can_set_fees_for_vault(){
-
-}
+fn gov_can_set_fees_for_vault() {}
 // Can add and remove from/to whitelist
 #[test]
-fn gov_can_whitelist_address_and_remove_addr_from_whitelist_through_polls(){
-
-}
+fn gov_can_whitelist_address_and_remove_addr_from_whitelist_through_polls() {}
 // gov can update state
 #[test]
-fn gov_can_update_vault_config_through_polls(){
+fn gov_can_update_vault_config_through_polls() {
     // Create the owner account
     let owner = Addr::unchecked("owner");
     // Create the gov staker account
     let gov_staker = Addr::unchecked("gov_staker");
-    // Define a mock_app to be used for storing code and instantiating 
+    // Define a mock_app to be used for storing code and instantiating
     let mut router = mock_app();
-    // Store the stablecoin vault as a code object 
+    // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
-    // Store the gov contract as a code object 
+    // Store the gov contract as a code object
     let gov_id = router.store_code(contract_gov());
 
     // Set the block height and time, we will later modify this to simulate time passing
     let initial_block = BlockInfo {
         height: 0,
         time: Timestamp::from_seconds(1000),
-        chain_id: "terra-cosmwasm-testnet".to_string()
+        chain_id: "terra-cosmwasm-testnet".to_string(),
     };
     router.set_block(initial_block);
     // Lastly, store our terrswap mock which is a slimmed down Terraswap with no real functionality
@@ -354,19 +371,24 @@ fn gov_can_update_vault_config_through_polls(){
         .instantiate_contract(whale_token_id, owner.clone(), &msg, &[], "WHALE", None)
         .unwrap();
 
-
     // set up cw20 helpers
     let cash = Cw20Contract(whale_token_instance.clone());
 
     // get staker balance
     let staker_balance = cash.balance(&router, gov_staker.clone()).unwrap();
-    // Verify the funds have been received 
+    // Verify the funds have been received
     assert_eq!(staker_balance, Uint128::new(5000));
-
 
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
     let tswap_addr = router
-        .instantiate_contract(terraswap_id, owner.clone(), &MockInstantiateMsg{}, &[], "TSWAP", None)
+        .instantiate_contract(
+            terraswap_id,
+            owner.clone(),
+            &MockInstantiateMsg {},
+            &[],
+            "TSWAP",
+            None,
+        )
         .unwrap();
 
     // Setup the gov contract
@@ -374,26 +396,31 @@ fn gov_can_update_vault_config_through_polls(){
         .instantiate_contract(gov_id, owner.clone(), &gov_msg, &[], "GOV", None)
         .unwrap();
 
-    
     // Next setup the vault with the gov contract as the 'owner'
     let vault_addr = router
-        .instantiate_contract(vault_id, owner.clone(), &vault_msg, &[], "VAULT", Some(owner.to_string()))
+        .instantiate_contract(
+            vault_id,
+            owner.clone(),
+            &vault_msg,
+            &[],
+            "VAULT",
+            Some(owner.to_string()),
+        )
         .unwrap();
     // Ensure addresses are not equal to each other
     assert_ne!(gov_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
     assert_ne!(gov_addr, tswap_addr);
 
-    // Pass ownership of vault to gov 
-    let transfer_owner_msg = white_whale::ust_vault::msg::ExecuteMsg::SetAdmin{
-        admin: gov_addr.to_string()
+    // Pass ownership of vault to gov
+    let transfer_owner_msg = white_whale::ust_vault::msg::ExecuteMsg::SetAdmin {
+        admin: gov_addr.to_string(),
     };
     let _ = router
         .execute_contract(owner.clone(), vault_addr.clone(), &transfer_owner_msg, &[])
         .unwrap();
-    
 
-    // Register our whale token as the gov token 
+    // Register our whale token as the gov token
     let msg = ExecuteMsg::RegisterContracts {
         whale_token: whale_token_instance.to_string(),
     };
@@ -401,7 +428,7 @@ fn gov_can_update_vault_config_through_polls(){
         .execute_contract(gov_staker.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
-    // TODO: maybe a check here later 
+    // TODO: maybe a check here later
 
     // Define the stake voting tokens msg and wrap it in a Cw20ExecuteMsg
     let msg = Cw20HookMsg::StakeVotingTokens {};
@@ -413,32 +440,37 @@ fn gov_can_update_vault_config_through_polls(){
         msg: to_binary(&msg).unwrap(),
     };
     let _ = router
-        .execute_contract(gov_staker.clone(), whale_token_instance.clone(), &send_msg, &[])
+        .execute_contract(
+            gov_staker.clone(),
+            whale_token_instance.clone(),
+            &send_msg,
+            &[],
+        )
         .unwrap();
 
-
     // Get the current stable_cap to later compare with
-    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::State{};
-   
-    let state_response:white_whale::ust_vault::msg::StateResponse = router.wrap()
-        .query_wasm_smart(vault_addr.clone(), &config_msg).unwrap();
+    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::State {};
+
+    let state_response: white_whale::ust_vault::msg::StateResponse = router
+        .wrap()
+        .query_wasm_smart(vault_addr.clone(), &config_msg)
+        .unwrap();
     let original_profit_check_addr: String = state_response.profit_check_address;
 
     let stable_cap_change_msg = to_binary(&white_whale::ust_vault::msg::ExecuteMsg::UpdateState {
         anchor_money_market_address: Some("market_addr".to_string()),
         aust_address: Some("aust".to_string()),
         profit_check_address: Some("profit".to_string()),
-        allow_non_whitelisted: Some(false)
-    }).unwrap();
+        allow_non_whitelisted: Some(false),
+    })
+    .unwrap();
 
     // push two execute msgs to the list
-    let execute_msgs: Vec<PollExecuteMsg> = vec![
-        PollExecuteMsg {
-            order: 1u64,
-            contract: vault_addr.to_string(),
-            msg: stable_cap_change_msg,
-        }
-    ]; 
+    let execute_msgs: Vec<PollExecuteMsg> = vec![PollExecuteMsg {
+        order: 1u64,
+        contract: vault_addr.to_string(),
+        msg: stable_cap_change_msg,
+    }];
 
     // Define the create poll msg and wrap it in a Cw20ExecuteMsg
     let create_msg = Cw20HookMsg::CreatePoll {
@@ -453,12 +485,17 @@ fn gov_can_update_vault_config_through_polls(){
         msg: to_binary(&create_msg).unwrap(),
     };
     let res = router
-        .execute_contract(gov_staker.clone(), whale_token_instance.clone(), &send_msg, &[])
+        .execute_contract(
+            gov_staker.clone(),
+            whale_token_instance.clone(),
+            &send_msg,
+            &[],
+        )
         .unwrap();
 
     println!("{:?}", res.events);
 
-    // Get gov staker to vote yes 
+    // Get gov staker to vote yes
     let msg = ExecuteMsg::CastVote {
         poll_id: 1,
         vote: VoteOption::Yes,
@@ -468,16 +505,16 @@ fn gov_can_update_vault_config_through_polls(){
         .execute_contract(gov_staker.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
-    // Now simulate passing of time 
+    // Now simulate passing of time
     // Set the block height and time, we will later modify this to simulate time passing
     let new_block = BlockInfo {
-        height: DEFAULT_VOTING_PERIOD+DEFAULT_TIMELOCK_PERIOD+1,
-        time: Timestamp::from_seconds(DEFAULT_VOTING_PERIOD+DEFAULT_TIMELOCK_PERIOD+1),
-        chain_id: "terra-cosmwasm-testnet".to_string()
+        height: DEFAULT_VOTING_PERIOD + DEFAULT_TIMELOCK_PERIOD + 1,
+        time: Timestamp::from_seconds(DEFAULT_VOTING_PERIOD + DEFAULT_TIMELOCK_PERIOD + 1),
+        chain_id: "terra-cosmwasm-testnet".to_string(),
     };
     router.set_block(new_block);
 
-    // End poll 
+    // End poll
     let msg = ExecuteMsg::EndPoll { poll_id: 1 };
     let _ = router
         .execute_contract(gov_addr.clone(), gov_addr.clone(), &msg, &[])
@@ -489,14 +526,16 @@ fn gov_can_update_vault_config_through_polls(){
         .execute_contract(owner.clone(), gov_addr.clone(), &msg, &[])
         .unwrap();
 
-
     // Get the new stable_cap
-    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::State{};
-    let state_response:white_whale::ust_vault::msg::StateResponse = router.wrap()
-        .query_wasm_smart(vault_addr.clone(), &config_msg).unwrap();
+    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::State {};
+    let state_response: white_whale::ust_vault::msg::StateResponse = router
+        .wrap()
+        .query_wasm_smart(vault_addr.clone(), &config_msg)
+        .unwrap();
     let new_profit_check_addr: String = state_response.profit_check_address;
     // Ensure the stable cap has been updated to a new value
-    assert_ne!(original_profit_check_addr, new_profit_check_addr, "The original stable cap logged before gov proposal is the same as the new stable cap");
-
+    assert_ne!(
+        original_profit_check_addr, new_profit_check_addr,
+        "The original stable cap logged before gov proposal is the same as the new stable cap"
+    );
 }
-

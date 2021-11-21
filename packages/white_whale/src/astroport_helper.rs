@@ -5,10 +5,10 @@ use cosmwasm_std::{Addr, Uint128};
 use std::fmt;
 
 use cosmwasm_std::{
-    to_binary, BankMsg, Coin, CosmosMsg, Decimal, MessageInfo, QuerierWrapper, StdError,
-    StdResult, WasmMsg,
+    to_binary, BankMsg, Coin, CosmosMsg, Decimal, MessageInfo, QuerierWrapper, StdError, StdResult,
+    WasmMsg,
 };
-use cw20::{Cw20ExecuteMsg,Cw20ReceiveMsg};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terra_cosmwasm::TerraQuerier;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -37,7 +37,6 @@ pub enum AstroportExecuteMsg {
     },
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AstroportCw20HookMsg {
@@ -48,7 +47,6 @@ pub enum AstroportCw20HookMsg {
     },
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AstroportQueryMsg {
@@ -58,7 +56,6 @@ pub enum AstroportQueryMsg {
         operations: Vec<SwapOperation>,
     },
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -72,9 +69,6 @@ pub enum SwapOperation {
         ask_asset_info: AssetInfo,
     },
 }
-
-
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Asset {
@@ -318,7 +312,6 @@ pub struct CumulativePricesResponse {
     pub price0_cumulative_last: Uint128,
     pub price1_cumulative_last: Uint128,
 }
-
 
 pub fn create_astroport_msg(
     offer: Coin,
