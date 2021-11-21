@@ -119,13 +119,6 @@ fn stablecoin_vault_fees_are_allocated() {
         spend_limit: Uint128::from(1_000_000u128),
     };
 
-    // Setup Profit Check
-    let chest_msg = InstantiateMsg {
-        admin_addr: owner.to_string(),
-        whale_token_addr: whale_token_instance.to_string(),
-        spend_limit: Uint128::from(1_000_000u128),
-    };
-
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
     let tswap_addr = router
         .instantiate_contract(
@@ -224,7 +217,7 @@ fn stablecoin_vault_fees_are_allocated() {
         recipient: lp_token.to_string(),
         amount: Uint128::new(1000),
     };
-    let res = router
+    router
         .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
         .unwrap();
 
@@ -249,7 +242,7 @@ fn stablecoin_vault_fees_are_allocated() {
             amount: Uint128::new(DEFAULT_SMALL_AMOUNT_OF_UST),
         },
     };
-    let res = router
+    router
         .execute_contract(
             owner.clone(),
             vault_addr.clone(),
@@ -279,7 +272,7 @@ fn stablecoin_vault_fees_are_allocated() {
         .unwrap();
     println!("{:?}", res.events);
 
-    
+
     let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
 
     // Verify warchest has received some fees (WIP)
@@ -387,13 +380,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         spend_limit: Uint128::from(1_000_000u128),
     };
 
-    // Setup Profit Check
-    let chest_msg = InstantiateMsg {
-        admin_addr: owner.to_string(),
-        whale_token_addr: whale_token_instance.to_string(),
-        spend_limit: Uint128::from(1_000_000u128),
-    };
-
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
     let tswap_addr = router
         .instantiate_contract(
@@ -492,7 +478,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         recipient: lp_token.to_string(),
         amount: Uint128::new(1000),
     };
-    let res = router
+    router
         .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
         .unwrap();
 
@@ -504,7 +490,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault {
         vault_address: vault_addr.to_string(),
     };
-    let _ = router
+    router
         .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
         .unwrap();
 

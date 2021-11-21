@@ -37,8 +37,7 @@ pub fn mock_deposit() {
 
 
     let info = mock_info(TEST_CREATOR, &coins(1000, "uusd"));
-    let execute_res = execute(deps.as_mut(), env, info, msg);
-
+    execute(deps.as_mut(), env, info, msg);
 }
 /**
  * Tests successful instantiation of the contract.

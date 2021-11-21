@@ -28,18 +28,6 @@ use crate::tests::common_integration::{
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
-const INSTANTIATE_REPLY_ID: u8 = 1u8;
-
-/**
- * Mocks call for loan. Should update balance of caller if successfull.
- */
-/*pub fn mock_flash_loan(deps: DepsMut) {
-    let info = mock_info(TEST_CREATOR, &[]);
-    let _res = instantiate(deps, mock_env(), info, msg)
-        .expect("contract successfully handles InstantiateMsg");
-    // Set mock value on profit check
-    // Update balances of caller and vault
-}*/
 #[test]
 fn unsuccessful_flashloan_no_base_token() {
     let mut deps = mock_dependencies(&[]);

@@ -3,7 +3,6 @@ use cosmwasm_std::{Decimal, Uint128};
 use cosmwasm_std::testing::{mock_env, mock_info};
 use terraswap::asset::{Asset, AssetInfo};
 
-use white_whale::fee::*;
 use white_whale::ust_vault::msg::*;
 use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 
@@ -53,7 +52,7 @@ pub fn test_state_query() {
 
 
     let info = mock_info(TEST_CREATOR, &coins(1000, "uusd"));
-    let execute_res = execute(deps.as_mut(), env.clone(), info, msg);
+    execute(deps.as_mut(), env.clone(), info, msg);
 
 
     let q_res: StateResponse =
@@ -70,7 +69,7 @@ pub fn test_pool_query() {
     mock_instantiate(deps.as_mut());
     let env = mock_env();
 
-    let info = mock_info(TEST_CREATOR, &[]);
+    //let info = mock_info(TEST_CREATOR, &[]);
 
     let q_res: PoolResponse =
         from_binary(&query(deps.as_ref(), env, QueryMsg::Pool {}).unwrap()).unwrap();
