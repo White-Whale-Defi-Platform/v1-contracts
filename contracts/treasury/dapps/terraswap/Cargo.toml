@@ -1,5 +1,5 @@
 [package]
-name = "terraswap"
+name = "terraswap-dapp"
 version = "0.1.0"
 authors = ["White Whale"]
 edition = "2018"
