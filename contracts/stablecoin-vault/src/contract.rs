@@ -602,7 +602,9 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
         deps,
         &Coin::new((amount - warchest_fee).u128(), String::from("uusd")),
     )?;
-    // Two transfers (anchor -> vault -> user) so 2x tax
+    // Two transfers (anchor -> vault -> user) so ~2x tax. 
+    // Small deviation on small withdrawals is acceptable.
+    // This function is only used for front-end. 
     Ok(warchest_fee + Uint128::from(2u8) * anchor_withdraw_fee)
 }
 
