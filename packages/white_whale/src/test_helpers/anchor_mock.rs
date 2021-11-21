@@ -1,4 +1,4 @@
-use cosmwasm_std::{from_binary, to_binary, Addr, attr, Binary, Empty, CosmosMsg, WasmMsg, Response, StdResult, Uint128};
+use cosmwasm_std::{from_binary, to_binary, Addr, attr, Binary, Empty, CosmosMsg, WasmMsg, Response, StdResult, Uint128, BankMsg, Coin, StdError};
 use cosmwasm_bignumber::{Decimal256, Uint256};
 
 use cw20::Cw20ReceiveMsg;
@@ -24,7 +24,9 @@ pub struct PingMsg {
 pub enum MockExecuteMsg {
     Receive(Cw20ReceiveMsg),
     DepositStable{},
-    RedeemStable{}
+    RedeemStable{
+        burn_amount: Uint128
+    }
 }
 
 // We define a custom struct for each query response
@@ -42,6 +44,13 @@ pub struct PairResponse {
     pub liquidity_token: String
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw20HookMsg {
+    /// Return stable coins to a user
+    /// according to exchange rate
+    RedeemStable {},
+}
 
 pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -49,13 +58,42 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
             match msg {
                 MockExecuteMsg::Receive(Cw20ReceiveMsg {
                     sender: _,
-                    amount: _,
+                    amount,
                     msg,
                 }) => {
-                    let received: PingMsg = from_binary(&msg)?;
-                    Ok(Response::new()
-                        .add_attribute("action", "pong")
-                        .set_data(to_binary(&received.payload)?))
+                    match from_binary(&msg) {
+                        Ok(Cw20HookMsg::RedeemStable {}) => {
+                            let redeem_amount = Uint256::from(amount) * Decimal256::percent(120);
+                            Ok(Response::new()
+                                .add_messages(vec![
+                                    CosmosMsg::Wasm(WasmMsg::Execute {
+                                        contract_addr: deps.api.addr_humanize(&deps.api.addr_canonicalize(&String::from("Contract #2"))?)?.to_string(),
+                                        funds: vec![],
+                                        msg: to_binary(&Cw20ExecuteMsg::Burn {
+                                            amount:amount,
+                                        })?,
+                                    }),
+                                    CosmosMsg::Bank(BankMsg::Send {
+                                        to_address: info.sender.to_string(),
+                                        amount: vec![
+                                            Coin {
+                                                denom: "uusd".to_string(),
+                                                amount: redeem_amount.into(),
+                                            },
+                                        ],
+                                    }),
+                                ])
+                                .add_attributes(vec![
+                                    attr("action", "redeem_stable"),
+                                    attr("burn_amount", amount),
+                                    attr("redeem_amount", redeem_amount),
+                                ]))
+                        }
+                        _ => Err(StdError::generic_err("Unauthorized"))
+
+                    }
+
+
                 },
                 MockExecuteMsg::DepositStable {} => {
 
@@ -72,7 +110,7 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
                     // Perform a mint from the contract 
                     Ok(Response::new()
                         .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-                            contract_addr: deps.api.addr_humanize(&deps.api.addr_canonicalize(&String::from("test_aust"))?)?.to_string(),
+                            contract_addr: deps.api.addr_humanize(&deps.api.addr_canonicalize(&String::from("Contract #2"))?)?.to_string(),
                             funds: vec![],
                             msg: to_binary(&Cw20ExecuteMsg::Mint {
                                 recipient: info.sender.to_string(),
@@ -86,9 +124,32 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
                             attr("deposit_amount", deposit_amount),
                         ]))
                 },
-                MockExecuteMsg::RedeemStable {} => {
+                MockExecuteMsg::RedeemStable { burn_amount } => {
+                    let redeem_amount = Uint256::from(burn_amount) * Decimal256::percent(120);
                     Ok(Response::new()
-                        .add_attribute("action", "pong"))
+                        .add_messages(vec![
+                            CosmosMsg::Wasm(WasmMsg::Execute {
+                                contract_addr: deps.api.addr_humanize(&deps.api.addr_canonicalize(&String::from("Contract #2"))?)?.to_string(),
+                                funds: vec![],
+                                msg: to_binary(&Cw20ExecuteMsg::Burn {
+                                    amount: burn_amount,
+                                })?,
+                            }),
+                            CosmosMsg::Bank(BankMsg::Send {
+                                to_address: info.sender.to_string(),
+                                amount: vec![
+                                    Coin {
+                                        denom: "uusd".to_string(),
+                                        amount: redeem_amount.into(),
+                                    },
+                                ],
+                            }),
+                        ])
+                        .add_attributes(vec![
+                            attr("action", "redeem_stable"),
+                            attr("burn_amount", burn_amount),
+                            attr("redeem_amount", redeem_amount),
+                        ]))
                         
                 }
             }
