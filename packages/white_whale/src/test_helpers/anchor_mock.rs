@@ -97,7 +97,6 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
                 },
                 MockExecuteMsg::DepositStable {} => {
 
-                    println!("Hello from the anchor mock \n\n ");
                     // Check base denom deposit
                     let deposit_amount: Uint256 = info
                     .funds

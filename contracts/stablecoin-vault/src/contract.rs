@@ -335,7 +335,6 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
     if stables_in_contract > info.stable_cap * Decimal::percent(150) {
 
-        println!("Lets deposit some ");
         let deposit_amount = stables_in_contract - info.stable_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
         let deposit_msg = anchor_deposit_msg(
@@ -343,7 +342,6 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
             deps.api.addr_humanize(&state.anchor_money_market_address)?,
             anchor_deposit,
         )?;
-        println!("Less go ");
         return Ok(response.add_message(deposit_msg));
     };
 
@@ -364,7 +362,6 @@ pub fn try_withdraw_liquidity(
     let state = STATE.load(deps.storage)?;
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let fee_config = FEE.load(deps.storage)?;
-    println!("\n\n\n\n In withdraw");
     // User is not able to withdraw from the vault if he is using the flashloan
     let profit_check_response: LastBalanceResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
@@ -396,7 +393,6 @@ pub fn try_withdraw_liquidity(
 
     // Init response
     let mut response = Response::new();
-    println!("{:?}", deps.api.addr_humanize(&state.aust_address));
     // Available aUST
     let max_aust_amount = query_token_balance(
         &deps.querier,
@@ -473,15 +469,12 @@ pub fn try_withdraw_liquidity(
         info: AssetInfo::NativeToken { denom },
         amount: refund_amount,
     };
-    println!("Compute taxes");
     let tax_assed = refund_asset.deduct_tax(&deps.querier)?;
-    println!("\n\n\n\n In withdraw about to prep the Bank tx to send funds");
 
     let refund_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender,
         amount: vec![tax_assed],
     });
-    println!("\n\n\n\n After refund");
     // LP burn msg
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),

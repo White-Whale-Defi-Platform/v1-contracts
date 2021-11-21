@@ -258,7 +258,6 @@ fn stablecoin_vault_fees_are_allocated() {
         )
         .unwrap();
 
-    println!("{:?}", res.events);
     set_liq_token_addr(lp_token.to_string());
 
     // Withdraw some liquidity
@@ -280,10 +279,7 @@ fn stablecoin_vault_fees_are_allocated() {
         .unwrap();
     println!("{:?}", res.events);
 
-    // let resp = router.wrap().query_all_balances(warchest_addr.clone());
-    // println!("{:?}", resp);
-    // assert_ne!(resp.unwrap().amount, Uint128::zero())
-    // set up a helper for UST
+    
     let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
 
     // Verify warchest has received some fees (WIP)
@@ -552,10 +548,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         .unwrap();
     println!("{:?}", res.events);
 
-    // let resp = router.wrap().query_all_balances(warchest_addr.clone());
-    // println!("{:?}", resp);
-    // assert_ne!(resp.unwrap().amount, Uint128::zero())
-    // set up a helper for UST
     let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
 
     // Verify warchest has received some fees (WIP)
