@@ -1,11 +1,19 @@
 #![allow(dead_code)]
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, Coin, ContractResult, Empty, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Empty, OwnedDeps,
+    Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
+use cosmwasm_bignumber::{Decimal256, Uint256};
+
+use cosmwasm_storage::to_length_prefixed;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
+use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
+use terraswap::pair::PoolResponse;
+use white_whale::profit_check::msg::LastBalanceResponse;
+use white_whale::test_helpers::anchor_mock::{mock_epoch_state};
+use white_whale::query::anchor::{EpochStateResponse};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -13,7 +21,7 @@ pub fn mock_dependencies(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier> {
     let custom_querier: WasmMockQuerier =
-        WasmMockQuerier::new(MockQuerier::new(&[(&MOCK_CONTRACT_ADDR, contract_balance)]));
+        WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
     OwnedDeps {
         api: MockApi::default(),
@@ -22,8 +30,19 @@ pub fn mock_dependencies(
     }
 }
 
+// #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+// #[serde(rename_all = "snake_case")]
+// pub enum MockQueryMsg {
+//     Balance {},
+//     EpochState {
+//         distributed_interest,
+//         block_height
+//     }
+// }
+
 pub struct WasmMockQuerier {
     base: MockQuerier<Empty>,
+    terraswap_pair_querier: TerraswapPairQuerier,
     token_querier: TokenQuerier,
 }
 
@@ -56,6 +75,27 @@ pub(crate) fn balances_to_map(
     balances_map
 }
 
+#[derive(Clone, Default)]
+pub struct TerraswapPairQuerier {
+    pairs: HashMap<String, PairInfo>,
+}
+
+impl TerraswapPairQuerier {
+    pub fn new(pairs: &[(&String, &PairInfo)]) -> Self {
+        TerraswapPairQuerier {
+            pairs: pairs_to_map(pairs),
+        }
+    }
+}
+
+pub(crate) fn pairs_to_map(pairs: &[(&String, &PairInfo)]) -> HashMap<String, PairInfo> {
+    let mut pairs_map: HashMap<String, PairInfo> = HashMap::new();
+    for (key, pair) in pairs.iter() {
+        pairs_map.insert(key.to_string(), (*pair).clone());
+    }
+    pairs_map
+}
+
 impl Querier for WasmMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
         // MockQuerier doesn't support Custom, so we ignore it completely here
@@ -76,39 +116,166 @@ impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                match from_binary(&msg).unwrap() {
-                    Cw20QueryMsg::Balance { address } => {
-                        let balances: &HashMap<String, Uint128> =
-                            match self.token_querier.balances.get(contract_addr) {
-                                Some(balances) => balances,
+
+                // Handle calls for Profit Check; LastBalance
+                if contract_addr == &String::from("test_profit_check") {
+                    println!("{:?}", request);
+
+                    return SystemResult::Ok(ContractResult::from(to_binary(&LastBalanceResponse{
+                        last_balance: Uint128::zero()
+                    })));
+                }
+                // Handle calls for Profit Check; LastBalance
+                if contract_addr == &String::from("test_mm") {
+                    println!("{:?}", request);
+
+                    // Handle Anchor EpochStateQuery
+                    if msg == &Binary::from(r#"{"epoch_state":{}}"#.as_bytes()) {
+                        return SystemResult::Ok(ContractResult::from(to_binary(&EpochStateResponse{
+                            exchange_rate: Decimal256::percent(120),
+                            aterra_supply: Uint256::from(1000000u64)
+                        })));
+                    }
+                    return SystemResult::Ok(ContractResult::from(to_binary(&EpochStateResponse{
+                        exchange_rate: Decimal256::percent(120),
+                        aterra_supply: Uint256::from(1000000u64)
+                    })));
+                }
+                // Handle calls for Profit Check; LastBalance
+                if contract_addr == &String::from("test_aust") {
+                    println!("{:?}", request);
+
+                    // Handle Anchor EpochStateQuery
+                    if msg == &Binary::from(r#"{"epoch_state":{}}"#.as_bytes()) {
+                        return SystemResult::Ok(ContractResult::from(to_binary(&mock_epoch_state())));
+                    }
+
+
+                    return SystemResult::Ok(ContractResult::from(to_binary(&Cw20BalanceResponse {
+                        balance: Uint128::zero(),
+                    })));
+                }
+                // Handle calls for Pair Info
+                if contract_addr == &String::from("PAIR0000") {
+                    println!("{:?}", request);
+
+                    if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
+                        let msg_pool = PoolResponse {
+                            assets: [
+                                Asset {
+                                    amount: Uint128::from(10000u128),
+                                    info: AssetInfo::NativeToken {
+                                        denom: "whale".to_string(),
+                                    },
+                                },
+                                Asset {
+                                    amount: Uint128::from(10000u128),
+                                    info: AssetInfo::NativeToken {
+                                        denom: "uusd".to_string(),
+                                    },
+                                },
+                            ],
+                            total_share: Uint128::from(1000u128),
+                        };
+                        return SystemResult::Ok(ContractResult::from(to_binary(&msg_pool)));
+                    }
+
+                    let msg_balance = PairInfo {
+                        asset_infos: [
+                            AssetInfo::NativeToken {
+                                denom: "whale".to_string(),
+                            },
+                            AssetInfo::NativeToken {
+                                denom: "uusd".to_string(),
+                            },
+                        ],
+                        contract_addr: "PAIR0000".to_string(),
+                        liquidity_token: "liquidity0000".to_string(),
+                    };
+
+                    return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)));
+                } else {
+                    match from_binary(&msg).unwrap() {
+                        // AnchorQuery::EpochState{ distributed_interest, aterra_supply} => {
+
+                        //     return SystemResult::Ok(ContractResult::Ok(
+                        //         to_binary(&EpochStateResponse{
+                        //             exchange_rate: Decimal256::percent(120),
+                        //             aterra_supply: Uint256::from(1000000u64)
+                        //         }).unwrap()
+                        //     ))
+                        // }
+
+                        Cw20QueryMsg::Balance { address } => {
+                            let balances: &HashMap<String, Uint128> =
+                                match self.token_querier.balances.get(contract_addr) {
+                                    Some(balances) => balances,
+                                    None => {
+                                        return SystemResult::Err(SystemError::InvalidRequest {
+                                            error: format!(
+                                                "No balance info exists for the contract {}",
+                                                contract_addr
+                                            ),
+                                            request: msg.as_slice().into(),
+                                        })
+                                    }
+                                };
+
+                            let balance = match balances.get(&address) {
+                                Some(v) => *v,
                                 None => {
-                                    return SystemResult::Err(SystemError::InvalidRequest {
-                                        error: format!(
-                                            "No balance info exists for the contract {}",
-                                            contract_addr
-                                        ),
-                                        request: msg.as_slice().into(),
-                                    })
+                                    return SystemResult::Ok(ContractResult::Ok(
+                                        to_binary(&Cw20BalanceResponse {
+                                            balance: Uint128::zero(),
+                                        })
+                                        .unwrap(),
+                                    ));
                                 }
                             };
 
-                        let balance = match balances.get(&address) {
-                            Some(v) => *v,
+                            SystemResult::Ok(ContractResult::Ok(
+                                to_binary(&Cw20BalanceResponse { balance }).unwrap(),
+                            ))
+                        }
+                        _ => panic!("DO NOT ENTER HERE"),
+                    }
+                }
+            }
+            QueryRequest::Wasm(WasmQuery::Raw { contract_addr, key }) => {
+                let key: &[u8] = key.as_slice();
+                let prefix_pair_info = to_length_prefixed(b"pair_info").to_vec();
+
+                if key.to_vec() == prefix_pair_info {
+                    let pair_info: PairInfo =
+                        match self.terraswap_pair_querier.pairs.get(contract_addr) {
+                            Some(v) => v.clone(),
                             None => {
-                                return SystemResult::Ok(ContractResult::Ok(
-                                    to_binary(&Cw20BalanceResponse {
-                                        balance: Uint128::zero(),
-                                    })
-                                    .unwrap(),
-                                ));
+                                return SystemResult::Err(SystemError::InvalidRequest {
+                                    error: format!("PairInfo is not found for {}", contract_addr),
+                                    request: key.into(),
+                                })
                             }
                         };
 
-                        SystemResult::Ok(ContractResult::Ok(
-                            to_binary(&Cw20BalanceResponse { balance }).unwrap(),
-                        ))
-                    }
-                    _ => panic!("DO NOT ENTER HERE"),
+                    let api: MockApi = MockApi::default();
+                    SystemResult::Ok(ContractResult::from(to_binary(&PairInfoRaw {
+                        contract_addr: api
+                            .addr_canonicalize(pair_info.contract_addr.as_str())
+                            .unwrap(),
+                        liquidity_token: api
+                            .addr_canonicalize(pair_info.liquidity_token.as_str())
+                            .unwrap(),
+                        asset_infos: [
+                            AssetInfoRaw::NativeToken {
+                                denom: "uusd".to_string(),
+                            },
+                            AssetInfoRaw::NativeToken {
+                                denom: "uusd".to_string(),
+                            },
+                        ],
+                    })))
+                } else {
+                    panic!("DO NOT ENTER HERE")
                 }
             }
             _ => self.base.handle_query(request),
@@ -120,12 +287,19 @@ impl WasmMockQuerier {
     pub fn new(base: MockQuerier<Empty>) -> Self {
         WasmMockQuerier {
             base,
+            terraswap_pair_querier: TerraswapPairQuerier::default(),
             token_querier: TokenQuerier::default(),
         }
     }
 
-    // configure the mint whitelist mock querier
-    pub fn with_token_balances(&mut self, balances: &[(&String, &[(&String, &Uint128)])]) {
-        self.token_querier = TokenQuerier::new(balances);
+    // configure the terraswap pair
+    pub fn with_terraswap_pairs(&mut self, pairs: &[(&String, &PairInfo)]) {
+        self.terraswap_pair_querier = TerraswapPairQuerier::new(pairs);
     }
+
+    // pub fn with_balance(&mut self, balances: &[(&HumanAddr, &[Coin])]) {
+    //     for (addr, balance) in balances {
+    //         self.base.update_balance(addr, balance.to_vec());
+    //     }
+    // }
 }

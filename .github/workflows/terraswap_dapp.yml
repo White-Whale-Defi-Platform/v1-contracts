@@ -12,7 +12,7 @@ on:
 
 defaults:
   run:
-    working-directory: contracts/treasury/dapp/terraswap
+    working-directory: contracts/treasury/dapps/terraswap
 
 jobs:
   lint:
