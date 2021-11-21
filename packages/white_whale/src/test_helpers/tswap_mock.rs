@@ -138,9 +138,7 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_balance_info(deps:Deps, address:String) -> BalanceResponse{
-    // let balance = BALANCES
-    //     .may_load(deps.storage, &deps.api.addr_validate(&addr).unwrap_or_default())
-    //     .unwrap_or_default();
+
     let resp: BalanceResponse = BalanceResponse{
         balance: Uint128::new(10)
     };
@@ -203,9 +201,3 @@ pub fn mock_token_info() -> TokenInfoResponse {
     };
     return resp;
 }
-
-// pub fn mock_mint(recipient: String, amount: Uint128) -> MinterResponse {
-//     let resp: MinterResponse = MinterResponse{
-
-//     }
-// }
