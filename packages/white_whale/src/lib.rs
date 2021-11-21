@@ -9,11 +9,10 @@ pub mod msg;
 pub mod profit_check;
 pub mod query;
 pub mod tax;
-pub mod test_helpers;
-#[cfg(test)]
-pub mod test_helpers;
 pub mod tokenomics;
 pub mod trader;
 pub mod treasury;
 pub mod ust_vault;
 pub mod vesting;
+#[cfg(test)]
+pub mod test_helpers;
