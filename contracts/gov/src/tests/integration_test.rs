@@ -214,7 +214,7 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         .unwrap();
 
     // Get the current stable_cap to later compare with
-    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::Config {};
+    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::PoolConfig {};
     let pool_response: PoolInfo = router
         .wrap()
         .query_wasm_smart(vault_addr.clone(), &config_msg)
@@ -291,7 +291,7 @@ fn gov_can_update_the_stable_cap_parameter_of_vault() {
         .unwrap();
 
     // Get the new stable_cap
-    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::Config {};
+    let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::PoolConfig {};
     let pool_response: PoolInfo = router
         .wrap()
         .query_wasm_smart(vault_addr.clone(), &config_msg)

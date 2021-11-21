@@ -48,3 +48,4 @@ terra-cosmwasm = { version = "2.2.0"}
 cosmwasm-schema = { version = "0.16.0" }
 cw20-base = { version = "0.8", features = ["library"] } 
 cw-multi-test = { version = "0.8"}
+stablecoin-vault= {version="0.1.0", path ="../stablecoin-vault"}

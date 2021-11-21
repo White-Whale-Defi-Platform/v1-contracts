@@ -3,8 +3,8 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use terraswap_dapp::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use terraswap_dapp::state::State;
+use white_whale::treasury::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use white_whale::treasury::state::State;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
