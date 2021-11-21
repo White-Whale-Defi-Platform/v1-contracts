@@ -19,7 +19,7 @@ fn proper_initialization() {
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let config: ConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap()).unwrap();
+        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::PoolConfig {}).unwrap()).unwrap();
     assert_eq!(0, config.traders.len());
 }
 
@@ -66,7 +66,7 @@ fn test_add_trader() {
         Err(_) => panic!("Unknown error"),
     }
     let config: ConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap()).unwrap();
+        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::PoolConfig {}).unwrap()).unwrap();
     assert_eq!(1, config.traders.len());
 }
 
@@ -86,7 +86,7 @@ fn test_remove_trader() {
         Err(_) => panic!("Unknown error"),
     }
     let config: ConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap()).unwrap();
+        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::PoolConfig {}).unwrap()).unwrap();
     assert_eq!(1, config.traders.len());
     // now remove trader again.
     let msg = ExecuteMsg::RemoveTrader {
@@ -98,6 +98,6 @@ fn test_remove_trader() {
     }
     // get trader list and assert
     let config: ConfigResponse =
-        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::GetConfig {}).unwrap()).unwrap();
+        from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::PoolConfig {}).unwrap()).unwrap();
     assert_eq!(0, config.traders.len());
 }
