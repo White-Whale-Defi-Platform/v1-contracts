@@ -12,7 +12,7 @@ use terra_multi_test::{Contract, ContractWrapper};
 use terraswap::asset::{Asset, AssetInfo};
 
 lazy_static! {
-    static ref token_addr: RwLock<String> = RwLock::new("string".to_string());
+    static ref TOKEN_ADDR: RwLock<String> = RwLock::new("string".to_string());
 }
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -139,17 +139,17 @@ pub fn mock_balance_info() -> BalanceResponse {
     let resp: BalanceResponse = BalanceResponse {
         balance: Uint128::new(10),
     };
-    return resp;
+    resp
 }
 
 pub fn set_liq_token_addr(new_addr: String) -> String {
-    let mut addr = token_addr.write().unwrap();
+    let mut addr = TOKEN_ADDR.write().unwrap();
     *addr = new_addr;
-    return addr.to_string();
+    addr.to_string()
 }
 
 pub fn get_liq_token_addr() -> String {
-    return token_addr.read().unwrap().to_string();
+    return TOKEN_ADDR.read().unwrap().to_string();
 }
 
 pub fn mock_pair_info() -> PairResponse {
@@ -165,7 +165,7 @@ pub fn mock_pair_info() -> PairResponse {
         contract_addr: "pair0000".to_string(),
         liquidity_token: get_liq_token_addr(),
     };
-    return resp;
+    resp
 }
 
 pub fn mock_pool_info() {
@@ -196,5 +196,5 @@ pub fn mock_token_info() -> TokenInfoResponse {
         decimals: 6,
         total_supply: Uint128::from(100_000_000_000_000u128),
     };
-    return resp;
+    resp
 }
