@@ -1,42 +1,104 @@
-#![cfg(test)]
-
-use crate::contract::{DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
-use crate::tests::common_integration::{
-    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_warchest,
-    instantiate_msg, mock_app,
-};
-use cosmwasm_std::{coins, to_binary, Addr, BlockInfo, Timestamp, Uint128};
-use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg, MinterResponse};
+use cosmwasm_std::{Addr, BlockInfo, coins, Timestamp, Uint128};
+use cosmwasm_std::testing::{mock_env, mock_info};
+use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
-use terraswap::pair::Cw20HookMsg;
+
 use war_chest::msg::InstantiateMsg;
+use white_whale::denom::UST_DENOM;
 use white_whale::test_helpers::anchor_mock::{
     contract_anchor_mock, MockInstantiateMsg as AnchorMsg,
 };
 use white_whale::test_helpers::tswap_mock::{
-    contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
+    contract_receiver_mock, MockInstantiateMsg, set_liq_token_addr,
 };
-use white_whale::ust_vault::msg::ExecuteMsg;
+use white_whale::ust_vault::msg::*;
+use white_whale::ust_vault::msg::FlashLoanPayload;
 
-const DEFAULT_SMALL_AMOUNT_OF_UST: u128 = 10000u128;
-const DEFAULT_LARGE_AMOUNT_OF_UST: u128 = 100000000000000000u128;
-
+use crate::contract::{
+    DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL, execute,
+};
+use crate::error::StableVaultError;
+use crate::state::STATE;
+use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
+use crate::tests::common_integration::{
+    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_warchest,
+    instantiate_msg, mock_app,
+};
+use crate::tests::instantiate::mock_instantiate;
+use crate::tests::mock_querier::mock_dependencies;
 
 #[test]
-// setup all the contracts needed for the Vault
-// Set the relevant vault for profit check contract
-// Provide some liquidity with ProvideLiquidity
-// Remove some liqudiity with WithdrawLiquidity
-// Verify fees have been sent (not working)
-fn stablecoin_vault_fees_are_allocated() {
+fn unsuccessful_flashloan_no_base_token() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let whitelisted_contracts = STATE
+        .load(deps.as_mut().storage)
+        .unwrap()
+        .whitelisted_contracts;
+    assert_eq!(0, whitelisted_contracts.len());
+
+    let msg = ExecuteMsg::FlashLoan {
+        payload: FlashLoanPayload {
+            requested_asset: Asset {
+                info: AssetInfo::NativeToken {
+                    denom: "uluna".to_string(),
+                },
+                amount: Default::default(),
+            },
+            callback: Default::default(),
+        },
+    };
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Err(StableVaultError::Std(_)) => (),
+        _ => panic!("Must return StdError::generic_err from DepositInfo::assert"),
+    }
+}
+
+#[test]
+fn unsuccessful_flashloan_not_whitelisted() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let whitelisted_contracts = STATE
+        .load(deps.as_mut().storage)
+        .unwrap()
+        .whitelisted_contracts;
+    assert_eq!(0, whitelisted_contracts.len());
+
+    let msg = ExecuteMsg::FlashLoan {
+        payload: FlashLoanPayload {
+            requested_asset: Asset {
+                info: AssetInfo::NativeToken {
+                    denom: UST_DENOM.to_string(),
+                },
+                amount: Default::default(),
+            },
+            callback: Default::default(),
+        },
+    };
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Err(StableVaultError::NotWhitelisted {}) => (),
+        _ => panic!("Must return StableVaultError::NotWhitelisted"),
+    }
+}
+
+#[test]
+fn unsuccessful_flashloan_broke() {
     // Create the owner account
     let owner = Addr::unchecked("owner");
 
     // Define a mock_app to be used for storing code and instantiating
     let mut router = mock_app();
     router
-        .init_bank_balance(&owner, coins(DEFAULT_SMALL_AMOUNT_OF_UST, "uusd"))
+        .init_bank_balance(&owner, coins(1000, "uusd"))
         .unwrap();
     // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
@@ -75,12 +137,6 @@ fn stablecoin_vault_fees_are_allocated() {
         .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "WHALE", None)
         .unwrap();
 
-
-    // Instantiate the Anchor Mock, the Anchor mock will the be admin of aust allowing it to mint
-    let anchor_addr = router
-        .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "ANCHOR", None)
-        .unwrap();
-
     // Create the Whale token giving owner some initial balance
     let msg = cw20_base::msg::InstantiateMsg {
         name: "Anchor UST".to_string(),
@@ -90,18 +146,11 @@ fn stablecoin_vault_fees_are_allocated() {
             address: owner.to_string(),
             amount: Uint128::new(5000),
         }],
-        mint: Some(MinterResponse {
-            minter: anchor_addr.to_string(),
-            cap: None,
-        }),
+        mint: None,
         marketing: None,
     };
-
-
-
-
     let aust_token_instance = router
-        .instantiate_contract(cw20_code_id, anchor_addr.clone(), &msg, &[], "aUST", Some(anchor_addr.to_string()))
+        .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "aUST", None)
         .unwrap();
 
     // set up cw20 helpers
@@ -160,10 +209,10 @@ fn stablecoin_vault_fees_are_allocated() {
         )
         .unwrap();
 
-    // // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
-    // let anchor_addr = router
-    //     .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "TSWAP", None)
-    //     .unwrap();
+    // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
+    let anchor_addr = router
+        .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "TSWAP", None)
+        .unwrap();
 
     // First prepare an InstantiateMsg for vault contract with the mock terraswap token_code_id
     let vault_msg = instantiate_msg(
@@ -216,88 +265,61 @@ fn stablecoin_vault_fees_are_allocated() {
     let send_msg = Cw20ExecuteMsg::Transfer {
         recipient: lp_token.to_string(),
         amount: Uint128::new(1000),
-    };
-    router
-        .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
-        .unwrap();
-
-    // Ensure addresses are not equal to each other
-    assert_ne!(warchest_addr, vault_addr);
-    assert_ne!(vault_addr, tswap_addr);
-
-    // Hook up the vault and profit check
-    let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault {
-        vault_address: vault_addr.to_string(),
     };
     let _ = router
+        .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
+        .unwrap();
+
+    // Ensure addresses are not equal to each other
+    assert_ne!(warchest_addr, vault_addr);
+    assert_ne!(vault_addr, tswap_addr);
+
+    // Hook up the vault and profit check
+    let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault {
+        vault_address: vault_addr.to_string(),
+    };
+    router
         .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
         .unwrap();
 
-    // Provide some liqudity in UST
-    let msg = ExecuteMsg::ProvideLiquidity {
-        asset: Asset {
-            info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
-            },
-            amount: Uint128::new(DEFAULT_SMALL_AMOUNT_OF_UST),
-        },
+    // Whitelist contract
+    let msg = ExecuteMsg::AddToWhitelist {
+        contract_addr: ARB_CONTRACT.to_string(),
     };
     router
-        .execute_contract(
-            owner.clone(),
-            vault_addr.clone(),
-            &msg,
-            &coins(DEFAULT_SMALL_AMOUNT_OF_UST, "uusd"),
-        )
+        .execute_contract(owner.clone(), vault_addr.clone(), &msg, &[])
         .unwrap();
 
-    set_liq_token_addr(lp_token.to_string());
-
-    // Withdraw some liquidity
-    let msg = Cw20HookMsg::WithdrawLiquidity {};
-    let withdraw_amount = Uint128::new(100);
-    // Prepare cw20 message with our attempt to withdraw tokens, this should incur a fee
-    let send_msg = Cw20ExecuteMsg::Send {
-        contract: vault_addr.to_string(),
-        amount: withdraw_amount,
-        msg: to_binary(&msg).unwrap(),
+    let msg = ExecuteMsg::FlashLoan {
+        payload: FlashLoanPayload {
+            requested_asset: Asset {
+                info: AssetInfo::NativeToken {
+                    denom: UST_DENOM.to_string(),
+                },
+                amount: Uint128::new(1000),
+            },
+            callback: Default::default(),
+        },
     };
-    let res = router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked("Contract #7"),
-            &send_msg,
-            &[],
-        )
-        .unwrap();
-    println!("{:?}", res.events);
 
+    let res = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
 
-    let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
-
-    // Verify warchest has received some fees (WIP)
-    // ensure our balances
-    let war_chest_bal = lp.balance(&router, warchest_addr.clone()).unwrap();
-    assert_eq!(
-        war_chest_bal,
-        withdraw_amount.checked_div(Uint128::new(10)).unwrap()
-    );
+    match res {
+        Err(_) => (), //match StableVaultError::Broke
+        _ => panic!("Must return StableVaultError::Broke"),
+    }
 }
 
+
 #[test]
-// setup all the contracts needed for the Vault
-// Set the relevant vault for profit check contract
-// Provide some liquidity with ProvideLiquidity
-// Remove some liqudiity with WithdrawLiquidity
-// Verify fees have been sent (not working)
-fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
+fn successful_flashloan_without_withdrawing_aust() {
     // Create the owner account
     let owner = Addr::unchecked("owner");
 
     // Define a mock_app to be used for storing code and instantiating
     let mut router = mock_app();
     router
-        .init_bank_balance(&owner, coins(DEFAULT_LARGE_AMOUNT_OF_UST, "uusd"))
+        .init_bank_balance(&owner, coins(100_000_000, UST_DENOM))
         .unwrap();
     // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
@@ -310,7 +332,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     // Set the block height and time, we will later modify this to simulate time passing
     let initial_block = BlockInfo {
         height: 0,
-        time: Timestamp::from_seconds(1000),
+        time: Timestamp::from_seconds(100),
         chain_id: "terra-cosmwasm-testnet".to_string(),
     };
     router.set_block(initial_block);
@@ -327,7 +349,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         decimals: 6,
         initial_balances: vec![Cw20Coin {
             address: owner.to_string(),
-            amount: Uint128::new(5000),
+            amount: Uint128::new(5_000),
         }],
         mint: None,
         marketing: None,
@@ -336,33 +358,20 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "WHALE", None)
         .unwrap();
 
-
-    // Instantiate the Anchor Mock, the Anchor mock will the be admin of aust allowing it to mint
-    let anchor_addr = router
-        .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "ANCHOR", None)
-        .unwrap();
-
-    // Create the Whale token giving owner some initial balance
+    // Create the Anchor UST token giving owner some initial balance
     let msg = cw20_base::msg::InstantiateMsg {
         name: "Anchor UST".to_string(),
         symbol: "aUST".to_string(),
         decimals: 2,
         initial_balances: vec![Cw20Coin {
             address: owner.to_string(),
-            amount: Uint128::new(5000),
+            amount: Uint128::new(5_000),
         }],
-        mint: Some(MinterResponse {
-            minter: anchor_addr.to_string(),
-            cap: None,
-        }),
+        mint: None,
         marketing: None,
     };
-
-
-
-
     let aust_token_instance = router
-        .instantiate_contract(cw20_code_id, anchor_addr.clone(), &msg, &[], "aUST", Some(anchor_addr.to_string()))
+        .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "aUST", None)
         .unwrap();
 
     // set up cw20 helpers
@@ -371,7 +380,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     // get owner balance
     let owner_balance = cash.balance(&router, owner.clone()).unwrap();
     // Verify the funds have been received
-    assert_eq!(owner_balance, Uint128::new(5000));
+    assert_eq!(owner_balance, Uint128::new(5_000));
 
     // Setup Warchest
     let chest_msg = InstantiateMsg {
@@ -421,10 +430,10 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         )
         .unwrap();
 
-    // // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
-    // let anchor_addr = router
-    //     .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "TSWAP", None)
-    //     .unwrap();
+    // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
+    let anchor_addr = router
+        .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "TSWAP", None)
+        .unwrap();
 
     // First prepare an InstantiateMsg for vault contract with the mock terraswap token_code_id
     let vault_msg = instantiate_msg(
@@ -441,7 +450,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
             vault_id,
             owner.clone(),
             &vault_msg,
-            &[],
+            &coins(50_000_000, UST_DENOM),
             "VAULT",
             Some(owner.to_string()),
         )
@@ -454,7 +463,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         decimals: 6,
         initial_balances: vec![Cw20Coin {
             address: owner.to_string(),
-            amount: Uint128::new(5000),
+            amount: Uint128::new(5_000),
         }],
         mint: None,
         marketing: None,
@@ -476,7 +485,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     // Prepare
     let send_msg = Cw20ExecuteMsg::Transfer {
         recipient: lp_token.to_string(),
-        amount: Uint128::new(1000),
+        amount: Uint128::new(1_000),
     };
     router
         .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
@@ -494,59 +503,30 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
         .unwrap();
 
-    // Provide some liqudity in UST
-    let msg = ExecuteMsg::ProvideLiquidity {
-        asset: Asset {
-            info: AssetInfo::NativeToken {
-                denom: "uusd".to_string(),
+    ////////////
+
+    // Whitelist contract
+    let msg = ExecuteMsg::AddToWhitelist {
+        contract_addr: ARB_CONTRACT.to_string(),
+    };
+    let _ = router
+        .execute_contract(owner.clone(), vault_addr.clone(), &msg, &[])
+        .unwrap();
+
+    // send the flashloan
+    let msg = ExecuteMsg::FlashLoan {
+        payload: FlashLoanPayload {
+            requested_asset: Asset {
+                info: AssetInfo::NativeToken {
+                    denom: UST_DENOM.to_string(),
+                },
+                amount: Uint128::new(1_000),
             },
-            amount: Uint128::new(DEFAULT_LARGE_AMOUNT_OF_UST),
+            callback: Default::default(),
         },
     };
-    let res = router
-        .execute_contract(
-            owner.clone(),
-            vault_addr.clone(),
-            &msg,
-            &coins(DEFAULT_LARGE_AMOUNT_OF_UST, "uusd"),
-        )
-        .unwrap();
 
-    println!("{:?}", res.events);
-    set_liq_token_addr(lp_token.to_string());
+    let _ = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
 
-    // Withdraw some liquidity
-    let msg = Cw20HookMsg::WithdrawLiquidity {};
-    let withdraw_amount = Uint128::new(100000);
-    // Prepare cw20 message with our attempt to withdraw tokens, this should incur a fee
-    let send_msg = Cw20ExecuteMsg::Send {
-        contract: vault_addr.to_string(),
-        amount: withdraw_amount,
-        msg: to_binary(&msg).unwrap(),
-    };
-    let res = router
-        .execute_contract(
-            owner.clone(),
-            Addr::unchecked("Contract #7"),
-            &send_msg,
-            &[],
-        )
-        .unwrap();
-    println!("{:?}", res.events);
-
-    let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
-
-    // Verify warchest has received some fees (WIP)
-    // ensure our balances
-    let war_chest_bal = lp.balance(&router, warchest_addr.clone()).unwrap();
-    assert_eq!(
-        war_chest_bal,
-        withdraw_amount.checked_div(Uint128::new(10000)).unwrap()
-    );
 }
 
-// Need to :
-//  Setup vault with specified fee share
-// deposit N (maybe 100 tokens)
-// withdraw n
-// verify the share percent was done.

@@ -34,8 +34,8 @@ use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, STATE};
 
 const FEE_BUFFER: u64 = 10_000_000u64;
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
-const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
-const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
+pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
+pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
 
 type VaultResult = Result<Response, StableVaultError>;
 
@@ -210,7 +210,7 @@ pub fn handle_flashloan(
 
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value, stables_availabe, _) = compute_total_value(deps.as_ref(), &pool_info)?;
+    let (total_value, stables_available, _) = compute_total_value(deps.as_ref(), &pool_info)?;
     let requested_asset = payload.requested_asset;
 
     if total_value < requested_asset.amount + Uint128::from(FEE_BUFFER) {
@@ -221,9 +221,9 @@ pub fn handle_flashloan(
 
     // Withdraw funds from Anchor if needed
     // FEE_BUFFER as buffer for fees and taxes
-    if (requested_asset.amount + Uint128::from(FEE_BUFFER)) > stables_availabe {
+    if (requested_asset.amount + Uint128::from(FEE_BUFFER)) > stables_available {
         // Attempt to remove some money from anchor
-        let to_withdraw = (requested_asset.amount + Uint128::from(FEE_BUFFER)) - stables_availabe;
+        let to_withdraw = (requested_asset.amount + Uint128::from(FEE_BUFFER)) - stables_available;
         let aust_exchange_rate = query_aust_exchange_rate(
             deps.as_ref(),
             deps.api
@@ -265,7 +265,7 @@ pub fn handle_flashloan(
     response = response.add_message(return_call);
 
     // Call encapsulate function
-    encapsule_payload(deps.as_ref(), env, response, loan_fee)
+    encapsulate_payload(deps.as_ref(), env, response, loan_fee)
 }
 
 // This function should be called alongside a deposit of UST into the contract.
@@ -307,14 +307,18 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         &deps.querier,
         deps.api.addr_humanize(&info.liquidity_token)?,
     )?;
+
     let share = if total_share == Uint128::zero() {
         // Initial share = collateral amount
         deposit
     } else {
         // WARNING: This could causes issues if total_deposits_in_ust - asset.amount is really small
         // total_deposits_in_ust > deposit as total_deposits_in_ust includes deposit
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
+        // TODO: NOTE; due to the above comment I have added +1 to the total_deposits_in_ust - asset.amount
+        // This is hacky and should not go into master, maybe the better answer is to just check if 0
+        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit+Uint128::from(1u64))
     };
+
 
     // mint LP token to sender
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -330,6 +334,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
     if stables_in_contract > info.stable_cap * Decimal::percent(150) {
+
         let deposit_amount = stables_in_contract - info.stable_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
         let deposit_msg = anchor_deposit_msg(
@@ -337,7 +342,6 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
             deps.api.addr_humanize(&state.anchor_money_market_address)?,
             anchor_deposit,
         )?;
-
         return Ok(response.add_message(deposit_msg));
     };
 
@@ -358,7 +362,6 @@ pub fn try_withdraw_liquidity(
     let state = STATE.load(deps.storage)?;
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let fee_config = FEE.load(deps.storage)?;
-
     // User is not able to withdraw from the vault if he is using the flashloan
     let profit_check_response: LastBalanceResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
@@ -371,6 +374,8 @@ pub fn try_withdraw_liquidity(
     if profit_check_response.last_balance != Uint128::zero() {
         return Err(StableVaultError::DepositDuringLoan {});
     }
+
+
 
     // Logging var
     let mut attrs = vec![];
@@ -388,7 +393,6 @@ pub fn try_withdraw_liquidity(
 
     // Init response
     let mut response = Response::new();
-
     // Available aUST
     let max_aust_amount = query_token_balance(
         &deps.querier,
@@ -410,6 +414,7 @@ pub fn try_withdraw_liquidity(
                 .addr_humanize(&state.anchor_money_market_address)?
                 .to_string(),
         )?;
+
         if uaust_value_in_contract < refund_amount {
             // Withdraw all aUST left
             let withdraw_msg = anchor_withdraw_msg(
@@ -464,11 +469,12 @@ pub fn try_withdraw_liquidity(
         info: AssetInfo::NativeToken { denom },
         amount: refund_amount,
     };
+    let tax_assed = refund_asset.deduct_tax(&deps.querier)?;
+
     let refund_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender,
-        amount: vec![refund_asset.deduct_tax(&deps.querier)?],
+        amount: vec![tax_assed],
     });
-
     // LP burn msg
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
@@ -478,6 +484,7 @@ pub fn try_withdraw_liquidity(
         })?,
         funds: vec![],
     });
+
 
     Ok(response
         .add_message(refund_msg)
@@ -491,11 +498,11 @@ pub fn try_withdraw_liquidity(
 //  HELPER FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-/// Helper method which encapsules the requested funds.
+/// Helper method which encapsulates the requested funds.
 /// This function prevents callers from doing unprofitable actions
 /// with the vault funds and makes sure the funds are returned by
 /// the borrower.
-pub fn encapsule_payload(
+pub fn encapsulate_payload(
     deps: Deps,
     env: Env,
     response: Response,
@@ -556,7 +563,6 @@ pub fn receive_cw20(
             if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != info.liquidity_token {
                 return Err(StableVaultError::Unauthorized {});
             }
-
             try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
         }
     }
@@ -583,7 +589,6 @@ pub fn compute_total_value(
             .addr_humanize(&state.anchor_money_market_address)?
             .to_string(),
     )?;
-
     let aust_value_in_ust = aust_exchange_rate * aust_amount;
 
     let total_deposits_in_ust = stable_amount + aust_value_in_ust;
@@ -819,7 +824,8 @@ pub fn estimate_withdraw_fee(
 
 pub fn try_query_config(deps: Deps) -> StdResult<PoolInfo> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    info.to_normal(deps)
+
+    Ok(info.to_normal(deps)?)
 }
 pub fn try_query_state(deps: Deps) -> StdResult<State> {
     let state: State = STATE.load(deps.storage)?;

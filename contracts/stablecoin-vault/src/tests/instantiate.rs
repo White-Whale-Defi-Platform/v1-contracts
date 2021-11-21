@@ -3,9 +3,10 @@ use cosmwasm_std::{from_binary, to_binary, DepsMut, MessageInfo, ReplyOn, SubMsg
 use cosmwasm_std::{Api, Decimal, Uint128};
 
 use crate::contract::{execute, instantiate, query};
-use crate::state::{State, STATE};
+use crate::state::{State, FEE, STATE};
 use cw20::MinterResponse;
 
+use crate::error::StableVaultError;
 use terraswap::asset::AssetInfo;
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use white_whale::fee::*;
@@ -14,9 +15,8 @@ use white_whale::ust_vault::msg::*;
 
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
-// use crate::tests::mock_querier::mock_dependencies;
-
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
+pub(crate) const WARCHEST_FEE: u64 = 10u64;
 
 pub fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
@@ -28,7 +28,7 @@ pub fn instantiate_msg() -> InstantiateMsg {
             denom: "uusd".to_string(),
         },
         token_code_id: 0u64,
-        warchest_fee: Decimal::percent(10u64),
+        warchest_fee: Decimal::percent(WARCHEST_FEE),
         flash_loan_fee: Decimal::permille(5u64),
         stable_cap: Uint128::from(100_000_000u64),
         vault_lp_token_name: None,
@@ -127,6 +127,55 @@ fn successful_update_fee() {
 }
 
 #[test]
+fn unsuccessful_update_fee_unauthorized() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    // update fees
+    let info = mock_info("unauthorized", &[]);
+    let msg = ExecuteMsg::SetFee {
+        flash_loan_fee: Some(Fee {
+            share: Decimal::percent(1),
+        }),
+        warchest_fee: Some(Fee {
+            share: Decimal::percent(2),
+        }),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Err(StableVaultError::Admin(_)) => (),
+        _ => panic!("Must return StableVaultError::Admin"),
+    }
+}
+
+#[test]
+fn successful_update_fee_unchanged() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    let fees = FEE.load(deps.as_mut().storage).unwrap();
+    let original_flash_loan_fee = fees.flash_loan_fee;
+    let original_warchest_fee = fees.warchest_fee;
+
+    // update fees
+    let info = mock_info(TEST_CREATOR, &[]);
+    let msg = ExecuteMsg::SetFee {
+        flash_loan_fee: None,
+        warchest_fee: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(0, res.messages.len());
+
+    let res = query(deps.as_ref(), mock_env(), QueryMsg::Fees {}).unwrap();
+    let fee_response: FeeResponse = from_binary(&res).unwrap();
+    let fees: VaultFee = fee_response.fees;
+    assert_eq!(original_flash_loan_fee.share, fees.flash_loan_fee.share);
+    assert_eq!(original_warchest_fee.share, fees.warchest_fee.share);
+}
+
+#[test]
 fn successfull_set_admin() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
@@ -139,6 +188,24 @@ fn successfull_set_admin() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn unsuccessfull_set_admin_unauthorized() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    // update admin
+    let info = mock_info("unauthorized", &[]);
+    let msg = ExecuteMsg::SetAdmin {
+        admin: "new_admin".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Err(StableVaultError::Admin(_)) => (),
+        _ => panic!("Must return StableVaultError::Admin"),
+    }
 }
 
 #[test]
