@@ -69,7 +69,7 @@ impl VaultAsset {
                 ValueRef::Liquidity { pool_address } => {
                     // Check if we have a Token
                     if let AssetInfo::Token { .. } = &self.asset.info {
-                        return lp_value(deps, env, pool_address, holding);
+                        return lp_value(deps, env, pool_address, &holding);
                     } else {
                         return Err(StdError::generic_err("Can't have a native LP token"));
                     }
