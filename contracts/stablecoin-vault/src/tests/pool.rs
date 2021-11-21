@@ -1,8 +1,6 @@
-use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::testing::{mock_env};
 use cosmwasm_std::{Api, MessageInfo, Uint128};
-use terraswap::asset::{Asset, AssetInfo};
 
-use white_whale::denom::UST_DENOM;
 use white_whale::ust_vault::msg::ExecuteMsg;
 
 use crate::contract::execute;

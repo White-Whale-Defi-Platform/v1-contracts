@@ -157,8 +157,8 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
         |_, _, _, _: MockInstantiateMsg| -> StdResult<Response> { Ok(Response::default()) },
         |_, _, msg: AnchorQuery| -> StdResult<Binary> {  match msg {
                 AnchorQuery::EpochState {
-                    distributed_interest,
-                    block_height
+                    distributed_interest: _,
+                    block_height: _
                 } => Ok(to_binary(&mock_epoch_state())?),
         }},
     );

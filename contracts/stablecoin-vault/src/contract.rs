@@ -334,6 +334,8 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
     if stables_in_contract > info.stable_cap * Decimal::percent(150) {
+
+        println!("Lets deposit some ");
         let deposit_amount = stables_in_contract - info.stable_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
         let deposit_msg = anchor_deposit_msg(
@@ -341,7 +343,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
             deps.api.addr_humanize(&state.anchor_money_market_address)?,
             anchor_deposit,
         )?;
-
+        println!("Less go ");
         return Ok(response.add_message(deposit_msg));
     };
 
@@ -394,7 +396,7 @@ pub fn try_withdraw_liquidity(
 
     // Init response
     let mut response = Response::new();
-
+    println!("{:?}", deps.api.addr_humanize(&state.aust_address));
     // Available aUST
     let max_aust_amount = query_token_balance(
         &deps.querier,

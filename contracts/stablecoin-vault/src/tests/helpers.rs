@@ -1,18 +1,14 @@
-use cosmwasm_std::{Api, CanonicalAddr, CosmosMsg, from_binary, ReplyOn, Response, SubMsg, to_binary, Uint128, WasmMsg};
-use cosmwasm_std::CosmosMsg::Wasm;
-use cosmwasm_std::testing::{MOCK_CONTRACT_ADDR, mock_env, mock_info};
+use cosmwasm_std::{Api, CosmosMsg, ReplyOn, Response, SubMsg, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::testing::{mock_env, mock_info};
 use cw20::Cw20ReceiveMsg;
-use schemars::_private::NoSerialize;
-use terraswap::asset::{AssetInfo, AssetInfoRaw};
 use terraswap::pair::Cw20HookMsg;
 
 use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
 use white_whale::ust_vault::msg::CallbackMsg;
 
-use crate::contract::{encapsulate_payload, get_warchest_fee, get_withdraw_fee, receive_cw20};
+use crate::contract::{encapsulate_payload, get_warchest_fee, receive_cw20};
 use crate::error::StableVaultError;
-use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::state::{POOL_INFO, STATE};
+use crate::state::{STATE};
 use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::{mock_instantiate, WARCHEST_FEE};
 use crate::tests::mock_querier::mock_dependencies;

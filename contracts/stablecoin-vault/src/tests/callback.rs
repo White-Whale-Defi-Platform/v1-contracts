@@ -1,12 +1,11 @@
 use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{coin, Api, MessageInfo};
+use cosmwasm_std::{coin};
 use white_whale::denom::UST_DENOM;
 
 use white_whale::ust_vault::msg::{CallbackMsg, ExecuteMsg};
 
 use crate::contract::execute;
 use crate::error::StableVaultError;
-use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 

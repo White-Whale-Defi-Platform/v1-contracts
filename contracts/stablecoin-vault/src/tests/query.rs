@@ -1,22 +1,16 @@
-use cosmwasm_std::{coin, coins, DepsMut, from_binary, MessageInfo, ReplyOn, SubMsg, to_binary, WasmMsg};
-use cosmwasm_std::{Api, Decimal, Uint128};
+use cosmwasm_std::{coin, coins, from_binary};
+use cosmwasm_std::{Decimal, Uint128};
 use cosmwasm_std::testing::{mock_env, mock_info};
-use cw20::MinterResponse;
-use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
-use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
+use terraswap::asset::{Asset, AssetInfo};
 
 use white_whale::fee::*;
 use white_whale::ust_vault::msg::*;
 use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 
-use crate::contract::{execute, instantiate, query};
-use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::state::{State, STATE};
-use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
+use crate::contract::{execute, query};
+use crate::tests::common::{TEST_CREATOR};
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
-
-const INSTANTIATE_REPLY_ID: u8 = 1u8;
 
 /*#[test]
 pub fn test_config_query() {

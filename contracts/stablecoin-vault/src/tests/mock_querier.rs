@@ -13,7 +13,7 @@ use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;
 use white_whale::profit_check::msg::LastBalanceResponse;
 use white_whale::test_helpers::anchor_mock::{mock_epoch_state};
-use white_whale::query::anchor::{AnchorQuery, EpochStateResponse};
+use white_whale::query::anchor::{EpochStateResponse};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -37,7 +37,7 @@ pub fn mock_dependencies(
 //     EpochState {
 //         distributed_interest,
 //         block_height
-//     } 
+//     }
 // }
 
 pub struct WasmMockQuerier {
@@ -150,7 +150,7 @@ impl WasmMockQuerier {
                         return SystemResult::Ok(ContractResult::from(to_binary(&mock_epoch_state())));
                     }
 
-                    
+
                     return SystemResult::Ok(ContractResult::from(to_binary(&Cw20BalanceResponse {
                         balance: Uint128::zero(),
                     })));
@@ -197,7 +197,7 @@ impl WasmMockQuerier {
                 } else {
                     match from_binary(&msg).unwrap() {
                         // AnchorQuery::EpochState{ distributed_interest, aterra_supply} => {
-                            
+
                         //     return SystemResult::Ok(ContractResult::Ok(
                         //         to_binary(&EpochStateResponse{
                         //             exchange_rate: Decimal256::percent(120),
@@ -205,7 +205,7 @@ impl WasmMockQuerier {
                         //         }).unwrap()
                         //     ))
                         // }
-         
+
                         Cw20QueryMsg::Balance { address } => {
                             let balances: &HashMap<String, Uint128> =
                                 match self.token_querier.balances.get(contract_addr) {

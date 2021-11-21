@@ -278,7 +278,7 @@ fn unsuccessful_flashloan_broke() {
         recipient: lp_token.to_string(),
         amount: Uint128::new(1000),
     };
-    let res = router
+    let _ = router
         .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
         .unwrap();
 
@@ -521,7 +521,7 @@ fn successful_flashloan_without_withdrawing_aust() {
     let msg = ExecuteMsg::AddToWhitelist {
         contract_addr: ARB_CONTRACT.to_string(),
     };
-    router
+    let _ = router
         .execute_contract(owner.clone(), vault_addr.clone(), &msg, &[])
         .unwrap();
 
@@ -538,7 +538,7 @@ fn successful_flashloan_without_withdrawing_aust() {
         },
     };
 
-    router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
+    let _ = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
 
 }
 
