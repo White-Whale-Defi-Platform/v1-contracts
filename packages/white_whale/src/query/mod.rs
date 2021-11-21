@@ -1,3 +1,3 @@
 pub mod anchor;
-pub mod terraswap;
 pub mod astroport;
+pub mod terraswap;

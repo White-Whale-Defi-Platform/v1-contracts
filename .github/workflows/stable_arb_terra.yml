@@ -1,5 +1,5 @@
 
-name: bLuna Vault
+name: Terraswap UST Arb
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 
 defaults:
   run:
-    working-directory: contracts/bluna-vault
+    working-directory: contracts/stable-arb-terra
 
 jobs:
   lint:

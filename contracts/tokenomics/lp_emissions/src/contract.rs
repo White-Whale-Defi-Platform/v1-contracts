@@ -96,7 +96,7 @@ pub fn receive_cw20(
                 return Err(StdError::generic_err("unauthorized"));
             }
             let cw20_sender = deps.api.addr_validate(&cw20_msg.sender)?;
-            bond(deps, env, cw20_sender, cw20_msg.amount.into())
+            bond(deps, env, cw20_sender, cw20_msg.amount)
         }
         Ok(Cw20HookMsg::UpdateRewardSchedule {
             period_start,
@@ -120,7 +120,7 @@ pub fn receive_cw20(
                 period_start,
                 period_finish,
                 amount,
-                cw20_msg.amount.into(),
+                cw20_msg.amount,
             )
         }
 
@@ -420,8 +420,8 @@ fn increase_bond_amount(state: &mut State, staker_info: &mut StakerInfo, amount:
 
 /// @dev Decreases total LP shares and user's staked LP shares by `amount`
 fn decrease_bond_amount(state: &mut State, staker_info: &mut StakerInfo, amount: Uint128) {
-    state.total_bond_amount = state.total_bond_amount - amount;
-    staker_info.bond_amount = staker_info.bond_amount - amount;
+    staker_info.bond_amount -= amount;
+    state.total_bond_amount -= amount;
 }
 
 /// @dev Updates State's leftover and reward_rate_per_token params
@@ -497,7 +497,7 @@ fn build_send_cw20_token_msg(
         contract_addr: token_contract_address.into(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
             recipient: recipient.into(),
-            amount: amount.into(),
+            amount,
         })?,
         funds: vec![],
     }))

@@ -151,7 +151,7 @@ fn withdraw(
         contract_addr: cfg.reward_contract_addr.to_string(),
         funds: vec![],
         msg: to_binary(&WhaleExecuteMsg::Unbond {
-            amount: amount.into(),
+            amount,
             withdraw_pending_reward: Some(false),
         })?,
     }));
