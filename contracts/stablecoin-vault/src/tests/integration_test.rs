@@ -6,7 +6,7 @@ use crate::tests::common_integration::{
     instantiate_msg, mock_app,
 };
 use cosmwasm_std::{coins, to_binary, Addr, BlockInfo, Timestamp, Uint128};
-use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
+use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg, MinterResponse};
 use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
@@ -18,6 +18,10 @@ use white_whale::test_helpers::tswap_mock::{
     contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
 };
 use white_whale::ust_vault::msg::ExecuteMsg;
+
+const DEFAULT_SMALL_AMOUNT_OF_UST: u128 = 10000u128;
+const DEFAULT_LARGE_AMOUNT_OF_UST: u128 = 100000000000000000u128;
+
 
 #[test]
 // setup all the contracts needed for the Vault
@@ -32,7 +36,7 @@ fn stablecoin_vault_fees_are_allocated() {
     // Define a mock_app to be used for storing code and instantiating
     let mut router = mock_app();
     router
-        .init_bank_balance(&owner, coins(1000, "uusd"))
+        .init_bank_balance(&owner, coins(DEFAULT_SMALL_AMOUNT_OF_UST, "uusd"))
         .unwrap();
     // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
@@ -71,6 +75,12 @@ fn stablecoin_vault_fees_are_allocated() {
         .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "WHALE", None)
         .unwrap();
 
+
+    // Instantiate the Anchor Mock, the Anchor mock will the be admin of aust allowing it to mint
+    let anchor_addr = router
+        .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "ANCHOR", None)
+        .unwrap();
+
     // Create the Whale token giving owner some initial balance
     let msg = cw20_base::msg::InstantiateMsg {
         name: "Anchor UST".to_string(),
@@ -80,11 +90,18 @@ fn stablecoin_vault_fees_are_allocated() {
             address: owner.to_string(),
             amount: Uint128::new(5000),
         }],
-        mint: None,
+        mint: Some(MinterResponse {
+            minter: anchor_addr.to_string(),
+            cap: None,
+        }),
         marketing: None,
     };
+
+
+
+
     let aust_token_instance = router
-        .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "aUST", None)
+        .instantiate_contract(cw20_code_id, anchor_addr.clone(), &msg, &[], "aUST", Some(anchor_addr.to_string()))
         .unwrap();
 
     // set up cw20 helpers
@@ -150,10 +167,10 @@ fn stablecoin_vault_fees_are_allocated() {
         )
         .unwrap();
 
-    // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
-    let anchor_addr = router
-        .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "TSWAP", None)
-        .unwrap();
+    // // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
+    // let anchor_addr = router
+    //     .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "TSWAP", None)
+    //     .unwrap();
 
     // First prepare an InstantiateMsg for vault contract with the mock terraswap token_code_id
     let vault_msg = instantiate_msg(
@@ -229,7 +246,7 @@ fn stablecoin_vault_fees_are_allocated() {
             info: AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
             },
-            amount: Uint128::new(1000),
+            amount: Uint128::new(DEFAULT_SMALL_AMOUNT_OF_UST),
         },
     };
     let res = router
@@ -237,7 +254,7 @@ fn stablecoin_vault_fees_are_allocated() {
             owner.clone(),
             vault_addr.clone(),
             &msg,
-            &coins(1000, "uusd"),
+            &coins(DEFAULT_SMALL_AMOUNT_OF_UST, "uusd"),
         )
         .unwrap();
 
