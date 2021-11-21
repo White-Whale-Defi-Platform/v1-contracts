@@ -16,7 +16,7 @@ impl Fee {
     }
 
     pub fn msg(&self, deps: Deps, asset: Asset, recipient: Addr) -> StdResult<CosmosMsg> {
-        Ok(asset.into_msg(&deps.querier, recipient)?)
+        asset.into_msg(&deps.querier, recipient)
     }
 }
 
@@ -40,5 +40,4 @@ mod tests {
         let deposit_fee = fee.compute(deposit);
         assert_eq!(deposit_fee, Uint128::from(200000u64));
     }
-
 }

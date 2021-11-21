@@ -1,5 +1,8 @@
-use cosmwasm_std::testing::{mock_env, MOCK_CONTRACT_ADDR, mock_dependencies};
-use cosmwasm_std::{coin, from_binary, to_binary, Api, CosmosMsg, DepsMut, MessageInfo, Response, Uint128, WasmMsg, Addr};
+use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
+use cosmwasm_std::{
+    coin, from_binary, to_binary, Addr, Api, CosmosMsg, DepsMut, MessageInfo, Response, Uint128,
+    WasmMsg,
+};
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
 use cw_controllers::AdminResponse;
 use terraswap::pair::Cw20HookMsg;

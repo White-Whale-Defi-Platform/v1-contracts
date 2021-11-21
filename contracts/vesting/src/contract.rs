@@ -267,7 +267,7 @@ fn handle_terminate(
 
     let timestamp = env.block.time.seconds();
     let whale_unlocked =
-        compute_vested_or_unlocked_amount(timestamp, allocation.total_amount, &unlock_schedule);
+        compute_vested_or_unlocked_amount(timestamp, allocation.total_amount, unlock_schedule);
 
     // Calculate WHALE tokens to be refunded
     let whale_to_refund = allocation.total_amount - whale_unlocked;
@@ -294,16 +294,14 @@ fn handle_terminate(
         &allocation,
     )?;
 
-    let mut msgs: Vec<WasmMsg> = vec![];
-
-    msgs.push(WasmMsg::Execute {
+    let msgs: Vec<WasmMsg> = vec![WasmMsg::Execute {
         contract_addr: config.whale_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
             recipient: config.refund_recepient.to_string(),
             amount: whale_to_refund,
         })?,
         funds: vec![],
-    });
+    }];
 
     Ok(Response::new()
         .add_messages(msgs)
