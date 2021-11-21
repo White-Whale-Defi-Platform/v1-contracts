@@ -1,0 +1,15 @@
+{
+    "bombay-12": {
+        "luna_ust_pair": "terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff",
+        "luna": "uluna",
+        "ust": "uusd",
+        "eut": "ueur",
+        "luna_ust": "terra1srf30cs8ax73y59gm64lkztnx0zexl8fpv3kx2"
+    },
+    "columbus-5": {
+        "bluna_luna_pair": "terra1jxazgm67et0ce260kvrpfv50acuushpjsz2y0p",
+        "bluna_luna": "terra1nuy34nwnsh53ygpc4xprlj263cztw7vc99leh2",
+        "luna": "uluna",
+        "bluna": "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"
+    }
+}
