@@ -1,7 +1,11 @@
 # White Whale
 
 A novel decentralised arbitrage platform built on the [Terra](https://terra.money) blockchain.
+These are our MVP contracts. Other contracts are in the works so some code in the white-whale package might not be used by these contracts. 
 
+The treasury contracts are being finished and are an independent whole. All other contracts are ready to be audited. 
+
+Docs for our contracts are found in the github Wiki page
 ## Contracts
 
 | Name                                                       | Description                                  |
