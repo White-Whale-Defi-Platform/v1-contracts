@@ -172,5 +172,5 @@ pub fn mock_epoch_state() -> EpochStateResponse {
         exchange_rate: Decimal256::percent(120),
         aterra_supply: Uint256::from(1000000u64)
     };
-    return epoch_state;
+    epoch_state
 }

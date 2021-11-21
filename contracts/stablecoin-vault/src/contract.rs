@@ -830,11 +830,10 @@ pub fn estimate_withdraw_fee(
 pub fn try_query_config(deps: Deps) -> StdResult<PoolInfo> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
 
-    Ok(info.to_normal(deps)?)
+    info.to_normal(deps)
 }
 pub fn try_query_state(deps: Deps) -> StdResult<State> {
-    let state: State = STATE.load(deps.storage)?;
-    Ok(state)
+    STATE.load(deps.storage)
 }
 
 pub fn try_query_pool_state(deps: Deps) -> StdResult<PoolResponse> {
