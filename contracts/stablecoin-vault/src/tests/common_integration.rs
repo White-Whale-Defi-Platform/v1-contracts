@@ -38,9 +38,9 @@ pub fn contract_cw20_token() -> Box<dyn Contract<Empty>> {
 
 pub fn contract_warchest() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        war_chest::contract::execute,
-        war_chest::contract::instantiate,
-        war_chest::contract::query,
+        treasury::contract::execute,
+        treasury::contract::instantiate,
+        treasury::contract::query,
     );
     Box::new(contract)
 }

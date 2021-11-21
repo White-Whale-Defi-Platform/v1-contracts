@@ -4,7 +4,7 @@ use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
 
-use war_chest::msg::InstantiateMsg;
+use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::denom::UST_DENOM;
 use white_whale::test_helpers::anchor_mock::{
     contract_anchor_mock, MockInstantiateMsg as AnchorMsg,
@@ -162,10 +162,10 @@ fn unsuccessful_flashloan_broke() {
     assert_eq!(owner_balance, Uint128::new(5000));
 
     // Setup Warchest
-    let chest_msg = InstantiateMsg {
-        admin_addr: owner.to_string(),
-        whale_token_addr: whale_token_instance.to_string(),
-        spend_limit: Uint128::from(1_000_000u128),
+    let chest_msg = TreasuryInitMsg {
+        // admin_addr: owner.to_string(),
+        // whale_token_addr: whale_token_instance.to_string(),
+        // spend_limit: Uint128::from(1_000_000u128),
     };
 
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
@@ -383,10 +383,10 @@ fn successful_flashloan_without_withdrawing_aust() {
     assert_eq!(owner_balance, Uint128::new(5_000));
 
     // Setup Warchest
-    let chest_msg = InstantiateMsg {
-        admin_addr: owner.to_string(),
-        whale_token_addr: whale_token_instance.to_string(),
-        spend_limit: Uint128::from(1_000_000u128),
+    let chest_msg = TreasuryInitMsg {
+        // admin_addr: owner.to_string(),
+        // whale_token_addr: whale_token_instance.to_string(),
+        // spend_limit: Uint128::from(1_000_000u128),
     };
 
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks

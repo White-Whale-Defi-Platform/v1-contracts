@@ -10,7 +10,7 @@ use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg, MinterResponse};
 use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
-use war_chest::msg::InstantiateMsg;
+use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::test_helpers::anchor_mock::{
     contract_anchor_mock, MockInstantiateMsg as AnchorMsg,
 };
@@ -113,10 +113,10 @@ fn stablecoin_vault_fees_are_allocated() {
     assert_eq!(owner_balance, Uint128::new(5000));
 
     // Setup Warchest
-    let chest_msg = InstantiateMsg {
-        admin_addr: owner.to_string(),
-        whale_token_addr: whale_token_instance.to_string(),
-        spend_limit: Uint128::from(1_000_000u128),
+    let chest_msg = TreasuryInitMsg {
+        // admin_addr: owner.to_string(),
+        // whale_token_addr: whale_token_instance.to_string(),
+        // spend_limit: Uint128::from(1_000_000u128),
     };
 
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks
@@ -374,10 +374,10 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     assert_eq!(owner_balance, Uint128::new(5000));
 
     // Setup Warchest
-    let chest_msg = InstantiateMsg {
-        admin_addr: owner.to_string(),
-        whale_token_addr: whale_token_instance.to_string(),
-        spend_limit: Uint128::from(1_000_000u128),
+    let chest_msg = TreasuryInitMsg {
+        // admin_addr: owner.to_string(),
+        // whale_token_addr: whale_token_instance.to_string(),
+        // spend_limit: Uint128::from(1_000_000u128),
     };
 
     // Instantiate the Terraswap Mock, note this just has a simple init as we have removed everything except mocks

@@ -72,7 +72,7 @@ pub fn test_pool_query() {
     //let info = mock_info(TEST_CREATOR, &[]);
 
     let q_res: PoolResponse =
-        from_binary(&query(deps.as_ref(), env, QueryMsg::Pool {}).unwrap()).unwrap();
+        from_binary(&query(deps.as_ref(), env, QueryMsg::PoolConfig {}).unwrap()).unwrap();
     assert_eq!(
         q_res.assets,
         [
