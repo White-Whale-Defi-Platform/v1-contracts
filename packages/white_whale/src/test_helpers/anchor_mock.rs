@@ -1,4 +1,4 @@
-use cosmwasm_std::{from_binary, to_binary, Addr, attr, Binary, Empty, CosmosMsg, WasmMsg, Response, StdResult, Uint128, BankMsg, Coin, StdError};
+use cosmwasm_std::{from_binary, to_binary, attr, Binary, Empty, CosmosMsg, WasmMsg, Response, StdResult, Uint128, BankMsg, Coin, StdError};
 use cosmwasm_bignumber::{Decimal256, Uint256};
 
 use cw20::Cw20ReceiveMsg;
@@ -70,7 +70,7 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
                                         contract_addr: deps.api.addr_humanize(&deps.api.addr_canonicalize(&String::from("Contract #2"))?)?.to_string(),
                                         funds: vec![],
                                         msg: to_binary(&Cw20ExecuteMsg::Burn {
-                                            amount:amount,
+                                            amount,
                                         })?,
                                     }),
                                     CosmosMsg::Bank(BankMsg::Send {
