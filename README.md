@@ -5,7 +5,7 @@ These are our MVP contracts. Other contracts are in the works so some code in th
 
 The treasury contracts are being finished and are an independent whole. All other contracts are ready to be audited. 
 
-Docs for our contracts are found in the github Wiki page
+Docs for our contracts are found in our [docs](https://github.com/White-Whale-Defi-Platform/docs)
 ## Contracts
 
 | Name                                                       | Description                                  |
