@@ -1,5 +1,5 @@
 
-name: Warchest
+name: Community Fund
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 
 defaults:
   run:
-    working-directory: contracts/war-chest
+    working-directory: contracts/community-fund
 
 jobs:
   lint:
