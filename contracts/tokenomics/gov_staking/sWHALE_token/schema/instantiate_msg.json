@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InstantiateMsg",
+  "type": "object",
+  "required": [
+    "staked_whale_token",
+    "whale_staking_contract",
+    "whale_token"
+  ],
+  "properties": {
+    "staked_whale_token": {
+      "type": "string"
+    },
+    "whale_staking_contract": {
+      "type": "string"
+    },
+    "whale_token": {
+      "type": "string"
+    }
+  }
+}
