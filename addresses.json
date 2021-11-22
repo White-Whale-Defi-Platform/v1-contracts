@@ -9,14 +9,14 @@
         "community_fund": "terra1ugx7u99t8nqvhrt40ka759kqxy4j4r3n5v5l9j",
         "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v",
         "stablecoin_peg_arb": "terra1w677vh58v2t5u7dcpwu73yjct6tpa547ztsdaz",
-        "treasury": "terra17v7nryph9g3ca6gwzknx4tthu43c3fd6ngljua",
+        "treasury": "terra1u0jza00rktrtypcy3j7366ms5yqf0zjc8e6p6l",
         "terraswap_dapp": "terra1xzyy5axtf47nkkm2snl8dugaa5359y99ue4v82",
         "code_id": {
             "token_code_id": "148",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
-            "treasury": "21001",
+            "treasury": "21004",
             "terraswap_dapp": "20314"
         }
     },

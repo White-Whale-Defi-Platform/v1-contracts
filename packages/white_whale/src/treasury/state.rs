@@ -21,7 +21,7 @@ pub const STATE: Item<State> = Item::new("\u{0}{5}state");
 pub const ADMIN: Admin = Admin::new("admin");
 pub const VAULT_ASSETS: Map<&str, VaultAsset> = Map::new("vault_assets");
 
-pub fn lp_value(deps: Deps, _env: &Env, pool_addr: &Addr, holdings: &Uint128) -> StdResult<Uint128> {
+pub fn lp_value(deps: Deps, env: &Env, pool_addr: &Addr, holdings: &Uint128) -> StdResult<Uint128> {
     // Get LP pool info
     let pool_info: PoolResponse = query_pool(deps, pool_addr)?;
 
@@ -41,10 +41,10 @@ pub fn lp_value(deps: Deps, _env: &Env, pool_addr: &Addr, holdings: &Uint128) ->
     // set the amounts to the LP holdings
     let vault_asset_1_amount = share * asset_1.amount;
     let vault_asset_2_amount = share * asset_2.amount;
-    Ok(vault_asset_1_amount + vault_asset_2_amount)
+    // Ok(vault_asset_1_amount + vault_asset_2_amount)
     // Call value on these assets.
-    // Ok(vault_asset_1.value(deps, env, Some(vault_asset_1_amount))?
-    //     + vault_asset_2.value(deps, env, Some(vault_asset_2_amount))?)
+    Ok(vault_asset_1.value(deps, env, Some(vault_asset_1_amount))?
+        + vault_asset_2.value(deps, env, Some(vault_asset_2_amount))?)
 }
 
 pub fn proxy_value(
