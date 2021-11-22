@@ -23,16 +23,16 @@ deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
 treasury = TreasuryContract(deployer)
 terraswap_dapp = TerraswapDAppContract(deployer)
 
-create = False
+create = True
 
 if create:
-    # treasury.create()
+    treasury.create()
     terraswap_dapp.create()
     treasury.add_trader(terraswap_dapp.address)
 
 terraswap_dapp.query_config()
 
-# treasury.update_vault_assets([],[])
+treasury.update_vault_assets([],[])
 treasury.query_vault_asset("uusd")
 treasury.query_holding_value("terra1srf30cs8ax73y59gm64lkztnx0zexl8fpv3kx2")
 treasury.query_lp_balance()
