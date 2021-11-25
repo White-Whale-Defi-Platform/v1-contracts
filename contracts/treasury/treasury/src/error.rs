@@ -18,5 +18,4 @@ pub enum TreasuryError {
 
     #[error("Sender is not whitelisted")]
     SenderNotWhitelisted {},
-    
 }

@@ -3,15 +3,26 @@ import json
 
 import pathlib
 import sys
+from typing import List
 # temp workaround
 sys.path.append('/workspaces/devcontainer/White-Whale-SDK/src')
 sys.path.append(pathlib.Path(__file__).parent.resolve())
 
+from terra_sdk.core.wasm import MsgStoreCode, MsgInstantiateContract, MsgExecuteContract
 from terra_sdk.core.auth import StdFee
 from white_whale.deploy import get_deployer
 from terra_sdk.core.coins import Coin
 from white_whale.contracts.treasury import *
 from white_whale.contracts.terraswap_dapp import *
+
+def execute_on_treasury_msg(msg: str, coins: List[Coin]):
+    msg = MsgExecuteContract((
+        deployer.wallet.key.acc_address,
+        treasury.address,
+        msg,
+        coins,
+    ))
+
 
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"

@@ -12,29 +12,21 @@ pub struct InstantiateMsg {}
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Sets the admin
-    SetAdmin {
-        admin: String,
-    },
+    SetAdmin { admin: String },
     /// Executes the provided messages if sender is whitelisted
-    TraderAction {
-        msgs: Vec<CosmosMsg<Empty>>,
-    },
+    TraderAction { msgs: Vec<CosmosMsg<Empty>> },
     /// Adds the provided address to whitelisted traders
-    AddTrader {
-        trader: String,
-    },
+    AddTrader { trader: String },
     /// Removes the provided address from the whitelisted traders
-    RemoveTrader {
-        trader: String,
-    },
+    RemoveTrader { trader: String },
     /// Updates the VAULT_ASSETS map
     UpdateAssets {
         to_add: Vec<VaultAsset>,
         to_remove: Vec<AssetInfo>,
     },
-    // Idea: Add function that handles accounting. 
-    // Before anything this function gets called and it sets the VaultAsset.asset.amount to what the expected amount after the 
-    // planned action is. A callback then checks if these are correct after the action took place.   
+    // Idea: Add function that handles accounting.
+    // Before anything this function gets called and it sets the VaultAsset.asset.amount to what the expected amount after the
+    // planned action is. A callback then checks if these are correct after the action took place.
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -42,14 +34,20 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     /// Returns the treasury Config
     Config {},
-    /// Returns the total value of all held assets 
+    /// Returns the total value of all held assets
     TotalValue {},
     // Returns the value of one specific asset
-    HoldingValue { identifier: String },
+    HoldingValue {
+        identifier: String,
+    },
     // Returns the amount of specified tokens this contract holds
-    HoldingAmount { identifier: String },
+    HoldingAmount {
+        identifier: String,
+    },
     /// Returns the VAULT_ASSETS value for the specified key
-    VaultAssetConfig { identifier: String },
+    VaultAssetConfig {
+        identifier: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -77,4 +75,21 @@ pub fn send_to_treasury(
         msg: to_binary(&ExecuteMsg::TraderAction { msgs })?,
         funds: vec![],
     }))
+}
+
+/// Query message to external contract
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueQueryMsg {
+    Value {
+        asset_info: AssetInfo,
+        amount: Uint128,
+    },
+}
+
+/// Expected response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ValueResponse {
+    pub value: Uint128,
 }

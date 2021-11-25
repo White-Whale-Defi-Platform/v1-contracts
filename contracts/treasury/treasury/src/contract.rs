@@ -1,21 +1,21 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, Uint128,Order
+    to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Response, StdResult, Uint128,
 };
 
 use crate::error::TreasuryError;
-use white_whale::query::terraswap::query_asset_balance;
 use terraswap::asset::AssetInfo;
+use white_whale::query::terraswap::query_asset_balance;
 use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use white_whale::treasury::state::{State, ADMIN, STATE, VAULT_ASSETS};
 use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
 type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
-    The treasury is the bank account of the protocol. It owns the liquidity and acts as a proxy contract. 
-    Whitelisted dApps construct messages for this contract. The dApps are controlled by Governance / the federator contract.  
+    The treasury is the bank account of the protocol. It owns the liquidity and acts as a proxy contract.
+    Whitelisted dApps construct messages for this contract. The dApps are controlled by Governance / the federator contract.
 */
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -141,10 +141,13 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::TotalValue {} => to_binary(&compute_total_value(deps, env)?),
-        QueryMsg::HoldingAmount {identifier} => {
+        QueryMsg::HoldingAmount { identifier } => {
             let vault_asset: VaultAsset = VAULT_ASSETS.load(deps.storage, identifier.as_str())?;
-            to_binary(
-                &query_asset_balance(deps, &vault_asset.asset.info, env.contract.address.clone())?)
+            to_binary(&query_asset_balance(
+                deps,
+                &vault_asset.asset.info,
+                env.contract.address.clone(),
+            )?)
         }
         QueryMsg::HoldingValue { identifier } => {
             to_binary(&compute_holding_value(deps, &env, identifier)?)
@@ -177,12 +180,11 @@ pub fn compute_holding_value(deps: Deps, env: &Env, holding: String) -> StdResul
 
 /// Computes the total value locked in this contract
 pub fn compute_total_value(deps: Deps, env: Env) -> StdResult<Uint128> {
-
     // Get all assets from storage
     let mut all_assets = VAULT_ASSETS
         .range(deps.storage, None, None, Order::Ascending)
         .collect::<StdResult<Vec<(Vec<u8>, VaultAsset)>>>()?;
-    
+
     let mut total_value = Uint128::zero();
     // Calculate their value iteratively
     for vault_asset_entry in all_assets.iter_mut() {
