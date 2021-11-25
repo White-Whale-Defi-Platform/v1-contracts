@@ -32,7 +32,7 @@ pub fn simulate_swap(deps: Deps, pool_address: Addr, offer_coin: Coin) -> StdRes
 // perform a query for Pool information using the provided pool_address
 // return any response.
 // PoolResponse comes from terraswap and contains info on each of the assets as well as total share
-pub fn query_pool(deps: Deps, pool_address: Addr) -> StdResult<PoolResponse> {
+pub fn query_pool(deps: Deps, pool_address: &Addr) -> StdResult<PoolResponse> {
     let response: PoolResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: pool_address.to_string(),
         msg: to_binary(&QueryMsg::Pool {})?,

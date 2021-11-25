@@ -52,7 +52,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
             amount,
             max_spread,
             belief_price,
-        } => terraswap_swap(
+        } => astroport_swap(
             deps.as_ref(),
             env,
             info,
@@ -106,7 +106,7 @@ pub fn provide_liquidity(
     let pair_address = load_contract_addr(deps, &pool_id)?;
 
     // Get pool info
-    let pool_info: PoolResponse = query_pool(deps, pair_address)?;
+    let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
     let asset_1 = &pool_info.assets[0];
     let asset_2 = &pool_info.assets[1];
 
