@@ -1,12 +1,10 @@
 use cosmwasm_std::{
-    to_binary, Addr, AllBalanceResponse,BalanceResponse,BankQuery, Coin,QuerierWrapper, Decimal, Deps, QueryRequest, StdResult, Uint128, WasmQuery,
+    to_binary, Addr, BalanceResponse, BankQuery, Coin,QuerierWrapper, Decimal, Deps, QueryRequest, StdResult, Uint128, WasmQuery,
 };
 // use terraswap::asset::{Asset, AssetInfo, PairInfo};
 // use terraswap::pair::{PoolResponse, QueryMsg, SimulationResponse};
 use crate::astroport_helper::*;
-use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 
 
 
