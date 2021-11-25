@@ -34,7 +34,7 @@ pub fn deposit_lp_msg(
     }
 
     let lp_msg =  PairExecuteMsg::ProvideLiquidity {
-        assets: assets,
+        assets,
         slippage_tolerance: None,
         auto_stake: Some(false),
         receiver: None,
@@ -49,9 +49,6 @@ pub fn deposit_lp_msg(
 
     Ok(msgs)
 }
-
-
-
 
 // Adapted from terraswap_router operations.rs
 pub fn asset_into_swap_msg(
