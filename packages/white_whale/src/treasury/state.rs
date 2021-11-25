@@ -51,44 +51,13 @@ pub fn proxy_value(
     deps: Deps,
     env: &Env,
     proxy_asset_info: &AssetInfo,
-    mut multiplier: Decimal,
-    proxy_pool: &Option<Addr>,
+    multiplier: &Decimal,
     holding: Uint128,
 ) -> StdResult<Uint128> {
-    match proxy_pool {
-        // If there is a proxy pool, use this pool to set the multiplier using the ratio and
-        // vault asset info
-        Some(pool_addr) => {
-            // example: pool_addr is bluna/luna pool.
-            // holding = #bluna
-            let pool_info: PoolResponse = query_pool(deps, pool_addr)?;
+    // Get the proxy asset
+    let mut proxy_vault_asset: VaultAsset =
+        VAULT_ASSETS.load(deps.storage, get_identifier(proxy_asset_info).as_str())?;
 
-            let asset_1 = &pool_info.assets[0];
-            let asset_2 = &pool_info.assets[1];
-            let ratio = Decimal::from_ratio(asset_1.amount, asset_2.amount);
-
-            if &asset_1.info == proxy_asset_info {
-                // asset_1 is luna
-                // luna/bluna
-                multiplier = ratio;
-            } else {
-                // asset_1 is bluna
-                // luna/bluna
-                multiplier = ratio.inv().unwrap_or_default();
-            }
-
-            let proxy_holding = holding * multiplier;
-            let mut proxy_vault_asset: VaultAsset =
-                VAULT_ASSETS.load(deps.storage, get_identifier(proxy_asset_info).as_str())?;
-            proxy_vault_asset.value(deps, env, Some(proxy_holding))
-        }
-        // If no proxy pool is given, use the current multiplier
-        None => {
-            let mut proxy_vault_asset: VaultAsset =
-                VAULT_ASSETS.load(deps.storage, get_identifier(proxy_asset_info).as_str())?;
-            proxy_vault_asset.asset.amount = holding * multiplier;
-            // call value on proxy asset
-            proxy_vault_asset.value(deps, env, None)
-        }
-    }
+    // call value on proxy asset with adjusted multiplier.
+    proxy_vault_asset.value(deps, env, Some(holding * *multiplier))
 }
