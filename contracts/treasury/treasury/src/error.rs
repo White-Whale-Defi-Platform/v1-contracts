@@ -18,6 +18,4 @@ pub enum TreasuryError {
 
     #[error("Sender is not whitelisted")]
     SenderNotWhitelisted {},
-    // Add any other custom errors you like here.
-    // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
 }

@@ -14,6 +14,9 @@ from white_whale.contracts.stable_vault import *
 from white_whale.contracts.stable_arb import *
 from white_whale.contracts.community import *
 
+#------------------------
+#   Run with: $ cd /workspaces/devcontainer/contracts ; /usr/bin/env /bin/python3 -- /workspaces/devcontainer/contracts/scripts/full_deploy.py 
+#------------------------
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
 std_fee = StdFee(10*690000, "1200000uusd")
