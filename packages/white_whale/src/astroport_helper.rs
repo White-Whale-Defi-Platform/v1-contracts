@@ -11,6 +11,9 @@ use cosmwasm_std::{
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terra_cosmwasm::TerraQuerier;
 
+use crate::query::astroport::*;
+
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AstroportExecuteMsg {
@@ -35,6 +38,19 @@ pub enum AstroportExecuteMsg {
         minimum_receive: Uint128,
         receiver: String,
     },
+}
+
+//from https://github.com/astroport-fi/astroport/blob/master/packages/astroport/src/pair.rs
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw20HookMsg {
+    /// Sell a given amount of asset
+    Swap {
+        belief_price: Option<Decimal>,
+        max_spread: Option<Decimal>,
+        to: Option<String>,
+    },
+    WithdrawLiquidity {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -189,7 +205,16 @@ impl AssetInfo {
             AssetInfo::Token { .. } => false,
         }
     }
-
+    pub fn query_pool(&self, querier: &QuerierWrapper, pool_addr: Addr) -> StdResult<Uint128> {
+        match self {
+            AssetInfo::Token { contract_addr, .. } => {
+                query_token_balance(querier, contract_addr.clone(), pool_addr)
+            }
+            AssetInfo::NativeToken { denom, .. } => {
+                query_balance(querier, pool_addr, denom.to_string())
+            }
+        }
+    }
     pub fn equal(&self, asset: &AssetInfo) -> bool {
         match self {
             AssetInfo::Token { contract_addr, .. } => {
@@ -216,6 +241,47 @@ impl AssetInfo {
         }
     }
 }
+
+// We define a custom struct for each query response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct PairInfo {
+    pub asset_infos: [AssetInfo; 2],
+    pub contract_addr: Addr,
+    pub liquidity_token: Addr,
+    pub pair_type: PairType,
+}
+
+impl PairInfo {
+    pub fn query_pools(
+        &self,
+        querier: &QuerierWrapper,
+        contract_addr: Addr,
+    ) -> StdResult<[Asset; 2]> {
+        Ok([
+            Asset {
+                amount: self.asset_infos[0].query_pool(querier, contract_addr.clone())?,
+                info: self.asset_infos[0].clone(),
+            },
+            Asset {
+                amount: self.asset_infos[1].query_pool(querier, contract_addr)?,
+                info: self.asset_infos[1].clone(),
+            },
+        ])
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PairType {
+    Xyk {},
+    Stable {},
+}
+
+
+
+
+
+
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
