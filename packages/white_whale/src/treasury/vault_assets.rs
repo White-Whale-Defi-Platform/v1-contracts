@@ -39,11 +39,11 @@ pub enum ValueRef {
         proxy_asset: AssetInfo,
         multiplier: Decimal,
     },
-    Vault {
-        asset: Addr,
-        vault_addr: Addr,
+    // Vault {
+    //     asset: Addr,
+    //     vault_addr: Addr,
         
-    },
+    // },
     // Does a query to a provided contract address to determine the value of a token
     // Usefull for shares in a vault.
     External {

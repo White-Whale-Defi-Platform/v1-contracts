@@ -41,7 +41,6 @@ pub fn lp_value(deps: Deps, env: &Env, pool_addr: &Addr, holdings: &Uint128) -> 
     // set the amounts to the LP holdings
     let vault_asset_1_amount = share * asset_1.amount;
     let vault_asset_2_amount = share * asset_2.amount;
-    // Ok(vault_asset_1_amount + vault_asset_2_amount)
     // Call value on these assets.
     Ok(vault_asset_1.value(deps, env, Some(vault_asset_1_amount))?
         + vault_asset_2.value(deps, env, Some(vault_asset_2_amount))?)
