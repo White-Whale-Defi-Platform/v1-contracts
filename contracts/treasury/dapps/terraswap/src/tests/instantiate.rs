@@ -6,6 +6,7 @@ use crate::contract::{execute, instantiate};
 use crate::state::{State, STATE};
 
 use terraswap::asset::AssetInfo;
+use white_whale::treasury::dapp_base::msg::InstantiateMsg;
 
 use crate::tests::common::{TEST_CREATOR, TREASURY_CONTRACT};
 

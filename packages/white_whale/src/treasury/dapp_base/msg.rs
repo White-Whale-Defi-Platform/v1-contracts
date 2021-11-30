@@ -28,7 +28,6 @@ pub enum ExecuteMsg {
         max_spread: Option<Decimal>,
         belief_price: Option<Decimal>,
     },
-    // Add methods
     UpdateConfig {
         treasury_address: Option<String>,
         trader: Option<String>,
@@ -48,6 +47,7 @@ pub enum QueryMsg {
     Config {},
     AddressBook { id: String },
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct StateResponse {

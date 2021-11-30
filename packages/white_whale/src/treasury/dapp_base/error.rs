@@ -1,7 +1,6 @@
-use thiserror::Error;
-
 use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
+use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum DAppError {

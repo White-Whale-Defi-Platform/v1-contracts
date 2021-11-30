@@ -7,14 +7,14 @@ use cw20::Cw20ExecuteMsg;
 use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
 
-use crate::error::DAppError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
-use crate::state::{get_asset_info, load_contract_addr, State, ADDRESS_BOOK, ADMIN, STATE};
-use crate::terraswap_msg::*;
+use crate::state::get_asset_info;
+use crate::terraswap_msg::{deposit_lp_msg, asset_into_swap_msg};
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
+use white_whale::treasury::dapp_base::common::{PAIR_POSTFIX, DAppResult};
+use white_whale::treasury::dapp_base::error::DAppError;
+use white_whale::treasury::dapp_base::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
+use white_whale::treasury::dapp_base::state::{ADDRESS_BOOK, ADMIN, load_contract_addr, State, STATE};
 use white_whale::treasury::msg::send_to_treasury;
-type DAppResult = Result<Response, DAppError>;
-const PAIR_POSTFIX: &str = "_pair";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InstantiateMsg) -> DAppResult {

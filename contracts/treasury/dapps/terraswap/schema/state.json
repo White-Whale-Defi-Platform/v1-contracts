@@ -3,15 +3,14 @@
   "title": "State",
   "type": "object",
   "required": [
-    "trader",
-    "treasury_address"
+    "traders"
   ],
   "properties": {
-    "trader": {
-      "$ref": "#/definitions/CanonicalAddr"
-    },
-    "treasury_address": {
-      "$ref": "#/definitions/CanonicalAddr"
+    "traders": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CanonicalAddr"
+      }
     }
   },
   "definitions": {
