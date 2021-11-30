@@ -1,9 +1,10 @@
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Decimal, StdResult, WasmMsg};
 
+use crate::operation::*;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fmt;
-
 use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -16,11 +17,16 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    // Add methods
+    /// Execute an operation, only trader can call this
+    ExternalExecuteInstruction {
+        operation: Operation,
+    },
+    /// Update the config
     UpdateConfig {
         treasury_address: Option<String>,
         trader: Option<String>,
     },
+    /// Update the addressbook
     UpdateAddressBook {
         to_add: Vec<(String, String)>,
         to_remove: Vec<String>,
@@ -49,7 +55,8 @@ impl CallbackMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CallbackMsg {
-    AfterSuccessfulActionCallback {},
+    /// Execute an operation, can only be done by contract itself.
+    ExecuteInstruction {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

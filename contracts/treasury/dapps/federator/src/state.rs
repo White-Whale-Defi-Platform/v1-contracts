@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Binary, CanonicalAddr, Uint64};
+use cosmwasm_std::{Addr, Binary, Uint64};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 
@@ -14,7 +14,8 @@ pub struct State {
 
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");
-// stores name and address of token
-pub const ADDRESS_BOOK: Map<&str, String> = Map::new("address_book");
-// Instruction set
-pub const INSTRUCTION_SET: Map<&str, Binary> = Map::new("instruction_set");
+/// key/value pair for contract addresses
+/// <Opcode, address>
+// pub const ADDRESS_BOOK: Map<&str, String> = Map::new("address_book");
+/// Instruction set
+pub const INSTRUCTION_SET: Map<&str, (Addr, Binary)> = Map::new("instruction_set");

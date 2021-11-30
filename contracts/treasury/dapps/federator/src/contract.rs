@@ -2,17 +2,17 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
 };
 
-use crate::error::DAppError;
+use crate::error::FederatorError;
 use crate::msg::{CallbackMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, ADDRESS_BOOK, ADMIN, STATE};
+use crate::state::{State, INSTRUCTION_SET, ADMIN, STATE};
 
-type DAppResult = Result<Response, DAppError>;
+type FederatorResult = Result<Response, FederatorError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InstantiateMsg) -> DAppResult {
+pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: InstantiateMsg) -> FederatorResult {
     let state = State {
-        treasury_address: deps.api.addr_canonicalize(&msg.treasury_address)?,
-        trader: deps.api.addr_canonicalize(&msg.trader)?,
+        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
+        trader: deps.api.addr_validate(&msg.trader)?,
     };
 
     // Store the initial config
@@ -25,7 +25,7 @@ pub fn instantiate(deps: DepsMut, _env: Env, info: MessageInfo, msg: Instantiate
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DAppResult {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> FederatorResult {
     match msg {
         // TODO: Add functions
         ExecuteMsg::UpdateConfig {
@@ -52,10 +52,10 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
 //----------------------------------------------------------------------------------------
 
 // TODO: Callback to be implemented
-fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> DAppResult {
+fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> FederatorResult {
     // Callback functions can only be called this contract itself
     if info.sender != env.contract.address {
-        return Err(DAppError::NotCallback {});
+        return Err(FederatorError::NotCallback {});
     }
     match msg {
         CallbackMsg::AfterSuccessfulActionCallback {} => {
@@ -74,7 +74,7 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //----------------------------------------------------------------------------------------
 
 // After the arb this function returns the funds to the vault.
-fn after_successful_action_callback(deps: DepsMut, env: Env) -> DAppResult {
+fn after_successful_action_callback(deps: DepsMut, env: Env) -> FederatorResult {
     // Fill
     Ok(Response::new())
 }
@@ -88,7 +88,7 @@ pub fn update_address_book(
     msg_info: MessageInfo,
     to_add: Vec<(String, String)>,
     to_remove: Vec<String>,
-) -> DAppResult {
+) -> FederatorResult {
     // Only Admin can call this method
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
@@ -115,7 +115,7 @@ pub fn update_config(
     info: MessageInfo,
     treasury_address: Option<String>,
     trader: Option<String>,
-) -> DAppResult {
+) -> FederatorResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
