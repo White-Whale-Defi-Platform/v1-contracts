@@ -29,6 +29,7 @@ schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"
 thiserror = { version = "1.0.26" }
+# These are marked as dependancies as we exported mocks the contracts import for use in test to save defining the mock in multiple places
 terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}
 lazy_static = "1.4.0"
 
