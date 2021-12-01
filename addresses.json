@@ -16,9 +16,18 @@
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
-            "treasury": "24320",
-            "terraswap_dapp": "24321"
-        }
+            "treasury": "20307",
+            "terraswap_dapp": "20314",
+            "lbp_pair": "20258",
+            "astro_pair": "20222",
+            "astroport_dapp": "23622"
+        },
+        "test_whale_token": "terra187yf82jjwx4zv7qqp3x02pd2zmdqrrux4aah2h",
+        "terraswap_factory": "",
+        "astroport_factory": "terra15g5gj857u7su26cnff787xkuhgej70r6qwmf8v",
+        "astro_pair": "terra1350vn2746xcdk5z3smsvcgme5v4h4t2w6mjn4w",
+        "astro_lp_token": "terra12mxzfk2e66y7s9ldvckf4qpx5fsslgw5eans5m",
+        "astroport_dapp": "terra1xy4u4pjumd735z8n6g8kew4slgr874mks5ar8c"
     },
     "columbus-5": {
         "profit_check": "terra18ykdvsgknscc02l7793jrtx5s0rd7et5shzj7g",
