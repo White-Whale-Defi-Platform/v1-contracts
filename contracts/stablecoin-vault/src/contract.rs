@@ -25,7 +25,9 @@ use white_whale::ust_vault::msg::{
 
 use white_whale::tax::{compute_tax, into_msg_without_tax};
 use white_whale::ust_vault::msg::*;
-use cw2::set_contract_version;
+use cw2::{set_contract_version, get_contract_version};
+use semver::Version;
+
 
 use crate::error::StableVaultError;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
@@ -130,7 +132,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     }))
 }
 
-#[entry_point]
+#[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
     // let data = deps
     //     .storage
