@@ -15,7 +15,7 @@ pub struct State {
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");
 // stores name and address of tokens and pairs
-// pairs are named after the LP token id.
+// Example: pairs can be named after the LP token id.
 // LP token key: "ust_luna"
 // Pair key: "ust_luna_pair"
 pub const ADDRESS_BOOK: Map<&str, String> = Map::new("address_book");

@@ -6,15 +6,15 @@ use crate::contract::{execute, instantiate};
 use crate::state::{State, STATE};
 
 use terraswap::asset::AssetInfo;
-use white_whale::treasury::dapp_base::msg::InstantiateMsg;
+use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 
 use crate::tests::common::{TEST_CREATOR, TREASURY_CONTRACT};
 
 use crate::msg::*;
 use crate::tests::mock_querier::mock_dependencies;
 
-pub(crate) fn instantiate_msg() -> InstantiateMsg {
-    InstantiateMsg {
+pub(crate) fn instantiate_msg() -> BaseInstantiateMsg {
+    BaseInstantiateMsg {
         treasury_address: TREASURY_CONTRACT.to_string(),
         trader: "trader".to_string(),
     }
@@ -24,7 +24,7 @@ pub(crate) fn instantiate_msg() -> InstantiateMsg {
  * Mocks instantiation.
  */
 pub fn mock_instantiate(deps: DepsMut) {
-    let msg = InstantiateMsg {
+    let msg = BaseInstantiateMsg {
         treasury_address: TREASURY_CONTRACT.to_string(),
         trader: "trader".to_string(),
     };

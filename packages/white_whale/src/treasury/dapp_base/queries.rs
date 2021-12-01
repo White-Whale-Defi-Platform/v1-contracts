@@ -1,11 +1,11 @@
 use cosmwasm_std::{Deps, StdResult};
-use crate::treasury::dapp_base::msg::StateResponse;
+use crate::treasury::dapp_base::msg::BaseStateResponse;
 use crate::treasury::dapp_base::state::{ADDRESS_BOOK, STATE};
 
-pub fn try_query_config(deps: Deps) -> StdResult<StateResponse> {
+pub fn try_query_config(deps: Deps) -> StdResult<BaseStateResponse> {
     let state = STATE.load(deps.storage)?;
 
-    Ok(StateResponse {
+    Ok(BaseStateResponse {
         treasury_address: deps
             .api
             .addr_humanize(&state.treasury_address)?

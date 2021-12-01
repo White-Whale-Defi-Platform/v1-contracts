@@ -1,18 +1,20 @@
-use crate::state::get_asset_info;
-use crate::terraswap_msg::{asset_into_swap_msg, deposit_lp_msg};
-use crate::utils::has_sufficient_balance;
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response, Uint128,
+    Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response, to_binary, Uint128,
     WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
+
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
 use white_whale::treasury::dapp_base::common::{DAppResult, PAIR_POSTFIX};
 use white_whale::treasury::dapp_base::error::DAppError;
 use white_whale::treasury::dapp_base::state::{load_contract_addr, STATE};
 use white_whale::treasury::msg::send_to_treasury;
+
+use crate::state::get_asset_info;
+use crate::terraswap_msg::{asset_into_swap_msg, deposit_lp_msg};
+use crate::utils::has_sufficient_balance;
 
 /// Constructs and forwards the terraswap provide_liquidity message
 pub fn provide_liquidity(
