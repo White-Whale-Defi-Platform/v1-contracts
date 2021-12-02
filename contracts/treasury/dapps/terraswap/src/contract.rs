@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Response, StdResult, to_binary,
+    Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Response, StdResult,
 };
 
 use white_whale::treasury::dapp_base::commands as dapp_base_commands;

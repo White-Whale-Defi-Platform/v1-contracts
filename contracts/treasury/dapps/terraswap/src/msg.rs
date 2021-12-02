@@ -1,5 +1,6 @@
 use cosmwasm_std::{Decimal, Uint128};
-
+use serde::{Deserialize, Serialize};
+use schemars::JsonSchema;
 use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
