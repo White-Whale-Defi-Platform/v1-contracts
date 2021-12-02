@@ -50,6 +50,7 @@ if create:
 
 terraswap_dapp.query_config()
 
+<<<<<<< HEAD
     
 treasury.query_holding_amount("uluna")
 # treasury.send_asset("uluna", 10000, "terra1khmttxmtsmt0983ggwcufalxkn07l4yj5thu3h")
@@ -59,5 +60,18 @@ treasury.query_holding_amount("uluna")
 # terraswap_dapp.provide_liquidity("luna_ust_pair", "luna", int(9000000))
 treasury.query_holding_value("uluna")
 # terraswap_dapp.withdraw_liquidity("luna_ust", 10000)
+=======
+# treasury.update_vault_assets([],[])
+# treasury.query_vault_asset("uusd")
+# treasury.query_holding_value("terra1srf30cs8ax73y59gm64lkztnx0zexl8fpv3kx2")
+treasury.query_lp_balance()
+
+# terraswap_dapp.swap("luna", "luna_ust_pair", int(10000000))
+# terraswap_dapp.provide_liquidity("luna_ust_pair", "luna", int(9000000))
+treasury.query_holding_value("uusd")
+terraswap_dapp.withdraw_liquidity("luna_ust", 10000)
+treasury.query_lp_balance()
+
+>>>>>>> astroport dapp
 
 exit()

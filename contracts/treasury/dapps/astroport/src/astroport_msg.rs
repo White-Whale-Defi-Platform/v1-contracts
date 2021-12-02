@@ -34,7 +34,7 @@ pub fn deposit_lp_msg(
     }
 
     let lp_msg =  PairExecuteMsg::ProvideLiquidity {
-        assets,
+        assets: assets,
         slippage_tolerance: None,
         auto_stake: Some(false),
         receiver: None,
