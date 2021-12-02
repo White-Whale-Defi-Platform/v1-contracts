@@ -42,5 +42,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
+        // handle dapp-specific queries here
+        // QueryMsg::Custom{} => queries::custom_query(),
     }
 }
