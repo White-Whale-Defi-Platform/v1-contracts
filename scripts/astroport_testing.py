@@ -15,7 +15,7 @@ from white_whale.deploy import get_deployer
 from terra_sdk.core.coins import Coin
 from white_whale.contracts.astroport_pair import *
 from white_whale.contracts.astroport_dapp import *
-
+from white_whale.contracts.treasury import *
 
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
@@ -26,9 +26,36 @@ deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
 
 test_pool = AstroportTestPool(deployer)
 astroport_dapp = AstroportDAppContract(deployer)
+treasury = TreasuryContract(deployer)
 
-test_pool.new_token()
-test_pool.create()
-
+# test_pool.create()
 # astroport_dapp.create()
 
+
+# test_pool.provide_astro_liquidity()
+
+# Send white whale tokens to treasury?
+
+
+
+# test_pool.send_lp_token_to_treasury(1000000)
+
+# asset_to_add =  { 
+#             "asset": {
+#                 "info": {
+#                     "token": { "contract_addr": "terra1s8mvwktsz2rqjrw5xtgta3764nszpzxcuczj55" }
+#                 },
+#                 "amount": str(int(0))
+#             },
+#             "value_reference": {
+#                 "liquidity": {
+#                     "pool_address": "terra1x034d0sxw0vspkh7axlljchv0c4yw2qk9dh23r"
+#                 }
+#             }
+#         }
+# treasury.update_vault_assets([asset_to_add],[])
+
+treasury.query_lp_balance()
+
+# astroport provide liquidity
+astroport_dapp.provide_liquidity("terra1x034d0sxw0vspkh7axlljchv0c4yw2qk9dh23r", "terra1mjjmnqkt7e4kfumsp5zkxhdah75xfev0aasf7d", 20000)
