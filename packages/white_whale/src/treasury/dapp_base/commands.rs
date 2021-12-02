@@ -1,12 +1,35 @@
-//----------------------------------------------------------------------------------------
-//  GOVERNANCE CONTROLLED SETTERS
-//----------------------------------------------------------------------------------------
-
 use cosmwasm_std::{DepsMut, MessageInfo, Response, StdResult};
 
 use crate::treasury::dapp_base::common::DAppResult;
 use crate::treasury::dapp_base::msg::BaseExecuteMsg;
 use crate::treasury::dapp_base::state::{ADDRESS_BOOK, ADMIN, STATE};
+
+/// Handles the common base execute messages
+pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecuteMsg) -> DAppResult {
+    match message {
+        BaseExecuteMsg::UpdateConfig {
+            treasury_address,
+            trader,
+        } => update_config(deps, info, treasury_address, trader),
+        BaseExecuteMsg::SetAdmin { admin } => {
+            ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+            let admin_addr = deps.api.addr_validate(&admin)?;
+            let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
+            ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
+            Ok(Response::default()
+                .add_attribute("previous admin", previous_admin)
+                .add_attribute("admin", admin))
+        }
+        BaseExecuteMsg::UpdateAddressBook { to_add, to_remove } => {
+            update_address_book(deps, info, to_add, to_remove)
+        }
+    }
+}
+
+//----------------------------------------------------------------------------------------
+//  GOVERNANCE CONTROLLED SETTERS
+//----------------------------------------------------------------------------------------
 
 pub fn update_address_book(
     deps: DepsMut,
@@ -58,27 +81,4 @@ pub fn update_config(
 
     STATE.save(deps.storage, &state)?;
     Ok(Response::new().add_attribute("Update:", "Successfull"))
-}
-
-/// Handles the common base execute messages
-pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecuteMsg) -> DAppResult {
-    match message {
-        BaseExecuteMsg::UpdateConfig {
-            treasury_address,
-            trader,
-        } => update_config(deps, info, treasury_address, trader),
-        BaseExecuteMsg::SetAdmin { admin } => {
-            ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-
-            let admin_addr = deps.api.addr_validate(&admin)?;
-            let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
-            ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
-            Ok(Response::default()
-                .add_attribute("previous admin", previous_admin)
-                .add_attribute("admin", admin))
-        }
-        BaseExecuteMsg::UpdateAddressBook { to_add, to_remove } => {
-            update_address_book(deps, info, to_add, to_remove)
-        }
-    }
 }

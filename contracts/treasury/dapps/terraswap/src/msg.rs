@@ -1,7 +1,9 @@
 use cosmwasm_std::{Decimal, Uint128};
 
-use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
+use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg};
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Base(BaseExecuteMsg),
     ProvideLiquidity {
@@ -20,4 +22,10 @@ pub enum ExecuteMsg {
         max_spread: Option<Decimal>,
         belief_price: Option<Decimal>,
     },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    Base(BaseQueryMsg),
 }
