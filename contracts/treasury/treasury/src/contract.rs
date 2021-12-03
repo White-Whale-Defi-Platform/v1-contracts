@@ -38,6 +38,12 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> TreasuryResult {
     match msg {
+        ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),
+        ExecuteMsg::SendAsset {
+            id,
+            amount,
+            recipient,
+        } => send_asset(deps.as_ref(), info, id, amount, recipient),
         ExecuteMsg::SetAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
@@ -48,7 +54,6 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
         }
         ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
         ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
-        ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),
         ExecuteMsg::UpdateAssets { to_add, to_remove } => {
             update_assets(deps, info, to_add, to_remove)
         }
@@ -71,6 +76,21 @@ pub fn execute_action(
     }
 
     Ok(Response::new().add_messages(msgs))
+}
+
+pub fn send_asset(deps: Deps,
+    msg_info: MessageInfo,
+    id: String,
+    amount: Uint128,
+    recipient: String,
+) -> TreasuryResult {
+    // Only admin can send funds
+    ADMIN.assert_admin(deps, &msg_info.sender);
+    // 
+    let mut vault_asset = VAULT_ASSETS.load(deps.storage, &id)?.asset;
+    vault_asset.amount = amount;
+
+    Ok(Response::new().add_message(vault_asset.into_msg(&deps.querier, deps.api.addr_validate(&recipient)?)?))
 }
 
 /// Update the stored vault asset information
