@@ -257,7 +257,6 @@ pub fn update_address_book(
     for name in to_remove {
         ADDRESS_BOOK.remove(deps.storage, name.as_str());
     }
-
     Ok(Response::new().add_attribute("action", "updated address book"))
 }
 

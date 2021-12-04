@@ -34,7 +34,7 @@ treasury = TreasuryContract(deployer)
 
 # test_pool.provide_astro_liquidity()
 
-# Send white whale tokens to treasury?
+# # Send white whale tokens to treasury?
 
 
 
@@ -43,20 +43,23 @@ treasury = TreasuryContract(deployer)
 # asset_to_add =  { 
 #             "asset": {
 #                 "info": {
-#                     "token": { "contract_addr": "terra1s8mvwktsz2rqjrw5xtgta3764nszpzxcuczj55" }
+#                     "token": { "contract_addr": "terra1mjjmnqkt7e4kfumsp5zkxhdah75xfev0aasf7d" }
 #                 },
 #                 "amount": str(int(0))
-#             },
-#             "value_reference": {
-#                 "liquidity": {
-#                     "pool_address": "terra1x034d0sxw0vspkh7axlljchv0c4yw2qk9dh23r"
-#                 }
 #             }
 #         }
 # treasury.update_vault_assets([asset_to_add],[])
 
+whaletoken = test_pool.addresses["test_whale_token"]
+pair_token = test_pool.addresses["astro_lp_token"] 
+pool_addr = test_pool.addresses["astro_pair"]
 
 
+# to_add = [("TWHALE", whaletoken), ("TWHALE_UST_pair")]
+# astroport_dapp.update_address_book(to_add, [])
+treasury.query_balance(whaletoken)
+treasury.query_balance(pair_token)
+astroport_dapp.withdraw_liquidity("TWHALE_UST_pair",1000)
 
 # astroport provide liquidity
-astroport_dapp.provide_liquidity("terra1x034d0sxw0vspkh7axlljchv0c4yw2qk9dh23r", "terra1mjjmnqkt7e4kfumsp5zkxhdah75xfev0aasf7d", 20000)
+# astroport_dapp.provide_liquidity(pool_addr, whaletoken, 20000)
