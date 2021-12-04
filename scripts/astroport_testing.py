@@ -55,7 +55,8 @@ treasury = TreasuryContract(deployer)
 #         }
 # treasury.update_vault_assets([asset_to_add],[])
 
-treasury.query_lp_balance()
+
+
 
 # astroport provide liquidity
 astroport_dapp.provide_liquidity("terra1x034d0sxw0vspkh7axlljchv0c4yw2qk9dh23r", "terra1mjjmnqkt7e4kfumsp5zkxhdah75xfev0aasf7d", 20000)
