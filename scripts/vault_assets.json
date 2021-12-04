@@ -44,18 +44,18 @@
     },
     "value_reference": {
         "pool": {
-            "pair_address": "terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff"
+            "pair_address": "terra1tndcaqxkpc5ce9qee5ggqf430mr2z3pefe5wj6"
         }
     }},
     {"asset": {
         "info": {
-            "token": { "contract_addr": "terra1srf30cs8ax73y59gm64lkztnx0zexl8fpv3kx2" }
+            "token": { "contract_addr": "terra17dkr9rnmtmu7x4azrpupukvur2crnptyfvsrvr" }
         },
         "amount": "0"
     },
     "value_reference": {
         "liquidity": {
-            "pool_address": "terra156v8s539wtz0sjpn8y8a8lfg8fhmwa7fy22aff"
+            "pool_address": "terra1tndcaqxkpc5ce9qee5ggqf430mr2z3pefe5wj6"
         }
     }}
 ]
