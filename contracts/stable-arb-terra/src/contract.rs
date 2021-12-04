@@ -18,14 +18,22 @@ use white_whale::tax::deduct_tax;
 use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
 
+use cw2::{set_contract_version, get_contract_version};
+use semver::Version;
+
+
 use crate::error::StableArbError;
-use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 
 use crate::querier::query_market_price;
 
 use crate::state::{State, ADMIN, ARB_BASE_ASSET, STATE};
 
 type VaultResult = Result<Response<TerraMsgWrapper>, StableArbError>;
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:stablecoin-arb-terra";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -34,6 +42,8 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> VaultResult {
+    // Use CW2 to set the contract version, this is needed for migrations
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let state = State {
         vault_address: deps.api.addr_canonicalize(&msg.vault_address)?,
         seignorage_address: deps.api.addr_canonicalize(&msg.seignorage_address)?,
@@ -72,6 +82,24 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
         }
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
+}
+
+//----------------------------------------------------------------------------------------
+//  CONTRACT UPGRADEABILITY
+//----------------------------------------------------------------------------------------
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
+    let version: Version = CONTRACT_VERSION.parse()?;
+    let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
+
+    if storage_version < version {
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+        // If state structure changed in any contract version in the way migration is needed, it
+        // should occur here
+    }
+    Ok(Response::default())
 }
 
 //----------------------------------------------------------------------------------------

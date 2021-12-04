@@ -30,6 +30,17 @@ pub enum ExecuteMsg {
     // UpdateBalances {},
 }
 
+/// MigrateMsg allows a privileged contract administrator to run
+/// a migration on the contract. In this case it is just migrating
+/// from one terra code to the same code, but taking advantage of the
+/// migration step to set a new validator.
+///
+/// Note that the contract doesn't enforce permissions here, this is done
+/// by blockchain logic (in the future by blockchain governance)
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MigrateMsg {
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {

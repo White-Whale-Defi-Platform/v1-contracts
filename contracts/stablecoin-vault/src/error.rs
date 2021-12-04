@@ -11,6 +11,9 @@ pub enum StableVaultError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
+    #[error("Semver parsing error: {0}")]
+    SemVer(String),
+
     #[error("Unauthorized")]
     Unauthorized {},
 
@@ -34,4 +37,10 @@ pub enum StableVaultError {
 
     #[error("You can not deposit into the vault during a flashloan.")]
     DepositDuringLoan {},
+}
+
+impl From<semver::Error> for StableVaultError {
+    fn from(err: semver::Error) -> Self {
+        Self::SemVer(err.to_string())
+    }
 }

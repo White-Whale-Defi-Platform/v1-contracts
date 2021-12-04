@@ -7,15 +7,21 @@ use cosmwasm_std::{
 
 use crate::error::TreasuryError;
 use terraswap::asset::AssetInfo;
-use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 use white_whale::treasury::state::{State, ADMIN, STATE, VAULT_ASSETS};
 use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
+use cw2::{set_contract_version, get_contract_version};
+use semver::Version;
 type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
     The treasury behaves similarly to a community fund with the provisio that funds in the treasury are used to provide staking rewards to stakers.
     It is controlled by the governance contract and serves to grow its holdings and become a safeguard/protective measure in keeping the peg.
 */
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:treasury";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -24,6 +30,8 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> TreasuryResult {
+    // Use CW2 to set the contract version, this is needed for migrations
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &State { traders: vec![] })?;
     let admin_addr = Some(info.sender);
     ADMIN.set(deps, admin_addr)?;
@@ -53,6 +61,35 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
             update_assets(deps, info, to_add, to_remove)
         }
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> TreasuryResult {
+    // let data = deps
+    //     .storage
+    //     .get(CONFIG_KEY)
+    //     .ok_or_else(|| StdError::not_found("State"))?;
+    // // We can start a new State object from the old one
+    // let mut config: State = from_slice(&data)?;
+    // // And use something provided in MigrateMsg to update the state of the migrated contract
+    // config.verifier = deps.api.addr_validate(&msg.verifier)?;
+    // // Then store our modified State 
+    // deps.storage.set(CONFIG_KEY, &to_vec(&config)?);
+    // If we have no need to update the State of the contract then just Response::default() should suffice
+    // in this case, the code is still updated, the migration does not change the contract addr or funds 
+    // if this is the case you desire, consider making the new Addr part of the MigrateMsg and then doing
+    // a payout
+
+    let version: Version = CONTRACT_VERSION.parse()?;
+    let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
+
+    if storage_version < version {
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+        // If state structure changed in any contract version in the way migration is needed, it
+        // should occur here
+    }
+    Ok(Response::default())
 }
 
 /// Executes actions forwarded by whitelisted contracts

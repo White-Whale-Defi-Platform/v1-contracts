@@ -58,6 +58,17 @@ pub enum ExecuteMsg {
     Callback(CallbackMsg),
 }
 
+/// MigrateMsg allows a privileged contract administrator to run
+/// a migration on the contract. In this case it is just migrating
+/// from one terra code to the same code, but taking advantage of the
+/// migration step to set a new validator.
+///
+/// Note that the contract doesn't enforce permissions here, this is done
+/// by blockchain logic (in the future by blockchain governance)
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MigrateMsg {
+}
+
 // Modified from
 // https://github.com/CosmWasm/cosmwasm-plus/blob/v0.2.3/packages/cw20/src/receiver.rs#L15
 impl CallbackMsg {
