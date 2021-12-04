@@ -85,7 +85,7 @@ pub fn send_asset(deps: Deps,
     recipient: String,
 ) -> TreasuryResult {
     // Only admin can send funds
-    ADMIN.assert_admin(deps, &msg_info.sender);
+    ADMIN.assert_admin(deps, &msg_info.sender)?;
     // 
     let mut vault_asset = VAULT_ASSETS.load(deps.storage, &id)?.asset;
     vault_asset.amount = amount;
