@@ -15,4 +15,5 @@ pub mod treasury;
 pub mod ust_vault;
 pub mod vesting;
 #[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
 pub mod test_helpers;

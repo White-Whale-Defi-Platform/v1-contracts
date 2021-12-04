@@ -32,7 +32,11 @@ def execute_on_treasury_msg(msgs: any, coins: List[Coin]):
 
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
-std_fee = StdFee(10*690000, "1200000uusd")
+
+# REMOVE
+# mnemonic = "pill hole shiver wage infant danger salt dismiss steak weather shell bright grass company violin large pride vessel physical rain number rookie best three"
+
+
 
 # deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None)
 deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
@@ -49,38 +53,15 @@ if create:
     treasury.add_trader(deployer.wallet.key.acc_address)
 
 terraswap_dapp.query_config()
-# terraswap_dapp.set_treasury_addr()
-# treasury.update_vault_assets([],[])
-# SendMsg = MsgSend(
-#         treasury.address,
-#         deployer.wallet.key.acc_address,
-#         "1000000uluna" # send 1 luna
-#     ).to_data()
-# print(SendMsg)
-# SendMsg.type = "bank"
-# SendMsg = SendMsg.to_json()
-# print(SendMsg)
-# msg = execute_on_treasury_msg(msgs=[SendMsg], coins=[])
 
-# tx = deployer.wallet.create_and_sign_tx(
-#     msgs=[msg],
-#     memo="test transaction!",
-#     fee=StdFee(200000, "120000uluna")
-# )
-
-# result = deployer.client.tx.broadcast(tx)
-# print(result)
-# exit()
-treasury.query_vault_asset("uluna")
-treasury.query_config()
+    
 treasury.query_holding_amount("uluna")
-# treasury.send_native_token("uluna", 10_000, "terra1vjjs2cekma9s0axev989e68lkdx7mgjl0pnaak")
-treasury.query_holding_amount("uluna")
-# treasury.query_holding_value("terra1srf30cs8ax73y59gm64lkztnx0zexl8fpv3kx2")
-# treasury.query_lp_balance()
-# treasury.query_holding_value("uusd")
+# treasury.send_asset("uluna", 10000, "terra1khmttxmtsmt0983ggwcufalxkn07l4yj5thu3h")
+# treasury.update_vault_assets()
+# treasury.query_vault_asset("uluna")
 # terraswap_dapp.swap("luna", "luna_ust_pair", int(10000000))
-# terraswap_dapp.provide_liquidity("luna_ust_pair", "ust", int(100_000_000))
-# terraswap_dapp.withdraw_liquidity("luna_ust", 485111)
+# terraswap_dapp.provide_liquidity("luna_ust_pair", "luna", int(9000000))
+treasury.query_holding_value("uluna")
+# terraswap_dapp.withdraw_liquidity("luna_ust", 10000)
 
 exit()

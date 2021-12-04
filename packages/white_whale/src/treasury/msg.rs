@@ -24,9 +24,23 @@ pub enum ExecuteMsg {
         to_add: Vec<VaultAsset>,
         to_remove: Vec<AssetInfo>,
     },
-    // Idea: Add function that handles accounting.
-    // Before anything this function gets called and it sets the VaultAsset.asset.amount to what the expected amount after the
-    // planned action is. A callback then checks if these are correct after the action took place.
+    // Send asset to recipient 
+    SendAsset {
+        id: String,
+        amount: Uint128,
+        recipient: String,
+    },
+}
+
+/// MigrateMsg allows a privileged contract administrator to run
+/// a migration on the contract. In this case it is just migrating
+/// from one terra code to the same code, but taking advantage of the
+/// migration step to set a new validator.
+///
+/// Note that the contract doesn't enforce permissions here, this is done
+/// by blockchain logic (in the future by blockchain governance)
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MigrateMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

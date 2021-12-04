@@ -8,15 +8,21 @@ use cosmwasm_std::{
 use crate::error::TreasuryError;
 use terraswap::asset::AssetInfo;
 use white_whale::query::terraswap::query_asset_balance;
-use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 use white_whale::treasury::state::{State, ADMIN, STATE, VAULT_ASSETS};
 use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
+use cw2::{set_contract_version, get_contract_version};
+use semver::Version;
 type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
     The treasury is the bank account of the protocol. It owns the liquidity and acts as a proxy contract.
     Whitelisted dApps construct messages for this contract. The dApps are controlled by Governance / the federator contract.
 */
+
+// version info for migration info
+const CONTRACT_NAME: &str = "crates.io:treasury";
+const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -25,6 +31,8 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> TreasuryResult {
+    // Use CW2 to set the contract version, this is needed for migrations
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     STATE.save(deps.storage, &State { traders: vec![] })?;
     let admin_addr = Some(info.sender);
     ADMIN.set(deps, admin_addr)?;
@@ -35,6 +43,12 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> TreasuryResult {
     match msg {
+        ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),
+        ExecuteMsg::SendAsset {
+            id,
+            amount,
+            recipient,
+        } => send_asset(deps.as_ref(), info, id, amount, recipient),
         ExecuteMsg::SetAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
@@ -45,11 +59,39 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
         }
         ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
         ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
-        ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),
         ExecuteMsg::UpdateAssets { to_add, to_remove } => {
             update_assets(deps, info, to_add, to_remove)
         }
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> TreasuryResult {
+    // let data = deps
+    //     .storage
+    //     .get(CONFIG_KEY)
+    //     .ok_or_else(|| StdError::not_found("State"))?;
+    // // We can start a new State object from the old one
+    // let mut config: State = from_slice(&data)?;
+    // // And use something provided in MigrateMsg to update the state of the migrated contract
+    // config.verifier = deps.api.addr_validate(&msg.verifier)?;
+    // // Then store our modified State 
+    // deps.storage.set(CONFIG_KEY, &to_vec(&config)?);
+    // If we have no need to update the State of the contract then just Response::default() should suffice
+    // in this case, the code is still updated, the migration does not change the contract addr or funds 
+    // if this is the case you desire, consider making the new Addr part of the MigrateMsg and then doing
+    // a payout
+
+    let version: Version = CONTRACT_VERSION.parse()?;
+    let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
+
+    if storage_version < version {
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+        // If state structure changed in any contract version in the way migration is needed, it
+        // should occur here
+    }
+    Ok(Response::default())
 }
 
 /// Executes actions forwarded by whitelisted contracts
@@ -68,6 +110,21 @@ pub fn execute_action(
     }
 
     Ok(Response::new().add_messages(msgs))
+}
+
+pub fn send_asset(deps: Deps,
+    msg_info: MessageInfo,
+    id: String,
+    amount: Uint128,
+    recipient: String,
+) -> TreasuryResult {
+    // Only admin can send funds
+    ADMIN.assert_admin(deps, &msg_info.sender)?;
+    // 
+    let mut vault_asset = VAULT_ASSETS.load(deps.storage, &id)?.asset;
+    vault_asset.amount = amount;
+
+    Ok(Response::new().add_message(vault_asset.into_msg(&deps.querier, deps.api.addr_validate(&recipient)?)?))
 }
 
 /// Update the stored vault asset information

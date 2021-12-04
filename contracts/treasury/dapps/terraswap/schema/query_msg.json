@@ -17,16 +17,48 @@
     {
       "type": "object",
       "required": [
-        "address_book"
+        "total_value"
       ],
       "properties": {
-        "address_book": {
+        "total_value": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "holding_value"
+      ],
+      "properties": {
+        "holding_value": {
           "type": "object",
           "required": [
-            "id"
+            "identifier"
           ],
           "properties": {
-            "id": {
+            "identifier": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "vault_asset_config"
+      ],
+      "properties": {
+        "vault_asset_config": {
+          "type": "object",
+          "required": [
+            "identifier"
+          ],
+          "properties": {
+            "identifier": {
               "type": "string"
             }
           }

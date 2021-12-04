@@ -1,10 +1,20 @@
-use cosmwasm_std::{from_binary, to_binary, Binary, Empty, Response, StdResult, Uint128};
+
+use cosmwasm_std::{
+    from_binary, to_binary, Addr, Binary, Empty, Response, StdResult, Uint128,
+};
 use cw20::Cw20ReceiveMsg;
-use cw_multi_test::{Contract, ContractWrapper};
+use cw20::{BalanceResponse, TokenInfoResponse};
+use cw_storage_plus::Map;
+use lazy_static::lazy_static;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use std::sync::RwLock;
+use terra_multi_test::{Contract, ContractWrapper};
 use terraswap::asset::{Asset, AssetInfo};
 
+lazy_static! {
+    static ref TOKEN_ADDR: RwLock<String> = RwLock::new("string".to_string());
+}
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct MockInstantiateMsg {}
@@ -19,6 +29,22 @@ pub struct PingMsg {
 #[serde(rename_all = "snake_case")]
 pub enum MockExecuteMsg {
     Receive(Cw20ReceiveMsg),
+    Mint {
+        recipient: String,
+        amount: Uint128,
+    },
+    Send {
+        contract: String,
+        amount: Uint128,
+        msg: Binary,
+    },
+    Burn {
+        amount: Uint128,
+    },
+    Transfer {
+        recipient: String,
+        amount: Uint128,
+    },
 }
 
 // We define a custom struct for each query response
@@ -41,11 +67,15 @@ pub struct PairResponse {
 pub enum MockQueryMsg {
     Pair {},
     Pool {},
+    TokenInfo {},
+    Balance { address: String },
 }
+
+pub const BALANCES: Map<&Addr, Uint128> = Map::new("balance");
 
 pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        |_, _, _, msg: MockExecuteMsg| -> StdResult<Response> {
+        |deps, _, info, msg: MockExecuteMsg| -> StdResult<Response> {
             match msg {
                 MockExecuteMsg::Receive(Cw20ReceiveMsg {
                     sender: _,
@@ -57,6 +87,38 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
                         .add_attribute("action", "pong")
                         .set_data(to_binary(&received.payload)?))
                 }
+                MockExecuteMsg::Mint {
+                    recipient: _,
+                    amount: _,
+                } => Ok(Response::new()),
+                MockExecuteMsg::Send {
+                    contract,
+                    amount,
+                    msg,
+                } => Ok(Response::new().add_message(
+                    Cw20ReceiveMsg {
+                        sender: info.sender.into(),
+                        amount,
+                        msg,
+                    }
+                    .into_cosmos_msg(contract)?,
+                )),
+                MockExecuteMsg::Burn { amount: _ } => Ok(Response::new()),
+                MockExecuteMsg::Transfer { recipient, amount } => {
+                    let rcpt_addr = deps.api.addr_validate(&recipient)?;
+                    BALANCES.update(
+                        deps.storage,
+                        &rcpt_addr,
+                        |balance: Option<Uint128>| -> StdResult<_> {
+                            Ok(balance.unwrap_or_default() + amount)
+                        },
+                    )?;
+                    Ok(Response::new()
+                        .add_attribute("action", "transfer")
+                        .add_attribute("from", info.sender)
+                        .add_attribute("to", recipient)
+                        .add_attribute("amount", amount))
+                }
             }
         },
         |_, _, _, _: MockInstantiateMsg| -> StdResult<Response> { Ok(Response::default()) },
@@ -64,14 +126,35 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
             match msg {
                 MockQueryMsg::Pair {} => Ok(to_binary(&mock_pair_info())?),
                 MockQueryMsg::Pool {} => Ok(to_binary(&mock_pool_info())?),
+                MockQueryMsg::TokenInfo {} => Ok(to_binary(&mock_token_info())?),
+                MockQueryMsg::Balance { address:_ } => {
+                    Ok(to_binary(&mock_balance_info())?)
+                }
             }
         },
     );
     Box::new(contract)
 }
 
-pub fn mock_pair_info() {
-    to_binary(&PairResponse {
+pub fn mock_balance_info() -> BalanceResponse {
+    let resp: BalanceResponse = BalanceResponse {
+        balance: Uint128::new(10),
+    };
+    resp
+}
+
+pub fn set_liq_token_addr(new_addr: String) -> String {
+    let mut addr = TOKEN_ADDR.write().unwrap();
+    *addr = new_addr;
+    addr.to_string()
+}
+
+pub fn get_liq_token_addr() -> String {
+    return TOKEN_ADDR.read().unwrap().to_string();
+}
+
+pub fn mock_pair_info() -> PairResponse {
+    let resp: PairResponse = PairResponse {
         asset_infos: [
             AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
@@ -81,9 +164,9 @@ pub fn mock_pair_info() {
             },
         ],
         contract_addr: "pair0000".to_string(),
-        liquidity_token: "liquidity0000".to_string(),
-    })
-    .unwrap_or_default();
+        liquidity_token: get_liq_token_addr(),
+    };
+    resp
 }
 
 pub fn mock_pool_info() {
@@ -105,4 +188,14 @@ pub fn mock_pool_info() {
         total_share: Uint128::from(1000u128),
     })
     .unwrap_or_default();
+}
+
+pub fn mock_token_info() -> TokenInfoResponse {
+    let resp: TokenInfoResponse = TokenInfoResponse {
+        name: "White Whale".to_string(),
+        symbol: "WHALE".to_string(),
+        decimals: 6,
+        total_supply: Uint128::from(100_000_000_000_000u128),
+    };
+    resp
 }
