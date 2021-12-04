@@ -10,6 +10,9 @@ pub enum TreasuryError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
+    #[error("Semver parsing error: {0}")]
+    SemVer(String),
+
     #[error("Trader is already whitelisted")]
     AlreadyInList {},
 
@@ -20,4 +23,9 @@ pub enum TreasuryError {
     SenderNotWhitelisted {},
     // Add any other custom errors you like here.
     // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
+}
+impl From<semver::Error> for TreasuryError {
+    fn from(err: semver::Error) -> Self {
+        Self::SemVer(err.to_string())
+    }
 }
