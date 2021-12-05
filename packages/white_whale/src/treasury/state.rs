@@ -2,7 +2,7 @@ use cw_controllers::Admin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr, CanonicalAddr, Decimal, Deps, Env, Fraction, StdResult, Uint128};
+use cosmwasm_std::{Addr, CanonicalAddr, Decimal, Deps, Env, StdResult, Uint128};
 use cw_storage_plus::{Item, Map};
 
 use crate::query::terraswap::query_pool;

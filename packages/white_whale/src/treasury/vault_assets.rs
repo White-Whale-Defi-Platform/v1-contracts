@@ -25,7 +25,8 @@ pub struct VaultAsset {
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ValueRef {
-    // A pool address of an asset/base_asset pair
+    /// A pool address of an asset/asset pair
+    /// Both assets must be defined in the Vault_assets state
     Pool {
         pair_address: Addr,
     },
@@ -39,11 +40,13 @@ pub enum ValueRef {
         proxy_asset: AssetInfo,
         multiplier: Decimal,
     },
+    // For deposits into our own vaults
+
     // Vault {
     //     asset: Addr,
-    //     vault_addr: Addr,
-        
+    //     vault_addr: Addr,    
     // },
+
     // Does a query to a provided contract address to determine the value of a token
     // Usefull for shares in a vault.
     External {
@@ -52,6 +55,7 @@ pub enum ValueRef {
 }
 
 impl VaultAsset {
+    /// Calculates the value of the asset through the optionally provided ValueReference
     pub fn value(
         &mut self,
         deps: Deps,
@@ -86,6 +90,7 @@ impl VaultAsset {
                         return Err(StdError::generic_err("Can't have a native LP token"));
                     }
                 }
+                // A proxy asset is used instead
                 ValueRef::Proxy {
                     proxy_asset,
                     multiplier,
@@ -104,12 +109,11 @@ impl VaultAsset {
             }
         }
 
-        // No ValueRef so this should be the base token.
+        // If there is no valueref, it means this token is the base token. 
         Ok(holding)
     }
 
-    /// Calculates the value of an asset compared to some base asset
-    /// Requires one of the two assets to be the base asset.
+    /// Calculates the value of an asset compared to some base asset throug the provided trading pair.
     pub fn asset_value(&self, deps: Deps, env: &Env, pool_addr: &Addr) -> StdResult<Uint128> {
         let pool_info: PoolResponse = query_pool(deps, pool_addr)?;
         // Get price
@@ -134,10 +138,9 @@ impl VaultAsset {
 
 /// The proxy struct acts as an Asset overwrite.
 /// By setting this proxy you define the asset to be some
-/// other asset while also providing the relevant pool
-/// address for that asset.
-/// For example: AssetInfo = bluna, BaseAsset = uusd, Proxy: Luna/ust pool
-/// proxy_pool = bluna/luna, multiplier = proxy_pool bluna price
+/// other asset with a multiplier.
+/// For example: AssetInfo = bluna, BaseAsset = uusd, Proxy: luna, multiplier = 1
+/// Each bluna would be valued as one luna. 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Proxy {
