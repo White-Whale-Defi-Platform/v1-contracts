@@ -1,3 +1,5 @@
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 use cosmwasm_std::{
     Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Response, StdResult,
 };
