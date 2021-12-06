@@ -33,10 +33,6 @@ def execute_on_treasury_msg(msgs: any, coins: List[Coin]):
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
 
-# REMOVE
-# mnemonic = "pill hole shiver wage infant danger salt dismiss steak weather shell bright grass company violin large pride vessel physical rain number rookie best three"
-
-
 
 # deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None)
 deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
