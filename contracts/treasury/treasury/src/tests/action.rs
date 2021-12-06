@@ -2,7 +2,8 @@ use std::panic;
 
 use crate::contract::{execute, instantiate};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{Uint128, Addr, QuerierWrapper};
+use cw20::Cw20ExecuteMsg;
+use cosmwasm_std::{ReplyOn, SubMsg, WasmMsg,Uint128, Addr, QuerierWrapper, to_binary};
 use terraswap::asset::{AssetInfo, Asset};
 use white_whale::treasury::msg::{ExecuteMsg, InstantiateMsg};
 use crate::tests::common::TEST_CREATOR;
@@ -49,5 +50,58 @@ fn test_non_whitelisted() {
             TreasuryError::SenderNotWhitelisted {} => (),
             _ => panic!("Unknown error: {}", e),
         },
+    }
+}
+
+
+#[test]
+fn test_whitelisted() {
+    let mut deps = mock_dependencies(&[]);
+    let msg = init_msg();
+    let info = mock_info(TEST_CREATOR, &[]);
+    let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
+
+    let msg = ExecuteMsg::AddTrader {
+        trader: TEST_CREATOR.to_string(),
+    };
+
+    match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
+        Ok(_) => (),
+        Err(_) => panic!("Unknown error"),
+    }
+
+    let test_token = Asset {
+            info: AssetInfo::Token{
+                contract_addr: "test_token".to_string()
+            },
+            amount: Uint128::from(10_000u64)
+        };
+        
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    let msg = ExecuteMsg::TraderAction {
+        msgs: vec![test_token.into_msg(&QuerierWrapper::new(&deps.querier),Addr::unchecked(TEST_CREATOR)).unwrap()]
+    };
+
+    match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
+        Ok(res) => {
+            assert_eq!(res.messages, vec![SubMsg {
+                // Create LP token
+                msg: WasmMsg::Execute {
+                    contract_addr: "test_token".to_string(),
+                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                        recipient: TEST_CREATOR.to_string(),
+                        amount: Uint128::from(10_000u64)
+                    })
+                    .unwrap(),
+                    funds: vec![],
+                }
+                .into(),
+                gas_limit: None,
+                id: 0u64,
+                reply_on: ReplyOn::Never,
+            }]);
+        },
+        Err(e) => panic!("Unknown error: {}", e),
     }
 }
