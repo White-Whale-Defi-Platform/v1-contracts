@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response, StdError,
+    to_binary, Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response,
     Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
@@ -12,12 +12,11 @@ use white_whale::treasury::dapp_base::error::DAppError;
 use white_whale::treasury::dapp_base::state::{load_contract_addr, STATE};
 use white_whale::treasury::msg::send_to_treasury;
 
-use crate::error::TerraswapError;
 use crate::state::get_asset_info;
+use crate::contract::TerraswapResult;
 use crate::terraswap_msg::{asset_into_swap_msg, deposit_lp_msg};
 use crate::utils::has_sufficient_balance;
-
-pub type TerraswapResult = Result<Response, TerraswapError>;
+use crate::error::TerraswapError;
 
 /// Constructs and forwards the terraswap provide_liquidity message
 pub fn provide_liquidity(
@@ -107,11 +106,9 @@ pub fn detailed_provide_liquidity(
 
     // Get pool info
     let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
-    let asset_1 = &pool_info.assets[0];
-    let asset_2 = &pool_info.assets[1];
 
     // List with assets to send
-    let assets_to_send: Vec<Asset> = vec![];
+    let mut assets_to_send: Vec<Asset> = vec![];
 
     // Iterate over provided assets
     for asset in assets {
@@ -133,7 +130,7 @@ pub fn detailed_provide_liquidity(
             return Err(TerraswapError::NotInPool { id: asset.0 });
         }
     }
-    let asset_array: [Asset; 2] = [assets_to_send[0], assets_to_send[1]];
+    let asset_array: [Asset; 2] = [assets_to_send[0].clone(), assets_to_send[1].clone()];
     // Deposit lp msg either returns a bank send msg or a
     // increase allowance msg for each asset.
     let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, asset_array, pair_address, slippage_tolerance)?;

@@ -13,7 +13,7 @@ pub fn deposit_lp_msg(
 ) -> StdResult<Vec<CosmosMsg<Empty>>> {
     let mut msgs: Vec<CosmosMsg<Empty>> = vec![];
     let mut coins: Vec<Coin> = vec![];
-    for asset in assets.iter() {
+    for asset in assets.iter_mut() {
         match &asset.info {
             AssetInfo::Token { contract_addr } => {
                 msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {

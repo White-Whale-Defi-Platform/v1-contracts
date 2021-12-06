@@ -6,8 +6,11 @@ use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
 use white_whale::treasury::dapp_base::state::{State, ADMIN, STATE};
 
+use crate::error::TerraswapError;
 use crate::commands;
 use crate::msg::{ExecuteMsg, QueryMsg};
+
+pub type TerraswapResult = Result<Response, TerraswapError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -15,7 +18,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: BaseInstantiateMsg,
-) -> DAppResult {
+) -> TerraswapResult {
     let state = State {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
@@ -31,7 +34,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DAppResult {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> TerraswapResult {
     match msg {
         ExecuteMsg::ProvideLiquidity {
             pool_id,
@@ -69,7 +72,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
             max_spread,
             belief_price,
         ),
-        ExecuteMsg::Base(message) => dapp_base_commands::handle_base_message(deps, info, message),
+        ExecuteMsg::Base(message) => convert(dapp_base_commands::handle_base_message(deps, info, message)),
     }
 }
 
@@ -77,5 +80,12 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
+    }
+}
+
+fn convert(result: DAppResult) -> TerraswapResult {
+    match result {
+        Err(e) => Err(e.into()),
+        Ok(r) => Ok(r)
     }
 }
