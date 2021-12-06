@@ -1,12 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Response,
-    StdResult, Uint128,
+    to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
+    Response, StdResult, Uint128,
 };
 
 use crate::error::TreasuryError;
 use terraswap::asset::AssetInfo;
+use white_whale::query::terraswap::query_asset_balance;
 use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
 use white_whale::treasury::state::{State, ADMIN, STATE, VAULT_ASSETS};
 use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
@@ -15,8 +16,8 @@ use semver::Version;
 type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
-    The treasury behaves similarly to a community fund with the provisio that funds in the treasury are used to provide staking rewards to stakers.
-    It is controlled by the governance contract and serves to grow its holdings and become a safeguard/protective measure in keeping the peg.
+    The treasury is the bank account of the protocol. It owns the liquidity and acts as a proxy contract.
+    Whitelisted dApps construct messages for this contract. The dApps are controlled by Governance / the federator contract.
 */
 
 // version info for migration info
@@ -32,20 +33,22 @@ pub fn instantiate(
 ) -> TreasuryResult {
     // Use CW2 to set the contract version, this is needed for migrations
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &State { traders: vec![] })?;
+    STATE.save(deps.storage, &State { dapps: vec![] })?;
     let admin_addr = Some(info.sender);
     ADMIN.set(deps, admin_addr)?;
 
     Ok(Response::default())
 }
 
-// Routers; here is a separate router which handles Execution of functions on the contract or performs a contract Query
-// Each router function defines a number of handlers using Rust's pattern matching to
-// designated how each ExecutionMsg or QueryMsg will be handled.
-
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> TreasuryResult {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> TreasuryResult {
     match msg {
+        ExecuteMsg::DAppAction { msgs } => execute_action(deps, info, msgs),
+        ExecuteMsg::SendAsset {
+            id,
+            amount,
+            recipient,
+        } => send_asset(deps.as_ref(), env, info, id, amount, recipient),
         ExecuteMsg::SetAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
@@ -54,9 +57,8 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
                 .add_attribute("previous admin", previous_admin)
                 .add_attribute("admin", admin))
         }
-        ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
-        ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
-        ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),
+        ExecuteMsg::AddDApp { dapp } => add_dapp(deps, info, dapp),
+        ExecuteMsg::RemoveDApp { dapp } => remove_dapp(deps, info, dapp),
         ExecuteMsg::UpdateAssets { to_add, to_remove } => {
             update_assets(deps, info, to_add, to_remove)
         }
@@ -101,13 +103,32 @@ pub fn execute_action(
 ) -> TreasuryResult {
     let state = STATE.load(deps.storage)?;
     if !state
-        .traders
+        .dapps
         .contains(&deps.api.addr_canonicalize(msg_info.sender.as_str())?)
     {
         return Err(TreasuryError::SenderNotWhitelisted {});
     }
 
     Ok(Response::new().add_messages(msgs))
+}
+
+pub fn send_asset(deps: Deps,
+    env: Env,
+    msg_info: MessageInfo,
+    id: String,
+    amount: Uint128,
+    recipient: String,
+) -> TreasuryResult {
+    // Only admin can send funds
+    ADMIN.assert_admin(deps, &msg_info.sender)?;
+    let mut vault_asset = VAULT_ASSETS.load(deps.storage, &id)?.asset;
+    // Get balance and check against requested
+    let balance = query_asset_balance(deps, &vault_asset.info, env.contract.address)?;
+    if balance < amount {
+        return Err(TreasuryError::Broke{ requested: amount, balance})
+    }
+    vault_asset.amount = amount;
+    Ok(Response::new().add_message(vault_asset.into_msg(&deps.querier, deps.api.addr_validate(&recipient)?)?))
 }
 
 /// Update the stored vault asset information
@@ -136,44 +157,44 @@ pub fn update_assets(
 }
 
 /// Add a contract to the whitelist
-pub fn add_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
+pub fn add_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> TreasuryResult {
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
     if state
-        .traders
-        .contains(&deps.api.addr_canonicalize(&trader)?)
+        .dapps
+        .contains(&deps.api.addr_canonicalize(&dapp)?)
     {
         return Err(TreasuryError::AlreadyInList {});
     }
 
     // Add contract to whitelist.
-    state.traders.push(deps.api.addr_canonicalize(&trader)?);
+    state.dapps.push(deps.api.addr_canonicalize(&dapp)?);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
-    Ok(Response::new().add_attribute("Added contract to whitelist: ", trader))
+    Ok(Response::new().add_attribute("Added contract to whitelist: ", dapp))
 }
 
 /// Remove a contract from the whitelist
-pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
+pub fn remove_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> TreasuryResult {
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
     if !state
-        .traders
-        .contains(&deps.api.addr_canonicalize(&trader)?)
+        .dapps
+        .contains(&deps.api.addr_canonicalize(&dapp)?)
     {
         return Err(TreasuryError::NotInList {});
     }
 
     // Remove contract from whitelist.
-    let canonical_addr = deps.api.addr_canonicalize(&trader)?;
-    state.traders.retain(|addr| *addr != canonical_addr);
+    let canonical_addr = deps.api.addr_canonicalize(&dapp)?;
+    state.dapps.retain(|addr| *addr != canonical_addr);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
-    Ok(Response::new().add_attribute("Removed contract from whitelist: ", trader))
+    Ok(Response::new().add_attribute("Removed contract from whitelist: ", dapp))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -181,6 +202,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
         QueryMsg::TotalValue {} => to_binary(&compute_total_value(deps, env)?),
+        QueryMsg::HoldingAmount { identifier } => {
+            let vault_asset: VaultAsset = VAULT_ASSETS.load(deps.storage, identifier.as_str())?;
+            to_binary(&query_asset_balance(
+                deps,
+                &vault_asset.asset.info,
+                env.contract.address.clone(),
+            )?)
+        }
         QueryMsg::HoldingValue { identifier } => {
             to_binary(&compute_holding_value(deps, &env, identifier)?)
         }
@@ -190,27 +219,38 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-// Returns the whitelisted traders
+/// Returns the whitelisted dapps
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = STATE.load(deps.storage)?;
-    let traders: Vec<CanonicalAddr> = state.traders;
+    let dapps: Vec<CanonicalAddr> = state.dapps;
     let resp = ConfigResponse {
-        traders: traders
+        dapps: dapps
             .iter()
-            .map(|trader| -> String { deps.api.addr_humanize(trader).unwrap().to_string() })
+            .map(|dapp| -> String { deps.api.addr_humanize(dapp).unwrap().to_string() })
             .collect(),
     };
     Ok(resp)
 }
 
-// Returns the value of a specified asset.
+/// Returns the value of a specified asset.
 pub fn compute_holding_value(deps: Deps, env: &Env, holding: String) -> StdResult<Uint128> {
     let mut vault_asset: VaultAsset = VAULT_ASSETS.load(deps.storage, holding.as_str())?;
     let value = vault_asset.value(deps, env, None)?;
     Ok(value)
 }
 
-// TODO
-pub fn compute_total_value(_deps: Deps, _env: Env) -> StdResult<Uint128> {
-    Ok(Uint128::zero())
+/// Computes the total value locked in this contract
+pub fn compute_total_value(deps: Deps, env: Env) -> StdResult<Uint128> {
+    // Get all assets from storage
+    let mut all_assets = VAULT_ASSETS
+        .range(deps.storage, None, None, Order::Ascending)
+        .collect::<StdResult<Vec<(Vec<u8>, VaultAsset)>>>()?;
+
+    let mut total_value = Uint128::zero();
+    // Calculate their value iteratively
+    for vault_asset_entry in all_assets.iter_mut() {
+        total_value += vault_asset_entry.1.value(deps, &env, None)?;
+    }
+
+    Ok(total_value)
 }

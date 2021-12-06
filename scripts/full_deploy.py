@@ -19,7 +19,6 @@ from white_whale.contracts.community import *
 #------------------------
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
-std_fee = StdFee(10*690000, "1200000uusd")
 
 deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None)
 # deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
@@ -38,15 +37,15 @@ if create:
 
 # ust_arb.call_arb(1)
 # print(vault.address)
-profit_check.get_vault()
+# profit_check.get_vault()
 vault.query_vault_value()
 # deployer.send_funds(ust_arb.address, [Coin("uusd", 10000000)])
-vault.provide_liquidity(5_000_000)
+# vault.provide_liquidity(5_000_000)
 
 # community_fund.simulate_deposit(1_000_000)
 
 # vault.withdraw_all()
-vault.query_vault_value()
+# vault.query_vault_value()
 
 
 # lp_balance = vault.query_lp_balance()

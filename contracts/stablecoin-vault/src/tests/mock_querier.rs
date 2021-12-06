@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;
 use white_whale::profit_check::msg::LastBalanceResponse;
-use white_whale::test_helpers::anchor_mock::{mock_epoch_state};
+use white_whale_testing::anchor_mock::{mock_epoch_state};
 use white_whale::query::anchor::{EpochStateResponse};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies

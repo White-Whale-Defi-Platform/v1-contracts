@@ -7,7 +7,7 @@ use terra_multi_test::{Contract, ContractWrapper};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use terraswap::asset::{AssetInfo, Asset};
-use crate::query::anchor::{AnchorQuery, EpochStateResponse};
+use white_whale::query::anchor::{AnchorQuery, EpochStateResponse};
 use cw20::Cw20ExecuteMsg;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]

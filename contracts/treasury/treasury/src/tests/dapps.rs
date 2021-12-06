@@ -1,10 +1,11 @@
 use crate::contract::{execute, instantiate, query};
 use crate::error::TreasuryError;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary, to_binary, CosmosMsg, SubMsg, Uint128, WasmMsg};
-use cw20::Cw20ExecuteMsg;
+use cosmwasm_std::{from_binary};
 use cw_controllers::AdminError;
 use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+
+use super::common::TEST_CREATOR;
 
 fn init_msg() -> InstantiateMsg {
     InstantiateMsg {}
@@ -14,20 +15,20 @@ fn init_msg() -> InstantiateMsg {
 fn proper_initialization() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
 
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
     let config: ConfigResponse =
         from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
-    assert_eq!(0, config.traders.len());
+    assert_eq!(0, config.dapps.len());
 }
 
 #[test]
 fn test_update_admin() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
 
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -43,7 +44,7 @@ fn test_update_admin() {
     }
 
     // Call as admin
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
     match execute(deps.as_mut(), mock_env(), info, msg.clone()) {
         Ok(_) => (),
         Err(_) => panic!("Should not error"),
@@ -51,14 +52,14 @@ fn test_update_admin() {
 }
 
 #[test]
-fn test_add_trader() {
+fn test_add_dapp() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AddTrader {
-        trader: "addr420".to_string(),
+    let msg = ExecuteMsg::AddDApp {
+        dapp: "addr420".to_string(),
     };
 
     match execute(deps.as_mut(), mock_env(), info, msg) {
@@ -67,18 +68,19 @@ fn test_add_trader() {
     }
     let config: ConfigResponse =
         from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
-    assert_eq!(1, config.traders.len());
+    assert_eq!(1, config.dapps.len());
+    assert_eq!("addr420", config.dapps[0]);
 }
 
 #[test]
-fn test_remove_trader() {
+fn test_remove_dapp() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AddTrader {
-        trader: "addr420".to_string(),
+    let msg = ExecuteMsg::AddDApp {
+        dapp: "addr420".to_string(),
     };
 
     match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
@@ -87,17 +89,17 @@ fn test_remove_trader() {
     }
     let config: ConfigResponse =
         from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
-    assert_eq!(1, config.traders.len());
-    // now remove trader again.
-    let msg = ExecuteMsg::RemoveTrader {
-        trader: "addr420".to_string(),
+    assert_eq!(1, config.dapps.len());
+    // now remove dapp again.
+    let msg = ExecuteMsg::RemoveDApp {
+        dapp: "addr420".to_string(),
     };
     match execute(deps.as_mut(), mock_env(), info, msg) {
         Ok(_) => (),
         Err(_) => panic!("Unknown error"),
     }
-    // get trader list and assert
+    // get dapp list and assert
     let config: ConfigResponse =
         from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
-    assert_eq!(0, config.traders.len());
+    assert_eq!(0, config.dapps.len());
 }

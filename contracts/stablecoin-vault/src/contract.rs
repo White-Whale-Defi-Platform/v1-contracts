@@ -350,11 +350,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         // Initial share = collateral amount
         deposit
     } else {
-        // WARNING: This could causes issues if total_deposits_in_ust - asset.amount is really small
-        // total_deposits_in_ust > deposit as total_deposits_in_ust includes deposit
-        // TODO: NOTE; due to the above comment I have added +1 to the total_deposits_in_ust - asset.amount
-        // This is hacky and should not go into master, maybe the better answer is to just check if 0
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit+Uint128::from(1u64))
+        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
     };
 
 

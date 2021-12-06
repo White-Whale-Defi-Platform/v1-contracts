@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw_controllers::AdminError;
 use thiserror::Error;
 
@@ -13,16 +13,17 @@ pub enum TreasuryError {
     #[error("Semver parsing error: {0}")]
     SemVer(String),
 
-    #[error("Trader is already whitelisted")]
+    #[error("DApp is already whitelisted")]
     AlreadyInList {},
 
-    #[error("Trader not found in whitelist")]
+    #[error("DApp not found in whitelist")]
     NotInList {},
 
     #[error("Sender is not whitelisted")]
     SenderNotWhitelisted {},
-    // Add any other custom errors you like here.
-    // Look at https://docs.rs/thiserror/1.0.21/thiserror/ for details.
+
+    #[error("Treasury balance too low, {} requested but it only has {}", requested, balance)]
+    Broke { balance: Uint128, requested: Uint128},
 }
 impl From<semver::Error> for TreasuryError {
     fn from(err: semver::Error) -> Self {

@@ -3,7 +3,7 @@ use cosmwasm_std::Api;
 use cosmwasm_std::DepsMut;
 
 use crate::contract::{execute, instantiate};
-use crate::state::{State, STATE};
+// use crate::state::{State, STATE};
 
 use terraswap::asset::AssetInfo;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
