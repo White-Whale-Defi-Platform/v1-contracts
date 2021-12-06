@@ -11,10 +11,10 @@ use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
 use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
-use white_whale::test_helpers::anchor_mock::{
+use white_whale_testing::anchor_mock::{
     contract_anchor_mock, MockInstantiateMsg as AnchorMsg,
 };
-use white_whale::test_helpers::tswap_mock::{
+use white_whale_testing::tswap_mock::{
     contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
 };
 use white_whale::ust_vault::msg::ExecuteMsg;

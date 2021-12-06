@@ -1,9 +1,9 @@
 [package]
-name = "white-whale"
+name = "white-whale-testing"
 version = "1.0.0"
 authors = ["White Whale"]
 edition = "2018"
-description = "Common helpers for other white whale"
+description = "Testing helpers for contract tests"
 license = "Apache-2.0"
 repository = "https://github.com/White-Whale-DeFi-Platform/contracts"
 homepage = "https://whitewhale.finance"
@@ -20,12 +20,14 @@ backtraces = ["cosmwasm-std/backtraces"]
 terra-cosmwasm = { version = "2.2.0" }
 cosmwasm-bignumber = "2.2"
 cosmwasm-std = { version = "0.16", features = ["iterator"] }
-cosmwasm-storage = { version = "0.16", features = ["iterator"] }
 cw-controllers = { version = "0.8" }
 cw-storage-plus = { version = "0.8" }
 cw20 = { version = "0.8" }
 cw20-base = { version = "0.8", features = ["library"] }
+white-whale = { version = "1.0.0", path = "../white_whale" }
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"
 thiserror = { version = "1.0.26" }
+lazy_static = "1.4.0"
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}

@@ -5,7 +5,7 @@ mod common;
 mod flashloan;
 pub mod instantiate;
 pub mod common_integration;
-#[cfg(test)]
+
 mod mock_querier;
 mod pool;
 mod integration_test;
