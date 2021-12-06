@@ -1,12 +1,10 @@
-use cosmwasm_std::{
-    Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 use white_whale::treasury::dapp_base::commands as dapp_base_commands;
 use white_whale::treasury::dapp_base::common::DAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
-use white_whale::treasury::dapp_base::state::{ADMIN, State, STATE};
+use white_whale::treasury::dapp_base::state::{State, ADMIN, STATE};
 
 use crate::commands;
 use crate::msg::{ExecuteMsg, QueryMsg};
@@ -19,8 +17,8 @@ pub fn instantiate(
     msg: BaseInstantiateMsg,
 ) -> DAppResult {
     let state = State {
-        treasury_address: deps.api.addr_canonicalize(&msg.treasury_address)?,
-        trader: deps.api.addr_canonicalize(&msg.trader)?,
+        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
+        trader: deps.api.addr_validate(&msg.trader)?,
     };
 
     // Store the initial config
@@ -40,6 +38,17 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
             main_asset_id,
             amount,
         } => commands::provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
+        ExecuteMsg::DetailedProvideLiquidity {
+            pool_id,
+            assets,
+            slippage_tolerance,
+        } => commands::detailed_provide_liquidity(
+            deps.as_ref(),
+            info,
+            assets,
+            pool_id,
+            slippage_tolerance,
+        ),
         ExecuteMsg::WithdrawLiquidity {
             lp_token_id,
             amount,

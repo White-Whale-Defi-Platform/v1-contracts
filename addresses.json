@@ -9,15 +9,15 @@
         "community_fund": "terra1ugx7u99t8nqvhrt40ka759kqxy4j4r3n5v5l9j",
         "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v",
         "stablecoin_peg_arb": "terra1w677vh58v2t5u7dcpwu73yjct6tpa547ztsdaz",
-        "treasury": "terra1yh0zhx53p2k2pgtsujn46d5cuxzqzqwjl7qf6y",
-        "terraswap_dapp": "terra1hn7mpemjw6ten2n537f7kza5avayj3yrefr7jv",
+        "treasury": "terra15l6h8kdvqkx9x70hcgefz9yw3j2rnpwz9rm7uv",
+        "terraswap_dapp": "terra1pde8eh0yxwx0ng6fsk9unpwh4yr5rr3ll7uy7a",
         "code_id": {
             "token_code_id": "148",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
-            "treasury": "24320",
-            "terraswap_dapp": "24321"
+            "treasury": "24772",
+            "terraswap_dapp": "24773"
         }
     },
     "columbus-5": {

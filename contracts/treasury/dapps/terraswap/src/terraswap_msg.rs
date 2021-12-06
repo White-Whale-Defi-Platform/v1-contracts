@@ -9,10 +9,11 @@ pub fn deposit_lp_msg(
     deps: Deps,
     mut assets: [Asset; 2],
     pair_addr: Addr,
+    slippage_tolerance: Option<Decimal>,
 ) -> StdResult<Vec<CosmosMsg<Empty>>> {
     let mut msgs: Vec<CosmosMsg<Empty>> = vec![];
     let mut coins: Vec<Coin> = vec![];
-    for asset in assets.iter_mut() {
+    for asset in assets.iter() {
         match &asset.info {
             AssetInfo::Token { contract_addr } => {
                 msgs.push(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -34,7 +35,7 @@ pub fn deposit_lp_msg(
 
     let lp_msg = PairExecuteMsg::ProvideLiquidity {
         assets,
-        slippage_tolerance: None,
+        slippage_tolerance: slippage_tolerance,
         receiver: None,
     };
 
