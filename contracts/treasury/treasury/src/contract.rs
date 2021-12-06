@@ -121,8 +121,8 @@ pub fn send_asset(deps: Deps,
 ) -> TreasuryResult {
     // Only admin can send funds
     ADMIN.assert_admin(deps, &msg_info.sender)?;
-    // 
     let mut vault_asset = VAULT_ASSETS.load(deps.storage, &id)?.asset;
+    // Get balance and check against requested
     let balance = query_asset_balance(deps, &vault_asset.info, env.contract.address)?;
     if balance < amount {
         return Err(TreasuryError::Broke{ requested: amount, balance})
