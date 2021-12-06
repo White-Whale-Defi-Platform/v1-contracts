@@ -13,10 +13,10 @@ pub enum TreasuryError {
     #[error("Semver parsing error: {0}")]
     SemVer(String),
 
-    #[error("Trader is already whitelisted")]
+    #[error("DApp is already whitelisted")]
     AlreadyInList {},
 
-    #[error("Trader not found in whitelist")]
+    #[error("DApp not found in whitelist")]
     NotInList {},
 
     #[error("Sender is not whitelisted")]

@@ -14,7 +14,7 @@ pub static LUNA_DENOM: &str = "uluna";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
-    pub traders: Vec<CanonicalAddr>,
+    pub dapps: Vec<CanonicalAddr>,
 }
 
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");

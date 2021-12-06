@@ -33,7 +33,7 @@ pub fn instantiate(
 ) -> TreasuryResult {
     // Use CW2 to set the contract version, this is needed for migrations
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &State { traders: vec![] })?;
+    STATE.save(deps.storage, &State { dapps: vec![] })?;
     let admin_addr = Some(info.sender);
     ADMIN.set(deps, admin_addr)?;
 
@@ -43,7 +43,7 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> TreasuryResult {
     match msg {
-        ExecuteMsg::TraderAction { msgs } => execute_action(deps, info, msgs),
+        ExecuteMsg::DAppAction { msgs } => execute_action(deps, info, msgs),
         ExecuteMsg::SendAsset {
             id,
             amount,
@@ -57,8 +57,8 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
                 .add_attribute("previous admin", previous_admin)
                 .add_attribute("admin", admin))
         }
-        ExecuteMsg::AddTrader { trader } => add_trader(deps, info, trader),
-        ExecuteMsg::RemoveTrader { trader } => remove_trader(deps, info, trader),
+        ExecuteMsg::AddDApp { dapp } => add_dapp(deps, info, dapp),
+        ExecuteMsg::RemoveDApp { dapp } => remove_dapp(deps, info, dapp),
         ExecuteMsg::UpdateAssets { to_add, to_remove } => {
             update_assets(deps, info, to_add, to_remove)
         }
@@ -103,7 +103,7 @@ pub fn execute_action(
 ) -> TreasuryResult {
     let state = STATE.load(deps.storage)?;
     if !state
-        .traders
+        .dapps
         .contains(&deps.api.addr_canonicalize(msg_info.sender.as_str())?)
     {
         return Err(TreasuryError::SenderNotWhitelisted {});
@@ -153,44 +153,44 @@ pub fn update_assets(
 }
 
 /// Add a contract to the whitelist
-pub fn add_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
+pub fn add_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> TreasuryResult {
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
     if state
-        .traders
-        .contains(&deps.api.addr_canonicalize(&trader)?)
+        .dapps
+        .contains(&deps.api.addr_canonicalize(&dapp)?)
     {
         return Err(TreasuryError::AlreadyInList {});
     }
 
     // Add contract to whitelist.
-    state.traders.push(deps.api.addr_canonicalize(&trader)?);
+    state.dapps.push(deps.api.addr_canonicalize(&dapp)?);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
-    Ok(Response::new().add_attribute("Added contract to whitelist: ", trader))
+    Ok(Response::new().add_attribute("Added contract to whitelist: ", dapp))
 }
 
 /// Remove a contract from the whitelist
-pub fn remove_trader(deps: DepsMut, msg_info: MessageInfo, trader: String) -> TreasuryResult {
+pub fn remove_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> TreasuryResult {
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
     if !state
-        .traders
-        .contains(&deps.api.addr_canonicalize(&trader)?)
+        .dapps
+        .contains(&deps.api.addr_canonicalize(&dapp)?)
     {
         return Err(TreasuryError::NotInList {});
     }
 
     // Remove contract from whitelist.
-    let canonical_addr = deps.api.addr_canonicalize(&trader)?;
-    state.traders.retain(|addr| *addr != canonical_addr);
+    let canonical_addr = deps.api.addr_canonicalize(&dapp)?;
+    state.dapps.retain(|addr| *addr != canonical_addr);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
-    Ok(Response::new().add_attribute("Removed contract from whitelist: ", trader))
+    Ok(Response::new().add_attribute("Removed contract from whitelist: ", dapp))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -215,14 +215,14 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-/// Returns the whitelisted traders
+/// Returns the whitelisted dapps
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = STATE.load(deps.storage)?;
-    let traders: Vec<CanonicalAddr> = state.traders;
+    let dapps: Vec<CanonicalAddr> = state.dapps;
     let resp = ConfigResponse {
-        traders: traders
+        dapps: dapps
             .iter()
-            .map(|trader| -> String { deps.api.addr_humanize(trader).unwrap().to_string() })
+            .map(|dapp| -> String { deps.api.addr_humanize(dapp).unwrap().to_string() })
             .collect(),
     };
     Ok(resp)

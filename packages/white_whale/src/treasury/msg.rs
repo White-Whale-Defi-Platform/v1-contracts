@@ -14,11 +14,11 @@ pub enum ExecuteMsg {
     /// Sets the admin
     SetAdmin { admin: String },
     /// Executes the provided messages if sender is whitelisted
-    TraderAction { msgs: Vec<CosmosMsg<Empty>> },
-    /// Adds the provided address to whitelisted traders
-    AddTrader { trader: String },
-    /// Removes the provided address from the whitelisted traders
-    RemoveTrader { trader: String },
+    DAppAction { msgs: Vec<CosmosMsg<Empty>> },
+    /// Adds the provided address to whitelisted dapps
+    AddDApp { dapp: String },
+    /// Removes the provided address from the whitelisted dapps
+    RemoveDApp { dapp: String },
     /// Updates the VAULT_ASSETS map
     UpdateAssets {
         to_add: Vec<VaultAsset>,
@@ -66,7 +66,7 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ConfigResponse {
-    pub traders: Vec<String>,
+    pub dapps: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -79,14 +79,14 @@ pub struct HoldingValueResponse {
     pub value: Uint128,
 }
 
-/// Constructs the treasury traderaction message used by all dApps.
+/// Constructs the treasury dappaction message used by all dApps.
 pub fn send_to_treasury(
     msgs: Vec<CosmosMsg>,
     treasury_address: &Addr,
 ) -> StdResult<CosmosMsg<Empty>> {
     Ok(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: treasury_address.to_string(),
-        msg: to_binary(&ExecuteMsg::TraderAction { msgs })?,
+        msg: to_binary(&ExecuteMsg::DAppAction { msgs })?,
         funds: vec![],
     }))
 }
