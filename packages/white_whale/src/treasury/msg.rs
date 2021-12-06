@@ -11,28 +11,25 @@ pub struct InstantiateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    TraderAction {
-        msgs: Vec<CosmosMsg<Empty>>,
+    /// Sets the admin
+    SetAdmin { admin: String },
+    /// Executes the provided messages if sender is whitelisted
+    TraderAction { msgs: Vec<CosmosMsg<Empty>> },
+    /// Adds the provided address to whitelisted traders
+    AddTrader { trader: String },
+    /// Removes the provided address from the whitelisted traders
+    RemoveTrader { trader: String },
+    /// Updates the VAULT_ASSETS map
+    UpdateAssets {
+        to_add: Vec<VaultAsset>,
+        to_remove: Vec<AssetInfo>,
     },
+    // Send asset to recipient 
     SendAsset {
         id: String,
         amount: Uint128,
         recipient: String,
     },
-    SetAdmin {
-        admin: String,
-    },
-    AddTrader {
-        trader: String,
-    },
-    RemoveTrader {
-        trader: String,
-    },
-    UpdateAssets {
-        to_add: Vec<VaultAsset>,
-        to_remove: Vec<AssetInfo>,
-    },
-    // UpdateBalances {},
 }
 
 /// MigrateMsg allows a privileged contract administrator to run
@@ -49,10 +46,22 @@ pub struct MigrateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    /// Returns the treasury Config
     Config {},
+    /// Returns the total value of all held assets
     TotalValue {},
-    HoldingValue { identifier: String },
-    VaultAssetConfig { identifier: String },
+    // Returns the value of one specific asset
+    HoldingValue {
+        identifier: String,
+    },
+    // Returns the amount of specified tokens this contract holds
+    HoldingAmount {
+        identifier: String,
+    },
+    /// Returns the VAULT_ASSETS value for the specified key
+    VaultAssetConfig {
+        identifier: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -70,6 +79,7 @@ pub struct HoldingValueResponse {
     pub value: Uint128,
 }
 
+/// Constructs the treasury traderaction message used by all dApps.
 pub fn send_to_treasury(
     msgs: Vec<CosmosMsg>,
     treasury_address: &Addr,
@@ -79,4 +89,21 @@ pub fn send_to_treasury(
         msg: to_binary(&ExecuteMsg::TraderAction { msgs })?,
         funds: vec![],
     }))
+}
+
+/// Query message to external contract
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ValueQueryMsg {
+    Value {
+        asset_info: AssetInfo,
+        amount: Uint128,
+    },
+}
+
+/// Expected response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ValueResponse {
+    pub value: Uint128,
 }
