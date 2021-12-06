@@ -10,14 +10,20 @@
         "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v",
         "stablecoin_peg_arb": "terra1w677vh58v2t5u7dcpwu73yjct6tpa547ztsdaz",
         "treasury": "terra15l6h8kdvqkx9x70hcgefz9yw3j2rnpwz9rm7uv",
-        "terraswap_dapp": "terra1pde8eh0yxwx0ng6fsk9unpwh4yr5rr3ll7uy7a",
+        "terraswap_dapp": "terra1jevvzfew6rdprue9w2r6p93gt7fnwzjhfgve0t",
+        "lbp_pair": "terra1dk4zhd49xyjhky6m7mc8a5v4wx3s58wmulw0sq",
+        "lbp_lp_token": "terra1954dxzsmjss7lkvav6pme370cqgh6ynxf4cu6t",
+        "terraswap_factory": "terra1xyzvuzyjphejnzgjxr46stay5jyypwyem3ylgd",
+        "test_whale_token": "terra1d4zqcn47xk283k8qhpmfghfvnsq984grrk30cx",
+        "whale_ust_terraswap_pair": "terra1ch66p9w8sznj5pd6d8ycjl2jhygpdclkl6zden",
+        "LBP_factory": "terra1rgryj3aza79pplex8aps8l0sje42jvcp92fg2w",
         "code_id": {
             "token_code_id": "148",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
             "treasury": "24772",
-            "terraswap_dapp": "24773"
+            "terraswap_dapp": "24841"
         }
     },
     "columbus-5": {
@@ -32,6 +38,11 @@
         "stablecoin_peg_arb": "terra1m7ewqlgkxtyq7fn8mgsx2lpuu4r02xd0qcq02l",
         "treasury": "",
         "terraswap_dapp": "",
+        "terraswap_factory": "",
+        "test_whale_token": "",
+        "lbp_lp_token": "",
+        "whale_ust_terraswap_pair": "",
+        "LBP_factory": "",
         "code_id": {
             "token_code_id": "3",
             "profit_check": "",
