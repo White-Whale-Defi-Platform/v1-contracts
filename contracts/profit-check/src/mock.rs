@@ -1,5 +1,5 @@
 // Copied from cosmwasm-std
-
+#![allow(dead_code)]
 use std::collections::HashMap;
 
 use cosmwasm_std::testing::{MockApi, MockStorage};

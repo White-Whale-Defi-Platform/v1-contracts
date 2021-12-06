@@ -4,7 +4,7 @@ use cosmwasm_std::{
 };
 
 use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg};
-
+use terraswap::querier::{query_balance};
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};
 use white_whale::profit_check::msg::{
@@ -62,7 +62,7 @@ pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
 
     conf.last_profit = Uint128::zero();
 
-    conf.last_balance = get_vault_value(deps.as_ref())?;
+    conf.last_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
     CONFIG.save(deps.storage, &conf)?;
 
     Ok(Response::default().add_attribute("value before trade: ", conf.last_balance.to_string()))
@@ -75,7 +75,7 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo, loan_fee: Uint128) -> Profi
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let balance = get_vault_value(deps.as_ref())?;
+    let balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
 
     if balance < conf.last_balance + loan_fee {
         return Err(ProfitCheckError::CancelLosingTrade {});
@@ -214,7 +214,6 @@ mod tests {
         assert_eq!(res.vault_address, other_vault);
     }
 
-    // TODO: Test candidate to fix
     #[test]
     fn test_failure_of_profit_check() {
         let mut deps = mock_dependencies(&[]);
@@ -285,7 +284,6 @@ mod tests {
         assert_eq!(res.last_balance, initial_balance);
     }
 
-    // TODO: Test candidate to fix
     #[test]
     fn test_success_of_profit_check() {
         let mut deps = mock_dependencies(&[]);
@@ -343,7 +341,6 @@ mod tests {
     }
 
 
-    // TODO: Test candidate to fix
     #[test]
     fn test_check_before_trade_fails_if_unauthorized() {
         let mut deps = mock_dependencies(&[]);
@@ -374,8 +371,7 @@ mod tests {
         let _res = execute(deps.as_mut(), env, vault_info, ExecuteMsg::BeforeTrade {}).unwrap();
     }
 
-    // TODO: Test candidate to fix
-    // #[test]
+    #[test]
     fn test_check_after_trade_fails_if_unauthorized() {
         let mut deps = mock_dependencies(&[]);
         let vault_address = deps.api.addr_validate("test_vault").unwrap();
