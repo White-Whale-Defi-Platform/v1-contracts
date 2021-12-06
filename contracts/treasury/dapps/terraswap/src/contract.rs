@@ -83,6 +83,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
+/// Required to convert DAppResult into TerraswapResult
+/// Can't implement the From trait directly
 fn convert(result: DAppResult) -> TerraswapResult {
     match result {
         Err(e) => Err(e.into()),
