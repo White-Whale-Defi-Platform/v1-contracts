@@ -1,21 +1,15 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary, to_binary, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
-use cosmwasm_std::{Api, Decimal, Uint128};
+use cosmwasm_std::DepsMut;
+use cosmwasm_std::{Api, Uint128};
 
-use crate::contract::{execute, instantiate, query};
+use crate::contract::{execute, instantiate};
 
-use crate::error::TreasuryError;
 use terraswap::asset::{AssetInfo, Asset};
-use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
-use white_whale::fee::*;
 use white_whale::treasury::msg::*;
 use white_whale::treasury::state::*;
 use white_whale::treasury::vault_assets::*;
 
 use crate::tests::common::{DAPP, TEST_CREATOR};
-
-const INSTANTIATE_REPLY_ID: u8 = 1u8;
-pub(crate) const WARCHEST_FEE: u64 = 10u64;
 
 pub fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {}
@@ -24,7 +18,7 @@ pub fn instantiate_msg() -> InstantiateMsg {
 /**
  * Mocks instantiation.
  */
-pub fn mock_instantiate(deps: DepsMut) {
+pub fn _mock_instantiate(deps: DepsMut) {
     let msg = InstantiateMsg {};
 
     let info = mock_info(TEST_CREATOR, &[]);
