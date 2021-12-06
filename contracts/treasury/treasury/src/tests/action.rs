@@ -22,8 +22,8 @@ fn test_non_whitelisted() {
     let info = mock_info(TEST_CREATOR, &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AddTrader {
-        trader: TEST_CREATOR.to_string(),
+    let msg = ExecuteMsg::AddDApp {
+        dapp: TEST_CREATOR.to_string(),
     };
 
     match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
@@ -40,7 +40,7 @@ fn test_non_whitelisted() {
         
     let info = mock_info(NOT_ALLOWED, &[]);
 
-    let msg = ExecuteMsg::TraderAction {
+    let msg = ExecuteMsg::DAppAction {
         msgs: vec![test_token.into_msg(&QuerierWrapper::new(&deps.querier),Addr::unchecked(NOT_ALLOWED)).unwrap()]
     };
 
@@ -61,8 +61,8 @@ fn test_whitelisted() {
     let info = mock_info(TEST_CREATOR, &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-    let msg = ExecuteMsg::AddTrader {
-        trader: TEST_CREATOR.to_string(),
+    let msg = ExecuteMsg::AddDApp {
+        dapp: TEST_CREATOR.to_string(),
     };
 
     match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
@@ -79,7 +79,7 @@ fn test_whitelisted() {
         
     let info = mock_info(TEST_CREATOR, &[]);
 
-    let msg = ExecuteMsg::TraderAction {
+    let msg = ExecuteMsg::DAppAction {
         msgs: vec![test_token.into_msg(&QuerierWrapper::new(&deps.querier),Addr::unchecked(TEST_CREATOR)).unwrap()]
     };
 

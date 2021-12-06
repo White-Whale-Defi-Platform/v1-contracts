@@ -1,4 +1,4 @@
-mod traders;
+mod dapps;
 mod send;
 mod instantiate;
 mod action;

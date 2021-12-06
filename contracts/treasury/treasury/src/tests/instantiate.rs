@@ -27,8 +27,8 @@ pub fn _mock_instantiate(deps: DepsMut) {
 
 /**
  * Tests successful instantiation of the contract. 
- * Addition of a trader
- * Removal of a trader
+ * Addition of a dapp
+ * Removal of a dapp
  */
 #[test]
 fn successful_initialization() {
@@ -44,29 +44,29 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            traders: vec![],
+            dapps: vec![],
         }
     );
 
-    let msg = ExecuteMsg::AddTrader {
-        trader: DAPP.to_string(),
+    let msg = ExecuteMsg::AddDApp {
+        dapp: DAPP.to_string(),
     };
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     let state: State = STATE.load(&deps.storage).unwrap();
     assert_eq!(
-        state.traders[0],
+        state.dapps[0],
         deps.api.addr_canonicalize(&DAPP).unwrap(),
     );
 
-    let msg = ExecuteMsg::RemoveTrader {
-        trader: DAPP.to_string(),
+    let msg = ExecuteMsg::RemoveDApp {
+        dapp: DAPP.to_string(),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let state: State = STATE.load(&deps.storage).unwrap();
     assert_eq!(
         state,
         State {
-            traders: vec![],
+            dapps: vec![],
         }
     );
 }
@@ -88,7 +88,7 @@ fn successful_asset_update() {
     assert_eq!(
         state,
         State {
-            traders: vec![],
+            dapps: vec![],
         }
     );
 
