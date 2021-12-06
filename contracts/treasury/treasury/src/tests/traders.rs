@@ -5,6 +5,8 @@ use cosmwasm_std::{from_binary};
 use cw_controllers::AdminError;
 use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 
+use super::common::TEST_CREATOR;
+
 fn init_msg() -> InstantiateMsg {
     InstantiateMsg {}
 }
@@ -13,7 +15,7 @@ fn init_msg() -> InstantiateMsg {
 fn proper_initialization() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
 
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -26,7 +28,7 @@ fn proper_initialization() {
 fn test_update_admin() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
 
     let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
@@ -42,7 +44,7 @@ fn test_update_admin() {
     }
 
     // Call as admin
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
     match execute(deps.as_mut(), mock_env(), info, msg.clone()) {
         Ok(_) => (),
         Err(_) => panic!("Should not error"),
@@ -53,7 +55,7 @@ fn test_update_admin() {
 fn test_add_trader() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::AddTrader {
@@ -67,13 +69,14 @@ fn test_add_trader() {
     let config: ConfigResponse =
         from_binary(&query(deps.as_ref(), mock_env(), QueryMsg::Config {}).unwrap()).unwrap();
     assert_eq!(1, config.traders.len());
+    assert_eq!("addr420", config.traders[0]);
 }
 
 #[test]
 fn test_remove_trader() {
     let mut deps = mock_dependencies(&[]);
     let msg = init_msg();
-    let info = mock_info("addr0000", &[]);
+    let info = mock_info(TEST_CREATOR, &[]);
     let _res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     let msg = ExecuteMsg::AddTrader {
