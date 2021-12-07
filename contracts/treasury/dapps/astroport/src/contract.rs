@@ -179,7 +179,7 @@ pub fn withdraw_liquidity(
 
     // Call on LP token.
     let lp_call = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: String::from(pair_address),
+        contract_addr: String::from(lp_token_address),
         msg: to_binary(&cw20_msg)?,
         funds: vec![],
     });

@@ -5,7 +5,6 @@ use white_whale::astroport_helper::{Asset, AssetInfo};
 use white_whale::tax::compute_tax;
 use white_whale::astroport_helper::ExecuteMsg as PairExecuteMsg;
 use white_whale::astroport_helper::*;
-
 pub fn deposit_lp_msg(
     deps: Deps,
     mut assets: [Asset; 2],
@@ -49,6 +48,7 @@ pub fn deposit_lp_msg(
 
     Ok(msgs)
 }
+
 
 
 
