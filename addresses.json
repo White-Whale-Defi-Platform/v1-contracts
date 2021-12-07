@@ -20,14 +20,14 @@
             "terraswap_dapp": "20314",
             "lbp_pair": "20258",
             "astro_pair": "20222",
-            "astroport_dapp": "24488"
+            "astroport_dapp": "25190"
         },
         "test_whale_token": "terra1mjjmnqkt7e4kfumsp5zkxhdah75xfev0aasf7d",
         "terraswap_factory": "",
         "astroport_factory": "terra15g5gj857u7su26cnff787xkuhgej70r6qwmf8v",
         "astro_pair": "terra1x034d0sxw0vspkh7axlljchv0c4yw2qk9dh23r",
         "astro_lp_token": "terra1s8mvwktsz2rqjrw5xtgta3764nszpzxcuczj55",
-        "astroport_dapp": "terra14j08rvcnnx7lrs9dt3357n4jh82pp4gar8r5fk"
+        "astroport_dapp": "terra1rrz24272pp6sdaetflpjhylmh2yy99gdp6mz34"
     },
     "columbus-5": {
         "profit_check": "terra18ykdvsgknscc02l7793jrtx5s0rd7et5shzj7g",
