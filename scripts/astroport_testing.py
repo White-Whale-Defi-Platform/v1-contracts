@@ -29,7 +29,7 @@ astroport_dapp = AstroportDAppContract(deployer)
 treasury = TreasuryContract(deployer)
 
 # test_pool.create()
-# astroport_dapp.create()
+astroport_dapp.create()
 
 
 # test_pool.provide_astro_liquidity()

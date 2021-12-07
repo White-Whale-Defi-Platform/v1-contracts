@@ -3,7 +3,7 @@ use cosmwasm_std::{
     MessageInfo, Response, StdResult, Uint128, WasmMsg,
 };
 
-use cw20::{Cw20ExecuteMsg};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 // use terraswap::asset::Asset;
 // use terraswap::pair::{Cw20HookMsg, PoolResponse};
 
@@ -167,19 +167,18 @@ pub fn withdraw_liquidity(
     // Check if the treasury has enough lp tokens
     has_sufficient(deps, &lp_token_id, &treasury_address, amount)?;
 
-    // Msg that gets called on the pair address.
-    let withdraw_msg: Binary = to_binary(&Cw20HookMsg::WithdrawLiquidity {})?;
 
-    // cw20 send message that transfers the LP tokens to the pair address
-    let cw20_msg = Cw20ExecuteMsg::Send {
-        contract: pair_address.into_string(),
-        amount,
-        msg: withdraw_msg,
+    
+    let cw20_msg = Cw20ReceiveMsg {
+        sender: String::from(&treasury_address),
+        amount: amount,
+        msg: to_binary(&Cw20HookMsg::WithdrawLiquidity {})?
     };
+
 
     // Call on LP token.
     let lp_call = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: lp_token_address.into_string(),
+        contract_addr: String::from(lp_token_address),
         msg: to_binary(&cw20_msg)?,
         funds: vec![],
     });
