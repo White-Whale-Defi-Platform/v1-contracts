@@ -1,6 +1,6 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use crate::tests::mock_querier::{mock_dependencies};
-use cosmwasm_std::{coins, Uint128, Api, Decimal};
+use cosmwasm_std::{CosmosMsg, coins, Uint128, Api, Decimal};
 use terra_cosmwasm::TerraRoute;
 use crate::tests::instantiate::mock_instantiate;
 use crate::msg::ExecuteMsg;
@@ -39,21 +39,22 @@ fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_
 
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
-    assert_eq!(4, res.messages.len());
-    // let second_msg = res.messages[1].msg.clone();
-    // match second_msg {
-    //     CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
-    //     CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
-    //     CosmosMsg::Wasm(_wasm_msg) => panic!("unexpected"),
-    //     _ => panic!("unexpected"),
-    // }
-    // let second_msg = res.messages[2].msg.clone();
-    // match second_msg {
-    //     CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
-    //     CosmosMsg::Custom(_t) => panic!("unexpected"),
-    //     CosmosMsg::Wasm(_wasm_msg) => {},
-    //     _ => panic!("unexpected"),
-    // }
+    assert_eq!(3, res.messages.len());
+    println!("{:?}",res.messages);
+    let second_msg = res.messages[0].msg.clone();
+    match second_msg {
+        CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
+        CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
+        CosmosMsg::Wasm(_wasm_msg) => panic!("unexpected"),
+        _ => panic!("unexpected"),
+    }
+    let second_msg = res.messages[2].msg.clone();
+    match second_msg {
+        CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
+        CosmosMsg::Custom(_t) => panic!("unexpected"),
+        CosmosMsg::Wasm(_wasm_msg) => {},
+        _ => panic!("unexpected"),
+    }
 }
 
 #[test]
