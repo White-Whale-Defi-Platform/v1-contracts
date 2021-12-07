@@ -62,7 +62,7 @@ pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
 
     conf.last_profit = Uint128::zero();
 
-    conf.last_balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
+    conf.last_balance = get_vault_value(deps.as_ref())?;
     CONFIG.save(deps.storage, &conf)?;
 
     Ok(Response::default().add_attribute("value before trade: ", conf.last_balance.to_string()))
@@ -75,7 +75,7 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo, loan_fee: Uint128) -> Profi
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
-    let balance = query_balance(&deps.querier, info.sender, conf.denom.clone())?;
+    let balance = get_vault_value(deps.as_ref())?;
 
     if balance < conf.last_balance + loan_fee {
         return Err(ProfitCheckError::CancelLosingTrade {});
@@ -271,7 +271,7 @@ mod tests {
             env.clone(),
             vault_info,
             ExecuteMsg::AfterTrade {
-                loan_fee: Uint128::zero(),
+                loan_fee: Uint128::new(1000000),
             },
         );
         match res {
@@ -393,7 +393,7 @@ mod tests {
             env.clone(),
             info,
             ExecuteMsg::AfterTrade {
-                loan_fee: Uint128::zero(),
+                loan_fee: Uint128::new(1000000),
             },
         );
         match res {
