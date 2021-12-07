@@ -1,5 +1,6 @@
 {
     "bombay-12": {
+        "multisig": "terra1xhhedykp6knc0ygtggwek3w0et3dmwe6apzeuz",
         "profit_check": "terra1c4q30edghg42vwxej24362hyrjaj64p4q8h6yw",
         "stablecoin_vault": "terra1g3drylw7ezlvv039a57qm8j4sncrtjkzyks5kl",
         "liquidity_token": "terra1znkkdhsy8p09svqd2xzg7wcfukdug9gsfwr6hd",
@@ -9,24 +10,29 @@
         "community_fund": "terra1ugx7u99t8nqvhrt40ka759kqxy4j4r3n5v5l9j",
         "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v",
         "stablecoin_peg_arb": "terra1w677vh58v2t5u7dcpwu73yjct6tpa547ztsdaz",
-        "treasury": "terra15l6h8kdvqkx9x70hcgefz9yw3j2rnpwz9rm7uv",
-        "terraswap_dapp": "terra1jevvzfew6rdprue9w2r6p93gt7fnwzjhfgve0t",
-        "lbp_pair": "terra1dk4zhd49xyjhky6m7mc8a5v4wx3s58wmulw0sq",
-        "lbp_lp_token": "terra1954dxzsmjss7lkvav6pme370cqgh6ynxf4cu6t",
-        "terraswap_factory": "terra1xyzvuzyjphejnzgjxr46stay5jyypwyem3ylgd",
-        "test_whale_token": "terra1d4zqcn47xk283k8qhpmfghfvnsq984grrk30cx",
-        "whale_ust_terraswap_pair": "terra1ch66p9w8sznj5pd6d8ycjl2jhygpdclkl6zden",
-        "LBP_factory": "terra1rgryj3aza79pplex8aps8l0sje42jvcp92fg2w",
+        "treasury": "terra148mq5wps2d5xfh2l26l8uu7as2dq95qy7asds8",
+        "terraswap_dapp": "terra1vcyewnz4qrh5mhk8kntn40hwzk3ld3kqc7v65e",
         "code_id": {
             "token_code_id": "148",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
-            "treasury": "24772",
-            "terraswap_dapp": "24841"
-        }
+            "treasury": "25347",
+            "terraswap_dapp": "25365",
+            "lbp_pair": "25356",
+            "terraswap_factory": "24131",
+            "lbp_token_code_id": "24132",
+            "LBP_factory": "25359"
+        },
+        "terraswap_factory": "terra1xyzvuzyjphejnzgjxr46stay5jyypwyem3ylgd",
+        "test_whale_token": "terra1dr3ewsswg4jtteafrdznjvjmk400qpudv07jcx",
+        "lbp_pair": "terra1txfd8cdyke88cvlaw6ljkzw5g9k5t5zurwlf9q",
+        "lbp_lp_token": "terra1g2tsame0x3d3gj46zmalzn5w9v25cr9nkzk4dn",
+        "LBP_factory": "terra14qc390uxapwlg3a78me42nrdw0ymuk5z562cpz",
+        "whale_ust_terraswap_pair": "terra1ch66p9w8sznj5pd6d8ycjl2jhygpdclkl6zden"
     },
     "columbus-5": {
+        "multisig": "",
         "profit_check": "terra18ykdvsgknscc02l7793jrtx5s0rd7et5shzj7g",
         "stablecoin_vault": "terra1j3l9e29rv8dmz35lhx8d4yk8qfct6aahdy4c77",
         "liquidity_token": "terra1994nxa36w0xxj46e8pd8kanxjuc4astnm2ncxm",
@@ -36,20 +42,21 @@
         "community_fund": "terra1vjjs2cekma9s0axev989e68lkdx7mgjl0pnaak",
         "war_chest": "terra1vjjs2cekma9s0axev989e68lkdx7mgjl0pnaak",
         "stablecoin_peg_arb": "terra1m7ewqlgkxtyq7fn8mgsx2lpuu4r02xd0qcq02l",
-        "treasury": "",
-        "terraswap_dapp": "",
+        "treasury": "terra1mxlcjyjm5elqgdhktftxa7ehus53mdswjk7lxg",
+        "terraswap_dapp": "terra1fmshuavt6fsdmle3cjw6sa2ykfs2fwhtkvleg7",
         "terraswap_factory": "",
         "test_whale_token": "",
         "lbp_lp_token": "",
         "whale_ust_terraswap_pair": "",
         "LBP_factory": "",
+        "lbp_pair": "",
         "code_id": {
             "token_code_id": "3",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
-            "treasury": "",
-            "terraswap_dapp": ""
+            "treasury": "1562",
+            "terraswap_dapp": "1563"
         }
     }
 }

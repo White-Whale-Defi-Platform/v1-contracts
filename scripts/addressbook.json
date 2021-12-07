@@ -14,9 +14,9 @@
         "luna_sdt":"terra1dmrn07plsrr8p7qqq6dmue8ydw0smxfza6f8sc",
         "mnt":"umnt",
         "sdt":"usdt",
-        "whale": "terra1d4zqcn47xk283k8qhpmfghfvnsq984grrk30cx",
-        "lbp_pair": "terra1puf5ykwvsdh7gq3hf0676c5kyed7w3hd48ett5",
-        "lbp": "terra19gz4l45xfxh7yjg203aslt7rhk3c8pvdrssxjz"
+        "whale": "terra183cvzy6knvva6mpvzcq86uyfxw0nd4925m0d0m",
+        "lbp_pair": "terra1txfd8cdyke88cvlaw6ljkzw5g9k5t5zurwlf9q",
+        "lbp": "terra1g2tsame0x3d3gj46zmalzn5w9v25cr9nkzk4dn"
     },
     "columbus-5": {
         "anc_ust_pair":"terra1gm5p3ner9x9xpwugn9sp6gvhd0lwrtkyrecdn3",
@@ -110,6 +110,9 @@
         "psi_neth":"terra1y8kxhfg22px5er32ctsgjvayaj8q36tr590qtp",
         "mnt":"umnt",
         "ust":"uusd",
-        "krt":"ukrt"
+        "krt":"ukrt",
+        "lbp_pair": "terra144yc27hvq3w0pcychtcu6jsfff7cu54tdj6jja",
+        "lbp": "terra1lmjfpe5n74a5l7ljnh8qcuzg9mwd3fpp9lkzzf",
+        "whale": "terra1mqeqfh4t746pmrx3u9tuqtqcmjlld6w7a6dxvt"
     }
 }
