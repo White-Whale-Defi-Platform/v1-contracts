@@ -19,7 +19,7 @@ fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_
 
     let env = mock_env();
 
-
+    // Prepare a Mock Arb Detail object
     let arb_detail: ArbDetails = ArbDetails {
         asset: Asset {
             amount: Uint128::from(OFFER_AMOUNT),
@@ -31,18 +31,22 @@ fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_
         belief_price: Decimal::percent(420),
     };
 
+    // Prepare a BelowPegCallback msg
     let msg = ExecuteMsg::BelowPegCallback {
         details: arb_detail
     };
 
+    // Ensure the 'caller' is the VAULT_CONTRACT to avoid unauthorized issues
     let info = mock_info(VAULT_CONTRACT, &[]);
 
 
     let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    // We should have gotten 3 messages back in this case
     assert_eq!(3, res.messages.len());
-    println!("{:?}",res.messages);
-    let second_msg = res.messages[0].msg.clone();
-    match second_msg {
+    // Verify the operations happened in the order we expect. 
+    // For below peg, we expect first a mint tx, followed by a swap
+    let first_msg = res.messages[0].msg.clone();
+    match first_msg {
         CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
         CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
         CosmosMsg::Wasm(_wasm_msg) => panic!("unexpected"),
@@ -59,33 +63,49 @@ fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_
 
 #[test]
 fn when_given_an_above_peg_msg_then_handle_returns_first_a_terraswap_then_a_mint_msg() {
-    let mut deps = mock_dependencies(&[]);
+    let mut deps = mock_dependencies(&coins(100000000, "uusd"));
+    mock_instantiate(deps.as_mut());
 
-    // let msg = get_test_init_msg();
-    // let env = mock_env();
-    // let msg_info = MessageInfo{sender: deps.api.addr_validate("creator").unwrap(), funds: vec![]};
+    let env = mock_env();
 
-    // let _res = instantiate(deps.as_mut(), env.clone(), msg_info.clone(), msg).unwrap();
+    // Prepare a Mock Arb Detail object
+    let arb_detail: ArbDetails = ArbDetails {
+        asset: Asset {
+            amount: Uint128::from(OFFER_AMOUNT),
+            info: AssetInfo::NativeToken {
+                denom: "uusd".to_string(),
+            },
+        },
+        slippage: Decimal::percent(1),
+        belief_price: Decimal::percent(420),
+    };
 
-    // let msg = HandleMsg::AbovePeg {
-    //     amount: Coin{denom: "uusd".to_string(), amount: Uint128::from(1000000u64)},
-    //     uaust_withdraw_amount: Uint128::zero()
-    // };
+    // Prepare an AbovePegCallback msg
+    let msg = ExecuteMsg::AbovePegCallback {
+        details: arb_detail
+    };
 
-    // let res = execute(deps.as_mut(), env, msg_info, msg).unwrap();
-    // assert_eq!(4, res.messages.len());
-    // let second_msg = res.messages[1].msg.clone();
-    // match second_msg {
-    //     CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
-    //     CosmosMsg::Custom(_t) => panic!("unexpected"),
-    //     CosmosMsg::Wasm(_wasm_msg) => {},
-    //     _ => panic!("unexpected"),
-    // }
-    // let third_msg = res.messages[2].msg.clone();
-    // match third_msg {
-    //     CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
-    //     CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
-    //     CosmosMsg::Wasm(_wasm_msg) => panic!("unexpected"),
-    //     _ => panic!("unexpected"),
-    // }
+    // Ensure the 'caller' is the VAULT_CONTRACT to avoid unauthorized issues
+    let info = mock_info(VAULT_CONTRACT, &[]);
+
+    let res = execute(deps.as_mut(), env, info, msg).unwrap();
+    // We should have gotten 3 messages back in this case
+    assert_eq!(3, res.messages.len());
+    // Verify the operations happened in the order we expect. 
+    // For above peg, we expect first terraswap swap tx, followed by a mint
+    let first_msg = res.messages[0].msg.clone();
+    match first_msg {
+        CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
+        CosmosMsg::Custom(_t) => panic!("unexpected"),
+        CosmosMsg::Wasm(_wasm_msg) => {},
+        _ => panic!("unexpected"),
+    }
+    // Verify the second message is indeed a Market call (to Treasury or otherwise)
+    let second_msg = res.messages[1].msg.clone();
+    match second_msg {
+        CosmosMsg::Bank(_bank_msg) => panic!("unexpected"),
+        CosmosMsg::Custom(t) => assert_eq!(TerraRoute::Market, t.route),
+        CosmosMsg::Wasm(_wasm_msg) => panic!("unexpected"),
+        _ => panic!("unexpected"),
+    }
 }
