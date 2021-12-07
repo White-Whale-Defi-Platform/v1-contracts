@@ -33,7 +33,7 @@ pair_token = test_pool.addresses["astro_lp_token"]
 pool_addr = test_pool.addresses["astro_pair"]
 
 # test_pool.create()
-astroport_dapp.create()
+# astroport_dapp.create()
 
 
 
