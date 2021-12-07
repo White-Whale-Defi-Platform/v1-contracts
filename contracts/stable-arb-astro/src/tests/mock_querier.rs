@@ -9,7 +9,8 @@ use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;
-use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, TerraQuerier, TerraQueryWrapper, TerraRoute};
+use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery,SwapResponse, TerraQuerier, TerraQueryWrapper, TerraRoute};
+use terraswap::pair::SimulationResponse;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -150,14 +151,34 @@ impl WasmMockQuerier {
                         }
                         _ => panic!("DO NOT ENTER HERE"),
                     }
-                } else {
+                }
+                else if route == &TerraRoute::Market {
+                    match query_data {
+                        TerraQuery::Swap{offer_coin, ask_denom} => {
+                            let res = SwapResponse{
+                                receive: Coin{
+                                    amount: offer_coin.amount,
+                                    denom: String::from(ask_denom)
+                                }
+                            };
+
+                            SystemResult::Ok(ContractResult::from(to_binary(&res)))
+                        }
+                        _ => panic!("DO NOT ENTER HERE"),
+                    }
+                }
+                else {
                     panic!("DO NOT ENTER HERE")
                 }
             }
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 // Handle calls for Pair Info
+
+                println!("{:?}", request);
+
+                
                 if contract_addr == &String::from("PAIR0000") {
-                    println!("{:?}", request);
+                    
 
                     if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
                         let msg_pool = PoolResponse {
@@ -194,6 +215,18 @@ impl WasmMockQuerier {
                     };
 
                     return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)));
+                }
+                if contract_addr == &String::from("terraswap_pool") {
+                    let binary_response = to_binary(&SimulationResponse {
+                        return_amount: Uint128::from(1000000u64),
+                        spread_amount: Uint128::zero(),
+                        commission_amount: Uint128::zero(),
+                    });
+                    if binary_response.is_err() {
+                        return SystemResult::Err(SystemError::Unknown {});
+                    }
+        
+                    return SystemResult::Ok(ContractResult::Ok(binary_response.unwrap()));
                 } else {
                     match from_binary(&msg).unwrap() {
                         Cw20QueryMsg::Balance { address } => {
