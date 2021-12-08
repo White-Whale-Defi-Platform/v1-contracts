@@ -3,6 +3,7 @@ use cosmwasm_std::{
 };
 // use terraswap::asset::{Asset, AssetInfo, PairInfo};
 // use terraswap::pair::{PoolResponse, QueryMsg, SimulationResponse};
+
 use crate::astroport_helper::*;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 
@@ -29,7 +30,7 @@ pub fn simulate_swap(deps: Deps, pool_address: Addr, offer_coin: Coin) -> StdRes
 
 // perform a query for Pool information using the provided pool_address
 // return any response.
-// PoolResponse comes from terraswap and contains info on each of the assets as well as total share
+// PoolResponse comes from astroport and contains info on each of the assets as well as total share
 pub fn query_pool(deps: Deps, pool_address: &Addr) -> StdResult<PoolResponse> {
     let response: PoolResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: pool_address.to_string(),

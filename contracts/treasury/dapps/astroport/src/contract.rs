@@ -12,7 +12,7 @@ use crate::error::DAppError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 use crate::state::{get_asset_info, load_contract_addr, State, ADDRESS_BOOK, ADMIN, STATE};
 use crate::astroport_msg::*;
-use white_whale::query::astroport::{query_asset_balance, query_pool};
+use white_whale::query::astroport::*;
 use white_whale::treasury::msg::send_to_treasury;
 
 type DAppResult = Result<Response, DAppError>;
@@ -41,7 +41,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
             pool_id,
             main_asset_id,
             amount,
-        } => provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
+        } => provide_liquidity(deps.as_ref(), info, pool_id, main_asset_id, amount),
         ExecuteMsg::WithdrawLiquidity {
             lp_token_id,
             amount,
@@ -86,12 +86,12 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> D
 //  EXECUTE FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-/// Constructs and forwards the terraswap provide_liquidity message
+/// Constructs and forwards the astroport provide_liquidity message
 pub fn provide_liquidity(
     deps: Deps,
     msg_info: MessageInfo,
-    main_asset_id: String,
     pool_id: String,
+    main_asset_id: String,
     amount: Uint128,
 ) -> DAppResult {
     let state = STATE.load(deps.storage)?;
@@ -103,10 +103,12 @@ pub fn provide_liquidity(
     let treasury_address = deps.api.addr_humanize(&state.treasury_address)?;
 
     // Get lp token address
-    let pair_address = load_contract_addr(deps, &pool_id)?;
+    let pair_address = load_contract_addr(deps, &(pool_id))?;
+    let pool_address = load_contract_addr(deps, &(pool_id.clone() + PAIR_POSTFIX))?;
+
 
     // Get pool info
-    let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
+    let pool_info: PoolResponse = query_pool(deps, &pool_address)?;
     let asset_1 = &pool_info.assets[0];
     let asset_2 = &pool_info.assets[1];
 
@@ -159,7 +161,6 @@ pub fn withdraw_liquidity(
         return Err(DAppError::Unauthorized {});
     }
     let treasury_address = deps.api.addr_humanize(&state.treasury_address)?;
-
     // get lp token address
     let lp_token_address = load_contract_addr(deps, &lp_token_id)?;
     let pair_address = load_contract_addr(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
@@ -178,7 +179,7 @@ pub fn withdraw_liquidity(
 
     // Call on LP token.
     let lp_call = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: String::from(lp_token_address),
+        contract_addr: String::from(pair_address),
         msg: to_binary(&cw20_msg)?,
         funds: vec![],
     });

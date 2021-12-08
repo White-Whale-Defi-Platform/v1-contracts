@@ -28,27 +28,23 @@ test_pool = AstroportTestPool(deployer)
 astroport_dapp = AstroportDAppContract(deployer)
 treasury = TreasuryContract(deployer)
 
-# test_pool.create()
-# astroport_dapp.create()
-
-
-# test_pool.provide_astro_liquidity()
-
-# # Send white whale tokens to treasury?
-
-
-
-# test_pool.send_lp_token_to_treasury(1000000)
-
-# treasury.update_vault_assets()
 whaletoken = test_pool.addresses["test_whale_token"]
 pair_token = test_pool.addresses["astro_lp_token"] 
 pool_addr = test_pool.addresses["astro_pair"]
 
-treasury.query_vault_asset(pool_addr)
+# test_pool.create()
+astroport_dapp.create()
+
+
+
+# print(astroport_dapp.auto_update_address_book())
+
 # treasury.query_balance(whaletoken)
 # treasury.query_balance(pair_token)
-astroport_dapp.withdraw_liquidity(pair_token,1000)
+
+# print("withdraw liquidity")
+astroport_dapp.provide_liquidity("twhale_ust","twhale",1000)
+
 
 # astroport provide liquidity
 # astroport_dapp.provide_liquidity(pool_addr, whaletoken, 20000)
