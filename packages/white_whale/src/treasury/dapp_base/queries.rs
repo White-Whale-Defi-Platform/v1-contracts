@@ -15,11 +15,8 @@ pub fn try_query_config(deps: Deps) -> StdResult<BaseStateResponse> {
     let state = STATE.load(deps.storage)?;
 
     Ok(BaseStateResponse {
-        treasury_address: deps
-            .api
-            .addr_humanize(&state.treasury_address)?
-            .into_string(),
-        trader: deps.api.addr_humanize(&state.trader)?.into_string(),
+        treasury_address: state.treasury_address.into_string(),
+        trader: state.trader.into_string(),
     })
 }
 

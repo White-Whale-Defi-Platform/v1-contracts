@@ -72,11 +72,11 @@ pub fn update_config(
     let mut state = STATE.load(deps.storage)?;
 
     if let Some(treasury_address) = treasury_address {
-        state.treasury_address = deps.api.addr_canonicalize(&treasury_address)?;
+        state.treasury_address = deps.api.addr_validate(treasury_address.as_str())?;
     }
 
     if let Some(trader) = trader {
-        state.trader = deps.api.addr_canonicalize(&trader)?;
+        state.trader = deps.api.addr_validate(trader.as_str())?;
     }
 
     STATE.save(deps.storage, &state)?;
