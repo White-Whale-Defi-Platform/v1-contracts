@@ -11,19 +11,9 @@ pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecut
             treasury_address,
             trader,
         } => update_config(deps, info, treasury_address, trader),
-        BaseExecuteMsg::SetAdmin { admin } => {
-            ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
-
-            let admin_addr = deps.api.addr_validate(&admin)?;
-            let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
-            ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
-            Ok(Response::default()
-                .add_attribute("previous admin", previous_admin)
-                .add_attribute("admin", admin))
-        }
-        BaseExecuteMsg::UpdateAddressBook { to_add, to_remove } => {
+        BaseExecuteMsg::SetAdmin { admin } => set_admin(deps, info, admin),
+        BaseExecuteMsg::UpdateAddressBook { to_add, to_remove } =>
             update_address_book(deps, info, to_add, to_remove)
-        }
     }
 }
 
@@ -79,5 +69,16 @@ pub fn update_config(
     }
 
     STATE.save(deps.storage, &state)?;
-    Ok(Response::new().add_attribute("Update:", "Successfull"))
+    Ok(Response::new().add_attribute("Update:", "Successful"))
+}
+
+pub fn set_admin(deps: DepsMut, info: MessageInfo, admin: String) -> DAppResult {
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let admin_addr = deps.api.addr_validate(&admin)?;
+    let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
+    ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
+    Ok(Response::default()
+        .add_attribute("previous admin", previous_admin)
+        .add_attribute("admin", admin))
 }

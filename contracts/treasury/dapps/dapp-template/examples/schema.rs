@@ -5,7 +5,7 @@ use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
 use dapp_template::msg::{ExecuteMsg, QueryMsg};
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
-use white_whale::treasury::dapp_base::state::State;
+use white_whale::treasury::dapp_base::state::BaseState;
 
 fn main() {
     let mut out_dir = current_dir().unwrap();
@@ -16,5 +16,5 @@ fn main() {
     export_schema(&schema_for!(BaseInstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
-    export_schema(&schema_for!(State), &out_dir);
+    export_schema(&schema_for!(BaseState), &out_dir);
 }

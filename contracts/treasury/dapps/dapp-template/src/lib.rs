@@ -1,3 +1,7 @@
+mod commands;
 pub mod contract;
 pub mod msg;
-mod commands;
+
+#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+mod tests;

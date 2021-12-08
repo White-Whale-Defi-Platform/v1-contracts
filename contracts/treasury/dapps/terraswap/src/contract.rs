@@ -4,7 +4,7 @@ use white_whale::treasury::dapp_base::commands as dapp_base_commands;
 use white_whale::treasury::dapp_base::common::DAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
-use white_whale::treasury::dapp_base::state::{State, ADMIN, STATE};
+use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, STATE};
 
 use crate::commands;
 use crate::error::TerraswapError;
@@ -18,8 +18,8 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: BaseInstantiateMsg,
-) -> TerraswapResult {
-    let state = State {
+) -> DAppResult {
+    let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
     };
