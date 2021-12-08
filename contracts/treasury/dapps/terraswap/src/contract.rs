@@ -6,8 +6,8 @@ use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
 use white_whale::treasury::dapp_base::state::{State, ADMIN, STATE};
 
-use crate::error::TerraswapError;
 use crate::commands;
+use crate::error::TerraswapError;
 use crate::msg::{ExecuteMsg, QueryMsg};
 
 pub type TerraswapResult = Result<Response, TerraswapError>;
@@ -72,7 +72,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> T
             max_spread,
             belief_price,
         ),
-        ExecuteMsg::Base(message) => convert(dapp_base_commands::handle_base_message(deps, info, message)),
+        ExecuteMsg::Base(message) => {
+            from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message))
+        }
     }
 }
 
@@ -85,9 +87,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 /// Required to convert DAppResult into TerraswapResult
 /// Can't implement the From trait directly
-fn convert(result: DAppResult) -> TerraswapResult {
+fn from_base_dapp_result(result: DAppResult) -> TerraswapResult {
     match result {
         Err(e) => Err(e.into()),
-        Ok(r) => Ok(r)
+        Ok(r) => Ok(r),
     }
 }

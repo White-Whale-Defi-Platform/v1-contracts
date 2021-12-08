@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response,
-    Uint128, WasmMsg,
+    to_binary, Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response, Uint128,
+    WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use terraswap::asset::Asset;
@@ -8,15 +8,15 @@ use terraswap::pair::{Cw20HookMsg, PoolResponse};
 
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
 use white_whale::treasury::dapp_base::common::PAIR_POSTFIX;
-use white_whale::treasury::dapp_base::error::DAppError;
+use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::state::{load_contract_addr, STATE};
 use white_whale::treasury::msg::send_to_treasury;
 
-use crate::state::get_asset_info;
 use crate::contract::TerraswapResult;
+use crate::error::TerraswapError;
+use crate::state::get_asset_info;
 use crate::terraswap_msg::{asset_into_swap_msg, deposit_lp_msg};
 use crate::utils::has_sufficient_balance;
-use crate::error::TerraswapError;
 
 /// Constructs and forwards the terraswap provide_liquidity message
 pub fn provide_liquidity(
@@ -29,7 +29,7 @@ pub fn provide_liquidity(
     let state = STATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
-        return Err(DAppError::Unauthorized {}.into());
+        return Err(BaseDAppError::Unauthorized {}.into());
     }
 
     let treasury_address = &state.treasury_address;
@@ -69,7 +69,7 @@ pub fn provide_liquidity(
     let second_asset_balance =
         query_asset_balance(deps, &second_asset.info, treasury_address.clone())?;
     if second_asset_balance < second_asset.amount || first_asset_balance < first_asset.amount {
-        return Err(DAppError::Broke {}.into());
+        return Err(BaseDAppError::Broke {}.into());
     }
 
     // Deposit lp msg either returns a bank send msg or a
@@ -77,7 +77,7 @@ pub fn provide_liquidity(
     let msgs: Vec<CosmosMsg> =
         deposit_lp_msg(deps, [second_asset, first_asset], pair_address, None)?;
 
-    Ok(Response::new().add_message(send_to_treasury(msgs, &treasury_address)?))
+    Ok(Response::new().add_message(send_to_treasury(msgs, treasury_address)?))
 }
 
 /// Constructs and forwards the terraswap provide_liquidity message
@@ -92,7 +92,7 @@ pub fn detailed_provide_liquidity(
     let state = STATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
-        return Err(DAppError::Unauthorized {}.into());
+        return Err(BaseDAppError::Unauthorized {}.into());
     }
 
     if assets.len() > 2 {
@@ -118,7 +118,7 @@ pub fn detailed_provide_liquidity(
             let asset_balance = query_asset_balance(deps, &asset_info, treasury_address.clone())?;
             // Check if treasury has enough of this asset
             if asset_balance < asset.1 {
-                return Err(DAppError::Broke {}.into());
+                return Err(BaseDAppError::Broke {}.into());
             }
             // Append asset to list
             assets_to_send.push(Asset {
@@ -135,7 +135,7 @@ pub fn detailed_provide_liquidity(
     // increase allowance msg for each asset.
     let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, asset_array, pair_address, slippage_tolerance)?;
 
-    Ok(Response::new().add_message(send_to_treasury(msgs, &treasury_address)?))
+    Ok(Response::new().add_message(send_to_treasury(msgs, treasury_address)?))
 }
 
 /// Constructs withdraw liquidity msg and forwards it to treasury
@@ -147,7 +147,7 @@ pub fn withdraw_liquidity(
 ) -> TerraswapResult {
     let state = STATE.load(deps.storage)?;
     if msg_info.sender != state.trader {
-        return Err(DAppError::Unauthorized {}.into());
+        return Err(BaseDAppError::Unauthorized {}.into());
     }
     let treasury_address = &state.treasury_address;
 
@@ -195,7 +195,7 @@ pub fn terraswap_swap(
 
     // Check if caller is trader
     if msg_info.sender != state.trader {
-        return Err(DAppError::Unauthorized {}.into());
+        return Err(BaseDAppError::Unauthorized {}.into());
     }
 
     // Check if treasury has enough to swap

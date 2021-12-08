@@ -1,7 +1,7 @@
 use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
 use thiserror::Error;
-use white_whale::treasury::dapp_base::error::DAppError;
+use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum TerraswapError {
@@ -12,7 +12,7 @@ pub enum TerraswapError {
     Admin(#[from] AdminError),
 
     #[error("{0}")]
-    DAppError(#[from] DAppError),
+    BaseDAppError(#[from] BaseDAppError),
 
     #[error("You must provide exactly two assets when adding liquidity")]
     NotTwoAssets {},
