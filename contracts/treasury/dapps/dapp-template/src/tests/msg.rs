@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, DepsMut, StdError};
+use cosmwasm_std::{Addr, StdError};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 use white_whale::treasury::dapp_base::error::DAppError;

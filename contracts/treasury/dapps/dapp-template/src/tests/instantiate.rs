@@ -1,5 +1,4 @@
 use cosmwasm_std::Api;
-use cosmwasm_std::DepsMut;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
