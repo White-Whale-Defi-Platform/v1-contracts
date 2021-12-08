@@ -51,7 +51,7 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
 
     match res {
-        Err(TerraswapError::BaseDAppError(BaseDAppError::Std(_))) => (),
+        Err(TerraswapError::Std(_)) => (),
         Ok(_) => panic!("Should return NotFound Err"),
         _ => panic!("Should return NotFound Err"),
     }
