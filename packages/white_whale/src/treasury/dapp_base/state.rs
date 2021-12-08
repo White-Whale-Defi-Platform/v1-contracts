@@ -1,15 +1,15 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr, CanonicalAddr, Deps, StdResult};
+use cosmwasm_std::{Addr, Deps, StdResult};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 // The state contains the main addresses needed for sending and verifying messages
 pub struct State {
-    pub treasury_address: CanonicalAddr,
-    pub trader: CanonicalAddr,
+    pub treasury_address: Addr,
+    pub trader: Addr,
 }
 
 pub const ADMIN: Admin = Admin::new("admin");
