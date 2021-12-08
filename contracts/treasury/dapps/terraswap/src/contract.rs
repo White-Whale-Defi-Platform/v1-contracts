@@ -6,7 +6,7 @@ use white_whale::treasury::dapp_base::commands as dapp_base_commands;
 use white_whale::treasury::dapp_base::common::DAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
-use white_whale::treasury::dapp_base::state::{ADMIN, State, STATE};
+use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, STATE};
 
 use crate::commands;
 use crate::msg::{ExecuteMsg, QueryMsg};
@@ -18,7 +18,7 @@ pub fn instantiate(
     info: MessageInfo,
     msg: BaseInstantiateMsg,
 ) -> DAppResult {
-    let state = State {
+    let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
     };

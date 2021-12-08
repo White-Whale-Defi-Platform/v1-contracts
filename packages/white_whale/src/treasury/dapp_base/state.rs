@@ -7,13 +7,13 @@ use cw_storage_plus::{Item, Map};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 // The state contains the main addresses needed for sending and verifying messages
-pub struct State {
+pub struct BaseState {
     pub treasury_address: Addr,
     pub trader: Addr,
 }
 
 pub const ADMIN: Admin = Admin::new("admin");
-pub const STATE: Item<State> = Item::new("\u{0}{5}state");
+pub const STATE: Item<BaseState> = Item::new("\u{0}{5}state");
 // stores name and address of tokens and pairs
 // Example: pairs can be named after the LP token id.
 // LP token key: "ust_luna"
