@@ -13,7 +13,10 @@
         "luna_krt":"terra1rfzwcdhhu502xws6r5pxw4hx8c6vms772d6vyu",
         "luna_sdt":"terra1dmrn07plsrr8p7qqq6dmue8ydw0smxfza6f8sc",
         "mnt":"umnt",
-        "sdt":"usdt"
+        "sdt":"usdt",
+        "whale": "terra1d4zqcn47xk283k8qhpmfghfvnsq984grrk30cx",
+        "lbp_pair": "terra1puf5ykwvsdh7gq3hf0676c5kyed7w3hd48ett5",
+        "lbp": "terra19gz4l45xfxh7yjg203aslt7rhk3c8pvdrssxjz"
     },
     "columbus-5": {
         "anc_ust_pair":"terra1gm5p3ner9x9xpwugn9sp6gvhd0lwrtkyrecdn3",

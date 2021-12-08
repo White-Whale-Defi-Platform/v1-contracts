@@ -9,6 +9,7 @@ pub fn deposit_lp_msg(
     deps: Deps,
     mut assets: [Asset; 2],
     pair_addr: Addr,
+    slippage_tolerance: Option<Decimal>,
 ) -> StdResult<Vec<CosmosMsg<Empty>>> {
     let mut msgs: Vec<CosmosMsg<Empty>> = vec![];
     let mut coins: Vec<Coin> = vec![];
@@ -34,7 +35,7 @@ pub fn deposit_lp_msg(
 
     let lp_msg = PairExecuteMsg::ProvideLiquidity {
         assets,
-        slippage_tolerance: None,
+        slippage_tolerance,
         receiver: None,
     };
 

@@ -3,7 +3,7 @@ use cw_controllers::AdminError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum DAppError {
+pub enum BaseDAppError {
     #[error("{0}")]
     Std(#[from] StdError),
 
