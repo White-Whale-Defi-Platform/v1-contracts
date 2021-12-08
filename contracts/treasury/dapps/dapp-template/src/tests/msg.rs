@@ -18,12 +18,10 @@ pub fn test_unsuccessfully_update_config_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateConfig {
-            treasury_address: None,
-            trader: None,
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
+        treasury_address: None,
+        trader: None,
+    });
 
     let info = mock_info("unauthorized", &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
@@ -40,12 +38,10 @@ pub fn test_successfully_update_config_treasury_address_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateConfig {
-            treasury_address: Some("new_treasury_address".to_string()),
-            trader: None,
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
+        treasury_address: Some("new_treasury_address".to_string()),
+        trader: None,
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -66,12 +62,10 @@ pub fn test_successfully_update_config_trader_address_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateConfig {
-            treasury_address: None,
-            trader: Some("new_trader_address".to_string()),
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
+        treasury_address: None,
+        trader: Some("new_trader_address".to_string()),
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -92,12 +86,10 @@ pub fn test_successfully_update_config_both_treasury_and_trader_address_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateConfig {
-            treasury_address: Some("new_treasury_address".to_string()),
-            trader: Some("new_trader_address".to_string()),
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
+        treasury_address: Some("new_treasury_address".to_string()),
+        trader: Some("new_trader_address".to_string()),
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -118,12 +110,10 @@ pub fn test_successfully_update_config_none_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateConfig {
-            treasury_address: None,
-            trader: None,
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
+        treasury_address: None,
+        trader: None,
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -147,11 +137,9 @@ pub fn test_unsuccessfully_set_admin_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::SetAdmin {
-            admin: "new_admin".to_string(),
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::SetAdmin {
+        admin: "new_admin".to_string(),
+    });
 
     let info = mock_info("unauthorized", &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
@@ -174,11 +162,9 @@ pub fn test_successfully_set_admin_msg() {
     assert_eq!(admin, Addr::unchecked(TEST_CREATOR.to_string()));
 
     // set new admin
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::SetAdmin {
-            admin: "new_admin".to_string(),
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::SetAdmin {
+        admin: "new_admin".to_string(),
+    });
     let info = mock_info(TEST_CREATOR, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
@@ -196,12 +182,10 @@ pub fn test_unsuccessfully_update_address_book_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateAddressBook {
-            to_add: vec![],
-            to_remove: vec![],
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
+        to_add: vec![],
+        to_remove: vec![],
+    });
 
     let info = mock_info("unauthorized", &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg);
@@ -218,12 +202,10 @@ pub fn test_successfully_update_address_book_add_address_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateAddressBook {
-            to_add: vec![("asset".to_string(), "address".to_string())],
-            to_remove: vec![],
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
+        to_add: vec![("asset".to_string(), "address".to_string())],
+        to_remove: vec![],
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -239,12 +221,10 @@ pub fn test_successfully_update_address_book_remove_address_msg() {
     let env = mock_env();
 
     // add address
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateAddressBook {
-            to_add: vec![("asset".to_string(), "address".to_string())],
-            to_remove: vec![],
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
+        to_add: vec![("asset".to_string(), "address".to_string())],
+        to_remove: vec![],
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -253,12 +233,10 @@ pub fn test_successfully_update_address_book_remove_address_msg() {
     assert_eq!(asset_address, Addr::unchecked("address".to_string()));
 
     // remove address
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateAddressBook {
-            to_add: vec![],
-            to_remove: vec!["asset".to_string()],
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
+        to_add: vec![],
+        to_remove: vec!["asset".to_string()],
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -280,12 +258,10 @@ pub fn test_successfully_update_address_book_add_and_removeaddress_msg() {
     let env = mock_env();
 
     //add address
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateAddressBook {
-            to_add: vec![("asset".to_string(), "address".to_string())],
-            to_remove: vec![],
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
+        to_add: vec![("asset".to_string(), "address".to_string())],
+        to_remove: vec![],
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -302,12 +278,10 @@ pub fn test_successfully_update_address_book_add_and_removeaddress_msg() {
     }
 
     //add and remove addresses
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateAddressBook {
-            to_add: vec![("another_asset".to_string(), "another_address".to_string())],
-            to_remove: vec!["asset".to_string()],
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
+        to_add: vec![("another_asset".to_string(), "another_address".to_string())],
+        to_remove: vec!["asset".to_string()],
+    });
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 

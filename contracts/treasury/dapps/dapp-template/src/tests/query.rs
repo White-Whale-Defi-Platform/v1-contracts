@@ -1,5 +1,5 @@
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{from_binary, StdResult};
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg, BaseStateResponse};
 
@@ -42,7 +42,7 @@ pub fn test_address_book_nonexisting_key_query() {
                 id: "non-existing".to_string(),
             }),
         )
-        .unwrap(),
+            .unwrap(),
     );
 }
 
@@ -51,12 +51,10 @@ pub fn test_address_book_existing_key_query() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base {
-        0: BaseExecuteMsg::UpdateAddressBook {
-            to_add: vec![("asset".to_string(), "new_address".to_string())],
-            to_remove: vec![],
-        },
-    };
+    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
+        to_add: vec![("asset".to_string(), "new_address".to_string())],
+        to_remove: vec![],
+    });
 
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
@@ -69,8 +67,8 @@ pub fn test_address_book_existing_key_query() {
                 id: "asset".to_string(),
             }),
         )
-        .unwrap(),
+            .unwrap(),
     )
-    .unwrap();
+        .unwrap();
     assert_eq!(q_res, "new_address".to_string());
 }
