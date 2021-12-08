@@ -1,2 +1,2 @@
-mod instantiate;
 mod mock_querier;
+mod msg;

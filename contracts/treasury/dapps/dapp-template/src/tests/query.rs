@@ -6,7 +6,7 @@ use white_whale::treasury::dapp_base::tests::common::{TEST_CREATOR, TRADER_CONTR
 
 use crate::contract::{execute, query};
 use crate::msg::{ExecuteMsg, QueryMsg};
-use crate::tests::instantiate::mock_instantiate;
+use crate::tests::mocks::mock_instantiate;
 
 #[test]
 pub fn test_config_query() {

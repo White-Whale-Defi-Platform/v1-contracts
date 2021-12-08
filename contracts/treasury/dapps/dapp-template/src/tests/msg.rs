@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, StdError};
+use cosmwasm_std::{Addr, DepsMut, StdError};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 use white_whale::treasury::dapp_base::error::DAppError;
@@ -8,7 +8,7 @@ use white_whale::treasury::dapp_base::tests::common::{TEST_CREATOR, TRADER_CONTR
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
-use crate::tests::instantiate::mock_instantiate;
+use crate::tests::mocks::mock_instantiate;
 
 /**
  * BaseExecuteMsg::UpdateConfig

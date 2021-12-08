@@ -26,11 +26,11 @@ pub fn provide_liquidity(
 ) -> DAppResult {
     let state = STATE.load(deps.storage)?;
     // Check if caller is trader.
-    if msg_info.sender != deps.api.addr_humanize(&state.trader)? {
+    if msg_info.sender != deps.api.addr_validate(&state.trader.as_str())? {
         return Err(DAppError::Unauthorized {});
     }
 
-    let treasury_address = deps.api.addr_humanize(&state.treasury_address)?;
+    let treasury_address = deps.api.addr_validate(&state.treasury_address.as_str())?;
 
     // Get lp token address
     let pair_address = load_contract_addr(deps, &pool_id)?;
@@ -85,10 +85,10 @@ pub fn withdraw_liquidity(
     amount: Uint128,
 ) -> DAppResult {
     let state = STATE.load(deps.storage)?;
-    if msg_info.sender != deps.api.addr_humanize(&state.trader)? {
+    if msg_info.sender != deps.api.addr_validate(&state.trader.as_str())? {
         return Err(DAppError::Unauthorized {});
     }
-    let treasury_address = deps.api.addr_humanize(&state.treasury_address)?;
+    let treasury_address = deps.api.addr_validate(&state.treasury_address.as_str())?;
 
     // get lp token address
     let lp_token_address = load_contract_addr(deps, &lp_token_id)?;
@@ -130,10 +130,10 @@ pub fn terraswap_swap(
     belief_price: Option<Decimal>,
 ) -> DAppResult {
     let state = STATE.load(deps.storage)?;
-    let treasury_address = deps.api.addr_humanize(&state.treasury_address)?;
+    let treasury_address = deps.api.addr_validate(&state.treasury_address.as_str())?;
 
     // Check if caller is trader
-    if msg_info.sender != deps.api.addr_humanize(&state.trader)? {
+    if msg_info.sender != deps.api.addr_validate(&state.trader.as_str())? {
         return Err(DAppError::Unauthorized {});
     }
 

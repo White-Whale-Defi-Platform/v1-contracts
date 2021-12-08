@@ -16,15 +16,6 @@ pub(crate) fn instantiate_msg() -> BaseInstantiateMsg {
 }
 
 /**
- * Mocks instantiation.
- */
-pub fn mock_instantiate(deps: DepsMut) {
-    let info = mock_info(TEST_CREATOR, &[]);
-    let _res = instantiate(deps, mock_env(), info, instantiate_msg())
-        .expect("contract successfully handles InstantiateMsg");
-}
-
-/**
  * Tests successful instantiation of the contract.
  */
 #[test]
