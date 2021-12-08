@@ -19,8 +19,8 @@ pub fn instantiate(
     msg: BaseInstantiateMsg,
 ) -> DAppResult {
     let state = State {
-        treasury_address: deps.api.addr_canonicalize(&msg.treasury_address)?,
-        trader: deps.api.addr_canonicalize(&msg.trader)?,
+        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
+        trader: deps.api.addr_validate(&msg.trader)?,
     };
 
     // Store the initial config
