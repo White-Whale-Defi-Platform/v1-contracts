@@ -34,8 +34,7 @@ pub fn update_address_book(
         // update function for new or existing keys
         let insert = |vault_asset: Option<String>| -> StdResult<String> {
             match vault_asset {
-                // Todo: is there a better way to just leave the data untouched?
-                Some(present) => Ok(present),
+                Some(_) => Ok(new_address),
                 None => Ok(new_address),
             }
         };

@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response, to_binary, Uint128,
+    to_binary, Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response, Uint128,
     WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
@@ -7,11 +7,13 @@ use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
 
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
-use white_whale::treasury::dapp_base::common::{DAppResult, PAIR_POSTFIX};
-use white_whale::treasury::dapp_base::error::DAppError;
+use white_whale::treasury::dapp_base::common::PAIR_POSTFIX;
+use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::state::{load_contract_addr, STATE};
 use white_whale::treasury::msg::send_to_treasury;
 
+use crate::contract::TerraswapResult;
+use crate::error::TerraswapError;
 use crate::state::get_asset_info;
 use crate::terraswap_msg::{asset_into_swap_msg, deposit_lp_msg};
 use crate::utils::has_sufficient_balance;
@@ -23,16 +25,16 @@ pub fn provide_liquidity(
     main_asset_id: String,
     pool_id: String,
     amount: Uint128,
-) -> DAppResult {
+) -> TerraswapResult {
     let state = STATE.load(deps.storage)?;
     // Check if caller is trader.
-    if msg_info.sender != deps.api.addr_validate(&state.trader.as_str())? {
-        return Err(DAppError::Unauthorized {});
+    if msg_info.sender != state.trader {
+        return Err(BaseDAppError::Unauthorized {}.into());
     }
 
-    let treasury_address = deps.api.addr_validate(&state.treasury_address.as_str())?;
+    let treasury_address = &state.treasury_address;
 
-    // Get lp token address
+    // Get pair address
     let pair_address = load_contract_addr(deps, &pool_id)?;
 
     // Get pool info
@@ -67,14 +69,73 @@ pub fn provide_liquidity(
     let second_asset_balance =
         query_asset_balance(deps, &second_asset.info, treasury_address.clone())?;
     if second_asset_balance < second_asset.amount || first_asset_balance < first_asset.amount {
-        return Err(DAppError::Broke {});
+        return Err(BaseDAppError::Broke {}.into());
     }
-
-    let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, [second_asset, first_asset], pair_address)?;
 
     // Deposit lp msg either returns a bank send msg or a
     // increase allowance msg for each asset.
-    Ok(Response::new().add_message(send_to_treasury(msgs, &treasury_address)?))
+    let msgs: Vec<CosmosMsg> =
+        deposit_lp_msg(deps, [second_asset, first_asset], pair_address, None)?;
+
+    Ok(Response::new().add_message(send_to_treasury(msgs, treasury_address)?))
+}
+
+/// Constructs and forwards the terraswap provide_liquidity message
+/// You can provide custom asset amounts
+pub fn detailed_provide_liquidity(
+    deps: Deps,
+    msg_info: MessageInfo,
+    assets: Vec<(String, Uint128)>,
+    pool_id: String,
+    slippage_tolerance: Option<Decimal>,
+) -> TerraswapResult {
+    let state = STATE.load(deps.storage)?;
+    // Check if caller is trader.
+    if msg_info.sender != state.trader {
+        return Err(BaseDAppError::Unauthorized {}.into());
+    }
+
+    if assets.len() > 2 {
+        return Err(TerraswapError::NotTwoAssets {});
+    }
+
+    let treasury_address = &state.treasury_address;
+
+    // Get pair address
+    let pair_address = load_contract_addr(deps, &pool_id)?;
+
+    // Get pool info
+    let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
+
+    // List with assets to send
+    let mut assets_to_send: Vec<Asset> = vec![];
+
+    // Iterate over provided assets
+    for asset in assets {
+        let asset_info = get_asset_info(deps, &asset.0)?;
+        // Check if pool contains the asset
+        if pool_info.assets.iter().any(|a| a.info == asset_info) {
+            let asset_balance = query_asset_balance(deps, &asset_info, treasury_address.clone())?;
+            // Check if treasury has enough of this asset
+            if asset_balance < asset.1 {
+                return Err(BaseDAppError::Broke {}.into());
+            }
+            // Append asset to list
+            assets_to_send.push(Asset {
+                info: asset_info,
+                amount: asset.1,
+            })
+        } else {
+            // Error if asset info not found in pool
+            return Err(TerraswapError::NotInPool { id: asset.0 });
+        }
+    }
+    let asset_array: [Asset; 2] = [assets_to_send[0].clone(), assets_to_send[1].clone()];
+    // Deposit lp msg either returns a bank send msg or a
+    // increase allowance msg for each asset.
+    let msgs: Vec<CosmosMsg> = deposit_lp_msg(deps, asset_array, pair_address, slippage_tolerance)?;
+
+    Ok(Response::new().add_message(send_to_treasury(msgs, treasury_address)?))
 }
 
 /// Constructs withdraw liquidity msg and forwards it to treasury
@@ -83,19 +144,19 @@ pub fn withdraw_liquidity(
     msg_info: MessageInfo,
     lp_token_id: String,
     amount: Uint128,
-) -> DAppResult {
+) -> TerraswapResult {
     let state = STATE.load(deps.storage)?;
-    if msg_info.sender != deps.api.addr_validate(&state.trader.as_str())? {
-        return Err(DAppError::Unauthorized {});
+    if msg_info.sender != state.trader {
+        return Err(BaseDAppError::Unauthorized {}.into());
     }
-    let treasury_address = deps.api.addr_validate(&state.treasury_address.as_str())?;
+    let treasury_address = &state.treasury_address;
 
     // get lp token address
     let lp_token_address = load_contract_addr(deps, &lp_token_id)?;
     let pair_address = load_contract_addr(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
 
     // Check if the treasury has enough lp tokens
-    has_sufficient_balance(deps, &lp_token_id, &treasury_address, amount)?;
+    has_sufficient_balance(deps, &lp_token_id, treasury_address, amount)?;
 
     // Msg that gets called on the pair address.
     let withdraw_msg: Binary = to_binary(&Cw20HookMsg::WithdrawLiquidity {})?;
@@ -114,7 +175,7 @@ pub fn withdraw_liquidity(
         funds: vec![],
     });
 
-    Ok(Response::new().add_message(send_to_treasury(vec![lp_call], &treasury_address)?))
+    Ok(Response::new().add_message(send_to_treasury(vec![lp_call], treasury_address)?))
 }
 
 /// Function constructs terraswap swap messages and forwards them to the treasury
@@ -128,13 +189,13 @@ pub fn terraswap_swap(
     amount: Uint128,
     max_spread: Option<Decimal>,
     belief_price: Option<Decimal>,
-) -> DAppResult {
+) -> TerraswapResult {
     let state = STATE.load(deps.storage)?;
-    let treasury_address = deps.api.addr_validate(&state.treasury_address.as_str())?;
+    let treasury_address = state.treasury_address;
 
     // Check if caller is trader
-    if msg_info.sender != deps.api.addr_validate(&state.trader.as_str())? {
-        return Err(DAppError::Unauthorized {});
+    if msg_info.sender != state.trader {
+        return Err(BaseDAppError::Unauthorized {}.into());
     }
 
     // Check if treasury has enough to swap
