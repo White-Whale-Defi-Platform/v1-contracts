@@ -207,7 +207,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_asset_balance(
                 deps,
                 &vault_asset.asset.info,
-                env.contract.address.clone(),
+                env.contract.address,
             )?)
         }
         QueryMsg::HoldingValue { identifier } => {
