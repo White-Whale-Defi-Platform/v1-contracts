@@ -1,11 +1,11 @@
 use cosmwasm_std::{DepsMut, MessageInfo, Response, StdResult};
 
-use crate::treasury::dapp_base::common::DAppResult;
+use crate::treasury::dapp_base::common::BaseDAppResult;
 use crate::treasury::dapp_base::msg::BaseExecuteMsg;
 use crate::treasury::dapp_base::state::{ADDRESS_BOOK, ADMIN, STATE};
 
 /// Handles the common base execute messages
-pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecuteMsg) -> DAppResult {
+pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecuteMsg) -> BaseDAppResult {
     match message {
         BaseExecuteMsg::UpdateConfig {
             treasury_address,
@@ -26,7 +26,7 @@ pub fn update_address_book(
     msg_info: MessageInfo,
     to_add: Vec<(String, String)>,
     to_remove: Vec<String>,
-) -> DAppResult {
+) -> BaseDAppResult {
     // Only Admin can call this method
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
@@ -54,7 +54,7 @@ pub fn update_config(
     info: MessageInfo,
     treasury_address: Option<String>,
     trader: Option<String>,
-) -> DAppResult {
+) -> BaseDAppResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -72,7 +72,7 @@ pub fn update_config(
     Ok(Response::new().add_attribute("Update:", "Successful"))
 }
 
-pub fn set_admin(deps: DepsMut, info: MessageInfo, admin: String) -> DAppResult {
+pub fn set_admin(deps: DepsMut, info: MessageInfo, admin: String) -> BaseDAppResult {
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let admin_addr = deps.api.addr_validate(&admin)?;
