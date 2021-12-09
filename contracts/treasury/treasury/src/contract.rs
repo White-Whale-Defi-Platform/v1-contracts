@@ -17,7 +17,7 @@ type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
     The treasury is the bank account of the protocol. It owns the liquidity and acts as a proxy contract.
-    Whitelisted dApps construct messages for this contract. The dApps are controlled by Governance / the federator contract.
+    Whitelisted dApps construct messages for this contract. The dApps are controlled by Governance.
 */
 
 // version info for migration info
