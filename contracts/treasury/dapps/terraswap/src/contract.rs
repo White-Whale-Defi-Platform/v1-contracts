@@ -1,7 +1,7 @@
 use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 use white_whale::treasury::dapp_base::commands as dapp_base_commands;
-use white_whale::treasury::dapp_base::common::DAppResult;
+use white_whale::treasury::dapp_base::common::BaseDAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
 use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, STATE};
@@ -18,7 +18,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: BaseInstantiateMsg,
-) -> DAppResult {
+) -> BaseDAppResult {
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
@@ -85,9 +85,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-/// Required to convert DAppResult into TerraswapResult
+/// Required to convert BaseDAppResult into TerraswapResult
 /// Can't implement the From trait directly
-fn from_base_dapp_result(result: DAppResult) -> TerraswapResult {
+fn from_base_dapp_result(result: BaseDAppResult) -> TerraswapResult {
     match result {
         Err(e) => Err(e.into()),
         Ok(r) => Ok(r),

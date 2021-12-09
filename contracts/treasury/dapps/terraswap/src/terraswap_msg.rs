@@ -5,6 +5,7 @@ use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::ExecuteMsg as PairExecuteMsg;
 use white_whale::tax::compute_tax;
 
+/// Constructs the deposit msg
 pub fn deposit_lp_msg(
     deps: Deps,
     mut assets: [Asset; 2],
@@ -49,6 +50,7 @@ pub fn deposit_lp_msg(
 }
 
 // Adapted from terraswap_router operations.rs
+/// Constructs a swap msg
 pub fn asset_into_swap_msg(
     deps: Deps,
     pair_contract: Addr,

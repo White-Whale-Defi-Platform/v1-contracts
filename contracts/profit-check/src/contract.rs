@@ -4,7 +4,6 @@ use cosmwasm_std::{
 };
 
 use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg};
-use terraswap::querier::{query_balance};
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};
 use white_whale::profit_check::msg::{
