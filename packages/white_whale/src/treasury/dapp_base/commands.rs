@@ -21,6 +21,7 @@ pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecut
 //  GOVERNANCE CONTROLLED SETTERS
 //----------------------------------------------------------------------------------------
 
+/// Adds, updates or removes provided addresses. 
 pub fn update_address_book(
     deps: DepsMut,
     msg_info: MessageInfo,
@@ -31,7 +32,7 @@ pub fn update_address_book(
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     for (name, new_address) in to_add.into_iter() {
-        // update function for new or existing keys
+        // Update function for new or existing keys
         let insert = |vault_asset: Option<String>| -> StdResult<String> {
             match vault_asset {
                 Some(_) => Ok(new_address),
