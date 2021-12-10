@@ -27,15 +27,12 @@ Relative path: ../contracts/tokenomics
 | [`lp_emissions`](contracts/tokenomics/lp_emissions)            | $WHALE LP emissions contract                     |
 ## Treasury contracts
 
-THESE CONTRACTS ARE STILL WIP, DO NOT AUDIT!
-
 Relative path: ../contracts/treasury
 
-| Name                                                       | Description                                      |
-| ---------------------------------------------------------- | ------------------------------------------------ |
-| [`treasury`](contracts/treasury/treasury)                  | Treasury contract, acts as proxy                 |
-| [`terraswap-dapp`](contracts/treasury/dapps/terraswap)     | Terraswap message generator contract             |
-| [`astroport-dapp`](contracts/treasury/dapps/astroport)     | Astroport message generator contract             |
+| Name                                                        | Description                                      |
+| ----------------------------------------------------------  | ------------------------------------------------ |
+| [`treasury`](contracts/treasury/treasury)                   | Treasury contract, acts as proxy                 |
+| [`dapps/terraswap-dapp`](contracts/treasury/dapps/terraswap)| Terraswap message generator contract             |
 
 ## Running this contract
 
