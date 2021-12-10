@@ -316,9 +316,11 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         // total_deposits_in_ust > deposit as total_deposits_in_ust includes deposit
         // TODO: NOTE; due to the above comment I have added +1 to the total_deposits_in_ust - asset.amount
         // This is hacky and should not go into master, maybe the better answer is to just check if 0
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit+Uint128::from(1u64))
+        deposit.multiply_ratio(
+            total_share,
+            total_deposits_in_ust - deposit + Uint128::from(1u64),
+        )
     };
-
 
     // mint LP token to sender
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -334,7 +336,6 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
     if stables_in_contract > info.stable_cap * Decimal::percent(150) {
-
         let deposit_amount = stables_in_contract - info.stable_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
         let deposit_msg = anchor_deposit_msg(
@@ -374,8 +375,6 @@ pub fn try_withdraw_liquidity(
     if profit_check_response.last_balance != Uint128::zero() {
         return Err(StableVaultError::DepositDuringLoan {});
     }
-
-
 
     // Logging var
     let mut attrs = vec![];
@@ -484,7 +483,6 @@ pub fn try_withdraw_liquidity(
         })?,
         funds: vec![],
     });
-
 
     Ok(response
         .add_message(refund_msg)
@@ -609,9 +607,12 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     )?;
     let stable_transfer_fee = compute_tax(
         deps,
-        &Coin::new((amount - warchest_fee - anchor_withdraw_fee).u128(), String::from("uusd")),
+        &Coin::new(
+            (amount - warchest_fee - anchor_withdraw_fee).u128(),
+            String::from("uusd"),
+        ),
     )?;
-    // Two transfers (anchor -> vault -> user) so ~2x tax. 
+    // Two transfers (anchor -> vault -> user) so ~2x tax.
     Ok(warchest_fee + anchor_withdraw_fee + stable_transfer_fee)
 }
 

@@ -5,15 +5,20 @@ use crate::treasury::dapp_base::msg::BaseExecuteMsg;
 use crate::treasury::dapp_base::state::{ADDRESS_BOOK, ADMIN, STATE};
 
 /// Handles the common base execute messages
-pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecuteMsg) -> BaseDAppResult {
+pub fn handle_base_message(
+    deps: DepsMut,
+    info: MessageInfo,
+    message: BaseExecuteMsg,
+) -> BaseDAppResult {
     match message {
         BaseExecuteMsg::UpdateConfig {
             treasury_address,
             trader,
         } => update_config(deps, info, treasury_address, trader),
         BaseExecuteMsg::SetAdmin { admin } => set_admin(deps, info, admin),
-        BaseExecuteMsg::UpdateAddressBook { to_add, to_remove } =>
+        BaseExecuteMsg::UpdateAddressBook { to_add, to_remove } => {
             update_address_book(deps, info, to_add, to_remove)
+        }
     }
 }
 
@@ -21,7 +26,7 @@ pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecut
 //  GOVERNANCE CONTROLLED SETTERS
 //----------------------------------------------------------------------------------------
 
-/// Adds, updates or removes provided addresses. 
+/// Adds, updates or removes provided addresses.
 pub fn update_address_book(
     deps: DepsMut,
     msg_info: MessageInfo,

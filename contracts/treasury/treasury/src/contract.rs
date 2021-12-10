@@ -6,13 +6,15 @@ use cosmwasm_std::{
 };
 
 use crate::error::TreasuryError;
+use cw2::{get_contract_version, set_contract_version};
+use semver::Version;
 use terraswap::asset::AssetInfo;
 use white_whale::query::terraswap::query_asset_balance;
-use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
+use white_whale::treasury::msg::{
+    ConfigResponse, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 use white_whale::treasury::state::{State, ADMIN, STATE, VAULT_ASSETS};
 use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
-use cw2::{set_contract_version, get_contract_version};
-use semver::Version;
 type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
@@ -75,10 +77,10 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> TreasuryResult {
     // let mut config: State = from_slice(&data)?;
     // // And use something provided in MigrateMsg to update the state of the migrated contract
     // config.verifier = deps.api.addr_validate(&msg.verifier)?;
-    // // Then store our modified State 
+    // // Then store our modified State
     // deps.storage.set(CONFIG_KEY, &to_vec(&config)?);
     // If we have no need to update the State of the contract then just Response::default() should suffice
-    // in this case, the code is still updated, the migration does not change the contract addr or funds 
+    // in this case, the code is still updated, the migration does not change the contract addr or funds
     // if this is the case you desire, consider making the new Addr part of the MigrateMsg and then doing
     // a payout
 
@@ -112,7 +114,8 @@ pub fn execute_action(
     Ok(Response::new().add_messages(msgs))
 }
 
-pub fn send_asset(deps: Deps,
+pub fn send_asset(
+    deps: Deps,
     env: Env,
     msg_info: MessageInfo,
     id: String,
@@ -125,10 +128,14 @@ pub fn send_asset(deps: Deps,
     // Get balance and check against requested
     let balance = query_asset_balance(deps, &vault_asset.info, env.contract.address)?;
     if balance < amount {
-        return Err(TreasuryError::Broke{ requested: amount, balance})
+        return Err(TreasuryError::Broke {
+            requested: amount,
+            balance,
+        });
     }
     vault_asset.amount = amount;
-    Ok(Response::new().add_message(vault_asset.into_msg(&deps.querier, deps.api.addr_validate(&recipient)?)?))
+    Ok(Response::new()
+        .add_message(vault_asset.into_msg(&deps.querier, deps.api.addr_validate(&recipient)?)?))
 }
 
 /// Update the stored vault asset information
@@ -161,10 +168,7 @@ pub fn add_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> TreasuryR
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    if state
-        .dapps
-        .contains(&deps.api.addr_canonicalize(&dapp)?)
-    {
+    if state.dapps.contains(&deps.api.addr_canonicalize(&dapp)?) {
         return Err(TreasuryError::AlreadyInList {});
     }
 
@@ -181,10 +185,7 @@ pub fn remove_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> Treasu
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    if !state
-        .dapps
-        .contains(&deps.api.addr_canonicalize(&dapp)?)
-    {
+    if !state.dapps.contains(&deps.api.addr_canonicalize(&dapp)?) {
         return Err(TreasuryError::NotInList {});
     }
 

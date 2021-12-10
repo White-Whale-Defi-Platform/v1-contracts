@@ -1,7 +1,7 @@
 use crate::contract::{execute, instantiate, query};
 use crate::error::TreasuryError;
+use cosmwasm_std::from_binary;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary};
 use cw_controllers::AdminError;
 use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 

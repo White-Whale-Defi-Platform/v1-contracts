@@ -1,9 +1,9 @@
 use crate::contract::{execute, instantiate};
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{Uint128};
-use terraswap::asset::{AssetInfo, Asset};
-use white_whale::treasury::msg::{ExecuteMsg, InstantiateMsg};
 use crate::tests::common::TEST_CREATOR;
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::Uint128;
+use terraswap::asset::{Asset, AssetInfo};
+use white_whale::treasury::msg::{ExecuteMsg, InstantiateMsg};
 use white_whale::treasury::vault_assets::*;
 
 fn init_msg() -> InstantiateMsg {
@@ -26,14 +26,14 @@ fn test_send_token() {
         Err(_) => panic!("Unknown error"),
     }
 
-    let test_token_asset = VaultAsset{
+    let test_token_asset = VaultAsset {
         asset: Asset {
-            info: AssetInfo::Token{
-                contract_addr: "test_token".to_string()
+            info: AssetInfo::Token {
+                contract_addr: "test_token".to_string(),
             },
-            amount: Uint128::zero()
+            amount: Uint128::zero(),
         },
-        value_reference: None
+        value_reference: None,
     };
 
     let msg = ExecuteMsg::UpdateAssets {
@@ -43,7 +43,6 @@ fn test_send_token() {
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
-
     let _msg = ExecuteMsg::SendAsset {
         id: get_identifier(&test_token_asset.asset.info).clone(),
         amount: Uint128::from(10000u64),
@@ -52,7 +51,7 @@ fn test_send_token() {
     // TODO: FIX
     // match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
     //     Ok(res) => {
-    //         assert_eq!(res.messages.len(), 1); 
+    //         assert_eq!(res.messages.len(), 1);
     //     },
     //     Err(e) => panic!("{}", e),
     // }

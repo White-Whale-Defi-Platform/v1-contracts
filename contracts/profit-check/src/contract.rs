@@ -341,7 +341,6 @@ mod tests {
         assert_eq!(0, res.messages.len())
     }
 
-
     // TODO: Test candidate to fix
     // #[test]
     fn test_check_before_trade_fails_if_unauthorized() {
