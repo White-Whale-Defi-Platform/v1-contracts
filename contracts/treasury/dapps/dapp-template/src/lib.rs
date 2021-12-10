@@ -1,10 +1,6 @@
-pub mod commands;
+mod commands;
 pub mod contract;
-pub mod error;
 pub mod msg;
-pub mod state;
-pub mod terraswap_msg;
-pub mod utils;
 
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]

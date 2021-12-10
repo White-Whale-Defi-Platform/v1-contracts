@@ -1,3 +1,4 @@
 mod common;
 mod instantiate;
-mod mock_querier;
+mod msg;
+mod query;
