@@ -4,11 +4,11 @@ use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
 use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, load_contract_addr, STATE};
-use white_whale::treasury::dapp_base::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
+use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
-use crate::tests::mocks::mock_instantiate;
+use crate::tests::base_mocks::mocks::mock_instantiate;
 
 /**
  * BaseExecuteMsg::UpdateConfig

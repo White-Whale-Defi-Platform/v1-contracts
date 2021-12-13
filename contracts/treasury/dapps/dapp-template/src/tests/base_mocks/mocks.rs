@@ -1,12 +1,18 @@
 use cosmwasm_std::DepsMut;
 use cosmwasm_std::testing::{mock_env, mock_info};
 
-use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
-use white_whale::treasury::dapp_base::tests::common::TEST_CREATOR;
+use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseInstantiateMsg};
+use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
 
 use crate::contract::{execute, instantiate};
 use crate::msg::ExecuteMsg;
-use crate::tests::instantiate::instantiate_msg;
+
+pub(crate) fn instantiate_msg() -> BaseInstantiateMsg {
+    BaseInstantiateMsg {
+        treasury_address: TREASURY_CONTRACT.to_string(),
+        trader: TRADER_CONTRACT.to_string(),
+    }
+}
 
 /**
  * Mocks instantiation of the contract.
@@ -20,6 +26,7 @@ pub fn mock_instantiate(deps: DepsMut) {
 /**
  * Mocks adding asset to the [ADDRESS_BOOK].
  */
+#[allow(dead_code)]
 pub fn mock_add_to_address_book(deps: DepsMut, asset_address_pair: (String, String)) {
     let env = mock_env();
 

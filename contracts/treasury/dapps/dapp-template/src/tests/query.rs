@@ -2,11 +2,11 @@ use cosmwasm_std::{from_binary, StdResult};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg, BaseStateResponse};
-use white_whale::treasury::dapp_base::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
+use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
 
 use crate::contract::{execute, query};
 use crate::msg::{ExecuteMsg, QueryMsg};
-use crate::tests::mocks::mock_instantiate;
+use crate::tests::base_mocks::mocks::mock_instantiate;
 
 #[test]
 pub fn test_config_query() {
