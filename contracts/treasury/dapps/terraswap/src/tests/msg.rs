@@ -1,15 +1,15 @@
 use cosmwasm_std::{StdError, Uint128};
 use cosmwasm_std::testing::{mock_env, mock_info};
 
-use dapp_template::tests::mocks::{mock_add_to_address_book, mock_instantiate};
 use ExecuteMsg::ProvideLiquidity;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale::treasury::dapp_base::tests::common::{TEST_CREATOR, TRADER_CONTRACT};
+use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT};
 
 use crate::contract::execute;
-use crate::msg::ExecuteMsg;
-use crate::tests::mock_querier::mock_dependencies;
 use crate::error::TerraswapError;
+use crate::msg::ExecuteMsg;
+use crate::tests::base_mocks::mocks::{mock_add_to_address_book, mock_instantiate};
+use crate::tests::mock_querier::mock_dependencies;
 
 /**
  * ExecuteMsg::ProvideLiquidity
@@ -72,7 +72,6 @@ pub fn test_successfully_provide_liquidity_existing_asset_msg() {
 
     let info = mock_info(TRADER_CONTRACT, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
 }
 
 #[test]
@@ -84,11 +83,10 @@ pub fn test_successfully_provide_detailed_liquidity_existing_asset_msg() {
     let env = mock_env();
     let msg = ExecuteMsg::DetailedProvideLiquidity {
         pool_id: "pool".to_string(),
-        assets: vec![("asset".to_string(),Uint128::from(10u64) ), ("asset".to_string(),Uint128::from(10u64) )],
+        assets: vec![("asset".to_string(), Uint128::from(10u64)), ("asset".to_string(), Uint128::from(10u64))],
         slippage_tolerance: Default::default(),
     };
 
     let info = mock_info(TRADER_CONTRACT, &[]);
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
-    
 }

@@ -7,7 +7,7 @@ use cosmwasm_std::{
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use terraswap::asset::Asset;
 use terraswap::pair::{PoolResponse, QueryMsg as TerraswapQueryMsg};
-use white_whale::treasury::dapp_base::tests::common::{WHALE_TOKEN, WHALE_UST_PAIR};
+use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR};
 use std::collections::HashMap;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
@@ -118,7 +118,7 @@ impl WasmMockQuerier {
                                     })
                                 }
                             };
-    
+
                         let balance = match balances.get(&address) {
                             Some(v) => *v,
                             None => {
@@ -130,7 +130,7 @@ impl WasmMockQuerier {
                                 ));
                             }
                         };
-    
+
                         SystemResult::Ok(ContractResult::Ok(
                             to_binary(&Cw20BalanceResponse { balance }).unwrap(),
                         ))
@@ -139,7 +139,7 @@ impl WasmMockQuerier {
                 }
 
                 }
-                
+
             }
             _ => self.base.handle_query(request),
         }
