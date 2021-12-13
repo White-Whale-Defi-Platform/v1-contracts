@@ -1,8 +1,11 @@
-use cosmwasm_std::{DepsMut, MessageInfo, Response, StdResult};
+
+use cosmwasm_std::{DepsMut, Deps, MessageInfo, Response, StdResult};
 
 use crate::treasury::dapp_base::common::BaseDAppResult;
-use crate::treasury::dapp_base::msg::BaseExecuteMsg;
+use crate::treasury::dapp_base::msg::{BaseExecuteMsg,BaseInstantiateMsg};
 use crate::treasury::dapp_base::state::{ADDRESS_BOOK, ADMIN, STATE};
+
+use super::state::BaseState;
 
 /// Handles the common base execute messages
 pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecuteMsg) -> BaseDAppResult {
@@ -15,6 +18,14 @@ pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecut
         BaseExecuteMsg::UpdateAddressBook { to_add, to_remove } =>
             update_address_book(deps, info, to_add, to_remove)
     }
+}
+
+pub fn handle_base_init(deps: Deps, msg: BaseInstantiateMsg) -> StdResult<BaseState> {
+    let state = BaseState {
+        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
+        trader: deps.api.addr_validate(&msg.trader)?,
+    };
+    Ok(state)
 }
 
 //----------------------------------------------------------------------------------------

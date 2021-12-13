@@ -13,7 +13,8 @@ members = [
     "contracts/tokenomics/lp_emissions",
     "contracts/treasury/treasury",
     "contracts/treasury/dapps/terraswap",
-    "contracts/treasury/dapps/dapp-template"
+    "contracts/treasury/dapps/dapp-template",
+    "contracts/treasury/dapps/pooling"
 ]
 
 [profile.release]
