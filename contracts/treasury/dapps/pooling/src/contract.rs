@@ -45,7 +45,6 @@ pub fn instantiate(
     let state: State = State{
         base: base_state,
         lp_token_addr: Addr::unchecked(""),
-        memory_addr: deps.api.addr_validate(&msg.memory_addr)?,
     };
 
     let lp_token_name: String = msg

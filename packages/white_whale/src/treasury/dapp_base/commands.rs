@@ -24,6 +24,7 @@ pub fn handle_base_init(deps: Deps, msg: BaseInstantiateMsg) -> StdResult<BaseSt
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
+        memory_addr: deps.api.addr_validate(&msg.memory_addr)?,
     };
     Ok(state)
 }

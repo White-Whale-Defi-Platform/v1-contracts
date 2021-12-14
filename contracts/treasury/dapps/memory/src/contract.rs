@@ -17,13 +17,14 @@ pub type MemoryResult = Result<Response, MemoryError>;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     msg: BaseInstantiateMsg,
 ) -> BaseDAppResult {
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: Addr::unchecked(""),
+        memory_addr: env.contract.address,
     };
 
     // Store the initial config
@@ -45,10 +46,10 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
-        QueryMsg::QueryAssets { names } => queries::query_assets(deps, names),
+        QueryMsg::QueryAssets { names } => queries::query_assets(deps, env, names),
     }
 }
 

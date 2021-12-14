@@ -13,6 +13,7 @@ use crate::denom::is_denom;
 pub struct BaseState {
     pub treasury_address: Addr,
     pub trader: Addr,
+    pub memory_addr: Addr,
 }
 
 pub const ADMIN: Admin = Admin::new("admin");

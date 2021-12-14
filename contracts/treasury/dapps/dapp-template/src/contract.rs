@@ -21,6 +21,7 @@ pub fn instantiate(
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
+        memory_addr: deps.api.addr_validate(&msg.memory_addr)?,
     };
 
     STATE.save(deps.storage, &state)?;
