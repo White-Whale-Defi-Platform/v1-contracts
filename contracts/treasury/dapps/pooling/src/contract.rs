@@ -6,6 +6,7 @@ use cosmwasm_std::{
     entry_point, to_binary, Binary, Reply, Deps, ReplyOn, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
     WasmMsg, Addr, StdError,
 };
+use cw_storage_plus::Map;
 use protobuf::Message;
 
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
@@ -43,7 +44,8 @@ pub fn instantiate(
     
     let state: State = State{
         base: base_state,
-        lp_token_addr: Addr::unchecked("")
+        lp_token_addr: Addr::unchecked(""),
+        memory_addr: deps.api.addr_validate(&msg.memory_addr)?,
     };
 
     let lp_token_name: String = msg
@@ -54,6 +56,7 @@ pub fn instantiate(
         .vault_lp_token_symbol
         .unwrap_or_else(|| String::from(DEFAULT_LP_TOKEN_SYMBOL));
 
+    
     STATE.save(deps.storage, &state)?;
     POOL.save(deps.storage, &Pool{
         deposit_asset: msg.deposit_asset,

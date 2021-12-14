@@ -25,6 +25,7 @@ cw2 = { version = "0.8" }
 cw-controllers = { version = "0.8" }
 cw-storage-plus = { version = "0.8" }
 white-whale = { version = "1.0.0", path = "../../../../packages/white_whale" }
+memory = { version = "0.1.0", path = "../memory" }
 protobuf = { version = "2", features = ["with-bytes"] }
 cw20 = { version = "0.8" }
 cw20-base = { version = "0.8", features = ["library"] }

@@ -11,6 +11,7 @@ use white_whale::{treasury::dapp_base::state::BaseState, fee::Fee};
 pub struct State {
     pub base: BaseState,
     pub lp_token_addr: Addr,
+    pub memory_addr: Addr,
 }
 
 
