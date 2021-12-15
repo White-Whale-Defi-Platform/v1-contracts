@@ -282,12 +282,12 @@ pub fn handle_flashloan(
     }
 
     // If caller not whitelisted, calculate flashloan fee
-    let loan_fee: Uint128;
-    if whitelisted {
-        loan_fee = Uint128::zero();
+    
+    let loan_fee: Uint128 = if whitelisted {
+        Uint128::zero()
     } else {
-        loan_fee = fees.flash_loan_fee.compute(requested_asset.amount);
-    }
+        fees.flash_loan_fee.compute(requested_asset.amount)
+    };
 
     // Construct transfer of funds msg, tax is accounted for by buffer
     let loan_msg = into_msg_without_tax(requested_asset, info.sender.clone())?;

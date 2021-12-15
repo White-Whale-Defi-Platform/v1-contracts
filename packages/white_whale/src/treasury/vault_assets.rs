@@ -56,15 +56,14 @@ impl VaultAsset {
         set_holding: Option<Uint128>,
     ) -> StdResult<Uint128> {
         // Query how many of these tokens are held in the contract if not set.
-        let holding: Uint128;
+        
 
-        match set_holding {
-            Some(setter) => holding = setter,
+        let holding: Uint128 = match set_holding {
+            Some(setter) => setter,
             None => {
-                holding =
-                    query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?;
+                query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?
             }
-        }
+        };
         self.asset.amount = holding;
 
         // Is there a reference to calculate the value?

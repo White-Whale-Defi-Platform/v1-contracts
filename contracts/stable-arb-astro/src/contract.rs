@@ -133,16 +133,15 @@ fn call_flashloan(
     deposit_info.assert(&details.asset.info)?;
 
     // Construct callback msg
-    let callback_msg;
-    if above_peg {
-        callback_msg = ExecuteMsg::AbovePegCallback {
+    let callback_msg = if above_peg {
+        ExecuteMsg::AbovePegCallback {
             details: details.clone(),
         }
     } else {
-        callback_msg = ExecuteMsg::BelowPegCallback {
+        ExecuteMsg::BelowPegCallback {
             details: details.clone(),
         }
-    }
+    };
 
     // Construct payload
     let payload = FlashLoanPayload {
