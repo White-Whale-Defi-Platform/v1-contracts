@@ -1,7 +1,8 @@
 use thiserror::Error;
 
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, OverflowError};
 use cw_controllers::AdminError;
+
 
 #[derive(Error, Debug, PartialEq)]
 pub enum StableVaultError {
@@ -10,6 +11,9 @@ pub enum StableVaultError {
 
     #[error("{0}")]
     Admin(#[from] AdminError),
+
+    #[error("{0}")]
+    OverflowError(#[from] OverflowError),
 
     #[error("Semver parsing error: {0}")]
     SemVer(String),
