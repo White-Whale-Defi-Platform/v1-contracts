@@ -5,6 +5,9 @@ use cosmwasm_std::{
     QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
+use terraswap::asset::Asset;
+use terraswap::pair::{PoolResponse, QueryMsg as TerraswapQueryMsg};
+use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR};
 use std::collections::HashMap;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
@@ -76,7 +79,31 @@ impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                match from_binary(&msg).unwrap() {
+                if contract_addr == WHALE_UST_PAIR {
+                    match from_binary(&msg).unwrap() {
+                        TerraswapQueryMsg::Pool {} => {
+                            return SystemResult::Ok(ContractResult::Ok(
+                                to_binary(&PoolResponse {
+                                    assets: [Asset{
+                                        info: terraswap::asset::AssetInfo::Token{
+                                            contract_addr: WHALE_TOKEN.to_string(),
+                                        },
+                                        amount: Uint128::from(1000u64)
+                                    },
+                                    Asset{
+                                        info: terraswap::asset::AssetInfo::NativeToken{
+                                            denom: "uusd".to_string(),
+                                        },
+                                        amount: Uint128::from(1000u64)
+                                    }],
+                                    total_share: Uint128::from(100_000u64)
+                                })
+                                .unwrap(),
+                            ));
+                        },
+                        _ => panic!("DO NOT ENTER HERE"),
+                }} else {
+                    match from_binary(&msg).unwrap() {
                     Cw20QueryMsg::Balance { address } => {
                         let balances: &HashMap<String, Uint128> =
                             match self.token_querier.balances.get(contract_addr) {
@@ -110,6 +137,9 @@ impl WasmMockQuerier {
                     }
                     _ => panic!("DO NOT ENTER HERE"),
                 }
+
+                }
+
             }
             _ => self.base.handle_query(request),
         }
