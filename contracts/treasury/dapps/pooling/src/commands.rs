@@ -46,12 +46,12 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
     let pool: Pool = POOL.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
 
-    let assets = query_assets_from_mem(deps.as_ref(), state.base.memory_addr, asset_names);
+    let assets = query_assets_from_mem(deps.as_ref(), state.base.memory_addr, &pool.assets)?;
     
     // Init vector for logging
     let mut attrs = vec![];
     // Check if deposit matches claimed deposit.
-    // assert(&asset.info)?;
+    assert(&asset.info)?;
     asset.assert_sent_native_token_balance(&msg_info)?;
     attrs.push(("Action:", String::from("Deposit to vault")));
     attrs.push(("Received funds:", asset.to_string()));

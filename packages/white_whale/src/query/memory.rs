@@ -5,10 +5,10 @@ use crate::denom::is_denom;
 use cosmwasm_storage::to_length_prefixed;
 
 
-pub fn query_assets_from_mem(deps: Deps, memory_addr: Addr, asset_names: Vec<String>) -> StdResult<Vec<AssetInfo>> {
+pub fn query_assets_from_mem(deps: Deps, memory_addr: Addr, asset_names: Vec<String>) -> StdResult<Vec<(String,AssetInfo)>> {
     let mut assets: Vec<String> = vec![];
         
-    for asset in asset_names.into_iter() {
+    for asset in asset_names.iter() {
         assets.push(
             deps
             .querier
@@ -20,7 +20,7 @@ pub fn query_assets_from_mem(deps: Deps, memory_addr: Addr, asset_names: Vec<Str
                 )),
             }))?);
     }
-    let assets_as_info: Vec<AssetInfo> = assets.iter().map(|a| to_asset_info(deps,a).unwrap()).collect();
+    let assets_as_info: Vec<(String,AssetInfo)> = asset_names.into_iter().zip(assets.iter().map(|a| to_asset_info(deps,a).unwrap())).collect();
     Ok(assets_as_info)
 }
 
