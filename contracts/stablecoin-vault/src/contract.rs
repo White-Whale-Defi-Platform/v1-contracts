@@ -346,10 +346,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         deps.api.addr_humanize(&info.liquidity_token)?,
     )?;
 
-    let share = if total_share == Uint128::zero() {
-        // Initial share = collateral amount
-        deposit
-    } else if total_deposits_in_ust.checked_sub(deposit)? == Uint128::zero() {
+    let share = if total_share == Uint128::zero() || total_deposits_in_ust.checked_sub(deposit)? == Uint128::zero() {
         // Initial share = collateral amount
         deposit
     } else {
