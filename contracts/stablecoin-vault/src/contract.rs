@@ -349,8 +349,11 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
     let share = if total_share == Uint128::zero() {
         // Initial share = collateral amount
         deposit
+    } else if total_deposits_in_ust.checked_sub(deposit)? == Uint128::zero() {
+        // Initial share = collateral amount
+        deposit
     } else {
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
+        deposit.multiply_ratio(total_share, total_deposits_in_ust.checked_sub(deposit)?)
     };
 
 
