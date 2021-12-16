@@ -1,12 +1,13 @@
 use cosmwasm_std::{Addr, StdError};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
-use white_whale::treasury::dapp_base::error::DAppError;
+use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
 use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, load_contract_addr, STATE};
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
+use crate::error::AstroportError;
 use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
 use crate::tests::instantiate::mock_instantiate;
 
@@ -27,9 +28,9 @@ pub fn test_unsuccessfully_update_config_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
 
     match res {
-        Err(DAppError::Admin(_)) => (),
+        Err(AstroportError::BaseDAppError(BaseDAppError::Admin(_))) => (),
         Ok(_) => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
-        _ => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
+        err => panic!("Should return unauthorized Error, Admin(NotAdmin) {:?}", err),
     }
 }
 
@@ -145,7 +146,7 @@ pub fn test_unsuccessfully_set_admin_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
 
     match res {
-        Err(DAppError::Admin(_)) => (),
+        Err(AstroportError::BaseDAppError(BaseDAppError::Admin(_))) => (),
         Ok(_) => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
         _ => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
     }
@@ -191,7 +192,7 @@ pub fn test_unsuccessfully_update_address_book_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
 
     match res {
-        Err(DAppError::Admin(_)) => (),
+        Err(AstroportError::BaseDAppError(BaseDAppError::Admin(_))) => (),
         Ok(_) => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
         _ => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
     }
