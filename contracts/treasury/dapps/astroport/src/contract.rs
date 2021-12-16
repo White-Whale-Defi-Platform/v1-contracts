@@ -10,6 +10,8 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, STATE};
 
 use crate::commands;
 use crate::msg::{ExecuteMsg, QueryMsg};
+use crate::error::AstroportError;
+pub type AstroportResult = Result<Response, AstroportError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -30,11 +32,47 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> BaseDAppResult {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> AstroportResult {
     match msg {
-        ExecuteMsg::Base(message) => dapp_base_commands::handle_base_message(deps, info, message),
-        // handle dapp-specific messages here
-        // ExecuteMsg::Custom{} => commands::custom_command(),
+            ExecuteMsg::ProvideLiquidity {
+                pool_id,
+                main_asset_id,
+                amount,
+            } => commands::provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
+            ExecuteMsg::DetailedProvideLiquidity {
+                pool_id,
+                assets,
+                slippage_tolerance,
+            } => commands::detailed_provide_liquidity(
+                deps.as_ref(),
+                info,
+                assets,
+                pool_id,
+                slippage_tolerance,
+            ),
+            ExecuteMsg::WithdrawLiquidity {
+                lp_token_id,
+                amount,
+            } => commands::withdraw_liquidity(deps.as_ref(), info, lp_token_id, amount),
+            ExecuteMsg::SwapAsset {
+                offer_id,
+                pool_id,
+                amount,
+                max_spread,
+                belief_price,
+            } => commands::terraswap_swap(
+                deps.as_ref(),
+                env,
+                info,
+                offer_id,
+                pool_id,
+                amount,
+                max_spread,
+                belief_price,
+            ),
+            ExecuteMsg::Base(message) => {
+                from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message))
+            }
     }
 }
 
@@ -44,5 +82,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
         // handle dapp-specific queries here
         // QueryMsg::Custom{} => queries::custom_query(),
+    }
+}
+
+/// Required to convert BaseDAppResult into AstroportResult
+/// Can't implement the From trait directly
+fn from_base_dapp_result(result: BaseDAppResult) -> AstroportResult {
+    match result {
+        Err(e) => Err(e.into()),
+        Ok(r) => Ok(r),
     }
 }
