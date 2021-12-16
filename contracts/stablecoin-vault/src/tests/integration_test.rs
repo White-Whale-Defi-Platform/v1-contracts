@@ -1,4 +1,4 @@
-#![cfg(test)]
+#[cfg(test)]
 
 use crate::contract::{DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
 use crate::tests::common_integration::{
@@ -233,6 +233,9 @@ fn stablecoin_vault_fees_are_allocated() {
         .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
         .unwrap();
 
+    set_liq_token_addr(lp_token.to_string());
+
+
     // Provide some liqudity in UST
     let msg = ExecuteMsg::ProvideLiquidity {
         asset: Asset {
@@ -251,7 +254,6 @@ fn stablecoin_vault_fees_are_allocated() {
         )
         .unwrap();
 
-    set_liq_token_addr(lp_token.to_string());
 
     // Withdraw some liquidity
     let msg = Cw20HookMsg::WithdrawLiquidity {};

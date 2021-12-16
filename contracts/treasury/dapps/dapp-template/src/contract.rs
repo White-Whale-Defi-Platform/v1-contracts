@@ -4,7 +4,7 @@
 use cosmwasm_std::{Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Response, StdResult};
 
 use white_whale::treasury::dapp_base::commands as dapp_base_commands;
-use white_whale::treasury::dapp_base::common::DAppResult;
+use white_whale::treasury::dapp_base::common::BaseDAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
 use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, STATE};
@@ -18,7 +18,7 @@ pub fn instantiate(
     _env: Env,
     info: MessageInfo,
     msg: BaseInstantiateMsg,
-) -> DAppResult {
+) -> BaseDAppResult {
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
@@ -31,7 +31,7 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> DAppResult {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> BaseDAppResult {
     match msg {
         ExecuteMsg::Base(message) => dapp_base_commands::handle_base_message(deps, info, message),
         // handle dapp-specific messages here

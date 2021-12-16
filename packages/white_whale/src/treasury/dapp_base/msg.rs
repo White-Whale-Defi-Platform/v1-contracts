@@ -10,14 +10,17 @@ pub struct BaseInstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BaseExecuteMsg {
+    /// Updates the base config
     UpdateConfig {
         treasury_address: Option<String>,
         trader: Option<String>,
     },
+    /// Updates the addressbook
     UpdateAddressBook {
         to_add: Vec<(String, String)>,
         to_remove: Vec<String>,
     },
+    /// Sets a new Admin
     SetAdmin {
         admin: String,
     },
@@ -26,7 +29,9 @@ pub enum BaseExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum BaseQueryMsg {
+    /// Returns the state of the DApp
     Config {},
+    /// Queries the addressbook with the privided key
     AddressBook { id: String },
 }
 

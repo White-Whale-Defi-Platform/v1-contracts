@@ -13,6 +13,7 @@ use terraswap::pair::PoolResponse;
 
 /// Every VaultAsset provides a way to determine its value recursivly relative to
 /// a base asset.
+/// This is subject to change as Chainlink an/or TWAP implementations roll out on terra.
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct VaultAsset {
@@ -40,15 +41,7 @@ pub enum ValueRef {
         proxy_asset: AssetInfo,
         multiplier: Decimal,
     },
-    // For deposits into our own vaults
-
-    // Vault {
-    //     asset: Addr,
-    //     vault_addr: Addr,    
-    // },
-
-    // Does a query to a provided contract address to determine the value of a token
-    // Usefull for shares in a vault.
+    // Query an external contract to get the value
     External {
         contract_address: Addr,
     },
@@ -63,15 +56,14 @@ impl VaultAsset {
         set_holding: Option<Uint128>,
     ) -> StdResult<Uint128> {
         // Query how many of these tokens are held in the contract if not set.
-        let holding: Uint128;
+        
 
-        match set_holding {
-            Some(setter) => holding = setter,
+        let holding: Uint128 = match set_holding {
+            Some(setter) => setter,
             None => {
-                holding =
-                    query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?;
+                query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?
             }
-        }
+        };
         self.asset.amount = holding;
 
         // Is there a reference to calculate the value?
@@ -159,6 +151,7 @@ impl Proxy {
     }
 }
 
+/// Gets the identifier of the asset (either its denom or contract address)
 pub fn get_identifier(asset_info: &AssetInfo) -> &String {
     match asset_info {
         AssetInfo::NativeToken { denom } => denom,

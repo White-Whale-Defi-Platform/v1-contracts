@@ -72,7 +72,7 @@ pub fn provide_liquidity(
         return Err(BaseDAppError::Broke {}.into());
     }
 
-    // Deposit lp msg either returns a bank send msg or a
+    // Deposit lp msg either returns a bank send msg or an
     // increase allowance msg for each asset.
     let msgs: Vec<CosmosMsg> =
         deposit_lp_msg(deps, [second_asset, first_asset], pair_address, None)?;
@@ -146,6 +146,7 @@ pub fn withdraw_liquidity(
     amount: Uint128,
 ) -> TerraswapResult {
     let state = STATE.load(deps.storage)?;
+    // Sender must be trader
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
     }
@@ -214,6 +215,7 @@ pub fn terraswap_swap(
         },
         max_spread,
         belief_price,
+        // Msg is executed by treasury so None
         None,
     )?];
 
