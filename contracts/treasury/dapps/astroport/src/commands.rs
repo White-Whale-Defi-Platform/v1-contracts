@@ -179,9 +179,11 @@ pub fn withdraw_liquidity(
     Ok(Response::new().add_message(send_to_treasury(vec![lp_call], treasury_address)?))
 }
 
-/// Function constructs terraswap swap messages and forwards them to the treasury
+/// Function constructs astroport swap messages and forwards them to the treasury
+/// Note: Astroport swaps are very similar to terraswap swaps when you get to this level
+/// of composing the messages.
 #[allow(clippy::too_many_arguments)]
-pub fn terraswap_swap(
+pub fn astroport_swap(
     deps: Deps,
     _env: Env,
     msg_info: MessageInfo,

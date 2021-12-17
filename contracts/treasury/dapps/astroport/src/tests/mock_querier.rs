@@ -79,7 +79,7 @@ impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<Empty>) -> QuerierResult {
         match &request {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                if contract_addr == WHALE_UST_PAIR {
+                if contract_addr == WHALE_UST_PAIR || contract_addr == "asset_address" {
                     match from_binary(&msg).unwrap() {
                         TerraswapQueryMsg::Pool {} => {
                             return SystemResult::Ok(ContractResult::Ok(

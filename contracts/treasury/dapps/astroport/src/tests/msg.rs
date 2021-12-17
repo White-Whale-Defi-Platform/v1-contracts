@@ -11,6 +11,7 @@ use crate::error::AstroportError;
 use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
 use crate::tests::base_mocks::mocks::{mock_add_to_address_book, mock_instantiate};
 use crate::tests::mock_querier::mock_dependencies;
+use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR};
 
 /**
  * BaseExecuteMsg::UpdateConfig
@@ -350,11 +351,12 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
 pub fn test_successfully_provide_liquidity_existing_asset_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
-    mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), "asset_address".to_string()));
+    mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), WHALE_TOKEN.to_string()));
+    mock_add_to_address_book(deps.as_mut(), ("pool".to_string(), WHALE_UST_PAIR.to_string()));
 
     let env = mock_env();
     let msg = ExecuteMsg::ProvideLiquidity {
-        pool_id: "asset".to_string(),
+        pool_id: "pool".to_string(),
         main_asset_id: "".to_string(),
         amount: Default::default(),
     };
@@ -367,8 +369,8 @@ pub fn test_successfully_provide_liquidity_existing_asset_msg() {
 pub fn test_successfully_provide_detailed_liquidity_existing_asset_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
-    mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), "asset_address".to_string()));
-    mock_add_to_address_book(deps.as_mut(), ("pool".to_string(), "whale_ust_pair".to_string()));
+    mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), WHALE_TOKEN.to_string()));
+    mock_add_to_address_book(deps.as_mut(), ("pool".to_string(), WHALE_UST_PAIR.to_string()));
 
 
     let env = mock_env();

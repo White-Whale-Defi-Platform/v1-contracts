@@ -60,7 +60,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> A
                 amount,
                 max_spread,
                 belief_price,
-            } => commands::terraswap_swap(
+            } => commands::astroport_swap(
                 deps.as_ref(),
                 env,
                 info,
