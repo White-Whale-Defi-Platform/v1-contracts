@@ -14,8 +14,8 @@ members = [
     "contracts/treasury/treasury",
     "contracts/treasury/dapps/terraswap",
     "contracts/treasury/dapps/dapp-template",
-    "contracts/treasury/dapps/pooling",
-    "contracts/treasury/dapps/memory"
+    # "contracts/treasury/dapps/pooling",
+    "contracts/treasury/memory"
 ]
 
 [profile.release]

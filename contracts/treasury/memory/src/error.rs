@@ -1,7 +1,6 @@
 use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
 use thiserror::Error;
-use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum MemoryError {
@@ -11,8 +10,7 @@ pub enum MemoryError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
-    #[error("{0}")]
-    BaseDAppError(#[from] BaseDAppError),
+    
 
     #[error("You must provide exactly two assets when adding liquidity")]
     NotTwoAssets {},

@@ -1,40 +1,68 @@
-use cosmwasm_std::{ Binary, Deps, StdResult, WasmQuery, QueryRequest, Addr };
+use std::collections::BTreeMap;
 
-use terraswap::asset::AssetInfo;
+use cosmwasm_std::{Addr, Binary, Deps, QueryRequest, StdResult, WasmQuery};
+
 use crate::denom::is_denom;
 use cosmwasm_storage::to_length_prefixed;
+use terraswap::asset::AssetInfo;
 
+/// Query asset info from Memory Module asset addresses map.
+pub fn query_assets_from_mem(
+    deps: Deps,
+    memory_addr: Addr,
+    asset_names: Vec<String>,
+) -> StdResult<BTreeMap<String, AssetInfo>> {
+    let mut assets: BTreeMap<String, AssetInfo> = BTreeMap::new();
 
-pub fn query_assets_from_mem(deps: Deps, memory_addr: Addr, asset_names: Vec<String>) -> StdResult<Vec<(String,AssetInfo)>> {
-    let mut assets: Vec<String> = vec![];
-        
     for asset in asset_names.iter() {
-        assets.push(
-            deps
+        let result = deps
             .querier
-            .query(&QueryRequest::Wasm(WasmQuery::Raw {
+            .query::<String>(&QueryRequest::Wasm(WasmQuery::Raw {
                 contract_addr: memory_addr.to_string(),
-                key: Binary::from(concat(
-                    &to_length_prefixed(b"address_book"),
-                    asset.as_bytes(),
-                )),
-            }))?);
+                // query assets map
+                key: Binary::from(concat(&to_length_prefixed(b"assets"), asset.as_bytes())),
+            }))?;
+        assets.insert(asset.clone(), to_asset_info(deps, result)?);
     }
-    let assets_as_info: Vec<(String,AssetInfo)> = asset_names.into_iter().zip(assets.iter().map(|a| to_asset_info(deps,a).unwrap())).collect();
-    Ok(assets_as_info)
+    Ok(assets)
 }
 
+/// Query contract address from Memory Module contract addresses map.
+pub fn query_contracts_from_mem(
+    deps: Deps,
+    memory_addr: Addr,
+    contract_names: Vec<String>,
+) -> StdResult<BTreeMap<String, Addr>> {
+    let mut contracts: BTreeMap<String, Addr> = BTreeMap::new();
 
-// Returns the asset info for an address book entry.
-pub fn to_asset_info(deps: Deps, address_or_denom: &str) -> StdResult<AssetInfo> {
-    return if is_denom(address_or_denom) {
+    // Query over 
+    for contract in contract_names.iter() {
+        let result: Addr = deps
+            .querier
+            .query::<Addr>(&QueryRequest::Wasm(WasmQuery::Raw {
+                contract_addr: memory_addr.to_string(),
+                key: Binary::from(concat(
+                    // Query contracts map
+                    &to_length_prefixed(b"contracts"),
+                    contract.as_bytes(),
+                )),
+            }))?;
+
+        contracts.insert(contract.clone(), result);
+    }
+    Ok(contracts)
+}
+
+/// Returns the asset info for a given string (either denom or contract addr)
+pub fn to_asset_info(deps: Deps, address_or_denom: String) -> StdResult<AssetInfo> {
+    return if is_denom(address_or_denom.as_str()) {
         Ok(AssetInfo::NativeToken {
-            denom: String::from(address_or_denom),
+            denom: address_or_denom,
         })
     } else {
-        deps.api.addr_validate(address_or_denom)?;
+        deps.api.addr_validate(address_or_denom.as_str())?;
         Ok(AssetInfo::Token {
-            contract_addr: String::from(address_or_denom),
+            contract_addr: address_or_denom,
         })
     };
 }
