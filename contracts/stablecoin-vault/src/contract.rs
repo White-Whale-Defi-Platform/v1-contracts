@@ -282,12 +282,12 @@ pub fn handle_flashloan(
     }
 
     // If caller not whitelisted, calculate flashloan fee
-    let loan_fee: Uint128;
-    if whitelisted {
-        loan_fee = Uint128::zero();
+    
+    let loan_fee: Uint128 = if whitelisted {
+        Uint128::zero()
     } else {
-        loan_fee = fees.flash_loan_fee.compute(requested_asset.amount);
-    }
+        fees.flash_loan_fee.compute(requested_asset.amount)
+    };
 
     // Construct transfer of funds msg, tax is accounted for by buffer
     let loan_msg = into_msg_without_tax(requested_asset, info.sender.clone())?;
@@ -346,11 +346,11 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         deps.api.addr_humanize(&info.liquidity_token)?,
     )?;
 
-    let share = if total_share == Uint128::zero() {
+    let share = if total_share == Uint128::zero() || total_deposits_in_ust.checked_sub(deposit)? == Uint128::zero() {
         // Initial share = collateral amount
         deposit
     } else {
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
+        deposit.multiply_ratio(total_share, total_deposits_in_ust.checked_sub(deposit)?)
     };
 
 

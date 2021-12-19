@@ -30,5 +30,7 @@ serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"
 thiserror = { version = "1.0.26" }
 lazy_static = "1.4.0"
-[dev-dependencies]
 terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}
+
+
+[dev-dependencies]
