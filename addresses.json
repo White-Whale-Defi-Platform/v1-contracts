@@ -17,7 +17,7 @@
         "test_whale_token": "terra1d4zqcn47xk283k8qhpmfghfvnsq984grrk30cx",
         "whale_ust_terraswap_pair": "terra1ch66p9w8sznj5pd6d8ycjl2jhygpdclkl6zden",
         "LBP_factory": "terra1rgryj3aza79pplex8aps8l0sje42jvcp92fg2w",
-        "memory": "terra1y0mxy3hxamvstg6w4djyt4yz6w8um90cuphdy4",
+        "memory": "terra1q7f7j2lqk6065ksk4704epydurj02n86kzyq5q",
         "code_id": {
             "token_code_id": "148",
             "profit_check": "",
@@ -25,7 +25,7 @@
             "stablecoin_peg_arb": "",
             "treasury": "24772",
             "terraswap_dapp": "24841",
-            "memory": "27381"
+            "memory": "28218"
         }
     },
     "columbus-5": {

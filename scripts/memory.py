@@ -23,13 +23,16 @@ deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
 
 memory = MemoryContract(deployer)
 
-create = False
+create = True
 
 if create:
     memory.create()
 
-memory.query_assets(["luna", "ust", "whale", "luna_ust"])
-exit()
+# memory.auto_update_contract_addresses()
+# memory.auto_update_asset_addresses()
+# memory.query_contracts(["governance"])
+memory.query_assets(["luna"]) # , "ust", "whale", "luna_ust"
+# exit()
 # print(deployer.wallet.key.acc_address)
 # treasury.update_vault_assets()
 # terraswap_dapp.query_config()
@@ -45,6 +48,5 @@ exit()
 # treasury.query_holding_value("uluna")
 
 # LBP token id
-terraswap_dapp.withdraw_liquidity("lbp", 315511529)
 
 exit()
