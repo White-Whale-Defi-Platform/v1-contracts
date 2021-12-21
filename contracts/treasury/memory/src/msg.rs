@@ -1,8 +1,6 @@
-use std::collections::BTreeMap;
-
-use cosmwasm_std::Addr;
-use schemars::{JsonSchema, _serde_json::Value};
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use terraswap::asset::AssetInfo;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -34,10 +32,10 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AssetQueryResponse {
-    pub assets: Value,
+    pub assets: Vec<(String, AssetInfo)>,
 }
-// BTreeMap<String, AssetInfo>
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ContractQueryResponse {
-    pub contracts: BTreeMap<String, Addr>,
+    pub contracts: Vec<(String, String)>,
 }

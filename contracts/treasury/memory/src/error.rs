@@ -10,8 +10,6 @@ pub enum MemoryError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
-    
-
     #[error("You must provide exactly two assets when adding liquidity")]
     NotTwoAssets {},
 
