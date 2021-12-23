@@ -3,7 +3,7 @@
         "profit_check": "terra1c4q30edghg42vwxej24362hyrjaj64p4q8h6yw",
         "stablecoin_vault": "terra1g3drylw7ezlvv039a57qm8j4sncrtjkzyks5kl",
         "liquidity_token": "terra1znkkdhsy8p09svqd2xzg7wcfukdug9gsfwr6hd",
-        "governance": "terra13zkn22u6fs550xdmx2s2mydesd0ym4jk3r4um3",
+        "governance": "terra1ytsms4c9e3nxzvucuxe385c9rcm8tfjvuzv5j7",
         "whale_token": "terra183cvzy6knvva6mpvzcq86uyfxw0nd4925m0d0m",
         "whale_ust_pool": "terra1xq3v5rp0w84ugqesv9m5q3xdx04akacsdlk5z7",
         "community_fund": "terra1ugx7u99t8nqvhrt40ka759kqxy4j4r3n5v5l9j",
@@ -17,13 +17,16 @@
         "test_whale_token": "terra1d4zqcn47xk283k8qhpmfghfvnsq984grrk30cx",
         "whale_ust_terraswap_pair": "terra1ch66p9w8sznj5pd6d8ycjl2jhygpdclkl6zden",
         "LBP_factory": "terra1rgryj3aza79pplex8aps8l0sje42jvcp92fg2w",
+        "emissions": "",
         "code_id": {
+            "governance": "28685",
             "token_code_id": "148",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
             "treasury": "24772",
-            "terraswap_dapp": "24841"
+            "terraswap_dapp": "24841",
+            "emissions":""
         }
     },
     "columbus-5": {
@@ -43,13 +46,16 @@
         "lbp_lp_token": "",
         "whale_ust_terraswap_pair": "",
         "LBP_factory": "",
+        "emissions": "",
         "code_id": {
             "token_code_id": "3",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
             "treasury": "",
-            "terraswap_dapp": ""
+            "terraswap_dapp": "",
+            "governance": "",
+            "emissions": ""
         }
     }
 }
