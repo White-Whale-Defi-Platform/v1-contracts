@@ -653,9 +653,15 @@ fn test_withdraw() {
     assert_eq!(resp.total_amount, Uint128::from(5_000_000_000000u64));
     assert_eq!(resp.withdrawn_amount, Uint128::from(158548u64));
 
-    let resp: cw20::BalanceResponse = app.wrap().query_wasm_smart(&whale_instance, &cw20::Cw20QueryMsg::Balance {
-        address: GOV.to_string()
-    }).unwrap();
+    let resp: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            &whale_instance,
+            &cw20::Cw20QueryMsg::Balance {
+                address: GOV.to_string(),
+            },
+        )
+        .unwrap();
 
     let mut gov_balance = Uint128::from(158548u64);
     // Balance went to Gov contract
@@ -723,9 +729,15 @@ fn test_withdraw() {
     assert_eq!(resp.withdrawn_amount, Uint128::from(1744038u64));
 
     gov_balance = Uint128::from(1744038u64);
-    let resp: cw20::BalanceResponse = app.wrap().query_wasm_smart(&whale_instance, &cw20::Cw20QueryMsg::Balance {
-        address: GOV.to_string()
-    }).unwrap();
+    let resp: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            &whale_instance,
+            &cw20::Cw20QueryMsg::Balance {
+                address: GOV.to_string(),
+            },
+        )
+        .unwrap();
 
     // Balance went to Gov contract
     assert_eq!(resp.balance, gov_balance);
@@ -808,9 +820,15 @@ fn test_withdraw() {
     assert_eq!(resp.withdrawn_amount, Uint128::from(1232876870877u64));
 
     gov_balance += resp.withdrawn_amount;
-    let resp: cw20::BalanceResponse = app.wrap().query_wasm_smart(&whale_instance, &cw20::Cw20QueryMsg::Balance {
-        address: GOV.to_string()
-    }).unwrap();
+    let resp: cw20::BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            &whale_instance,
+            &cw20::Cw20QueryMsg::Balance {
+                address: GOV.to_string(),
+            },
+        )
+        .unwrap();
 
     // Balance went to Gov contract
     assert_eq!(resp.balance, gov_balance);
