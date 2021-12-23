@@ -50,16 +50,16 @@ fn init_contracts(app: &mut App) -> (Addr, Addr, InstantiateMsg) {
         )
         .unwrap();
 
-    // Instantiate Vesting Contract
-    let vesting_contract = Box::new(ContractWrapper::new(
+    // Instantiate Emission Contract
+    let emission_contract = Box::new(ContractWrapper::new(
         emissions::contract::execute,
         emissions::contract::instantiate,
         emissions::contract::query,
     ));
 
-    let vesting_code_id = app.store_code(vesting_contract);
+    let emission_code_id = app.store_code(emission_contract);
 
-    let vesting_instantiate_msg = InstantiateMsg {
+    let emission_instantiate_msg = InstantiateMsg {
         gov: GOV.clone().to_string(),
         owner: OWNER.clone().to_string(),
         refund_recepient: "refund_recepient".to_string(),
@@ -72,21 +72,21 @@ fn init_contracts(app: &mut App) -> (Addr, Addr, InstantiateMsg) {
     };
 
     // Init contract
-    let vesting_instance = app
+    let emission_instance = app
         .instantiate_contract(
-            vesting_code_id,
+            emission_code_id,
             Addr::unchecked(OWNER.clone()),
-            &vesting_instantiate_msg,
+            &emission_instantiate_msg,
             &[],
-            "vesting",
+            "emission",
             None,
         )
         .unwrap();
 
     (
-        vesting_instance,
+        emission_instance,
         whale_token_instance,
-        vesting_instantiate_msg,
+        emission_instantiate_msg,
     )
 }
 
@@ -112,15 +112,16 @@ fn mint_some_whale(
 #[test]
 fn proper_initialization() {
     let mut app = mock_app();
-    let (vesting_instance, whale_instance, init_msg) = init_contracts(&mut app);
+    let (emission_instance, whale_instance, init_msg) = init_contracts(&mut app);
 
     let resp: ConfigResponse = app
         .wrap()
-        .query_wasm_smart(&vesting_instance, &QueryMsg::Config {})
+        .query_wasm_smart(&emission_instance, &QueryMsg::Config {})
         .unwrap();
 
     // Check config
     assert_eq!(init_msg.owner, resp.owner);
+    assert_eq!(init_msg.gov, resp.gov);
     assert_eq!(init_msg.refund_recepient, resp.refund_recepient);
     assert_eq!(init_msg.whale_token, resp.whale_token);
     assert_eq!(
@@ -131,7 +132,7 @@ fn proper_initialization() {
     // Check state
     let resp: StateResponse = app
         .wrap()
-        .query_wasm_smart(&vesting_instance, &QueryMsg::State {})
+        .query_wasm_smart(&emission_instance, &QueryMsg::State {})
         .unwrap();
 
     assert_eq!(Uint128::zero(), resp.total_whale_deposited);
@@ -141,14 +142,14 @@ fn proper_initialization() {
 #[test]
 fn test_transfer_ownership() {
     let mut app = mock_app();
-    let (vesting_instance, _, init_msg) = init_contracts(&mut app);
+    let (emission_instance, _, init_msg) = init_contracts(&mut app);
 
     // ######    ERROR :: Unauthorized     ######
 
     let err = app
         .execute_contract(
             Addr::unchecked("not_owner".to_string()),
-            vesting_instance.clone(),
+            emission_instance.clone(),
             &ExecuteMsg::TransferOwnership {
                 new_owner: "new_owner".to_string(),
             },
@@ -161,7 +162,7 @@ fn test_transfer_ownership() {
 
     app.execute_contract(
         Addr::unchecked(OWNER.to_string()),
-        vesting_instance.clone(),
+        emission_instance.clone(),
         &ExecuteMsg::TransferOwnership {
             new_owner: "new_owner".to_string(),
         },
@@ -171,7 +172,7 @@ fn test_transfer_ownership() {
 
     let resp: ConfigResponse = app
         .wrap()
-        .query_wasm_smart(&vesting_instance, &QueryMsg::Config {})
+        .query_wasm_smart(&emission_instance, &QueryMsg::Config {})
         .unwrap();
 
     // Check config
@@ -187,7 +188,7 @@ fn test_transfer_ownership() {
 #[test]
 fn test_create_allocations() {
     let mut app = mock_app();
-    let (vesting_instance, whale_instance, init_msg) = init_contracts(&mut app);
+    let (emission_instance, whale_instance, init_msg) = init_contracts(&mut app);
 
     mint_some_whale(
         &mut app,
@@ -253,7 +254,7 @@ fn test_create_allocations() {
             Addr::unchecked("not_owner".to_string()),
             whale_instance.clone(),
             &cw20::Cw20ExecuteMsg::Send {
-                contract: vesting_instance.clone().to_string(),
+                contract: emission_instance.clone().to_string(),
                 amount: Uint128::from(1_000u64),
                 msg: to_binary(&ReceiveMsg::CreateAllocations {
                     allocations: allocations.clone(),
@@ -318,7 +319,7 @@ fn test_create_allocations() {
             Addr::unchecked(OWNER.clone()),
             not_whale_token_instance.clone(),
             &cw20::Cw20ExecuteMsg::Send {
-                contract: vesting_instance.clone().to_string(),
+                contract: emission_instance.clone().to_string(),
                 amount: Uint128::from(15_000_000_000000u64),
                 msg: to_binary(&ReceiveMsg::CreateAllocations {
                     allocations: allocations.clone(),
@@ -340,7 +341,7 @@ fn test_create_allocations() {
             Addr::unchecked(OWNER.clone()),
             whale_instance.clone(),
             &cw20::Cw20ExecuteMsg::Send {
-                contract: vesting_instance.clone().to_string(),
+                contract: emission_instance.clone().to_string(),
                 amount: Uint128::from(15_000_000_000001u64),
                 msg: to_binary(&ReceiveMsg::CreateAllocations {
                     allocations: allocations.clone(),
@@ -361,7 +362,7 @@ fn test_create_allocations() {
         Addr::unchecked(OWNER.clone()),
         whale_instance.clone(),
         &cw20::Cw20ExecuteMsg::Send {
-            contract: vesting_instance.clone().to_string(),
+            contract: emission_instance.clone().to_string(),
             amount: Uint128::from(15_000_000_000000u64),
             msg: to_binary(&ReceiveMsg::CreateAllocations {
                 allocations: allocations.clone(),
@@ -375,7 +376,7 @@ fn test_create_allocations() {
     // Check state
     let resp: StateResponse = app
         .wrap()
-        .query_wasm_smart(&vesting_instance, &QueryMsg::State {})
+        .query_wasm_smart(&emission_instance, &QueryMsg::State {})
         .unwrap();
     assert_eq!(
         resp.total_whale_deposited,
@@ -388,14 +389,14 @@ fn test_create_allocations() {
 
     let resp: StateResponse = app
         .wrap()
-        .query_wasm_smart(&vesting_instance, &QueryMsg::State {})
+        .query_wasm_smart(&emission_instance, &QueryMsg::State {})
         .unwrap();
 
     // Check allocation #1
     let resp: AllocationResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::Allocation {
                 account: "investor_1".to_string(),
             },
@@ -417,7 +418,7 @@ fn test_create_allocations() {
     let resp: AllocationResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::Allocation {
                 account: "advisor_1".to_string(),
             },
@@ -439,7 +440,7 @@ fn test_create_allocations() {
     let resp: AllocationResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::Allocation {
                 account: "team_1".to_string(),
             },
@@ -464,7 +465,7 @@ fn test_create_allocations() {
             Addr::unchecked(OWNER.clone()),
             whale_instance.clone(),
             &cw20::Cw20ExecuteMsg::Send {
-                contract: vesting_instance.clone().to_string(),
+                contract: emission_instance.clone().to_string(),
                 amount: Uint128::from(5_000_000_000000u64),
                 msg: to_binary(&ReceiveMsg::CreateAllocations {
                     allocations: vec![allocations[0].clone()],
@@ -486,7 +487,7 @@ fn test_create_allocations() {
             Addr::unchecked(OWNER.clone()),
             whale_instance.clone(),
             &cw20::Cw20ExecuteMsg::Send {
-                contract: vesting_instance.clone().to_string(),
+                contract: emission_instance.clone().to_string(),
                 amount: Uint128::from(5_000_000_000000u64),
                 msg: to_binary(&ReceiveMsg::CreateAllocations {
                     allocations: vec![(
@@ -518,7 +519,7 @@ fn test_create_allocations() {
 #[test]
 fn test_withdraw() {
     let mut app = mock_app();
-    let (vesting_instance, whale_instance, _) = init_contracts(&mut app);
+    let (emission_instance, whale_instance, _) = init_contracts(&mut app);
 
     mint_some_whale(
         &mut app,
@@ -578,7 +579,7 @@ fn test_withdraw() {
         Addr::unchecked(OWNER.clone()),
         whale_instance.clone(),
         &cw20::Cw20ExecuteMsg::Send {
-            contract: vesting_instance.clone().to_string(),
+            contract: emission_instance.clone().to_string(),
             amount: Uint128::from(15_000_000_000000u64),
             msg: to_binary(&ReceiveMsg::CreateAllocations {
                 allocations: allocations.clone(),
@@ -594,14 +595,14 @@ fn test_withdraw() {
     let err = app
         .execute_contract(
             Addr::unchecked(OWNER.clone()),
-            vesting_instance.clone(),
+            emission_instance.clone(),
             &ExecuteMsg::Withdraw {},
             &[],
         )
         .unwrap_err();
     assert_eq!(
         err.to_string(),
-        "white_whale::vesting::AllocationInfo not found"
+        "white_whale::emissions::AllocationInfo not found"
     );
 
     // ######    ERROR :: Withdrawals not allowed yet   ######
@@ -614,7 +615,7 @@ fn test_withdraw() {
     let err = app
         .execute_contract(
             Addr::unchecked("investor_1".clone()),
-            vesting_instance.clone(),
+            emission_instance.clone(),
             &ExecuteMsg::Withdraw {},
             &[],
         )
@@ -633,7 +634,7 @@ fn test_withdraw() {
 
     app.execute_contract(
         Addr::unchecked("investor_1".clone()),
-        vesting_instance.clone(),
+        emission_instance.clone(),
         &ExecuteMsg::Withdraw {},
         &[],
     )
@@ -643,7 +644,7 @@ fn test_withdraw() {
     let resp: AllocationResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::Allocation {
                 account: "investor_1".to_string(),
             },
@@ -652,12 +653,20 @@ fn test_withdraw() {
     assert_eq!(resp.total_amount, Uint128::from(5_000_000_000000u64));
     assert_eq!(resp.withdrawn_amount, Uint128::from(158548u64));
 
+    let resp: cw20::BalanceResponse = app.wrap().query_wasm_smart(&whale_instance, &cw20::Cw20QueryMsg::Balance {
+        address: GOV.to_string()
+    }).unwrap();
+
+    let mut gov_balance = Uint128::from(158548u64);
+    // Balance went to Gov contract
+    assert_eq!(resp.balance, gov_balance);
+
     // ######    ERROR :: No unlocked WHALE to be withdrawn   ######
 
     let err = app
         .execute_contract(
             Addr::unchecked("investor_1".clone()),
-            vesting_instance.clone(),
+            emission_instance.clone(),
             &ExecuteMsg::Withdraw {},
             &[],
         )
@@ -672,7 +681,7 @@ fn test_withdraw() {
     let resp: SimulateWithdrawResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::SimulateWithdraw {
                 account: "investor_1".to_string(),
                 timestamp: Some(1642402285u64),
@@ -695,7 +704,7 @@ fn test_withdraw() {
 
     app.execute_contract(
         Addr::unchecked("investor_1".clone()),
-        vesting_instance.clone(),
+        emission_instance.clone(),
         &ExecuteMsg::Withdraw {},
         &[],
     )
@@ -704,7 +713,7 @@ fn test_withdraw() {
     let resp: AllocationResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::Allocation {
                 account: "investor_1".to_string(),
             },
@@ -713,12 +722,20 @@ fn test_withdraw() {
     assert_eq!(resp.total_amount, Uint128::from(5_000_000_000000u64));
     assert_eq!(resp.withdrawn_amount, Uint128::from(1744038u64));
 
+    gov_balance = Uint128::from(1744038u64);
+    let resp: cw20::BalanceResponse = app.wrap().query_wasm_smart(&whale_instance, &cw20::Cw20QueryMsg::Balance {
+        address: GOV.to_string()
+    }).unwrap();
+
+    // Balance went to Gov contract
+    assert_eq!(resp.balance, gov_balance);
+
     // ######    ERROR :: No unlocked WHALE to be withdrawn   ######
 
     let err = app
         .execute_contract(
             Addr::unchecked("investor_1".clone()),
-            vesting_instance.clone(),
+            emission_instance.clone(),
             &ExecuteMsg::Withdraw {},
             &[],
         )
@@ -738,7 +755,7 @@ fn test_withdraw() {
     let resp: SimulateWithdrawResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::SimulateWithdraw {
                 account: "team_1".to_string(),
                 timestamp: None,
@@ -759,7 +776,7 @@ fn test_withdraw() {
     let resp: SimulateWithdrawResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::SimulateWithdraw {
                 account: "team_1".to_string(),
                 timestamp: None,
@@ -772,7 +789,7 @@ fn test_withdraw() {
 
     app.execute_contract(
         Addr::unchecked("team_1".clone()),
-        vesting_instance.clone(),
+        emission_instance.clone(),
         &ExecuteMsg::Withdraw {},
         &[],
     )
@@ -781,7 +798,7 @@ fn test_withdraw() {
     let resp: AllocationResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::Allocation {
                 account: "team_1".to_string(),
             },
@@ -789,12 +806,20 @@ fn test_withdraw() {
         .unwrap();
     assert_eq!(resp.total_amount, Uint128::from(5_000_000_000000u64));
     assert_eq!(resp.withdrawn_amount, Uint128::from(1232876870877u64));
+
+    gov_balance += resp.withdrawn_amount;
+    let resp: cw20::BalanceResponse = app.wrap().query_wasm_smart(&whale_instance, &cw20::Cw20QueryMsg::Balance {
+        address: GOV.to_string()
+    }).unwrap();
+
+    // Balance went to Gov contract
+    assert_eq!(resp.balance, gov_balance);
 }
 
 #[test]
 fn test_terminate() {
     let mut app = mock_app();
-    let (vesting_instance, whale_instance, _) = init_contracts(&mut app);
+    let (emission_instance, whale_instance, _) = init_contracts(&mut app);
 
     mint_some_whale(
         &mut app,
@@ -854,7 +879,7 @@ fn test_terminate() {
         Addr::unchecked(OWNER.clone()),
         whale_instance.clone(),
         &cw20::Cw20ExecuteMsg::Send {
-            contract: vesting_instance.clone().to_string(),
+            contract: emission_instance.clone().to_string(),
             amount: Uint128::from(15_000_000_000000u64),
             msg: to_binary(&ReceiveMsg::CreateAllocations {
                 allocations: allocations.clone(),
@@ -870,7 +895,7 @@ fn test_terminate() {
     let err = app
         .execute_contract(
             Addr::unchecked("NOT_OWNER".to_string()),
-            vesting_instance.clone(),
+            emission_instance.clone(),
             &ExecuteMsg::Terminate {
                 user_address: "investor_1".to_string(),
             },
@@ -884,7 +909,7 @@ fn test_terminate() {
     let err = app
         .execute_contract(
             Addr::unchecked(OWNER.clone()),
-            vesting_instance.clone(),
+            emission_instance.clone(),
             &ExecuteMsg::Terminate {
                 user_address: "investor_1".to_string(),
             },
@@ -905,7 +930,7 @@ fn test_terminate() {
 
     app.execute_contract(
         Addr::unchecked(OWNER.clone()),
-        vesting_instance.clone(),
+        emission_instance.clone(),
         &ExecuteMsg::Terminate {
             user_address: "team_1".to_string(),
         },
@@ -916,7 +941,7 @@ fn test_terminate() {
     let resp: SimulateWithdrawResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::SimulateWithdraw {
                 account: "team_1".to_string(),
                 timestamp: None,
@@ -937,7 +962,7 @@ fn test_terminate() {
     let resp: SimulateWithdrawResponse = app
         .wrap()
         .query_wasm_smart(
-            &vesting_instance,
+            &emission_instance,
             &QueryMsg::SimulateWithdraw {
                 account: "team_1".to_string(),
                 timestamp: None,
