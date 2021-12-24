@@ -49,15 +49,18 @@ BLOCK_END_TIME = BLOCK_START_TIME + DURATION.total_seconds()
 
 print(BLOCK_END_TIME - BLOCK_START_TIME)
 print((END_TIME - START_TIME).total_seconds())
-
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
-
+# Account that claims the tokens
+claimer = "terra10lm49e6ufm8cfpwcmcltvxkv3s6cqeunyjhaj5"
 # deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None)
 deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
 
 emissions = Emissions(deployer)
-create = False
+create = True
+print(f'gov address: {emissions.get("governance")}')
+
+input("Confirm")
 
 if create:
     # TODO: make multisig owner 
@@ -65,5 +68,5 @@ if create:
 
 deployer.whale_balance()
 
-emissions.create_vesting(int(1000), int(BLOCK_START_TIME), int(DURATION.total_seconds()))
+emissions.create_vesting(int(50_000*MILLION), int(BLOCK_START_TIME), int(DURATION.total_seconds()), claimer)
    
