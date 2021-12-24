@@ -4,7 +4,7 @@ use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
 use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, load_contract_addr, STATE};
-use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
+use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT, MEMORY_CONTRACT};
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
@@ -51,6 +51,7 @@ pub fn test_successfully_update_config_treasury_address_msg() {
     assert_eq!(
         state,
         BaseState {
+            memory_addr: Addr::unchecked("new_memory_address".to_string()),
             treasury_address: Addr::unchecked("new_treasury_address".to_string()),
             trader: Addr::unchecked(TRADER_CONTRACT.to_string()),
         }
@@ -75,6 +76,7 @@ pub fn test_successfully_update_config_trader_address_msg() {
     assert_eq!(
         state,
         BaseState {
+            memory_addr: Addr::unchecked("new_memory_address".to_string()),
             treasury_address: Addr::unchecked(TREASURY_CONTRACT.to_string()),
             trader: Addr::unchecked("new_trader_address".to_string()),
         }
@@ -99,6 +101,7 @@ pub fn test_successfully_update_config_both_treasury_and_trader_address_msg() {
     assert_eq!(
         state,
         BaseState {
+            memory_addr: Addr::unchecked("new_memory_address".to_string()),
             treasury_address: Addr::unchecked("new_treasury_address".to_string()),
             trader: Addr::unchecked("new_trader_address".to_string()),
         }
@@ -123,6 +126,7 @@ pub fn test_successfully_update_config_none_msg() {
     assert_eq!(
         state,
         BaseState {
+            memory_addr: Addr::unchecked(MEMORY_CONTRACT.to_string()),
             treasury_address: Addr::unchecked(TREASURY_CONTRACT.to_string()),
             trader: Addr::unchecked(TRADER_CONTRACT.to_string()),
         }
