@@ -1,12 +1,10 @@
-use cosmwasm_std::{
-    entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult,
-};
+use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
-use crate::error::MemoryError;
-use crate::msg::{ExecuteMsg, QueryMsg, InstantiateMsg};
-use crate::state::ADMIN;
-use crate::queries;
 use crate::commands::*;
+use crate::error::MemoryError;
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::queries;
+use crate::state::ADMIN;
 
 pub type MemoryResult = Result<Response, MemoryError>;
 
@@ -32,6 +30,6 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::QueryAssets { names } => queries::query_assets(deps, env, names),
-        QueryMsg::QueryContracts {names} => queries::query_contract(deps, env, names),
+        QueryMsg::QueryContracts { names } => queries::query_contract(deps, env, names),
     }
 }

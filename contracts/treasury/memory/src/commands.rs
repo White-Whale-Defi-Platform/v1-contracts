@@ -1,21 +1,16 @@
-use cosmwasm_std::{DepsMut, MessageInfo, Response, StdResult, Addr};
+use cosmwasm_std::{Addr, DepsMut, MessageInfo, Response, StdResult};
 
-use crate::state::*;
-use crate::msg::ExecuteMsg;
 use crate::contract::MemoryResult;
-
+use crate::msg::ExecuteMsg;
+use crate::state::*;
 
 /// Handles the common base execute messages
-pub fn handle_message(
-    deps: DepsMut,
-    info: MessageInfo,
-    message: ExecuteMsg,
-) -> MemoryResult {
+pub fn handle_message(deps: DepsMut, info: MessageInfo, message: ExecuteMsg) -> MemoryResult {
     match message {
         ExecuteMsg::SetAdmin { admin } => set_admin(deps, info, admin),
         ExecuteMsg::UpdateContractAddresses { to_add, to_remove } => {
             update_contract_addresses(deps, info, to_add, to_remove)
-        },
+        }
         ExecuteMsg::UpdateAssetAddresses { to_add, to_remove } => {
             update_asset_addresses(deps, info, to_add, to_remove)
         }
@@ -40,9 +35,7 @@ pub fn update_contract_addresses(
         // validate addr
         let addr = deps.as_ref().api.addr_validate(&new_address)?;
         // Update function for new or existing keys
-        let insert = |_| -> StdResult<Addr> {
-                Ok(addr)
-        };
+        let insert = |_| -> StdResult<Addr> { Ok(addr) };
         CONTRACT_ADDRESSES.update(deps.storage, name.as_str(), insert)?;
     }
 
@@ -65,9 +58,7 @@ pub fn update_asset_addresses(
 
     for (name, new_address) in to_add.into_iter() {
         // Update function for new or existing keys
-        let insert = |_| -> StdResult<String> {
-                Ok(new_address)
-        };
+        let insert = |_| -> StdResult<String> { Ok(new_address) };
         ASSET_ADDRESSES.update(deps.storage, name.as_str(), insert)?;
     }
 
