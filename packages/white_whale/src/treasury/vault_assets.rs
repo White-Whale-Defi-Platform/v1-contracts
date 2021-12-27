@@ -6,10 +6,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::query::terraswap::{query_asset_balance, query_pool};
+use crate::query::twap::QueryMsg as TWAPQuery;
 use crate::tax::reverse_decimal;
 use crate::treasury::msg::{ValueQueryMsg, ValueResponse};
 use crate::treasury::state::*;
-use crate::query::twap::QueryMsg as TWAPQuery;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::PoolResponse;
 
@@ -43,10 +43,10 @@ pub enum ValueRef {
         proxy_asset: AssetInfo,
         multiplier: Decimal,
     },
-    // Astroport TWAP 
+    // Astroport TWAP
     TWAP {
         oracle_address: Addr,
-        result_asset: AssetInfo 
+        result_asset: AssetInfo,
     },
     // Query an external contract to get the value
     External {
@@ -63,13 +63,10 @@ impl VaultAsset {
         set_holding: Option<Uint128>,
     ) -> StdResult<Uint128> {
         // Query how many of these tokens are held in the contract if not set.
-        
 
         let holding: Uint128 = match set_holding {
             Some(setter) => setter,
-            None => {
-                query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?
-            }
+            None => query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?,
         };
         self.asset.amount = holding;
 
@@ -104,9 +101,12 @@ impl VaultAsset {
                             })?,
                         }))?;
                     return Ok(response.value);
-                },
+                }
                 // Use astroport TWAP to calculate value of asset
-                ValueRef::TWAP { oracle_address, result_asset} => {
+                ValueRef::TWAP {
+                    oracle_address,
+                    result_asset,
+                } => {
                     let response: Uint256 =
                         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
                             contract_addr: oracle_address.to_string(),
@@ -117,13 +117,16 @@ impl VaultAsset {
                         }))?;
                     let mut recursive_vault_asset =
                         VAULT_ASSETS.load(deps.storage, get_identifier(&result_asset))?;
-                    
-                    return Ok(recursive_vault_asset.value(deps, env, Some(Uint128::from(response)))?);
+                    return Ok(recursive_vault_asset.value(
+                        deps,
+                        env,
+                        Some(Uint128::from(response)),
+                    )?);
                 }
             }
         }
 
-        // If there is no valueref, it means this token is the base token. 
+        // If there is no valueref, it means this token is the base token.
         Ok(holding)
     }
 
@@ -154,7 +157,7 @@ impl VaultAsset {
 /// By setting this proxy you define the asset to be some
 /// other asset with a multiplier.
 /// For example: AssetInfo = bluna, BaseAsset = uusd, Proxy: luna, multiplier = 1
-/// Each bluna would be valued as one luna. 
+/// Each bluna would be valued as one luna.
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Proxy {

@@ -22,9 +22,7 @@ pub enum BaseExecuteMsg {
         to_remove: Vec<String>,
     },
     /// Sets a new Admin
-    SetAdmin {
-        admin: String,
-    },
+    SetAdmin { admin: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

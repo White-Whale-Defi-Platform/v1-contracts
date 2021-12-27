@@ -35,7 +35,7 @@ pub fn query_contracts_from_mem(
 ) -> StdResult<BTreeMap<String, Addr>> {
     let mut contracts: BTreeMap<String, Addr> = BTreeMap::new();
 
-    // Query over 
+    // Query over
     for contract in contract_names.iter() {
         let result: Addr = deps
             .querier

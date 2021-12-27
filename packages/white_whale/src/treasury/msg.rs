@@ -24,7 +24,7 @@ pub enum ExecuteMsg {
         to_add: Vec<VaultAsset>,
         to_remove: Vec<AssetInfo>,
     },
-    // Send asset to recipient 
+    // Send asset to recipient
     SendAsset {
         id: String,
         amount: Uint128,
@@ -40,8 +40,7 @@ pub enum ExecuteMsg {
 /// Note that the contract doesn't enforce permissions here, this is done
 /// by blockchain logic (in the future by blockchain governance)
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct MigrateMsg {
-}
+pub struct MigrateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

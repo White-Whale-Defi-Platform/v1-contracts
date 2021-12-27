@@ -1,9 +1,6 @@
 use cosmwasm_std::Uint128;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use terraswap::asset::AssetInfo;
-
-
-
 
 /// ## Description
 /// This structure describes the query messages of the contract.

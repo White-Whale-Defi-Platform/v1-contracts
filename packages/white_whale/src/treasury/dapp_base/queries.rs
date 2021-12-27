@@ -1,4 +1,4 @@
-use cosmwasm_std::{Binary, Deps, StdResult, to_binary};
+use cosmwasm_std::{to_binary, Binary, Deps, StdResult};
 
 use crate::treasury::dapp_base::msg::{BaseQueryMsg, BaseStateResponse};
 use crate::treasury::dapp_base::state::{ADDRESS_BOOK, STATE};

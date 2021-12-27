@@ -2,7 +2,7 @@ use cosmwasm_std::{
     to_binary, Addr, Coin, Decimal, Deps, QueryRequest, StdResult, Uint128, WasmQuery,
 };
 
-use crate::treasury::msg::{QueryMsg,HoldingValueResponse,TotalValueResponse};
+use crate::treasury::msg::{HoldingValueResponse, QueryMsg, TotalValueResponse};
 
 pub fn get_total_value(deps: Deps, vault_address: &Addr) -> StdResult<Uint128> {
     let response: TotalValueResponse =

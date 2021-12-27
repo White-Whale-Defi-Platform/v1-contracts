@@ -30,7 +30,6 @@ pub fn load_contract_addr(deps: Deps, id: &str) -> StdResult<Addr> {
         .addr_validate(ADDRESS_BOOK.load(deps.storage, id)?.as_str())
 }
 
-
 // Returns the asset info for an address book entry.
 pub fn get_asset_info(deps: Deps, id: &str) -> StdResult<AssetInfo> {
     let address_or_denom = ADDRESS_BOOK.load(deps.storage, id)?;
