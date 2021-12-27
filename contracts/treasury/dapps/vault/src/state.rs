@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
-use terraswap::asset::AssetInfo;
 use white_whale::{treasury::dapp_base::state::BaseState, fee::Fee};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

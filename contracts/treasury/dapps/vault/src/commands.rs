@@ -1,8 +1,7 @@
-use std::borrow::BorrowMut;
-
+use cosmwasm_bignumber::Uint256;
 use cosmwasm_std::{
     to_binary, Binary, CosmosMsg, Decimal, Deps, Env, Fraction, MessageInfo, Response, Uint128,
-    WasmMsg, DepsMut, from_binary,
+    WasmMsg, DepsMut, from_binary, StdResult, Addr,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::Asset;
@@ -14,9 +13,13 @@ use white_whale::query::terraswap::{query_asset_balance, query_pool};
 use white_whale::treasury::dapp_base::common::PAIR_POSTFIX;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::query::memory::query_assets_from_mem;
-use crate::contract::PoolingResult;
-use crate::error::PoolingError;
+use white_whale::treasury::vault_assets::{VaultAsset, get_identifier};
+use crate::contract::VaultResult;
+use crate::error::VaultError;
+use crate::msg::{ExecuteMsg, DepositHookMsg};
 use crate::state::{State, POOL, Pool, FEE, STATE};
+use white_whale::query::vault::query_total_value;
+
 
 use white_whale::treasury::msg::send_to_treasury;
 
@@ -28,57 +31,72 @@ pub fn receive_cw20(
     env: Env,
     msg_info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
-) -> PoolingResult {
+) -> VaultResult {
     match from_binary(&cw20_msg.msg)? {
-        Cw20HookMsg::Swap { .. } => Err(PoolingError::NoSwapAvailable {}),
-        Cw20HookMsg::WithdrawLiquidity {} => {
+        DepositHookMsg::WithdrawLiquidity {} => {
             let state: State = STATE.load(deps.storage)?;
             if msg_info.sender != state.lp_token_addr {
-                return Err(PoolingError::NotLPToken { token: msg_info.sender.to_string()});
+                return Err(VaultError::NotLPToken { token: msg_info.sender.to_string()});
             }
             try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
+        },
+        DepositHookMsg::ProvideLiquidity { asset} => {
+            if asset.amount != cw20_msg.amount {
+                return Err(VaultError::InvalidAmount {});
+            }
+            try_provide_liquidity(deps,msg_info,asset, Some(cw20_msg.sender))
         }
     }
 }
 
 
-pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset) -> PoolingResult {
+pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset, sender: Option<String>) -> VaultResult {
     let pool: Pool = POOL.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
+
+    let liq_provider = match sender {
+        Some(addr) => Addr::unchecked(addr),
+        None => msg_info.sender
+    };
 
     let assets = query_assets_from_mem(deps.as_ref(), state.base.memory_addr, &pool.assets)?;
     
     // Init vector for logging
     let mut attrs = vec![];
     // Check if deposit matches claimed deposit.
-    assert(&asset.info)?;
-    asset.assert_sent_native_token_balance(&msg_info)?;
-    attrs.push(("Action:", String::from("Deposit to vault")));
-    attrs.push(("Received funds:", asset.to_string()));
+    if asset.is_native_token() {
+        asset.assert_sent_native_token_balance(&msg_info)?;
+        attrs.push(("Action:", String::from("Deposit to vault")));
+        attrs.push(("Received funds:", asset.to_string()));
+    } else {
+        // Sender must be vault deposit asset
+        if &msg_info.sender.to_string() != get_identifier(assets.get(&pool.deposit_asset).unwrap()) {
+            return Err(VaultError::WrongToken {})
+        }
+    }
 
     // Received deposit to vault
     let deposit: Uint128 = asset.amount;
 
     // Get total value in Vault
-    let (total_deposits_in_ust, stables_in_contract, _) =
-        compute_total_value(deps.as_ref(), &info)?;
+    let value = query_total_value(deps.as_ref(), &state.base.treasury_address)?;
     // Get total supply of LP tokens and calculate share
     let total_share = query_supply(
         &deps.querier,
-        deps.api.addr_humanize(&info.liquidity_token)?,
+        state.lp_token_addr,
     )?;
 
-    let share = if total_share == Uint128::zero() {
+    let share = if total_share == Uint128::zero() || value.checked_sub(deposit)? == Uint128::zero() {
         // Initial share = collateral amount
         deposit
     } else {
-        deposit.multiply_ratio(total_share, total_deposits_in_ust - deposit)
+        deposit.multiply_ratio(total_share, value - deposit)
     };
 
 
     // mint LP token to sender
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
+        contract_addr: &state.lp_token_addr,
         msg: to_binary(&Cw20ExecuteMsg::Mint {
             recipient: msg_info.sender.to_string(),
             amount: share,
@@ -113,7 +131,7 @@ pub fn try_withdraw_liquidity(
     env: Env,
     sender: String,
     amount: Uint128,
-) -> PoolingResult {
+) -> VaultResult {
     let pool: Pool = POOL.load(deps.storage)?;
     let state: State = STATE.load(deps.storage)?;
     let fee: Fee = FEE.load(deps.storage)?;

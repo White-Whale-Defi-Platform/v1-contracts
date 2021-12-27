@@ -22,11 +22,11 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN};
 
 use crate::response::MsgInstantiateContractResponse;
 
-use crate::commands;
-use crate::error::PoolingError;
+use crate::{commands, queries};
+use crate::error::VaultError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, STATE, POOL, Pool, FEE};
-pub type PoolingResult = Result<Response, PoolingError>;
+pub type VaultResult = Result<Response, VaultError>;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 
@@ -39,7 +39,7 @@ pub fn instantiate(
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
-) -> PoolingResult {
+) -> VaultResult {
     let base_state: BaseState = dapp_base_commands::handle_base_init(deps.as_ref(), msg.base)?;
     
     let state: State = State{
@@ -92,11 +92,11 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> PoolingResult {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
         ExecuteMsg::Base(message) => from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message)),
         ExecuteMsg::Receive(msg) => commands::receive_cw20(deps, env, info, msg),
-        ExecuteMsg::ProvideLiquidity { asset } => commands::try_provide_liquidity(deps, info, asset),
+        ExecuteMsg::ProvideLiquidity { asset } => commands::try_provide_liquidity(deps, info, asset, None),
         ExecuteMsg::UpdateState {
         } => commands::update_state(
             deps,
@@ -115,6 +115,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
         // handle dapp-specific queries here
         QueryMsg::State{} => to_binary(&STATE.load(deps.storage)?),
+        QueryMsg::ValueQuery( _ ) => queries::handle_query(deps, query)
     }
 }
 
@@ -143,7 +144,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 
 /// Required to convert BaseDAppResult into TerraswapResult
 /// Can't implement the From trait directly
-fn from_base_dapp_result(result: BaseDAppResult) -> PoolingResult {
+fn from_base_dapp_result(result: BaseDAppResult) -> VaultResult {
     match result {
         Err(e) => Err(e.into()),
         Ok(r) => Ok(r),
