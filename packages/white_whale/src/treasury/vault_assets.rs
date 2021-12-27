@@ -1,3 +1,4 @@
+use cosmwasm_bignumber::Uint256;
 use cosmwasm_std::{
     to_binary, Addr, Decimal, Deps, Env, QueryRequest, StdError, StdResult, Uint128, WasmQuery,
 };
@@ -8,6 +9,7 @@ use crate::query::terraswap::{query_asset_balance, query_pool};
 use crate::tax::reverse_decimal;
 use crate::treasury::msg::{ValueQueryMsg, ValueResponse};
 use crate::treasury::state::*;
+use crate::query::twap::QueryMsg as TWAPQuery;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::PoolResponse;
 
@@ -40,6 +42,11 @@ pub enum ValueRef {
     Proxy {
         proxy_asset: AssetInfo,
         multiplier: Decimal,
+    },
+    // Astroport TWAP 
+    TWAP {
+        oracle_address: Addr,
+        result_asset: AssetInfo 
     },
     // Query an external contract to get the value
     External {
@@ -97,6 +104,21 @@ impl VaultAsset {
                             })?,
                         }))?;
                     return Ok(response.value);
+                },
+                // Use astroport TWAP to calculate value of asset
+                ValueRef::TWAP { oracle_address, result_asset} => {
+                    let response: Uint256 =
+                        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+                            contract_addr: oracle_address.to_string(),
+                            msg: to_binary(&TWAPQuery::Consult {
+                                token: self.asset.info.clone(),
+                                amount: self.asset.amount,
+                            })?,
+                        }))?;
+                    let mut recursive_vault_asset =
+                        VAULT_ASSETS.load(deps.storage, get_identifier(&result_asset))?;
+                    
+                    return Ok(recursive_vault_asset.value(deps, env, Some(Uint128::from(response)))?);
                 }
             }
         }
