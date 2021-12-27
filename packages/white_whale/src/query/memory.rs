@@ -10,7 +10,7 @@ use terraswap::asset::AssetInfo;
 pub fn query_assets_from_mem(
     deps: Deps,
     memory_addr: Addr,
-    asset_names: Vec<String>,
+    asset_names: &Vec<String>,
 ) -> StdResult<BTreeMap<String, AssetInfo>> {
     let mut assets: BTreeMap<String, AssetInfo> = BTreeMap::new();
 
