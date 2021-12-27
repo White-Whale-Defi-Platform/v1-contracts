@@ -347,17 +347,18 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
     }
 }
 
-// #[test]
+#[test]
 pub fn test_successfully_provide_liquidity_existing_asset_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), WHALE_TOKEN.to_string()));
     mock_add_to_address_book(deps.as_mut(), ("pool".to_string(), WHALE_UST_PAIR.to_string()));
 
+
     let env = mock_env();
     let msg = ExecuteMsg::ProvideLiquidity {
         pool_id: "pool".to_string(),
-        main_asset_id: "".to_string(),
+        main_asset_id: "asset".to_string(),
         amount: Default::default(),
     };
 
@@ -365,7 +366,7 @@ pub fn test_successfully_provide_liquidity_existing_asset_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 }
 
-// #[test]
+#[test]
 pub fn test_successfully_provide_detailed_liquidity_existing_asset_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
