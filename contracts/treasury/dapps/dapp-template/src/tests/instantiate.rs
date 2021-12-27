@@ -2,7 +2,7 @@ use cosmwasm_std::Api;
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 
 use white_whale::treasury::dapp_base::state::{BaseState, STATE};
-use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
+use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT, MEMORY_CONTRACT};
 
 use crate::contract::instantiate;
 use crate::tests::base_mocks::mocks::instantiate_msg;
@@ -22,6 +22,7 @@ fn successful_initialization() {
     assert_eq!(
         STATE.load(&deps.storage).unwrap(),
         BaseState {
+            memory_addr: deps.api.addr_validate(&MEMORY_CONTRACT).unwrap(),
             treasury_address: deps.api.addr_validate(&TREASURY_CONTRACT).unwrap(),
             trader: deps.api.addr_validate(&TRADER_CONTRACT).unwrap(),
         }

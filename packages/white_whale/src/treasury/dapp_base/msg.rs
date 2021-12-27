@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct BaseInstantiateMsg {
     pub treasury_address: String,
     pub trader: String,
+    pub memory_addr: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
