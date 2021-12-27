@@ -1,5 +1,5 @@
 [package]
-name = "pooling-dapp"
+name = "vault-dapp"
 version = "1.0.0"
 authors = ["White Whale"]
 edition = "2018"
