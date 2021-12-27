@@ -31,7 +31,7 @@ pub fn query_assets_from_mem(
 pub fn query_contracts_from_mem(
     deps: Deps,
     memory_addr: Addr,
-    contract_names: Vec<String>,
+    contract_names: &Vec<String>,
 ) -> StdResult<BTreeMap<String, Addr>> {
     let mut contracts: BTreeMap<String, Addr> = BTreeMap::new();
 
