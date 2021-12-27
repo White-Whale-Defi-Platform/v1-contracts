@@ -4,7 +4,7 @@ use thiserror::Error;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum PoolingError {
+pub enum VaultError {
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -19,4 +19,10 @@ pub enum PoolingError {
 
     #[error("The provided token: {} is not this vault's LP token", token)]
     NotLPToken { token: String},
+
+    #[error("The provided token is not the base token")]
+    WrongToken {},
+
+    #[error("The actual amount of tokens transfered is different from the claimed amount.")]
+    InvalidAmount {},
 }
