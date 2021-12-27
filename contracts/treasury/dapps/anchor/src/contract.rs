@@ -8,12 +8,13 @@ use white_whale::treasury::dapp_base::common::BaseDAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
 use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, STATE};
+use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 use crate::commands;
-use crate::error::AnchorError
+use crate::error::AnchorError;
 use crate::msg::{ExecuteMsg, QueryMsg};
 
-pub type AnchorResult = Result<Response, AnchorError>;
+pub type AnchorResult = Result<Response, BaseDAppError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -39,7 +40,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> B
         ExecuteMsg::Base(message) => dapp_base_commands::handle_base_message(deps, info, message),
         // handle dapp-specific messages here
         // ExecuteMsg::Custom{} => commands::custom_command(),
-        ExecuteMsg::DepositStable{} => commands::handle_deposit_stable(deps, env, info)
+        ExecuteMsg::DepositStable{ deposit_amount } => commands::handle_deposit_stable(deps.as_ref(), env, info, deposit_amount)
     }
 }
 
