@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use terraswap::pair::{PoolResponse, QueryMsg as TerraswapQueryMsg};
-use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR};
+use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR, WHALE_UST_LP_TOKEN};
 use std::collections::HashMap;
 use cosmwasm_std::Api;
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
@@ -203,11 +203,12 @@ impl WasmMockQuerier {
                     
 
                     Cw20QueryMsg::Balance { address } => {
-                        if contract_addr == WHALE_TOKEN {
+                        if contract_addr == WHALE_TOKEN || WHALE_UST_LP_TOKEN ==contract_addr{
                             return SystemResult::Ok(ContractResult::Ok(
                                 to_binary(&Cw20BalanceResponse { balance: Uint128::new(10000) }).unwrap(),
                             ));
                         };
+                        
                         let balances: &HashMap<String, Uint128> =
                             match self.token_querier.balances.get(contract_addr) {
                                 Some(balances) => balances,
