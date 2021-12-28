@@ -91,7 +91,7 @@ impl VaultAsset {
                     let response: ValueResponse =
                         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
                             contract_addr: contract_address.to_string(),
-                            msg: to_binary(&ValueQueryMsg::Value {
+                            msg: to_binary(&ValueQueryMsg {
                                 asset_info: self.asset.info.clone(),
                                 amount: self.asset.amount,
                             })?,

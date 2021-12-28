@@ -94,11 +94,9 @@ pub fn send_to_treasury(
 /// Query message to external contract
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ValueQueryMsg {
-    Value {
-        asset_info: AssetInfo,
-        amount: Uint128,
-    },
+pub struct ValueQueryMsg {
+    pub asset_info: AssetInfo,
+    pub amount: Uint128,
 }
 
 /// Expected response
