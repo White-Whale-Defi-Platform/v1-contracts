@@ -1,10 +1,9 @@
-use cosmwasm_std::{Binary, Deps, StdResult, to_binary};
 use crate::msg::QueryMsg;
-use white_whale::treasury::msg::ValueQueryMsg;
-/// Handles the common base queries
-pub fn handle_query(deps: Deps, query: QueryMsg) -> StdResult<Binary> {
-    match query {
-        QueryMsg::State {} => to_binary(&try_query_config(deps)?),
-        QueryMsg::ValueQueryMsg::Value { id } => to_binary(&try_query_addressbook(deps, id)?),
-    }
-}
+use cosmwasm_std::{to_binary, Binary, Deps, StdResult};
+use white_whale::{query::memory::query_assets_from_mem, treasury::msg::ValueQueryMsg};
+
+// pub fn handle_value_query(deps: Deps, query: ValueQueryMsg) -> StdResult<Binary> {
+//     query_assets_from_mem(deps, memory_addr, '')
+//     if query.asset_info.equal(asset)
+
+// }

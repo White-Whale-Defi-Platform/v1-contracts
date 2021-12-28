@@ -3,8 +3,8 @@
 use std::vec;
 
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Reply, Deps, ReplyOn, DepsMut, Env, MessageInfo, Response, StdResult, SubMsg,
-    WasmMsg, Addr, StdError,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
+    Response, StdError, StdResult, SubMsg, WasmMsg,
 };
 use cw_storage_plus::Map;
 use protobuf::Message;
@@ -22,10 +22,10 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN};
 
 use crate::response::MsgInstantiateContractResponse;
 
-use crate::{commands, queries};
 use crate::error::VaultError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, STATE, POOL, Pool, FEE};
+use crate::state::{Pool, State, FEE, POOL, STATE};
+use crate::{commands, queries};
 pub type VaultResult = Result<Response, VaultError>;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
@@ -34,15 +34,10 @@ const DEFAULT_LP_TOKEN_NAME: &str = "Vault LP token";
 const DEFAULT_LP_TOKEN_SYMBOL: &str = "uvLP";
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    msg: InstantiateMsg,
-) -> VaultResult {
+pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateMsg) -> VaultResult {
     let base_state: BaseState = dapp_base_commands::handle_base_init(deps.as_ref(), msg.base)?;
-    
-    let state: State = State{
+
+    let state: State = State {
         base: base_state,
         lp_token_addr: Addr::unchecked(""),
     };
@@ -55,17 +50,17 @@ pub fn instantiate(
         .vault_lp_token_symbol
         .unwrap_or_else(|| String::from(DEFAULT_LP_TOKEN_SYMBOL));
 
-    
     STATE.save(deps.storage, &state)?;
-    POOL.save(deps.storage, &Pool{
-        deposit_asset: msg.deposit_asset,
-        assets: vec![msg.deposit_asset],
-    });
-    FEE.save(deps.storage, &Fee{
-        share: msg.fee 
-    });
+    POOL.save(
+        deps.storage,
+        &Pool {
+            deposit_asset: msg.deposit_asset.clone(),
+            assets: vec![msg.deposit_asset],
+        },
+    )?;
+    FEE.save(deps.storage, &Fee { share: msg.fee })?;
     ADMIN.set(deps, Some(info.sender))?;
-    
+
     Ok(Response::new().add_submessage(SubMsg {
         // Create LP token
         msg: WasmMsg::Instantiate {
@@ -94,18 +89,19 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
-        ExecuteMsg::Base(message) => from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message)),
+        ExecuteMsg::Base(message) => {
+            from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message))
+        }
         ExecuteMsg::Receive(msg) => commands::receive_cw20(deps, env, info, msg),
-        ExecuteMsg::ProvideLiquidity { asset } => commands::try_provide_liquidity(deps, info, asset, None),
-        ExecuteMsg::UpdateState {
-        } => commands::update_state(
-            deps,
-            info,
-            anchor_money_market_address,
-            aust_address,
-            profit_check_address,
-            allow_non_whitelisted,
-        ),
+        ExecuteMsg::ProvideLiquidity { asset } => {
+            commands::try_provide_liquidity(deps, info, asset, None)
+        }
+        ExecuteMsg::UpdatePool {
+            deposit_asset,
+            assets_to_add,
+            assets_to_remove,
+        } => commands::update_pool(deps, info, deposit_asset, assets_to_add, assets_to_remove),
+        ExecuteMsg::SetFee { fee } => commands::set_fee(deps, info, fee),
     }
 }
 
@@ -114,11 +110,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
         // handle dapp-specific queries here
-        QueryMsg::State{} => to_binary(&STATE.load(deps.storage)?),
-        QueryMsg::ValueQuery( _ ) => queries::handle_query(deps, query)
+        QueryMsg::State {} => to_binary(&STATE.load(deps.storage)?),
+        QueryMsg::ValueQuery(query) => to_binary(&STATE.load(deps.storage)?), //queries::handle_value_query(deps, query),
     }
 }
-
 
 /// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]

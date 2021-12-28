@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{OverflowError, StdError};
 use cw_controllers::AdminError;
 use thiserror::Error;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
@@ -14,14 +14,26 @@ pub enum VaultError {
     #[error("{0}")]
     BaseDAppError(#[from] BaseDAppError),
 
+    #[error("{0}")]
+    Overflow(#[from] OverflowError),
+
     #[error("This contract does not implement the cw20 swap function")]
     NoSwapAvailable {},
 
     #[error("The provided token: {} is not this vault's LP token", token)]
-    NotLPToken { token: String},
+    NotLPToken { token: String },
+
+    #[error("The asset you wished to remove: {} is not part of the vector", asset)]
+    AssetNotPresent { asset: String },
+
+    #[error("The asset you wished to add: {} is already part of the vector", asset)]
+    AssetAlreadyPresent { asset: String },
 
     #[error("The provided token is not the base token")]
     WrongToken {},
+
+    #[error("The provided fee is invalid")]
+    InvalidFee {},
 
     #[error("The actual amount of tokens transfered is different from the claimed amount.")]
     InvalidAmount {},

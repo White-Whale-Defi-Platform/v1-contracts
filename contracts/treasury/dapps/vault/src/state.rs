@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
-use white_whale::{treasury::dapp_base::state::BaseState, fee::Fee};
+use white_whale::{fee::Fee, treasury::dapp_base::state::BaseState};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 // State stores Base State and LP token address
@@ -11,7 +11,6 @@ pub struct State {
     pub base: BaseState,
     pub lp_token_addr: Addr,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 // State stores Base State and LP token address
