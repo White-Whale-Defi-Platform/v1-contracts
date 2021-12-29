@@ -1,7 +1,7 @@
 use cosmwasm_std::{Binary, Deps, StdResult, to_binary};
 
 use crate::treasury::dapp_base::msg::{BaseQueryMsg, BaseStateResponse};
-use crate::treasury::dapp_base::state::{ADDRESS_BOOK, STATE};
+use crate::treasury::dapp_base::state::{ADDRESS_BOOK, BASESTATE};
 
 /// Handles the common base queries
 pub fn handle_base_query(deps: Deps, query: BaseQueryMsg) -> StdResult<Binary> {
@@ -12,7 +12,7 @@ pub fn handle_base_query(deps: Deps, query: BaseQueryMsg) -> StdResult<Binary> {
 }
 
 pub fn try_query_config(deps: Deps) -> StdResult<BaseStateResponse> {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
 
     Ok(BaseStateResponse {
         treasury_address: state.treasury_address.into_string(),

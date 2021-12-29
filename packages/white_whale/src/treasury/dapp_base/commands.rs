@@ -1,9 +1,10 @@
 
 use cosmwasm_std::{DepsMut, Deps, MessageInfo, Response, StdResult};
 
+use crate::memory::item::Memory;
 use crate::treasury::dapp_base::common::BaseDAppResult;
 use crate::treasury::dapp_base::msg::{BaseExecuteMsg,BaseInstantiateMsg};
-use crate::treasury::dapp_base::state::{ADDRESS_BOOK, ADMIN, STATE};
+use crate::treasury::dapp_base::state::{ADDRESS_BOOK, ADMIN, BASESTATE};
 
 use super::state::BaseState;
 
@@ -20,12 +21,19 @@ pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecut
     }
 }
 
+/// Handles creates the State and Memory object and returns them.
 pub fn handle_base_init(deps: Deps, msg: BaseInstantiateMsg) -> StdResult<BaseState> {
+    // Memory
+    let memory = Memory {
+        address: deps.api.addr_validate(&msg.memory_addr)?
+    };
+    // Base state
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
-        memory_addr: deps.api.addr_validate(&msg.memory_addr)?,
+        memory
     };
+    
     Ok(state)
 }
 
@@ -71,7 +79,7 @@ pub fn update_config(
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    let mut state = STATE.load(deps.storage)?;
+    let mut state = BASESTATE.load(deps.storage)?;
 
     if let Some(treasury_address) = treasury_address {
         state.treasury_address = deps.api.addr_validate(treasury_address.as_str())?;
@@ -81,7 +89,7 @@ pub fn update_config(
         state.trader = deps.api.addr_validate(trader.as_str())?;
     }
 
-    STATE.save(deps.storage, &state)?;
+    BASESTATE.save(deps.storage, &state)?;
     Ok(Response::new().add_attribute("Update:", "Successful"))
 }
 
