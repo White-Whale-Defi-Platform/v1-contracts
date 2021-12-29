@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::query::terraswap::{query_asset_balance, query_pool};
 use crate::tax::reverse_decimal;
-use crate::treasury::msg::{ValueQueryMsg, ValueResponse};
+use crate::treasury::msg::{ValueQueryMsg, ExternalValueResponse};
 use crate::treasury::state::*;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::PoolResponse;
@@ -88,7 +88,7 @@ impl VaultAsset {
                     multiplier,
                 } => return proxy_value(deps, env, proxy_asset, multiplier, holding),
                 ValueRef::External { contract_address } => {
-                    let response: ValueResponse =
+                    let response: ExternalValueResponse =
                         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
                             contract_addr: contract_address.to_string(),
                             msg: to_binary(&ValueQueryMsg {

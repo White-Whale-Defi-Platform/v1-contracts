@@ -8,7 +8,7 @@ use cosmwasm_std::{
 use crate::error::TreasuryError;
 use terraswap::asset::AssetInfo;
 use white_whale::query::terraswap::query_asset_balance;
-use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
+use white_whale::treasury::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg, TotalValueResponse, HoldingValueResponse};
 use white_whale::treasury::state::{State, ADMIN, STATE, VAULT_ASSETS};
 use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
 use cw2::{set_contract_version, get_contract_version};
@@ -201,7 +201,7 @@ pub fn remove_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> Treasu
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::TotalValue {} => to_binary(&compute_total_value(deps, env)?),
+        QueryMsg::TotalValue {} => to_binary(&TotalValueResponse{ value: compute_total_value(deps, env)?}),
         QueryMsg::HoldingAmount { identifier } => {
             let vault_asset: VaultAsset = VAULT_ASSETS.load(deps.storage, identifier.as_str())?;
             to_binary(&query_asset_balance(
@@ -211,7 +211,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             )?)
         }
         QueryMsg::HoldingValue { identifier } => {
-            to_binary(&compute_holding_value(deps, &env, identifier)?)
+            to_binary(&HoldingValueResponse{ value: compute_holding_value(deps, &env, identifier)? })
         }
         QueryMsg::VaultAssetConfig { identifier } => {
             to_binary(&VAULT_ASSETS.load(deps.storage, identifier.as_str())?)
