@@ -1,4 +1,4 @@
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::Decimal;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -15,7 +15,6 @@ pub struct InstantiateMsg {
     pub token_code_id: u64,
     pub fee: Decimal,
     pub deposit_asset: String,
-    pub memory_addr: String,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
 }

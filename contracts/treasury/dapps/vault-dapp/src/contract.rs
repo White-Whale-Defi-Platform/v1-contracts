@@ -18,7 +18,7 @@ use white_whale::treasury::dapp_base::commands as dapp_base_commands;
 use white_whale::treasury::dapp_base::common::BaseDAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
-use white_whale::treasury::dapp_base::state::{BaseState, ADMIN};
+use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 
 use crate::response::MsgInstantiateContractResponse;
 
@@ -38,8 +38,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     let base_state: BaseState = dapp_base_commands::handle_base_init(deps.as_ref(), msg.base)?;
 
     let state: State = State {
-        base: base_state,
-        lp_token_addr: Addr::unchecked(""),
+        liquidity_token_addr: Addr::unchecked(""),
     };
 
     let lp_token_name: String = msg
@@ -128,7 +127,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 
         let api = deps.api;
         STATE.update(deps.storage, |mut meta| -> StdResult<_> {
-            meta.lp_token_addr = api.addr_validate(liquidity_token)?;
+            meta.liquidity_token_addr = api.addr_validate(liquidity_token)?;
             Ok(meta)
         })?;
 

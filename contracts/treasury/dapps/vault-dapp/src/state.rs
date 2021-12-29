@@ -3,17 +3,18 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::Addr;
 use cw_storage_plus::Item;
-use white_whale::{fee::Fee, treasury::dapp_base::state::BaseState};
+use white_whale::fee::Fee;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// State stores Base State and LP token address
+/// State stores LP token address
+/// BaseState is initialized in contract
 pub struct State {
-    pub base: BaseState,
-    pub lp_token_addr: Addr,
+    pub liquidity_token_addr: Addr,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// State stores Base State and LP token address
+/// Pool stores claimable assets in vault. 
+/// deposit_asset is the asset which can be used to deposit into the vault.
 pub struct Pool {
     pub deposit_asset: String,
     pub assets: Vec<String>,
