@@ -149,9 +149,10 @@ pub fn try_withdraw_liquidity(
     let assets = memory.query_assets(deps.as_ref(), &pool.assets)?;
 
     // Logging var
-    let mut attrs = vec![];
-    attrs.push(("Action:", String::from("Withdraw from vault")));
-    attrs.push(("Received liquidity tokens:", amount.to_string()));
+    let mut attrs = vec![
+        ("Action:", String::from("Withdraw from vault")),
+        ("Received liquidity tokens:", amount.to_string())
+    ];
 
     // Calculate share of pool and requested pool value
     let total_share: Uint128 = query_supply(&deps.querier, state.liquidity_token_addr.clone())?;
