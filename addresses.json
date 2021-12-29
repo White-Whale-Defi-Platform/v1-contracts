@@ -9,7 +9,7 @@
         "community_fund": "terra1ugx7u99t8nqvhrt40ka759kqxy4j4r3n5v5l9j",
         "war_chest": "terra1twgq7ye7rz75gs82e503gh6n9cm8nvs4tsq88v",
         "stablecoin_peg_arb": "terra1w677vh58v2t5u7dcpwu73yjct6tpa547ztsdaz",
-        "treasury": "terra15l6h8kdvqkx9x70hcgefz9yw3j2rnpwz9rm7uv",
+        "treasury": "terra1kt642s7mj6ey2k022q0z7n3gqvzdwxy64fxv2c",
         "terraswap_dapp": "terra1jevvzfew6rdprue9w2r6p93gt7fnwzjhfgve0t",
         "lbp_pair": "terra1dk4zhd49xyjhky6m7mc8a5v4wx3s58wmulw0sq",
         "lbp_lp_token": "terra1954dxzsmjss7lkvav6pme370cqgh6ynxf4cu6t",
@@ -19,16 +19,19 @@
         "LBP_factory": "terra1rgryj3aza79pplex8aps8l0sje42jvcp92fg2w",
         "memory": "terra1x7r06zec02mermgegpu56u8pjdtfekhx2sz54s",
         "dex_arbitrage": "terra15f82fnk6sxj0q0lejsjqyunqfzcvr4hztfwhxj",
+        "vLUNA": "terra1l7l5ewh6uu9h7dw339qnyvdy47w6rwl8ptvp5z",
         "code_id": {
             "token_code_id": "148",
             "profit_check": "",
             "stablecoin_vault": "",
             "stablecoin_peg_arb": "",
-            "treasury": "28259",
+            "treasury": "29584",
             "terraswap_dapp": "24841",
             "memory": "28267",
-            "dex_arbitrage": "29133"
-        }
+            "dex_arbitrage": "29133",
+            "vault_dapp": "29585"
+        },
+        "vault_dapp": "terra13ktp4tld8xdg38d8349y0w60le2jv43wnfkkq6"
     },
     "columbus-5": {
         "profit_check": "terra18ykdvsgknscc02l7793jrtx5s0rd7et5shzj7g",
@@ -47,7 +50,8 @@
         "lbp_lp_token": "",
         "whale_ust_terraswap_pair": "",
         "LBP_factory": "",
-        "dex_arbitrage": "terra1q6nse5fqf5prj375aprml7mehmpwgp49clgsfg",
+        "dex_arbitrage": "terra158p2ya4vxy44dhcel6sul6tu63xfvex2ny0sur",
+        "vLUNA": "",
         "code_id": {
             "token_code_id": "3",
             "profit_check": "",
@@ -55,7 +59,7 @@
             "stablecoin_peg_arb": "",
             "treasury": "",
             "terraswap_dapp": "",
-            "dex_arbitrage": "1987"
+            "dex_arbitrage": "2028"
         }
     }
 }
