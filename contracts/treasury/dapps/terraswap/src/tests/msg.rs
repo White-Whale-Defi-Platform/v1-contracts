@@ -8,7 +8,7 @@ use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT};
 use crate::contract::execute;
 use crate::error::TerraswapError;
 use crate::msg::ExecuteMsg;
-use crate::tests::base_mocks::mocks::{mock_add_to_address_book, mock_instantiate};
+use crate::tests::base_mocks::mocks::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
 /**
@@ -61,7 +61,6 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
 pub fn test_successfully_provide_liquidity_existing_asset_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
-    mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), "asset_address".to_string()));
 
     let env = mock_env();
     let msg = ExecuteMsg::ProvideLiquidity {
@@ -78,7 +77,6 @@ pub fn test_successfully_provide_liquidity_existing_asset_msg() {
 pub fn test_successfully_provide_detailed_liquidity_existing_asset_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
-    mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), "asset_address".to_string()));
 
     let env = mock_env();
     let msg = ExecuteMsg::DetailedProvideLiquidity {
