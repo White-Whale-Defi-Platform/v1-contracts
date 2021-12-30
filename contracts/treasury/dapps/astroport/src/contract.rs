@@ -2,6 +2,7 @@
 #![allow(unused_variables)]
 use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
+use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::commands as dapp_base_commands;
 use white_whale::treasury::dapp_base::common::BaseDAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
@@ -23,9 +24,13 @@ pub fn instantiate(
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
+        memory: Memory{ address: deps.api.addr_validate(&msg.memory_addr)?}
     };
 
-    STATE.save(deps.storage, &state)?;
+    // Store the initial config
+    BASESTATE.save(deps.storage, &state)?;
+
+    // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::default())
