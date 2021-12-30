@@ -3,11 +3,11 @@
 
 use cosmwasm_std::{Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Response, StdResult};
 
-use white_whale::treasury::dapp_base::commands as dapp_base_commands;
+use white_whale::treasury::dapp_base::commands::{self as dapp_base_commands, handle_base_init};
 use white_whale::treasury::dapp_base::common::BaseDAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
-use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, STATE};
+use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, BASESTATE};
 
 use crate::commands;
 use crate::msg::{ExecuteMsg, QueryMsg};
@@ -19,12 +19,9 @@ pub fn instantiate(
     info: MessageInfo,
     msg: BaseInstantiateMsg,
 ) -> BaseDAppResult {
-    let state = BaseState {
-        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
-        trader: deps.api.addr_validate(&msg.trader)?,
-    };
+    let base_state = handle_base_init(deps.as_ref(), msg)?;
 
-    STATE.save(deps.storage, &state)?;
+    BASESTATE.save(deps.storage, &base_state)?;
     ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::default())

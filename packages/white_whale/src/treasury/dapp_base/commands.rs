@@ -1,8 +1,12 @@
-use cosmwasm_std::{DepsMut, MessageInfo, Response, StdResult};
 
+use cosmwasm_std::{DepsMut, Deps, MessageInfo, Response, StdResult};
+
+use crate::memory::item::Memory;
 use crate::treasury::dapp_base::common::BaseDAppResult;
-use crate::treasury::dapp_base::msg::BaseExecuteMsg;
-use crate::treasury::dapp_base::state::{ADDRESS_BOOK, ADMIN, STATE};
+use crate::treasury::dapp_base::msg::{BaseExecuteMsg,BaseInstantiateMsg};
+use crate::treasury::dapp_base::state::{ADMIN, BASESTATE};
+
+use super::state::BaseState;
 
 /// Handles the common base execute messages
 pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecuteMsg) -> BaseDAppResult {
@@ -10,44 +14,31 @@ pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecut
         BaseExecuteMsg::UpdateConfig {
             treasury_address,
             trader,
-        } => update_config(deps, info, treasury_address, trader),
+            memory,
+        } => update_config(deps, info, treasury_address, trader, memory),
         BaseExecuteMsg::SetAdmin { admin } => set_admin(deps, info, admin),
-        BaseExecuteMsg::UpdateAddressBook { to_add, to_remove } =>
-            update_address_book(deps, info, to_add, to_remove)
     }
+}
+
+/// Handles creates the State and Memory object and returns them.
+pub fn handle_base_init(deps: Deps, msg: BaseInstantiateMsg) -> StdResult<BaseState> {
+    // Memory
+    let memory = Memory {
+        address: deps.api.addr_validate(&msg.memory_addr)?
+    };
+    // Base state
+    let state = BaseState {
+        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
+        trader: deps.api.addr_validate(&msg.trader)?,
+        memory
+    };
+    
+    Ok(state)
 }
 
 //----------------------------------------------------------------------------------------
 //  GOVERNANCE CONTROLLED SETTERS
 //----------------------------------------------------------------------------------------
-
-/// Adds, updates or removes provided addresses. 
-pub fn update_address_book(
-    deps: DepsMut,
-    msg_info: MessageInfo,
-    to_add: Vec<(String, String)>,
-    to_remove: Vec<String>,
-) -> BaseDAppResult {
-    // Only Admin can call this method
-    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-
-    for (name, new_address) in to_add.into_iter() {
-        // Update function for new or existing keys
-        let insert = |vault_asset: Option<String>| -> StdResult<String> {
-            match vault_asset {
-                Some(_) => Ok(new_address),
-                None => Ok(new_address),
-            }
-        };
-        ADDRESS_BOOK.update(deps.storage, name.as_str(), insert)?;
-    }
-
-    for name in to_remove {
-        ADDRESS_BOOK.remove(deps.storage, name.as_str());
-    }
-
-    Ok(Response::new().add_attribute("action", "updated address book"))
-}
 
 /// Updates trader or treasury address
 pub fn update_config(
@@ -55,11 +46,12 @@ pub fn update_config(
     info: MessageInfo,
     treasury_address: Option<String>,
     trader: Option<String>,
+    memory: Option<String>,
 ) -> BaseDAppResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
-    let mut state = STATE.load(deps.storage)?;
+    let mut state = BASESTATE.load(deps.storage)?;
 
     if let Some(treasury_address) = treasury_address {
         state.treasury_address = deps.api.addr_validate(treasury_address.as_str())?;
@@ -69,7 +61,11 @@ pub fn update_config(
         state.trader = deps.api.addr_validate(trader.as_str())?;
     }
 
-    STATE.save(deps.storage, &state)?;
+    if let Some(memory) = memory {
+        state.memory.address = deps.api.addr_validate(memory.as_str())?;
+    }
+
+    BASESTATE.save(deps.storage, &state)?;
     Ok(Response::new().add_attribute("Update:", "Successful"))
 }
 

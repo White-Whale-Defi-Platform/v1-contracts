@@ -78,7 +78,11 @@ pub struct TotalValueResponse {
 pub struct HoldingValueResponse {
     pub value: Uint128,
 }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 
+pub struct ExternalValueResponse {
+    pub value: Uint128,
+}
 /// Constructs the treasury dappaction message used by all dApps.
 pub fn send_to_treasury(
     msgs: Vec<CosmosMsg>,
@@ -94,16 +98,7 @@ pub fn send_to_treasury(
 /// Query message to external contract
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum ValueQueryMsg {
-    Value {
-        asset_info: AssetInfo,
-        amount: Uint128,
-    },
-}
-
-/// Expected response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct ValueResponse {
-    pub value: Uint128,
+pub struct ValueQueryMsg {
+    pub asset_info: AssetInfo,
+    pub amount: Uint128,
 }

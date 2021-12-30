@@ -8,7 +8,7 @@ use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT};
 use crate::contract::execute;
 use crate::error::TerraswapError;
 use crate::msg::ExecuteMsg;
-use crate::tests::base_mocks::mocks::{mock_add_to_address_book, mock_instantiate};
+use crate::tests::base_mocks::mocks::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR, WHALE_UST_LP_TOKEN};
 
