@@ -10,7 +10,7 @@ use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR, WHALE_
 use std::collections::HashMap;
 use cosmwasm_std::Api;
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
-use cosmwasm_storage::to_length_prefixed;
+// use cosmwasm_storage::to_length_prefixed;
 use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery,SwapResponse, TerraQuerier, TerraQueryWrapper, TerraRoute};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
@@ -133,28 +133,22 @@ impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         match &request {
             // Handle Custom Memory Contract stuff .
-            QueryRequest::Wasm(WasmQuery::Raw { contract_addr, key }) => {
-                let key: &[u8] = key.as_slice();
+            // QueryRequest::Wasm(WasmQuery::Raw { contract_addr, key }) => {
+            //     let key: &[u8] = key.as_slice();
 
-                // Review this, the asset itself is attach to the end so maybe we need to concat something
-                if key.to_string().starts_with(b"contracts") 
-                
-                    concat(&to_length_prefixed(b"contracts"), WHALE_UST_PAIR.as_bytes()) {
+                // let key_str: String = std::str::from_utf8(key);
+                // // Review this, the asset itself is attach to the end so maybe we need to concat something
+                // if key_str.starts_with("contracts"){
+                //     return SystemResult::Ok(ContractResult::from(to_binary(&key_str)));
 
-                    // match key.to_vec() {
-                    //     concat(&to_length_prefixed(b"contracts"), WHALE_UST_PAIR.as_bytes()) => {
-                    //         // Handle WHALE_UST_PAIR response
-                    //     }
-                    // }
-
-                } else if key.to_vec() == prefix_memory_assets_info {
-                    // Now in here we can catch and return pre-formed responses for specifically queries assets 
-                    // Alternatively we can attempt to do some custom, reactive code to handle many things
-
-                }
-                else {
-                    panic!("DO NOT ENTER HERE")
-                }
+                // } else if key_str.starts_with("assets") {
+                //     // Now in here we can catch and return pre-formed responses for specifically queries assets 
+                //     // Alternatively we can attempt to do some custom, reactive code to handle many things
+                //     return SystemResult::Ok(ContractResult::from(to_binary(&key_str)));
+                // }
+                // else {
+                //     panic!("DO NOT ENTER HERE")
+                // }
 
 
             // Handle Special TerraQueryWrappers such as Market and Treasury 
