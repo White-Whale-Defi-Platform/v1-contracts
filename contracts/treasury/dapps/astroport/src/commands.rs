@@ -9,7 +9,6 @@ use terraswap::pair::{Cw20HookMsg, PoolResponse};
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
 use white_whale::treasury::dapp_base::common::PAIR_POSTFIX;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale::treasury::dapp_base::state::{load_contract_addr, STATE};
 use white_whale::treasury::msg::send_to_treasury;
 
 use crate::contract::AstroportResult;
@@ -35,7 +34,7 @@ pub fn provide_liquidity(
     let treasury_address = &state.treasury_address;
 
     // Get pair address
-    let pair_address = load_contract_addr(deps, &pool_id)?;
+    let pair_address = state.memory.query_contract(deps, &pool_id)?;
 
     // Get pool info
     let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
@@ -44,7 +43,7 @@ pub fn provide_liquidity(
 
     let ratio = Decimal::from_ratio(asset_1.amount, asset_2.amount);
 
-    let main_asset_info = get_asset_info(deps, &main_asset_id)?;
+    let main_asset_info = state.memory.query_asset(deps, &main_asset_id)?;
     let main_asset = Asset {
         info: main_asset_info,
         amount,
@@ -102,7 +101,7 @@ pub fn detailed_provide_liquidity(
     let treasury_address = &state.treasury_address;
 
     // Get pair address
-    let pair_address = load_contract_addr(deps, &pool_id)?;
+    let pair_address = state.memory.query_contract(deps, &pool_id)?;
 
     // Get pool info
     let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
@@ -112,7 +111,7 @@ pub fn detailed_provide_liquidity(
 
     // Iterate over provided assets
     for asset in assets {
-        let asset_info = get_asset_info(deps, &asset.0)?;
+        let asset_info = state.memory.query_asset(deps, &asset.0)?;
         // Check if pool contains the asset
         if pool_info.assets.iter().any(|a| a.info == asset_info) {
             let asset_balance = query_asset_balance(deps, &asset_info, treasury_address.clone())?;
@@ -152,9 +151,11 @@ pub fn withdraw_liquidity(
     }
     let treasury_address = &state.treasury_address;
 
-    // get lp token address
-    let lp_token_address = load_contract_addr(deps, &lp_token_id)?;
-    let pair_address = load_contract_addr(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
+    // Get lp token address
+    let lp_token = &state.memory.query_asset(deps, &lp_token_id)?;
+    let lp_token_address = get_identifier(lp_token);
+    // Get pair address
+    let pair_address = state.memory.query_contract(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
 
     // Check if the treasury has enough lp tokens
     has_sufficient_balance(deps, &lp_token_id, treasury_address, amount)?;
@@ -204,9 +205,9 @@ pub fn astroport_swap(
     // Check if treasury has enough to swap
     has_sufficient_balance(deps, &offer_id, &treasury_address, amount)?;
 
-    let pair_address = load_contract_addr(deps, &pool_id)?;
+    let pair_address = state.memory.query_contract(deps, &pool_id)?;
 
-    let offer_asset_info = get_asset_info(deps, &offer_id)?;
+    let offer_asset_info = state.memory.query_asset(deps, &offer_id)?;
 
     let swap_msg = vec![asset_into_swap_msg(
         deps,
