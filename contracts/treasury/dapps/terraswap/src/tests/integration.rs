@@ -119,7 +119,6 @@ fn init_contracts(app: &mut App) -> (Addr, Addr, Addr, InstantiateMsg) {
         )
         .unwrap();
 
-
     app.update_block(|b| {
             b.height += 17;
             b.time = Timestamp::from_seconds(1571797419);
