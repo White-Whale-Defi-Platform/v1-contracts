@@ -137,7 +137,9 @@ impl WasmMockQuerier {
                 let key: &[u8] = key.as_slice();
 
                 // Review this, the asset itself is attach to the end so maybe we need to concat something
-                if key.to_vec() == concat(&to_length_prefixed(b"contracts"), WHALE_UST_PAIR.as_bytes()) {
+                if key.to_string().starts_with(b"contracts") 
+                
+                    concat(&to_length_prefixed(b"contracts"), WHALE_UST_PAIR.as_bytes()) {
 
                     // match key.to_vec() {
                     //     concat(&to_length_prefixed(b"contracts"), WHALE_UST_PAIR.as_bytes()) => {
