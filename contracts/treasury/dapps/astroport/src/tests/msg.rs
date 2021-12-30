@@ -24,6 +24,7 @@ pub fn test_unsuccessfully_update_config_msg() {
     let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
         treasury_address: None,
         trader: None,
+        memory: None,
     });
 
     let info = mock_info("unauthorized", &[]);
@@ -44,6 +45,7 @@ pub fn test_successfully_update_config_treasury_address_msg() {
     let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
         treasury_address: Some("new_treasury_address".to_string()),
         trader: None,
+        memory: None,
     });
 
     let info = mock_info(TEST_CREATOR, &[]);
@@ -56,6 +58,9 @@ pub fn test_successfully_update_config_treasury_address_msg() {
         BaseState {
             treasury_address: Addr::unchecked("new_treasury_address".to_string()),
             trader: Addr::unchecked(TRADER_CONTRACT.to_string()),
+            memory: Memory {
+                address: Addr::unchecked(&MEMORY_CONTRACT.to_string())
+            }
         }
     )
 }
@@ -68,6 +73,7 @@ pub fn test_successfully_update_config_trader_address_msg() {
     let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
         treasury_address: None,
         trader: Some("new_trader_address".to_string()),
+        memory: None
     });
 
     let info = mock_info(TEST_CREATOR, &[]);
@@ -78,8 +84,11 @@ pub fn test_successfully_update_config_trader_address_msg() {
     assert_eq!(
         state,
         BaseState {
-            treasury_address: Addr::unchecked(TREASURY_CONTRACT.to_string()),
-            trader: Addr::unchecked("new_trader_address".to_string()),
+            treasury_address: Addr::unchecked("new_treasury_address".to_string()),
+            trader: Addr::unchecked(TRADER_CONTRACT.to_string()),
+            memory: Memory {
+                address: Addr::unchecked(&MEMORY_CONTRACT.to_string())
+            }
         }
     )
 }
@@ -92,6 +101,7 @@ pub fn test_successfully_update_config_both_treasury_and_trader_address_msg() {
     let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
         treasury_address: Some("new_treasury_address".to_string()),
         trader: Some("new_trader_address".to_string()),
+        memory: Some("new_memory_address".to_string()),
     });
 
     let info = mock_info(TEST_CREATOR, &[]);
@@ -103,7 +113,10 @@ pub fn test_successfully_update_config_both_treasury_and_trader_address_msg() {
         state,
         BaseState {
             treasury_address: Addr::unchecked("new_treasury_address".to_string()),
-            trader: Addr::unchecked("new_trader_address".to_string()),
+            trader: Addr::unchecked(TRADER_CONTRACT.to_string()),
+            memory: Memory {
+                address: Addr::unchecked(&MEMORY_CONTRACT.to_string())
+            }
         }
     )
 }
@@ -116,6 +129,7 @@ pub fn test_successfully_update_config_none_msg() {
     let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
         treasury_address: None,
         trader: None,
+        memory: None,
     });
 
     let info = mock_info(TEST_CREATOR, &[]);
@@ -126,8 +140,11 @@ pub fn test_successfully_update_config_none_msg() {
     assert_eq!(
         state,
         BaseState {
-            treasury_address: Addr::unchecked(TREASURY_CONTRACT.to_string()),
+            treasury_address: Addr::unchecked("new_treasury_address".to_string()),
             trader: Addr::unchecked(TRADER_CONTRACT.to_string()),
+            memory: Memory {
+                address: Addr::unchecked(&MEMORY_CONTRACT.to_string())
+            }
         }
     )
 }
@@ -185,13 +202,7 @@ pub fn test_unsuccessfully_update_address_book_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
-    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
-        to_add: vec![],
-        to_remove: vec![],
-    });
-
-    let info = mock_info("unauthorized", &[]);
-    let res = execute(deps.as_mut(), env.clone(), info, msg);
+    
 
     match res {
         Err(AstroportError::BaseDAppError(BaseDAppError::Admin(_))) => (),
@@ -213,7 +224,7 @@ pub fn test_successfully_update_address_book_add_address_msg() {
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let asset_address = load_contract_addr(deps.as_ref(), "asset").unwrap();
+    let asset_address = state.memory.query_contract(deps, &pool_id)?;
     assert_eq!(asset_address, Addr::unchecked("address".to_string()));
 }
 
@@ -232,7 +243,7 @@ pub fn test_successfully_update_address_book_remove_address_msg() {
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let asset_address = load_contract_addr(deps.as_ref(), "asset").unwrap();
+    let asset_address = state.memory.query_contract(deps, &pool_id)?;
     assert_eq!(asset_address, Addr::unchecked("address".to_string()));
 
     // remove address
@@ -244,7 +255,7 @@ pub fn test_successfully_update_address_book_remove_address_msg() {
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let res = load_contract_addr(deps.as_ref(), "asset");
+    let res = state.memory.query_contract(deps, &pool_id)?;
 
     match res {
         Err(StdError::NotFound { .. }) => (),
@@ -269,11 +280,11 @@ pub fn test_successfully_update_address_book_add_and_removeaddress_msg() {
     let info = mock_info(TEST_CREATOR, &[]);
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-    let asset_address = load_contract_addr(deps.as_ref(), "asset").unwrap();
+    let asset_address = state.memory.query_contract(deps, &pool_id)?;
     assert_eq!(asset_address, Addr::unchecked("address".to_string()));
 
     // query non-existing address
-    let res = load_contract_addr(deps.as_ref(), "another_asset");
+    let res = state.memory.query_contract(deps, &pool_id)?;
     match res {
         Err(StdError::NotFound { .. }) => (),
         Ok(_) => panic!("Should return NotFound Err"),
@@ -289,11 +300,11 @@ pub fn test_successfully_update_address_book_add_and_removeaddress_msg() {
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
     // another_asset should be in the addressbook now
-    let asset_address = load_contract_addr(deps.as_ref(), "another_asset").unwrap();
+    let asset_address = state.memory.query_contract(deps, &pool_id);
     assert_eq!(asset_address, Addr::unchecked("another_address".to_string()));
 
     // asset should not be in the addressbook now
-    let res = load_contract_addr(deps.as_ref(), "asset");
+    let res = state.memory.query_contract(deps, &pool_id);
     match res {
         Err(StdError::NotFound { .. }) => (),
         Ok(_) => panic!("Should return NotFound Err"),
