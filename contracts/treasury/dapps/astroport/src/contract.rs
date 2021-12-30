@@ -7,7 +7,8 @@ use white_whale::treasury::dapp_base::commands as dapp_base_commands;
 use white_whale::treasury::dapp_base::common::BaseDAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
-use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, STATE};
+use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
+use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
 
 use crate::commands;
 use crate::msg::{ExecuteMsg, QueryMsg};

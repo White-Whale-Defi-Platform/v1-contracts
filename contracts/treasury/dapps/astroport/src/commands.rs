@@ -5,15 +5,16 @@ use cosmwasm_std::{
 use cw20::Cw20ExecuteMsg;
 use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
+use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
 
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
 use white_whale::treasury::dapp_base::common::PAIR_POSTFIX;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::msg::send_to_treasury;
+use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, BASESTATE};
 
 use crate::contract::AstroportResult;
 use crate::error::AstroportError;
-use crate::state::get_asset_info;
 use crate::terraswap_msg::{asset_into_swap_msg, deposit_lp_msg};
 use crate::utils::has_sufficient_balance;
 
@@ -25,7 +26,7 @@ pub fn provide_liquidity(
     pool_id: String,
     amount: Uint128,
 ) -> AstroportResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -88,7 +89,7 @@ pub fn detailed_provide_liquidity(
     pool_id: String,
     slippage_tolerance: Option<Decimal>,
 ) -> AstroportResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -144,7 +145,7 @@ pub fn withdraw_liquidity(
     lp_token_id: String,
     amount: Uint128,
 ) -> AstroportResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Sender must be trader
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -158,7 +159,7 @@ pub fn withdraw_liquidity(
     let pair_address = state.memory.query_contract(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
 
     // Check if the treasury has enough lp tokens
-    has_sufficient_balance(deps, &lp_token_id, treasury_address, amount)?;
+    has_sufficient_balance(deps, &state.memory, &lp_token_id, treasury_address, amount)?;
 
     // Msg that gets called on the pair address.
     let withdraw_msg: Binary = to_binary(&Cw20HookMsg::WithdrawLiquidity {})?;
@@ -172,7 +173,7 @@ pub fn withdraw_liquidity(
 
     // Call on LP token.
     let lp_call = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: lp_token_address.into_string(),
+        contract_addr: String::from(lp_token_address),
         msg: to_binary(&cw20_msg)?,
         funds: vec![],
     });
@@ -194,7 +195,7 @@ pub fn astroport_swap(
     max_spread: Option<Decimal>,
     belief_price: Option<Decimal>,
 ) -> AstroportResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     let treasury_address = state.treasury_address;
 
     // Check if caller is trader
@@ -203,7 +204,7 @@ pub fn astroport_swap(
     }
 
     // Check if treasury has enough to swap
-    has_sufficient_balance(deps, &offer_id, &treasury_address, amount)?;
+    has_sufficient_balance(deps, &state.memory, &offer_id, &treasury_address, amount)?;
 
     let pair_address = state.memory.query_contract(deps, &pool_id)?;
 
