@@ -61,7 +61,7 @@ pub fn instantiate(
                 }),
             })?,
             funds: vec![],
-            label: "".to_string(),
+            label: "TSwapPair".to_string(),
         }
         .into(),
         gas_limit: None,
