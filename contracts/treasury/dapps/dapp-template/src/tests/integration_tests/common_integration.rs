@@ -7,6 +7,7 @@ use white_whale_testing::dapp_base::common::TEST_CREATOR;
 use white_whale::treasury::msg as TreasuryMsg;
 use white_whale::memory::msg as MemoryMsg;
 
+#[allow(dead_code)]
 pub struct BaseContracts {
     pub whale: Addr,
     pub memory: Addr,
@@ -15,6 +16,7 @@ pub struct BaseContracts {
     pub whale_ust: Addr,
 }
 
+#[allow(dead_code)]
 /// Creates the basic contract instances needed to test the dapp.
 /// Whale token, Memory, Treasury, Whale/UST pair, Whale/UST LP
 pub fn init_contracts(app: &mut App) -> BaseContracts {
@@ -116,6 +118,7 @@ pub fn init_contracts(app: &mut App) -> BaseContracts {
         }
 }
 
+#[allow(dead_code)]
 pub fn mock_app() -> App<Empty> {
     let env = mock_env();
     let api = MockApi::default();
@@ -168,6 +171,7 @@ fn instantiate_pair(mut router: &mut App, owner: &Addr, whale_token_instance: &A
 }
 
 /// Whitelist a dapp on the treasury
+#[allow(dead_code)]
 pub fn whitelist_dapp(
     app: &mut App,
     owner: &Addr,
@@ -191,6 +195,7 @@ pub fn whitelist_dapp(
 }
 
 /// Mint Whale tokens 
+#[allow(dead_code)]
 pub fn mint_some_whale(
     app: &mut App,
     owner: Addr,
@@ -233,6 +238,7 @@ fn store_pair_code(app: &mut App) -> u64 {
     app.store_code(pair_contract)
 }
 
+#[allow(dead_code)]
 fn store_factory_code(app: &mut App) -> u64 {
     let factory_contract = Box::new(
         ContractWrapper::new(
