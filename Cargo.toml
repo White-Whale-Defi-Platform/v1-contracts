@@ -2,6 +2,7 @@
 members = [
     "packages/*", 
     "contracts/gov",
+    # "contracts/mocks/mock_terraswap/*",
     "contracts/community-fund",
     "contracts/profit-check",
     "contracts/stable-arb-terra",
