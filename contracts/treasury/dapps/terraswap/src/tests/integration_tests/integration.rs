@@ -1,14 +1,14 @@
-use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
-use cosmwasm_std::{attr, to_binary, Addr, Decimal, Timestamp, Uint128, Coin};
-use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg, Cw20Contract};
-use terraswap::asset::{Asset, AssetInfo, PairInfo, PairInfoRaw};
-use terra_multi_test::{App, BankKeeper, Contract, ContractWrapper};
+
+use cosmwasm_std::{Addr, Decimal, Uint128, Coin};
+use cw20::{Cw20Contract};
+
+use terra_multi_test::{App, ContractWrapper};
 
 use terraswap::pair::PoolResponse;
 use white_whale_testing::dapp_base::common::TEST_CREATOR;
 use white_whale::treasury::msg as TreasuryMsg;
 use white_whale::memory::msg as MemoryMsg;
-use crate::msg::{ExecuteMsg,QueryMsg};
+use crate::msg::{ExecuteMsg};
 use crate::tests::integration_tests::common_integration::{mock_app, init_contracts, mint_some_whale};
 use terra_multi_test::Executor;
 
