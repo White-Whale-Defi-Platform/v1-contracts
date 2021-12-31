@@ -15,3 +15,4 @@ pub mod treasury;
 pub mod ust_vault;
 pub mod vesting;
 pub mod emissions;
+pub mod memory;
