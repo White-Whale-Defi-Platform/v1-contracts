@@ -1,22 +1,17 @@
 use cosmwasm_std::{
-    to_binary, QueryMsg, Addr, Coin, Decimal, Deps, QueryRequest, StdResult, Uint128, WasmQuery,
+    to_binary, Addr, Deps, QueryRequest, StdResult, Uint128, WasmQuery,
 };
 
-use white_whale::ust_vault::msg::{VaultQueryMsg};
+use crate::treasury::msg::{QueryMsg,TotalValueResponse};
 
-pub fn get_vault_value(deps: Deps) -> StdResult<Uint128> {
-    let response: ValueResponse =
+/// Query the total value denominated in the vault base asset
+/// The provided address must implement the TotalValue Query
+pub fn query_total_value(deps: Deps, vault_address: &Addr) -> StdResult<Uint128> {
+    let response: TotalValueResponse =
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: pool_address.to_string(),
-            msg: to_binary(&QueryMsg::Simulation {
-                offer_asset: Asset {
-                    info: AssetInfo::NativeToken {
-                        denom: offer_coin.denom,
-                    },
-                    amount: offer_coin.amount,
-                },
-            })?,
+            contract_addr: vault_address.to_string(),
+            msg: to_binary(&QueryMsg::TotalValue {})?,
         }))?;
 
-    Ok(response.return_amount)
+    Ok(response.value)
 }

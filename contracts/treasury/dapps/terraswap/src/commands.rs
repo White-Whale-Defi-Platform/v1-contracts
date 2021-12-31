@@ -9,7 +9,7 @@ use terraswap::pair::{Cw20HookMsg, PoolResponse};
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
 use white_whale::treasury::dapp_base::common::PAIR_POSTFIX;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale::treasury::dapp_base::state::{load_contract_addr, STATE};
+use white_whale::treasury::dapp_base::state::{load_contract_addr, BASESTATE};
 use white_whale::treasury::msg::send_to_treasury;
 
 use crate::contract::TerraswapResult;
@@ -26,7 +26,7 @@ pub fn provide_liquidity(
     pool_id: String,
     amount: Uint128,
 ) -> TerraswapResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -89,7 +89,7 @@ pub fn detailed_provide_liquidity(
     pool_id: String,
     slippage_tolerance: Option<Decimal>,
 ) -> TerraswapResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -145,7 +145,7 @@ pub fn withdraw_liquidity(
     lp_token_id: String,
     amount: Uint128,
 ) -> TerraswapResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Sender must be trader
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -191,7 +191,7 @@ pub fn terraswap_swap(
     max_spread: Option<Decimal>,
     belief_price: Option<Decimal>,
 ) -> TerraswapResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     let treasury_address = state.treasury_address;
 
     // Check if caller is trader

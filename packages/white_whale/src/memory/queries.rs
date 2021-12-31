@@ -9,8 +9,8 @@ use terraswap::asset::AssetInfo;
 /// Query asset info from Memory Module asset addresses map.
 pub fn query_assets_from_mem(
     deps: Deps,
-    memory_addr: Addr,
-    asset_names: Vec<String>,
+    memory_addr: &Addr,
+    asset_names: &[String],
 ) -> StdResult<BTreeMap<String, AssetInfo>> {
     let mut assets: BTreeMap<String, AssetInfo> = BTreeMap::new();
 
@@ -30,8 +30,8 @@ pub fn query_assets_from_mem(
 /// Query contract address from Memory Module contract addresses map.
 pub fn query_contracts_from_mem(
     deps: Deps,
-    memory_addr: Addr,
-    contract_names: Vec<String>,
+    memory_addr: &Addr,
+    contract_names: &[String],
 ) -> StdResult<BTreeMap<String, Addr>> {
     let mut contracts: BTreeMap<String, Addr> = BTreeMap::new();
 
@@ -54,6 +54,7 @@ pub fn query_contracts_from_mem(
 }
 
 /// Returns the asset info for a given string (either denom or contract addr)
+#[inline]
 pub fn to_asset_info(deps: Deps, address_or_denom: String) -> StdResult<AssetInfo> {
     return if is_denom(address_or_denom.as_str()) {
         Ok(AssetInfo::NativeToken {

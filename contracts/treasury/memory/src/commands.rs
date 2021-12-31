@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, DepsMut, MessageInfo, Response, StdResult};
 
 use crate::contract::MemoryResult;
-use crate::msg::ExecuteMsg;
+use white_whale::memory::msg::ExecuteMsg;
 use crate::state::*;
 
 /// Handles the common base execute messages

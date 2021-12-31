@@ -7,7 +7,6 @@ use white_whale::denom::is_denom;
 
 pub const ADMIN: Admin = Admin::new("admin");
 // stores name and address of tokens and pairs
-// Example: pairs can be named after the LP token id.
 // LP token key: "ust_luna"
 pub const ASSET_ADDRESSES: Map<&str, String> = Map::new("assets");
 
