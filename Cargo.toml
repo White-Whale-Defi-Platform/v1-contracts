@@ -1,13 +1,13 @@
 [workspace]
 members = [
     "packages/*", 
-    "contracts/gov",
-    # "contracts/mocks/mock_terraswap/*",
+    "contracts/governance",
     "contracts/community-fund",
     "contracts/profit-check",
     "contracts/stable-arb-terra",
     "contracts/stable-arb-astro",
     "contracts/stablecoin-vault",
+    "contracts/emissions",
     "contracts/vesting",
     "contracts/tokenomics/airdrop",
     "contracts/tokenomics/lp_emissions_proxy",
