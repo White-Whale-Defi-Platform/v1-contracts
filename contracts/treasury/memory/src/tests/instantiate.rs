@@ -5,7 +5,7 @@ use cosmwasm_std::DepsMut;
 use crate::contract::{execute, instantiate};
 use crate::tests::common::TEST_CREATOR;
 
-use crate::msg::*;
+use white_whale::memory::msg::*;
 use crate::tests::mock_querier::mock_dependencies;
 
 pub(crate) fn instantiate_msg() -> InstantiateMsg {

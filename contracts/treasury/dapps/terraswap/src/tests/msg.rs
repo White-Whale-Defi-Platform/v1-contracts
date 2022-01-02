@@ -1,9 +1,9 @@
-use cosmwasm_std::{StdError, Uint128};
+
 use cosmwasm_std::testing::{mock_env, mock_info};
 
-use ExecuteMsg::ProvideLiquidity;
+
 use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT};
+use white_whale_testing::dapp_base::common::{TRADER_CONTRACT};
 
 use crate::contract::execute;
 use crate::error::TerraswapError;
