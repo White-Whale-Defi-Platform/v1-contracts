@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct BaseInstantiateMsg {
     pub treasury_address: String,
     pub trader: String,
+    pub memory_addr: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -14,11 +15,7 @@ pub enum BaseExecuteMsg {
     UpdateConfig {
         treasury_address: Option<String>,
         trader: Option<String>,
-    },
-    /// Updates the addressbook
-    UpdateAddressBook {
-        to_add: Vec<(String, String)>,
-        to_remove: Vec<String>,
+        memory: Option<String>,
     },
     /// Sets a new Admin
     SetAdmin {
@@ -31,8 +28,6 @@ pub enum BaseExecuteMsg {
 pub enum BaseQueryMsg {
     /// Returns the state of the DApp
     Config {},
-    /// Queries the addressbook with the privided key
-    AddressBook { id: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -40,4 +35,5 @@ pub enum BaseQueryMsg {
 pub struct BaseStateResponse {
     pub treasury_address: String,
     pub trader: String,
+    pub memory_address: String,
 }

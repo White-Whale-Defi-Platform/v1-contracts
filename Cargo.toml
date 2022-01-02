@@ -1,12 +1,13 @@
 [workspace]
 members = [
     "packages/*", 
-    "contracts/gov",
+    "contracts/governance",
     "contracts/community-fund",
     "contracts/profit-check",
     "contracts/stable-arb-terra",
     "contracts/stable-arb-astro",
     "contracts/stablecoin-vault",
+    "contracts/emissions",
     "contracts/vesting",
     "contracts/tokenomics/airdrop",
     "contracts/tokenomics/lp_emissions_proxy",
@@ -15,7 +16,9 @@ members = [
     "contracts/treasury/dapps/anchor",
     "contracts/treasury/dapps/astroport",
     "contracts/treasury/dapps/terraswap",
-    "contracts/treasury/dapps/dapp-template"
+    "contracts/treasury/dapps/dapp-template",
+    "contracts/treasury/dapps/vault-dapp",
+    "contracts/treasury/memory"
 ]
 
 [profile.release]
