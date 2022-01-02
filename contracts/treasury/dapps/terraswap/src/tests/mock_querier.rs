@@ -1,17 +1,15 @@
 #![allow(dead_code)]
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, Binary, Coin, Decimal, ContractResult, Empty, OwnedDeps, Querier,
-    QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery, Response
+    from_binary, from_slice, to_binary, Coin, Decimal, ContractResult, OwnedDeps, Querier,
+    QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use terraswap::pair::{PoolResponse, QueryMsg as TerraswapQueryMsg};
 use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR, WHALE_UST_LP_TOKEN};
 use std::collections::HashMap;
-use cosmwasm_std::Api;
-use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
-use cosmwasm_storage::to_length_prefixed;
-use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery,SwapResponse, TerraQuerier, TerraQueryWrapper, TerraRoute};
+use terraswap::asset::{Asset, PairInfo};
+use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery,SwapResponse, TerraQueryWrapper, TerraRoute};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
