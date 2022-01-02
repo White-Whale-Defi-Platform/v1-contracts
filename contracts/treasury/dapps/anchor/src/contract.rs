@@ -40,7 +40,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> B
         ExecuteMsg::Base(message) => dapp_base_commands::handle_base_message(deps, info, message),
         // handle dapp-specific messages here
         // ExecuteMsg::Custom{} => commands::custom_command(),
-        ExecuteMsg::DepositStable{ deposit_amount } => commands::handle_deposit_stable(deps.as_ref(), env, info, deposit_amount)
+        ExecuteMsg::DepositStable{ deposit_amount } => commands::handle_deposit_stable(deps.as_ref(), env, info, deposit_amount).
+        ExecuteMsg::WithdrawAmount{ withdraw_amount } => commands::handle_redeem_stable(deps.as_ref(), env, info, withdraw_amount)
     }
 }
 

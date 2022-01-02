@@ -9,6 +9,8 @@ pub enum ExecuteMsg {
     Base(BaseExecuteMsg),
     // Add dapp-specific messages here
     DepositStable{ deposit_amount: Uint128}
+    RedeemStable{ withdraw_amount: Uint128}
+
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
