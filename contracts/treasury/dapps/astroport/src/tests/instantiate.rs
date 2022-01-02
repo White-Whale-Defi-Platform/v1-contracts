@@ -1,6 +1,5 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::Api;
-use cosmwasm_std::DepsMut;
 use cosmwasm_std::Addr;
 
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
@@ -18,20 +17,6 @@ pub(crate) fn instantiate_msg() -> BaseInstantiateMsg {
     }
 }
 
-/**
- * Mocks instantiation.
- */
-pub fn mock_instantiate(deps: DepsMut) {
-    let msg = BaseInstantiateMsg {
-        treasury_address: TREASURY_CONTRACT.to_string(),
-        trader: TRADER_CONTRACT.to_string(),
-        memory_addr: MEMORY_CONTRACT.to_string()
-    };
-
-    let info = mock_info(TEST_CREATOR, &[]);
-    let _res = instantiate(deps, mock_env(), info, msg)
-        .expect("contract successfully handles InstantiateMsg");
-}
 
 /**
  * Tests successful instantiation of the contract.

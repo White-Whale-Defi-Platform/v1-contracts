@@ -1,11 +1,10 @@
 use cosmwasm_std::DepsMut;
 use cosmwasm_std::testing::{mock_env, mock_info};
 
-use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseInstantiateMsg};
+use white_whale::treasury::dapp_base::msg::{BaseInstantiateMsg};
 use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT, MEMORY_CONTRACT};
 
-use crate::contract::{execute, instantiate};
-use crate::msg::ExecuteMsg;
+use crate::contract::{instantiate};
 
 pub(crate) fn instantiate_msg() -> BaseInstantiateMsg {
     BaseInstantiateMsg {

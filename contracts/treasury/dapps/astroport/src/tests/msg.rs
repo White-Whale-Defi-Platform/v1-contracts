@@ -1,4 +1,4 @@
-use cosmwasm_std::{to_binary, Addr, StdError, Uint128, SubMsg, WasmMsg, CosmosMsg};
+use cosmwasm_std::{Addr};
 use cosmwasm_std::testing::{mock_env, mock_info};
 use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
@@ -8,10 +8,10 @@ use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, BASESTATE};
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
 use crate::error::AstroportError;
-use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
+use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT};
 use crate::tests::base_mocks::mocks::{mock_instantiate};
 use crate::tests::mock_querier::mock_dependencies;
-use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_PAIR, WHALE_UST_LP_TOKEN, MEMORY_CONTRACT};
+use white_whale_testing::dapp_base::common::{MEMORY_CONTRACT};
 
 /**
  * BaseExecuteMsg::UpdateConfig

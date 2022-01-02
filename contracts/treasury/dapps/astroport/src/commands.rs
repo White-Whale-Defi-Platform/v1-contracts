@@ -5,13 +5,13 @@ use cosmwasm_std::{
 use cw20::Cw20ExecuteMsg;
 use terraswap::asset::Asset;
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
-use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
+use white_whale::treasury::vault_assets::{get_identifier};
 
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
 use white_whale::treasury::dapp_base::common::PAIR_POSTFIX;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::msg::send_to_treasury;
-use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, BASESTATE};
+use white_whale::treasury::dapp_base::state::{BASESTATE};
 
 use crate::contract::AstroportResult;
 use crate::error::AstroportError;
