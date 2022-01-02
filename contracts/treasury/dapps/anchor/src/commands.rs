@@ -1,13 +1,12 @@
 use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Coin, Decimal, Deps, Env, Fraction, MessageInfo, Response, Uint128,
-    WasmMsg,
+    CosmosMsg, Coin, Deps, Env, Fraction, MessageInfo, Response, Uint128,
 };
 
 use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale::treasury::dapp_base::state::{load_contract_addr, STATE};
 use white_whale::treasury::msg::send_to_treasury;
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::query::anchor::query_aust_exchange_rate;
+use white_whale::treasury::dapp_base::state::BASESTATE;
 
 use crate::contract::AnchorResult;
 
@@ -21,11 +20,11 @@ const AUST_TOKEN_ID: &str = "aUST";
 /// Caller address -> anchor-dapp -> Treasury executes message prepared by the anchor-dapp invoked by the caller address which is an admin
 pub fn handle_deposit_stable(
     deps: Deps,
-    env: Env,
+    _env: Env,
     msg_info: MessageInfo,
     deposit_amount: Uint128
 ) -> AnchorResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -34,9 +33,9 @@ pub fn handle_deposit_stable(
     let treasury_address = &state.treasury_address;
 
     // Get anchor money market address
-    let anchor_address = load_contract_addr(deps, &ANCHOR_MONEY_MARKET_ID)?;
+    let anchor_address = state.memory.query_contract(deps, &String::from(ANCHOR_MONEY_MARKET_ID))?;
     // Get aUST address
-    let aust_address = load_contract_addr(deps, &AUST_TOKEN_ID)?;
+    let aust_address = state.memory.query_contract(deps, &String::from(AUST_TOKEN_ID))?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
     // Prepare a deposit_msg using the provided info. 
@@ -57,11 +56,11 @@ pub fn handle_deposit_stable(
 /// Caller address -> anchor-dapp -> Treasury executes message prepared by the anchor-dapp invoked by the caller address which is an admin
 pub fn handle_redeem_stable(
     deps: Deps,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     to_withdraw: Uint128
 ) -> AnchorResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
     if info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -70,9 +69,10 @@ pub fn handle_redeem_stable(
     let treasury_address = &state.treasury_address;
 
     // Get anchor money market address
-    let anchor_address = load_contract_addr(deps, &ANCHOR_MONEY_MARKET_ID)?;
+    let anchor_address = state.memory.query_contract(deps, &String::from(ANCHOR_MONEY_MARKET_ID))?;
+
     // Get aUST address
-    let aust_address = load_contract_addr(deps, &AUST_TOKEN_ID)?;
+    let aust_address = state.memory.query_contract(deps, &String::from(AUST_TOKEN_ID))?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
 

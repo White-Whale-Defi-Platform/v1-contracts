@@ -8,7 +8,7 @@ use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg};
 pub enum ExecuteMsg {
     Base(BaseExecuteMsg),
     // Add dapp-specific messages here
-    DepositStable{ deposit_amount: Uint128}
+    DepositStable{ deposit_amount: Uint128},
     RedeemStable{ withdraw_amount: Uint128}
 
 }

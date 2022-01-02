@@ -3,13 +3,14 @@
 
 use cosmwasm_std::{Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Response, StdResult};
 
+use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::commands as dapp_base_commands;
 use white_whale::treasury::dapp_base::common::BaseDAppResult;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::queries as dapp_base_queries;
-use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, STATE};
+use white_whale::treasury::dapp_base::state::{ADMIN, BaseState};
 use white_whale::treasury::dapp_base::error::BaseDAppError;
-
+use white_whale::treasury::dapp_base::state::BASESTATE;
 use crate::commands;
 use crate::error::AnchorError;
 use crate::msg::{ExecuteMsg, QueryMsg};
@@ -26,9 +27,10 @@ pub fn instantiate(
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
+        memory: Memory{ address: deps.api.addr_validate(&msg.memory_addr)?},
     };
 
-    STATE.save(deps.storage, &state)?;
+    BASESTATE.save(deps.storage, &state)?;
     ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::default())
@@ -40,8 +42,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> B
         ExecuteMsg::Base(message) => dapp_base_commands::handle_base_message(deps, info, message),
         // handle dapp-specific messages here
         // ExecuteMsg::Custom{} => commands::custom_command(),
-        ExecuteMsg::DepositStable{ deposit_amount } => commands::handle_deposit_stable(deps.as_ref(), env, info, deposit_amount).
-        ExecuteMsg::WithdrawAmount{ withdraw_amount } => commands::handle_redeem_stable(deps.as_ref(), env, info, withdraw_amount)
+        ExecuteMsg::DepositStable{ deposit_amount } => commands::handle_deposit_stable(deps.as_ref(), env, info, deposit_amount),
+        ExecuteMsg::RedeemStable{ withdraw_amount } => commands::handle_redeem_stable(deps.as_ref(), env, info, withdraw_amount)
     }
 }
 
