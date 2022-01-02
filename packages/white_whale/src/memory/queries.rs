@@ -6,7 +6,7 @@ use crate::denom::is_denom;
 use cosmwasm_storage::to_length_prefixed;
 use terraswap::asset::AssetInfo;
 
-/// Query asset info from Memory Module asset addresses map.
+/// Query asset infos from Memory Module asset addresses map.
 pub fn query_assets_from_mem(
     deps: Deps,
     memory_addr: &Addr,
@@ -27,7 +27,24 @@ pub fn query_assets_from_mem(
     Ok(assets)
 }
 
-/// Query contract address from Memory Module contract addresses map.
+/// Query single asset info from mem
+pub fn query_asset_from_mem(
+    deps: Deps,
+    memory_addr: &Addr,
+    asset_name: &String,
+) -> StdResult<AssetInfo> {
+
+    let result = deps
+        .querier
+        .query::<String>(&QueryRequest::Wasm(WasmQuery::Raw {
+            contract_addr: memory_addr.to_string(),
+            // query assets map
+            key: Binary::from(concat(&to_length_prefixed(b"assets"), asset_name.as_bytes())),
+        }))?;
+    Ok(to_asset_info(deps, result)?)
+}
+
+/// Query contract addresses from Memory Module contract addresses map.
 pub fn query_contracts_from_mem(
     deps: Deps,
     memory_addr: &Addr,
@@ -51,6 +68,24 @@ pub fn query_contracts_from_mem(
         contracts.insert(contract.clone(), result);
     }
     Ok(contracts)
+}
+
+/// Query single contract address from mem
+pub fn query_contract_from_mem(
+    deps: Deps,
+    memory_addr: &Addr,
+    contract_name: &String,
+) -> StdResult<Addr> {
+
+    let result = deps
+        .querier
+        .query::<String>(&QueryRequest::Wasm(WasmQuery::Raw {
+            contract_addr: memory_addr.to_string(),
+            // query assets map
+            key: Binary::from(concat(&to_length_prefixed(b"contracts"), contract_name.as_bytes())),
+        }))?;
+    // Addresses are checked when stored.
+    Ok(Addr::unchecked(result))
 }
 
 /// Returns the asset info for a given string (either denom or contract addr)

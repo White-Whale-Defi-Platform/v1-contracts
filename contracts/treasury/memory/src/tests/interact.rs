@@ -4,7 +4,7 @@ use crate::contract::execute;
 use crate::error::MemoryError;
 use crate::tests::common::TEST_CREATOR;
 
-use crate::msg::*;
+use white_whale::memory::msg::*;
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 

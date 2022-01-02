@@ -24,20 +24,20 @@ pub fn mock_instantiate(deps: DepsMut) {
         .expect("contract successfully handles InstantiateMsg");
 }
 
-/**
- * Mocks adding asset to the [ADDRESS_BOOK].
- */
-#[allow(dead_code)]
-pub fn mock_add_to_address_book(deps: DepsMut, asset_address_pair: (String, String)) {
-    let env = mock_env();
+// /**
+//  * Mocks adding asset to the [ADDRESS_BOOK].
+//  */
+// #[allow(dead_code)]
+// pub fn mock_add_to_address_book(deps: DepsMut, asset_address_pair: (String, String)) {
+//     let env = mock_env();
 
-    let (asset, address) = asset_address_pair;
-    // add address
-    let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
-        to_add: vec![(asset, address)],
-        to_remove: vec![],
-    });
+//     let (asset, address) = asset_address_pair;
+//     // add address
+//     let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateAddressBook {
+//         to_add: vec![(asset, address)],
+//         to_remove: vec![],
+//     });
 
-    let info = mock_info(TEST_CREATOR, &[]);
-    execute(deps, env.clone(), info, msg).unwrap();
-}
+//     let info = mock_info(TEST_CREATOR, &[]);
+//     execute(deps, env.clone(), info, msg).unwrap();
+// }
