@@ -53,3 +53,7 @@ pub enum DepositHookMsg {
     WithdrawLiquidity {},
     ProvideLiquidity { asset: Asset },
 }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct StateResponse {
+    pub liquidity_token: String,
+}

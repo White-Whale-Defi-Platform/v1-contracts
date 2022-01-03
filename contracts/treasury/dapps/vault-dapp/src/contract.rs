@@ -23,7 +23,7 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 use crate::response::MsgInstantiateContractResponse;
 
 use crate::error::VaultError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 use crate::state::{Pool, State, FEE, POOL, STATE};
 use crate::{commands, queries};
 pub type VaultResult = Result<Response, VaultError>;
@@ -50,6 +50,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         .unwrap_or_else(|| String::from(DEFAULT_LP_TOKEN_SYMBOL));
 
     STATE.save(deps.storage, &state)?;
+    BASESTATE.save(deps.storage, &base_state)?;
     POOL.save(
         deps.storage,
         &Pool {
@@ -109,7 +110,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
         // handle dapp-specific queries here
-        QueryMsg::State {} => to_binary(&STATE.load(deps.storage)?),
+        QueryMsg::State {} => to_binary(&StateResponse {
+            liquidity_token: STATE.load(deps.storage)?.liquidity_token_addr.to_string()
+         }),
         QueryMsg::ValueQuery(query) => to_binary(&STATE.load(deps.storage)?), //queries::handle_value_query(deps, query),
     }
 }
