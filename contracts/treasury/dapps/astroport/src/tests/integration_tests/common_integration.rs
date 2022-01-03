@@ -212,9 +212,9 @@ pub fn mint_some_whale(
 
 fn store_token_code(app: &mut App) -> u64 {
     let whale_token_contract = Box::new(ContractWrapper::new(
-        terraswap_token::contract::execute,
-        terraswap_token::contract::instantiate,
-        terraswap_token::contract::query,
+        astroport_token::contract::execute,
+        astroport_token::contract::instantiate,
+        astroport_token::contract::query,
     ));
 
     app.store_code(whale_token_contract)

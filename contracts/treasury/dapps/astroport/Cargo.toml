@@ -55,6 +55,6 @@ terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991
 treasury = { version = "0.1.0", path = "../../treasury" }
 memory = { version = "0.1.0", path = "../../memory" }
 cw20-base = { version = "0.8", features = ["library"] }
-astroport-factory = { version = "0.0.0", path = "../../../mocks/mock_astroport/astroport_factory" }
-astroport-pair = { version = "0.0.0", path = "../../../mocks/mock_astroport/astroport_pair" }
-terraswap-token = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_token" }
+astroport-factory = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_factory" }
+astroport-pair = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_pair" }
+astroport-token = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_token" }
