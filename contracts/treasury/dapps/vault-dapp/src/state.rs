@@ -13,7 +13,7 @@ pub struct State {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-/// Pool stores claimable assets in vault. 
+/// Pool stores claimable assets in vault.
 /// deposit_asset is the asset which can be used to deposit into the vault.
 pub struct Pool {
     pub deposit_asset: String,

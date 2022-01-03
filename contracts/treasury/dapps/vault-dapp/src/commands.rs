@@ -69,10 +69,10 @@ pub fn try_provide_liquidity(
 
     // Get all the required asset information from the memory contract
     let assets = memory.query_assets(deps.as_ref(), &pool.assets)?;
-    
+
     // Construct deposit info
     let deposit_info = DepositInfo {
-        asset_info: assets.get(&pool.deposit_asset).unwrap().clone()
+        asset_info: assets.get(&pool.deposit_asset).unwrap().clone(),
     };
 
     // Assert deposited asset and claimed asset infos are the same
@@ -151,7 +151,7 @@ pub fn try_withdraw_liquidity(
     // Logging var
     let mut attrs = vec![
         ("Action:", String::from("Withdraw from vault")),
-        ("Received liquidity tokens:", amount.to_string())
+        ("Received liquidity tokens:", amount.to_string()),
     ];
 
     // Calculate share of pool and requested pool value
@@ -159,7 +159,7 @@ pub fn try_withdraw_liquidity(
 
     // Get treasury fee in LP tokens
     let treasury_fee = fee.compute(amount);
-    
+
     // Share with fee deducted.
     let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
 
@@ -204,7 +204,11 @@ pub fn try_withdraw_liquidity(
     for asset in pay_back_assets.into_iter() {
         if asset.amount != Uint128::zero() {
             // Unchecked ok as sender is already validated by VM
-            refund_msgs.push(asset.clone().into_msg(&deps.querier, Addr::unchecked(sender.clone()))?);
+            refund_msgs.push(
+                asset
+                    .clone()
+                    .into_msg(&deps.querier, Addr::unchecked(sender.clone()))?,
+            );
             attrs.push(("Repaying:", asset.to_string()));
         }
     }
