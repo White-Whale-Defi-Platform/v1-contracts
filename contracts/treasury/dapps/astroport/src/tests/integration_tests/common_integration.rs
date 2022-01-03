@@ -223,11 +223,11 @@ fn store_token_code(app: &mut App) -> u64 {
 fn store_pair_code(app: &mut App) -> u64 {
     let pair_contract = Box::new(
         ContractWrapper::new(
-            terraswap_pair::contract::execute,
-            terraswap_pair::contract::instantiate,
-            terraswap_pair::contract::query,
+            astroport_pair::contract::execute,
+            astroport_pair::contract::instantiate,
+            astroport_pair::contract::query,
         )
-        .with_reply(terraswap_pair::contract::reply),
+        .with_reply(astroport_pair::contract::reply),
     );
 
     app.store_code(pair_contract)
@@ -236,11 +236,11 @@ fn store_pair_code(app: &mut App) -> u64 {
 fn store_factory_code(app: &mut App) -> u64 {
     let factory_contract = Box::new(
         ContractWrapper::new(
-            terraswap_factory::contract::execute,
-            terraswap_factory::contract::instantiate,
-            terraswap_factory::contract::query,
+            astroport_factory::contract::execute,
+            astroport_factory::contract::instantiate,
+            astroport_factory::contract::query,
         )
-        .with_reply(terraswap_factory::contract::reply),
+        .with_reply(astroport_factory::contract::reply),
     );
 
     app.store_code(factory_contract)
