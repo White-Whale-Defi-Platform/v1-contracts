@@ -111,8 +111,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
         // handle dapp-specific queries here
         QueryMsg::State {} => to_binary(&StateResponse {
-            liquidity_token: STATE.load(deps.storage)?.liquidity_token_addr.to_string()
-         }),
+            liquidity_token: STATE.load(deps.storage)?.liquidity_token_addr.to_string(),
+        }),
         QueryMsg::ValueQuery(query) => to_binary(&STATE.load(deps.storage)?), //queries::handle_value_query(deps, query),
     }
 }
