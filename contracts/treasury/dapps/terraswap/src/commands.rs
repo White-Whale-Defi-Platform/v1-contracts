@@ -95,7 +95,7 @@ pub fn detailed_provide_liquidity(
         return Err(BaseDAppError::Unauthorized {}.into());
     }
 
-    if assets.len() > 2 {
+    if assets.len() != 2 {
         return Err(TerraswapError::NotTwoAssets {});
     }
 
