@@ -2,8 +2,8 @@ use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::DepsMut;
 use cosmwasm_std::{Api, Decimal};
 
-use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
-use white_whale::treasury::dapp_base::state::{BaseState, STATE};
+use white_whale::memory::item::Memory;
+use white_whale::treasury::dapp_base::state::{BaseState, BASESTATE};
 use white_whale_testing::dapp_base::common::MEMORY_CONTRACT;
 
 use crate::contract::instantiate;
@@ -14,7 +14,6 @@ use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
 pub(crate) fn vault_instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
         base: base_init_msg(),
-        memory_addr: MEMORY_CONTRACT.into(),
         token_code_id: 3u64,
         fee: Decimal::zero(),
         deposit_asset: TREASURY_CONTRACT.to_string(),
@@ -23,24 +22,30 @@ pub(crate) fn vault_instantiate_msg() -> InstantiateMsg {
     }
 }
 
-// /**
-//  * Tests successful instantiation of the contract.
-//  */
-// #[test]
-// fn successful_initialization() {
-//     let mut deps = mock_dependencies(&[]);
+/**
+ * Mocks instantiation of the contract.
+ */
+pub fn mock_instantiate(deps: DepsMut) {
+    let info = mock_info(TEST_CREATOR, &[]);
+    let _res = instantiate(deps, mock_env(), info, vault_instantiate_msg())
+        .expect("contract successfully handles InstantiateMsg");
+}
 
-//     let base_msg = base_init_msg();
-//     let
-//     let info = mock_info(TEST_CREATOR, &[]);
-//     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
-//     assert_eq!(0, res.messages.len());
 
-//     assert_eq!(
-//         STATE.load(&deps.storage).unwrap(),
-//         BaseState {
-//             treasury_address: deps.api.addr_validate(&TREASURY_CONTRACT).unwrap(),
-//             trader: deps.api.addr_validate(&TRADER_CONTRACT).unwrap(),
-//         }
-//     );
-// }
+/**
+ * Tests successful instantiation of the contract.
+ */
+#[test]
+fn successful_initialization() {
+    let mut deps = mock_dependencies(&[]);
+
+    mock_instantiate(deps.as_mut());
+    assert_eq!(
+        BASESTATE.load(&deps.storage).unwrap(),
+        BaseState {
+            treasury_address: deps.api.addr_validate(&TREASURY_CONTRACT).unwrap(),
+            trader: deps.api.addr_validate(&TRADER_CONTRACT).unwrap(),
+            memory: Memory { address: deps.api.addr_validate(&MEMORY_CONTRACT).unwrap()}
+        }
+    );
+}
