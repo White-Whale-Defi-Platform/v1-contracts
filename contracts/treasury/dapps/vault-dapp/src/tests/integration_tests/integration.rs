@@ -158,7 +158,7 @@ fn provide_ust_liquidity() {
     )
     .unwrap();
 
-    // We withdrew everthing so own 0
+    // We withdrew everthing so own 0 in liquidity tokens
     let owned_locked_value =
         liquidity_token_value(&app, &vault_l_token, &base_contracts.treasury, &sender);
     assert_eq!(Uint128::from(0u64), owned_locked_value);
