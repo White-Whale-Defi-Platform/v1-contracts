@@ -1,11 +1,13 @@
-use cosmwasm_std::{Addr, StdError};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::Addr;
 
 use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
-use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, BASESTATE};
-use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT, MEMORY_CONTRACT};
+use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
+use white_whale_testing::dapp_base::common::{
+    MEMORY_CONTRACT, TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT,
+};
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
@@ -22,7 +24,7 @@ pub fn test_unsuccessfully_update_config_msg() {
     let msg = ExecuteMsg::Base(BaseExecuteMsg::UpdateConfig {
         treasury_address: None,
         trader: None,
-        memory: None
+        memory: None,
     });
 
     let info = mock_info("unauthorized", &[]);
@@ -267,7 +269,6 @@ pub fn test_successfully_set_admin_msg() {
 //         _ => panic!("Should return NotFound Err"),
 //     }
 // }
-
 
 // #[test]
 // pub fn test_successfully_update_address_book_add_and_removeaddress_msg() {

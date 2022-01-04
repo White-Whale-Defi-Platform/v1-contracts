@@ -156,7 +156,9 @@ pub fn withdraw_liquidity(
     let lp_token = &state.memory.query_asset(deps, &lp_token_id)?;
     let lp_token_address = get_identifier(lp_token);
     // Get pair address
-    let pair_address = state.memory.query_contract(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
+    let pair_address = state
+        .memory
+        .query_contract(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
 
     // Check if the treasury has enough lp tokens
     has_sufficient_balance(deps, &state.memory, &lp_token_id, treasury_address, amount)?;

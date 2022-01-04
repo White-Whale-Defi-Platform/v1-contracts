@@ -3,10 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Uint128};
 
-use cosmwasm_std::{
-    Coin, Decimal,
-};
-use cw20::{Cw20ReceiveMsg};
+use cosmwasm_std::{Coin, Decimal};
+use cw20::Cw20ReceiveMsg;
 use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -1,15 +1,15 @@
 use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128};
-use cw20::{BalanceResponse, Cw20Contract, Cw20QueryMsg};
+use cw20::{BalanceResponse, Cw20QueryMsg};
 
 use terra_multi_test::{App, ContractWrapper};
 
 use crate::msg::{DepositHookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 use crate::tests::integration_tests::common_integration::{
-    init_contracts, mint_some_whale, mock_app, store_pair_code, store_token_code,
+    init_contracts, mint_some_whale, mock_app, store_token_code,
 };
 use terra_multi_test::Executor;
 use terraswap::asset::Asset;
-use terraswap::pair::PoolResponse;
+
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
 use white_whale::treasury::vault_assets::{ValueRef, VaultAsset};
@@ -24,7 +24,7 @@ fn init_vault_dapp(
     app: &mut App,
     owner: Addr,
     base_contracts: &BaseContracts,
-    token_code_id: u64,
+    _token_code_id: u64,
 ) -> (Addr, Addr) {
     // Upload Vault DApp Contract
     let vault_dapp_contract = Box::new(

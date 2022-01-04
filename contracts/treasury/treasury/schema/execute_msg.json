@@ -3,6 +3,7 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
+      "description": "Sets the admin",
       "type": "object",
       "required": [
         "set_admin"
@@ -23,12 +24,13 @@
       "additionalProperties": false
     },
     {
+      "description": "Executes the provided messages if sender is whitelisted",
       "type": "object",
       "required": [
-        "trader_action"
+        "d_app_action"
       ],
       "properties": {
-        "trader_action": {
+        "d_app_action": {
           "type": "object",
           "required": [
             "msgs"
@@ -46,18 +48,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Adds the provided address to whitelisted dapps",
       "type": "object",
       "required": [
-        "add_trader"
+        "add_d_app"
       ],
       "properties": {
-        "add_trader": {
+        "add_d_app": {
           "type": "object",
           "required": [
-            "trader"
+            "dapp"
           ],
           "properties": {
-            "trader": {
+            "dapp": {
               "type": "string"
             }
           }
@@ -66,18 +69,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Removes the provided address from the whitelisted dapps",
       "type": "object",
       "required": [
-        "remove_trader"
+        "remove_d_app"
       ],
       "properties": {
-        "remove_trader": {
+        "remove_d_app": {
           "type": "object",
           "required": [
-            "trader"
+            "dapp"
           ],
           "properties": {
-            "trader": {
+            "dapp": {
               "type": "string"
             }
           }
@@ -86,6 +90,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Updates the VAULT_ASSETS map",
       "type": "object",
       "required": [
         "update_assets"
@@ -469,6 +474,7 @@
     "ValueRef": {
       "oneOf": [
         {
+          "description": "A pool address of an asset/asset pair Both assets must be defined in the Vault_assets state",
           "type": "object",
           "required": [
             "pool"
@@ -526,16 +532,26 @@
                 },
                 "proxy_asset": {
                   "$ref": "#/definitions/AssetInfo"
-                },
-                "proxy_pool": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/definitions/Addr"
-                    },
-                    {
-                      "type": "null"
-                    }
-                  ]
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": [
+            "external"
+          ],
+          "properties": {
+            "external": {
+              "type": "object",
+              "required": [
+                "contract_address"
+              ],
+              "properties": {
+                "contract_address": {
+                  "$ref": "#/definitions/Addr"
                 }
               }
             }
@@ -545,7 +561,7 @@
       ]
     },
     "VaultAsset": {
-      "description": "Every VaultAsset provides a way to determine its value relative to either the base asset or equivalent to a certain amount of some other asset, which in its turn can be decomposed into some base asset value.",
+      "description": "Every VaultAsset provides a way to determine its value recursivly relative to a base asset. This is subject to change as Chainlink an/or TWAP implementations roll out on terra.",
       "type": "object",
       "required": [
         "asset"

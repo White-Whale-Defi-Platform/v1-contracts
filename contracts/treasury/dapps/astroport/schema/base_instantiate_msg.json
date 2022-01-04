@@ -3,10 +3,14 @@
   "title": "BaseInstantiateMsg",
   "type": "object",
   "required": [
+    "memory_addr",
     "trader",
     "treasury_address"
   ],
   "properties": {
+    "memory_addr": {
+      "type": "string"
+    },
     "trader": {
       "type": "string"
     },

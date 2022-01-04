@@ -1,11 +1,11 @@
-use cosmwasm_std::{Empty, Uint128, Addr, attr, Timestamp};
-use cosmwasm_std::testing::{MOCK_CONTRACT_ADDR, mock_env, MockApi, MockQuerier, MockStorage};
+use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
+use cosmwasm_std::{attr, Addr, Empty, Timestamp, Uint128};
 use terra_mocks::TerraMockQuerier;
 use terra_multi_test::{App, BankKeeper, ContractWrapper, Executor};
 use terraswap::asset::{AssetInfo, PairInfo};
-use white_whale_testing::dapp_base::common::TEST_CREATOR;
-use white_whale::treasury::msg as TreasuryMsg;
 use white_whale::memory::msg as MemoryMsg;
+use white_whale::treasury::msg as TreasuryMsg;
+use white_whale_testing::dapp_base::common::TEST_CREATOR;
 
 pub struct BaseContracts {
     pub whale: Addr,
@@ -99,21 +99,20 @@ pub fn init_contracts(app: &mut App) -> BaseContracts {
         .unwrap();
 
     // Instantiate the terraswap pair
-    let (pair,lp ) = instantiate_pair( app, &owner.clone(), &whale_token_instance);
-    
+    let (pair, lp) = instantiate_pair(app, &owner.clone(), &whale_token_instance);
 
     app.update_block(|b| {
-            b.height += 17;
-            b.time = Timestamp::from_seconds(1571797419);
-        });
+        b.height += 17;
+        b.time = Timestamp::from_seconds(1571797419);
+    });
 
-    BaseContracts{
+    BaseContracts {
         treasury: treasury_instance,
         memory: memory_instance,
         whale: whale_token_instance,
         whale_ust_pair: pair,
         whale_ust: lp,
-        }
+    }
 }
 
 pub fn mock_app() -> App<Empty> {
@@ -129,7 +128,11 @@ pub fn mock_app() -> App<Empty> {
 }
 
 /// Create terraswap WHALE/UST pair
-fn instantiate_pair(mut router: &mut App, owner: &Addr, whale_token_instance: &Addr) -> (Addr, Addr) {
+fn instantiate_pair(
+    mut router: &mut App,
+    owner: &Addr,
+    whale_token_instance: &Addr,
+) -> (Addr, Addr) {
     let token_contract_code_id = store_token_code(&mut router);
 
     let pair_contract_code_id = store_pair_code(&mut router);
@@ -168,19 +171,14 @@ fn instantiate_pair(mut router: &mut App, owner: &Addr, whale_token_instance: &A
 }
 
 /// Whitelist a dapp on the treasury
-pub fn whitelist_dapp(
-    app: &mut App,
-    owner: &Addr,
-    treasury_instance: &Addr,
-    dapp_instance: &Addr,
-) {
+pub fn whitelist_dapp(app: &mut App, owner: &Addr, treasury_instance: &Addr, dapp_instance: &Addr) {
     let msg = TreasuryMsg::ExecuteMsg::AddDApp {
-        dapp: dapp_instance.to_string()
+        dapp: dapp_instance.to_string(),
     };
     let _res = app
         .execute_contract(owner.clone(), treasury_instance.clone(), &msg, &[])
         .unwrap();
-    // Check if it was added    
+    // Check if it was added
     let resp: TreasuryMsg::ConfigResponse = app
         .wrap()
         .query_wasm_smart(treasury_instance, &TreasuryMsg::QueryMsg::Config {})
@@ -190,7 +188,7 @@ pub fn whitelist_dapp(
     assert!(resp.dapps.contains(&dapp_instance.to_string()));
 }
 
-/// Mint Whale tokens 
+/// Mint Whale tokens
 pub fn mint_some_whale(
     app: &mut App,
     owner: Addr,
@@ -233,6 +231,7 @@ fn store_pair_code(app: &mut App) -> u64 {
     app.store_code(pair_contract)
 }
 
+#[allow(dead_code)]
 fn store_factory_code(app: &mut App) -> u64 {
     let factory_contract = Box::new(
         ContractWrapper::new(

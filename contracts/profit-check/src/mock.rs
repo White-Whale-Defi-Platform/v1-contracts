@@ -13,7 +13,7 @@ use terra_cosmwasm::SwapResponse;
 use terraswap::pair::SimulationResponse;
 
 use white_whale::denom::LUNA_DENOM;
-use white_whale::ust_vault::msg::{ValueResponse};
+use white_whale::ust_vault::msg::ValueResponse;
 pub const MOCK_CONTRACT_ADDR: &str = "cosmos2contract";
 
 /// All external requirements that can be injected for unit tests.
@@ -115,9 +115,9 @@ impl DummyQuerier {
 
             return SystemResult::Ok(ContractResult::Ok(binary_response.unwrap()));
         }
-        if contract_addr == &String::from("test_vault"){
-            let binary_response = to_binary(&ValueResponse{
-                total_ust_value: Uint128::new(100)
+        if contract_addr == &String::from("test_vault") {
+            let binary_response = to_binary(&ValueResponse {
+                total_ust_value: Uint128::new(100),
             });
             return SystemResult::Ok(ContractResult::Ok(binary_response.unwrap()));
         }
