@@ -41,6 +41,7 @@ pub enum ExecuteMsg {
     SetFee {
         flash_loan_fee: Option<Fee>,
         warchest_fee: Option<Fee>,
+        commission_fee: Option<Fee>,
     },
     /// Forwards the profit amount to the vault, is called by profit-check
     SendWarchestCommission { 

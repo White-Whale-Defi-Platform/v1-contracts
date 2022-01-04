@@ -180,7 +180,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
         ExecuteMsg::SetFee {
             flash_loan_fee,
             warchest_fee,
-        } => set_fee(deps, info, flash_loan_fee, warchest_fee),
+            commission_fee,
+        } => set_fee(deps, info, flash_loan_fee, warchest_fee, commission_fee),
         ExecuteMsg::AddToWhitelist { contract_addr } => add_to_whitelist(deps, info, contract_addr),
         ExecuteMsg::RemoveFromWhitelist { contract_addr } => {
             remove_from_whitelist(deps, info, contract_addr)
@@ -832,6 +833,7 @@ pub fn set_fee(
     msg_info: MessageInfo,
     flash_loan_fee: Option<Fee>,
     warchest_fee: Option<Fee>,
+    commission_fee: Option<Fee>,
 ) -> VaultResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
@@ -842,6 +844,9 @@ pub fn set_fee(
     }
     if let Some(fee) = warchest_fee {
         fee_config.warchest_fee = fee;
+    }
+    if let Some(fee) = commission_fee {
+        fee_config.commission_fee = fee;
     }
     FEE.save(deps.storage, &fee_config)?;
     Ok(Response::default())
