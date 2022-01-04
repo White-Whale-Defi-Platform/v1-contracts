@@ -26,7 +26,7 @@ pub fn instantiate(
 ) -> BaseDAppResult {
     let base_state = handle_base_init(deps.as_ref(), msg)?;
 
-    BASESTATE.save(deps.storage, &state)?;
+    BASESTATE.save(deps.storage, &base_state)?;
     ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::default())
