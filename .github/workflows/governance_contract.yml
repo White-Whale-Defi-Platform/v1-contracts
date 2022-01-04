@@ -12,7 +12,7 @@ on:
 
 defaults:
   run:
-    working-directory: contracts/gov
+    working-directory: contracts/governance
 
 jobs:
   lint:
