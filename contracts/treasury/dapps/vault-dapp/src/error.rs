@@ -32,6 +32,9 @@ pub enum VaultError {
     #[error("The provided token is not the base token")]
     WrongToken {},
 
+    #[error("It's required to use cw20 send message to add liquidity with cw20 tokens")]
+    NotUsingCW20Hook {},
+
     #[error("The provided fee is invalid")]
     InvalidFee {},
 
