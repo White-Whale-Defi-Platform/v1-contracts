@@ -85,6 +85,9 @@ fn successful_update_fee() {
         flash_loan_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
+        commission_fee: Some(Fee {
+            share: Decimal::percent(2),
+        }),
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -95,6 +98,9 @@ fn successful_update_fee() {
     let fee_response: FeeResponse = from_binary(&res).unwrap();
     let fees: VaultFee = fee_response.fees;
     assert_eq!(Decimal::percent(2), fees.warchest_fee.share);
+    assert_eq!(Decimal::percent(2), fees.commission_fee.share);
+    assert_eq!(Decimal::percent(2), fees.flash_loan_fee.share);
+
 }
 
 #[test]
@@ -130,6 +136,7 @@ fn test_init_with_non_default_vault_lp_token() {
         token_code_id: 0u64,
         warchest_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(100_000_000u64),
         vault_lp_token_name: Some(custom_token_name.clone()),
         vault_lp_token_symbol: Some(custom_token_symbol.clone()),

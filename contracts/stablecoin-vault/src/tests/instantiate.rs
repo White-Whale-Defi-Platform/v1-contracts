@@ -30,6 +30,7 @@ pub fn instantiate_msg() -> InstantiateMsg {
         token_code_id: 0u64,
         warchest_fee: Decimal::percent(WARCHEST_FEE),
         flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(100_000_000u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
@@ -51,6 +52,7 @@ pub fn mock_instantiate(deps: DepsMut) {
         token_code_id: 0u64,
         warchest_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(100_000_000u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
@@ -113,6 +115,7 @@ fn successful_update_fee() {
         warchest_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
+        commission_fee: None
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -140,6 +143,7 @@ fn unsuccessful_update_fee_unauthorized() {
         warchest_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
+        commission_fee: None
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -163,6 +167,7 @@ fn successful_update_fee_unchanged() {
     let msg = ExecuteMsg::SetFee {
         flash_loan_fee: None,
         warchest_fee: None,
+        commission_fee: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -227,6 +232,7 @@ fn test_init_with_non_default_vault_lp_token() {
         token_code_id: 10u64,
         warchest_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(1000_000_000u64),
         vault_lp_token_name: Some(custom_token_name.clone()),
         vault_lp_token_symbol: Some(custom_token_symbol.clone()),
