@@ -17,7 +17,7 @@ pub struct BaseContracts {
 
 /// Creates the basic contract instances needed to test the dapp.
 /// Whale token, Memory, Treasury, Whale/UST pair, Whale/UST LP
-pub fn init_contracts(app: &mut App) -> (BaseContracts, u64) {
+pub fn init_contracts(app: &mut App) -> BaseContracts {
     let owner = Addr::unchecked(TEST_CREATOR);
 
     // Instantiate WHALE Token Contract
@@ -106,16 +106,15 @@ pub fn init_contracts(app: &mut App) -> (BaseContracts, u64) {
         b.time = Timestamp::from_seconds(1571797419);
     });
 
-    (
-        BaseContracts {
-            treasury: treasury_instance,
-            memory: memory_instance,
-            whale: whale_token_instance,
-            whale_ust_pair: pair,
-            whale_ust: lp,
-        },
-        cw20_token_code_id,
-    )
+    
+    BaseContracts {
+        treasury: treasury_instance,
+        memory: memory_instance,
+        whale: whale_token_instance,
+        whale_ust_pair: pair,
+        whale_ust: lp,
+    }
+    
 }
 
 pub fn mock_app() -> App<Empty> {

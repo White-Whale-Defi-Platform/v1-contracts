@@ -39,7 +39,12 @@ pub fn receive_cw20(
         }
         DepositHookMsg::ProvideLiquidity {} => {
             // Construct deposit asset
-            let asset = Asset { info: AssetInfo::Token{contract_addr: msg_info.sender.to_string()}, amount: cw20_msg.amount };
+            let asset = Asset {
+                info: AssetInfo::Token {
+                    contract_addr: msg_info.sender.to_string(),
+                },
+                amount: cw20_msg.amount,
+            };
             try_provide_liquidity(deps, msg_info, asset, Some(cw20_msg.sender))
         }
     }
@@ -70,7 +75,7 @@ pub fn try_provide_liquidity(
                 msg_info.sender.clone()
             } else {
                 // Can't add liquidity with cw20 if not using the hook
-                return Err(VaultError::NotUsingCW20Hook{})
+                return Err(VaultError::NotUsingCW20Hook {});
             }
         }
     };
@@ -88,7 +93,7 @@ pub fn try_provide_liquidity(
 
     // Init vector for logging
     let mut attrs = vec![];
-    
+
     // No else needed, CW20 correct deposit amount is checked in cw20 receive fction
     attrs.push(("Action:", String::from("Deposit to vault")));
     attrs.push(("Received funds:", asset.to_string()));
