@@ -234,6 +234,7 @@ pub fn store_pair_code(app: &mut App) -> u64 {
     app.store_code(pair_contract)
 }
 
+#[allow(dead_code)]
 fn store_factory_code(app: &mut App) -> u64 {
     let factory_contract = Box::new(
         ContractWrapper::new(
