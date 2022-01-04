@@ -1,24 +1,20 @@
 use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128};
 use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg, TokenInfoResponse};
 
-use terra_multi_test::{App, ContractWrapper};
+use terra_multi_test::App;
 
-use crate::msg::{DepositHookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
+use crate::msg::{DepositHookMsg, ExecuteMsg};
 use crate::tests::integration_tests::common_integration::{
-    init_contracts, mint_some_whale, mock_app, store_token_code,
+    init_contracts, mint_some_whale, mock_app,
 };
 use crate::tests::integration_tests::instantiate::{configure_memory, init_vault_dapp};
 use terra_multi_test::Executor;
 use terraswap::asset::Asset;
 
-use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
-use white_whale::treasury::vault_assets::{ValueRef, VaultAsset};
+
 use white_whale_testing::dapp_base::common::TEST_CREATOR;
 
-use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
-
-use super::common_integration::{whitelist_dapp, BaseContracts};
 use super::update::change_base_to_whale;
 const MILLION: u64 = 1_000_000u64;
 
@@ -28,7 +24,7 @@ fn proper_initialization() {
     let sender = Addr::unchecked(TEST_CREATOR);
     let base_contracts = init_contracts(&mut app);
     configure_memory(&mut app, sender.clone(), &base_contracts);
-    let (vault_dapp, vault_l_token) = init_vault_dapp(&mut app, sender.clone(), &base_contracts);
+    let (_vault_dapp, _vault_l_token) = init_vault_dapp(&mut app, sender.clone(), &base_contracts);
 
     let resp: TreasuryMsg::ConfigResponse = app
         .wrap()
@@ -316,7 +312,11 @@ fn deposit_and_withdraw_with_cw20() {
     assert_eq!(Uint128::from(0u64 * MILLION), owned_locked_value);
 
     // User got whale and ust back
-    let sender_balance = app.wrap().query_balance(sender.clone(),"uusd").unwrap().amount;
+    let sender_balance = app
+        .wrap()
+        .query_balance(sender.clone(), "uusd")
+        .unwrap()
+        .amount;
 
     // initial balance + vaultvalue - fee
     // 100 + 50 - (50 * 0.1)
@@ -364,5 +364,4 @@ fn liquidity_token_value(app: &App, l_token: &Addr, treasury_addr: &Addr, owner:
     // value per liquidity token = total value/total supply
     let liquidity_token_value = Decimal::from_ratio(vault_res.value, total_supply);
     balance.balance * liquidity_token_value
-
 }

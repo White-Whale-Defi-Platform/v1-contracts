@@ -1,24 +1,16 @@
-use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128};
-use cw20::{BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
+use cosmwasm_std::{Addr, Uint128};
 
-use terra_multi_test::{App, ContractWrapper};
+use terra_multi_test::App;
 
-use crate::msg::{DepositHookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
-use crate::tests::integration_tests::common_integration::{
-    init_contracts, mint_some_whale, mock_app, store_token_code,
-};
+use crate::msg::ExecuteMsg;
+
 use terra_multi_test::Executor;
 use terraswap::asset::Asset;
 
-use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
 use white_whale::treasury::vault_assets::{ValueRef, VaultAsset};
-use white_whale_testing::dapp_base::common::TEST_CREATOR;
 
-use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
-
-use super::common_integration::{whitelist_dapp, BaseContracts};
-const MILLION: u64 = 1_000_000u64;
+use super::common_integration::BaseContracts;
 
 pub fn change_base_to_whale(
     app: &mut App,

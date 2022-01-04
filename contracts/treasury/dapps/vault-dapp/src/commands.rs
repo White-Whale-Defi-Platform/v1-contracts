@@ -72,7 +72,7 @@ pub fn try_provide_liquidity(
             if asset.is_native_token() {
                 // If native token, assert claimed amount is correct
                 asset.assert_sent_native_token_balance(&msg_info)?;
-                msg_info.sender.clone()
+                msg_info.sender
             } else {
                 // Can't add liquidity with cw20 if not using the hook
                 return Err(VaultError::NotUsingCW20Hook {});
@@ -92,11 +92,10 @@ pub fn try_provide_liquidity(
     deposit_info.assert(&asset.info)?;
 
     // Init vector for logging
-    let mut attrs = vec![];
-
-    // No else needed, CW20 correct deposit amount is checked in cw20 receive fction
-    attrs.push(("Action:", String::from("Deposit to vault")));
-    attrs.push(("Received funds:", asset.to_string()));
+    let attrs = vec![
+        ("Action:", String::from("Deposit to vault")),
+        ("Received funds:", asset.to_string()),
+    ];
 
     // Received deposit to vault
     let deposit: Uint128 = asset.amount;

@@ -1,16 +1,10 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{Addr, Api, Decimal, MessageInfo, StdError};
-
-use white_whale::memory::item::Memory;
-use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
-use white_whale::treasury::dapp_base::state::{BaseState, ADMIN};
-use white_whale_testing::dapp_base::common::MEMORY_CONTRACT;
+use cosmwasm_std::{Api, Decimal, MessageInfo};
 
 use crate::contract::execute;
 use crate::error::VaultError;
 use crate::msg::ExecuteMsg;
-use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
+use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::mock_instantiate;
 
 #[test]
