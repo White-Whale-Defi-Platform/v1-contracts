@@ -3,18 +3,18 @@ use cosmwasm_std::{
     WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
-use terraswap::asset::Asset;
+use terraswap::asset::{Asset};
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
+use white_whale::treasury::vault_assets::{get_identifier};
 
 use white_whale::query::terraswap::{query_asset_balance, query_pool};
 use white_whale::treasury::dapp_base::common::PAIR_POSTFIX;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale::treasury::dapp_base::state::{load_contract_addr, STATE};
 use white_whale::treasury::msg::send_to_treasury;
+use white_whale::treasury::dapp_base::state::{BASESTATE};
 
 use crate::contract::AstroportResult;
 use crate::error::AstroportError;
-use crate::state::get_asset_info;
 use crate::terraswap_msg::{asset_into_swap_msg, deposit_lp_msg};
 use crate::utils::has_sufficient_balance;
 
@@ -26,7 +26,7 @@ pub fn provide_liquidity(
     pool_id: String,
     amount: Uint128,
 ) -> AstroportResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -35,7 +35,7 @@ pub fn provide_liquidity(
     let treasury_address = &state.treasury_address;
 
     // Get pair address
-    let pair_address = load_contract_addr(deps, &pool_id)?;
+    let pair_address = state.memory.query_contract(deps, &pool_id)?;
 
     // Get pool info
     let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
@@ -44,7 +44,7 @@ pub fn provide_liquidity(
 
     let ratio = Decimal::from_ratio(asset_1.amount, asset_2.amount);
 
-    let main_asset_info = get_asset_info(deps, &main_asset_id)?;
+    let main_asset_info = state.memory.query_asset(deps, &main_asset_id)?;
     let main_asset = Asset {
         info: main_asset_info,
         amount,
@@ -89,7 +89,7 @@ pub fn detailed_provide_liquidity(
     pool_id: String,
     slippage_tolerance: Option<Decimal>,
 ) -> AstroportResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
@@ -102,7 +102,7 @@ pub fn detailed_provide_liquidity(
     let treasury_address = &state.treasury_address;
 
     // Get pair address
-    let pair_address = load_contract_addr(deps, &pool_id)?;
+    let pair_address = state.memory.query_contract(deps, &pool_id)?;
 
     // Get pool info
     let pool_info: PoolResponse = query_pool(deps, &pair_address)?;
@@ -112,7 +112,7 @@ pub fn detailed_provide_liquidity(
 
     // Iterate over provided assets
     for asset in assets {
-        let asset_info = get_asset_info(deps, &asset.0)?;
+        let asset_info = state.memory.query_asset(deps, &asset.0)?;
         // Check if pool contains the asset
         if pool_info.assets.iter().any(|a| a.info == asset_info) {
             let asset_balance = query_asset_balance(deps, &asset_info, treasury_address.clone())?;
@@ -145,19 +145,21 @@ pub fn withdraw_liquidity(
     lp_token_id: String,
     amount: Uint128,
 ) -> AstroportResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     // Sender must be trader
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
     }
     let treasury_address = &state.treasury_address;
 
-    // get lp token address
-    let lp_token_address = load_contract_addr(deps, &lp_token_id)?;
-    let pair_address = load_contract_addr(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
+    // Get lp token address
+    let lp_token = &state.memory.query_asset(deps, &lp_token_id)?;
+    let lp_token_address = get_identifier(lp_token);
+    // Get pair address
+    let pair_address = state.memory.query_contract(deps, &(lp_token_id.clone() + PAIR_POSTFIX))?;
 
     // Check if the treasury has enough lp tokens
-    has_sufficient_balance(deps, &lp_token_id, treasury_address, amount)?;
+    has_sufficient_balance(deps, &state.memory, &lp_token_id, treasury_address, amount)?;
 
     // Msg that gets called on the pair address.
     let withdraw_msg: Binary = to_binary(&Cw20HookMsg::WithdrawLiquidity {})?;
@@ -171,7 +173,7 @@ pub fn withdraw_liquidity(
 
     // Call on LP token.
     let lp_call = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: lp_token_address.into_string(),
+        contract_addr: String::from(lp_token_address),
         msg: to_binary(&cw20_msg)?,
         funds: vec![],
     });
@@ -193,7 +195,7 @@ pub fn astroport_swap(
     max_spread: Option<Decimal>,
     belief_price: Option<Decimal>,
 ) -> AstroportResult {
-    let state = STATE.load(deps.storage)?;
+    let state = BASESTATE.load(deps.storage)?;
     let treasury_address = state.treasury_address;
 
     // Check if caller is trader
@@ -202,11 +204,11 @@ pub fn astroport_swap(
     }
 
     // Check if treasury has enough to swap
-    has_sufficient_balance(deps, &offer_id, &treasury_address, amount)?;
+    has_sufficient_balance(deps, &state.memory, &offer_id, &treasury_address, amount)?;
 
-    let pair_address = load_contract_addr(deps, &pool_id)?;
+    let pair_address = state.memory.query_contract(deps, &pool_id)?;
 
-    let offer_asset_info = get_asset_info(deps, &offer_id)?;
+    let offer_asset_info = state.memory.query_asset(deps, &offer_id)?;
 
     let swap_msg = vec![asset_into_swap_msg(
         deps,

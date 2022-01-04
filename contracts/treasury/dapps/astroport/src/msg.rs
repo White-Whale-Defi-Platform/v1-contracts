@@ -2,7 +2,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg};
-use cosmwasm_std::{StdError, Uint128, Decimal};
+use cosmwasm_std::{Uint128, Decimal};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

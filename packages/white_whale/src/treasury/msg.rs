@@ -24,12 +24,6 @@ pub enum ExecuteMsg {
         to_add: Vec<VaultAsset>,
         to_remove: Vec<AssetInfo>,
     },
-    // Send asset to recipient 
-    SendAsset {
-        id: String,
-        amount: Uint128,
-        recipient: String,
-    },
 }
 
 /// MigrateMsg allows a privileged contract administrator to run
@@ -50,11 +44,11 @@ pub enum QueryMsg {
     Config {},
     /// Returns the total value of all held assets
     TotalValue {},
-    // Returns the value of one specific asset
+    /// Returns the value of one specific asset
     HoldingValue {
         identifier: String,
     },
-    // Returns the amount of specified tokens this contract holds
+    /// Returns the amount of specified tokens this contract holds
     HoldingAmount {
         identifier: String,
     },
@@ -78,12 +72,20 @@ pub struct TotalValueResponse {
 pub struct HoldingValueResponse {
     pub value: Uint128,
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 
+/// Query message to external contract to get asset value
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub struct ValueQueryMsg {
+    pub asset_info: AssetInfo,
+    pub amount: Uint128,
+}
+/// External contract value response
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ExternalValueResponse {
     pub value: Uint128,
 }
-/// Constructs the treasury dappaction message used by all dApps.
+/// Constructs the treasury dapp action message used by all dApps.
 pub fn send_to_treasury(
     msgs: Vec<CosmosMsg>,
     treasury_address: &Addr,
@@ -93,12 +95,4 @@ pub fn send_to_treasury(
         msg: to_binary(&ExecuteMsg::DAppAction { msgs })?,
         funds: vec![],
     }))
-}
-
-/// Query message to external contract
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub struct ValueQueryMsg {
-    pub asset_info: AssetInfo,
-    pub amount: Uint128,
 }

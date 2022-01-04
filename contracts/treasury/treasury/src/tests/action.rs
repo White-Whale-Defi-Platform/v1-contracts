@@ -1,13 +1,13 @@
 use std::panic;
 
 use crate::contract::{execute, instantiate};
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cw20::Cw20ExecuteMsg;
-use cosmwasm_std::{ReplyOn, SubMsg, WasmMsg,Uint128, Addr, QuerierWrapper, to_binary};
-use terraswap::asset::{AssetInfo, Asset};
-use white_whale::treasury::msg::{ExecuteMsg, InstantiateMsg};
-use crate::tests::common::TEST_CREATOR;
 use crate::error::*;
+use crate::tests::common::TEST_CREATOR;
+use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::{to_binary, Addr, QuerierWrapper, ReplyOn, SubMsg, Uint128, WasmMsg};
+use cw20::Cw20ExecuteMsg;
+use terraswap::asset::{Asset, AssetInfo};
+use white_whale::treasury::msg::{ExecuteMsg, InstantiateMsg};
 
 const NOT_ALLOWED: &str = "some_other_contract";
 
@@ -32,16 +32,21 @@ fn test_non_whitelisted() {
     }
 
     let test_token = Asset {
-            info: AssetInfo::Token{
-                contract_addr: "test_token".to_string()
-            },
-            amount: Uint128::zero()
-        };
-        
+        info: AssetInfo::Token {
+            contract_addr: "test_token".to_string(),
+        },
+        amount: Uint128::zero(),
+    };
+
     let info = mock_info(NOT_ALLOWED, &[]);
 
     let msg = ExecuteMsg::DAppAction {
-        msgs: vec![test_token.into_msg(&QuerierWrapper::new(&deps.querier),Addr::unchecked(NOT_ALLOWED)).unwrap()]
+        msgs: vec![test_token
+            .into_msg(
+                &QuerierWrapper::new(&deps.querier),
+                Addr::unchecked(NOT_ALLOWED),
+            )
+            .unwrap()],
     };
 
     match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
@@ -52,7 +57,6 @@ fn test_non_whitelisted() {
         },
     }
 }
-
 
 #[test]
 fn test_whitelisted() {
@@ -71,37 +75,45 @@ fn test_whitelisted() {
     }
 
     let test_token = Asset {
-            info: AssetInfo::Token{
-                contract_addr: "test_token".to_string()
-            },
-            amount: Uint128::from(10_000u64)
-        };
-        
+        info: AssetInfo::Token {
+            contract_addr: "test_token".to_string(),
+        },
+        amount: Uint128::from(10_000u64),
+    };
+
     let info = mock_info(TEST_CREATOR, &[]);
 
     let msg = ExecuteMsg::DAppAction {
-        msgs: vec![test_token.into_msg(&QuerierWrapper::new(&deps.querier),Addr::unchecked(TEST_CREATOR)).unwrap()]
+        msgs: vec![test_token
+            .into_msg(
+                &QuerierWrapper::new(&deps.querier),
+                Addr::unchecked(TEST_CREATOR),
+            )
+            .unwrap()],
     };
 
     match execute(deps.as_mut(), mock_env(), info.clone(), msg) {
         Ok(res) => {
-            assert_eq!(res.messages, vec![SubMsg {
-                // Create LP token
-                msg: WasmMsg::Execute {
-                    contract_addr: "test_token".to_string(),
-                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: TEST_CREATOR.to_string(),
-                        amount: Uint128::from(10_000u64)
-                    })
-                    .unwrap(),
-                    funds: vec![],
-                }
-                .into(),
-                gas_limit: None,
-                id: 0u64,
-                reply_on: ReplyOn::Never,
-            }]);
-        },
+            assert_eq!(
+                res.messages,
+                vec![SubMsg {
+                    // Create LP token
+                    msg: WasmMsg::Execute {
+                        contract_addr: "test_token".to_string(),
+                        msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                            recipient: TEST_CREATOR.to_string(),
+                            amount: Uint128::from(10_000u64)
+                        })
+                        .unwrap(),
+                        funds: vec![],
+                    }
+                    .into(),
+                    gas_limit: None,
+                    id: 0u64,
+                    reply_on: ReplyOn::Never,
+                }]
+            );
+        }
         Err(e) => panic!("Unknown error: {}", e),
     }
 }
