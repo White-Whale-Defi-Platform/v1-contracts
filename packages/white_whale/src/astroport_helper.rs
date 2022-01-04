@@ -2,14 +2,11 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use cosmwasm_std::{Addr, Uint128};
-use std::fmt;
 
 use cosmwasm_std::{
-    to_binary, BankMsg, Coin, CosmosMsg, Decimal, MessageInfo, QuerierWrapper, StdError, StdResult,
-    WasmMsg,
+    Coin, Decimal,
 };
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use terra_cosmwasm::TerraQuerier;
+use cw20::{Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

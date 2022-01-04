@@ -144,7 +144,7 @@ fn instantiate_pair(mut router: &mut App, owner: &Addr, whale_token_instance: &A
         token_code_id: token_contract_code_id
     };
 
-    let factory = router
+    let _factory = router
         .instantiate_contract(
             factory_contract_code_id,
             owner.clone(),

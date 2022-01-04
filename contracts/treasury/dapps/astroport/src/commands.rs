@@ -3,7 +3,7 @@ use cosmwasm_std::{
     WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
-use terraswap::asset::{Asset, AssetInfo};
+use terraswap::asset::{Asset};
 use terraswap::pair::{Cw20HookMsg, PoolResponse};
 use white_whale::treasury::vault_assets::{get_identifier};
 
