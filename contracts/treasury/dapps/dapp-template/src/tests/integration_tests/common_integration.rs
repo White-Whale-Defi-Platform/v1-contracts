@@ -5,7 +5,7 @@ use terra_multi_test::{App, BankKeeper, ContractWrapper, Executor};
 use terraswap::asset::{AssetInfo, PairInfo};
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
-use white_whale_testing::dapp_base::common::TEST_CREATOR;
+use crate::dapp_base::common::TEST_CREATOR;
 
 #[allow(dead_code)]
 pub struct BaseContracts {

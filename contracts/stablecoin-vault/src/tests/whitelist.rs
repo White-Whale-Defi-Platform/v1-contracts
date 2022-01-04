@@ -3,7 +3,7 @@ use crate::error::StableVaultError;
 use crate::state::STATE;
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 use crate::tests::instantiate::mock_instantiate;
-use crate::tests::mock_querier::mock_dependencies;
+use crate::tests::mock_querier::{mock_dependencies};
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Api, MessageInfo};
 use white_whale::ust_vault::msg::ExecuteMsg;

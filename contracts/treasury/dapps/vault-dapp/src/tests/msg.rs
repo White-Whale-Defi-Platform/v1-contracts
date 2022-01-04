@@ -5,7 +5,7 @@ use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
 use white_whale::treasury::dapp_base::state::{BaseState, ADMIN};
-use white_whale_testing::dapp_base::common::MEMORY_CONTRACT;
+use crate::dapp_base::common::MEMORY_CONTRACT;
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;

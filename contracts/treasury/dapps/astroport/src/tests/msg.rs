@@ -11,7 +11,7 @@ use crate::msg::ExecuteMsg;
 use crate::tests::base_mocks::mocks::mock_instantiate;
 use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT};
 use crate::tests::mock_querier::mock_dependencies;
-use white_whale_testing::dapp_base::common::MEMORY_CONTRACT;
+use crate::dapp_base::common::MEMORY_CONTRACT;
 
 /**
  * BaseExecuteMsg::UpdateConfig
