@@ -13,6 +13,7 @@ members = [
     "contracts/tokenomics/lp_emissions_proxy",
     "contracts/tokenomics/lp_emissions",
     "contracts/treasury/treasury",
+    "contracts/treasury/dapps/astroport",
     "contracts/treasury/dapps/terraswap",
     "contracts/treasury/dapps/dapp-template",
     "contracts/treasury/dapps/vault-dapp",
