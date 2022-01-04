@@ -15,3 +15,5 @@ mod deposit;
 mod whitelist;
 mod query;
 mod helpers;
+mod anchor_mock;
+mod tswap_mock;

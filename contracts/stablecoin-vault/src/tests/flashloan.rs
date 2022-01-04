@@ -6,10 +6,10 @@ use terraswap::asset::{Asset, AssetInfo};
 
 use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::denom::UST_DENOM;
-use white_whale_testing::anchor_mock::{
+use crate::tests::anchor_mock::{
     contract_anchor_mock, MockInstantiateMsg as AnchorMsg,
 };
-use white_whale_testing::tswap_mock::{
+use crate::tests::tswap_mock::{
     contract_receiver_mock, MockInstantiateMsg, set_liq_token_addr,
 };
 use white_whale::ust_vault::msg::*;
