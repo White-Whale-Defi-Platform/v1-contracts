@@ -119,34 +119,6 @@
         }
       },
       "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "send_asset"
-      ],
-      "properties": {
-        "send_asset": {
-          "type": "object",
-          "required": [
-            "amount",
-            "id",
-            "recipient"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "id": {
-              "type": "string"
-            },
-            "recipient": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
     }
   ],
   "definitions": {

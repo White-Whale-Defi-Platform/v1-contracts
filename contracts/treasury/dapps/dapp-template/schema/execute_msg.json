@@ -19,6 +19,7 @@
     "BaseExecuteMsg": {
       "oneOf": [
         {
+          "description": "Updates the base config",
           "type": "object",
           "required": [
             "update_config"
@@ -27,6 +28,12 @@
             "update_config": {
               "type": "object",
               "properties": {
+                "memory": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "trader": {
                   "type": [
                     "string",
@@ -45,46 +52,7 @@
           "additionalProperties": false
         },
         {
-          "type": "object",
-          "required": [
-            "update_address_book"
-          ],
-          "properties": {
-            "update_address_book": {
-              "type": "object",
-              "required": [
-                "to_add",
-                "to_remove"
-              ],
-              "properties": {
-                "to_add": {
-                  "type": "array",
-                  "items": {
-                    "type": "array",
-                    "items": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "maxItems": 2,
-                    "minItems": 2
-                  }
-                },
-                "to_remove": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
+          "description": "Sets a new Admin",
           "type": "object",
           "required": [
             "set_admin"

@@ -3,10 +3,10 @@
   "title": "State",
   "type": "object",
   "required": [
-    "traders"
+    "dapps"
   ],
   "properties": {
-    "traders": {
+    "dapps": {
       "type": "array",
       "items": {
         "$ref": "#/definitions/CanonicalAddr"

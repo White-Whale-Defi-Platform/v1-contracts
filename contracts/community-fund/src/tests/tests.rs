@@ -1,12 +1,7 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{
-    coin, from_binary, to_binary, Addr, Api, CosmosMsg, DepsMut, MessageInfo, Response, Uint128,
-    WasmMsg,
-};
-use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg, Cw20ReceiveMsg};
+use cosmwasm_std::{coin, from_binary, Api, DepsMut, MessageInfo, Uint128};
+
 use cw_controllers::AdminResponse;
-use terraswap::pair::Cw20HookMsg;
-use terraswap::querier::query_token_balance;
 
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 
@@ -129,7 +124,7 @@ fn unsuccessful_spend_tokens_not_enough_tokens() {
     match res {
         Err(CommunityFundError::InsufficientFunds(_, _)) => (),
         // _ => panic!("Must return CommunityFundError::InsufficientFunds"),
-        _ => ()
+        _ => (),
     }
 }
 
@@ -176,7 +171,7 @@ fn unsuccessful_burn_tokens_not_enough_tokens() {
     let mut deps = mock_dependencies(&[coin(100u128, "uwhale")]);
     mock_instantiate(deps.as_mut());
 
-    let state = STATE.load(deps.as_mut().storage).unwrap();
+    let _state = STATE.load(deps.as_mut().storage).unwrap();
 
     let info = MessageInfo {
         sender: deps.api.addr_validate(TEST_CREATOR).unwrap(),
@@ -187,7 +182,7 @@ fn unsuccessful_burn_tokens_not_enough_tokens() {
     match res {
         Err(CommunityFundError::InsufficientFunds(_, _)) => (),
         // _ => panic!("Must return CommunityFundError::InsufficientFunds"),
-        _ => ()
+        _ => (),
     }
 }
 

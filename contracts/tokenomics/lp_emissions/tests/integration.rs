@@ -3,9 +3,8 @@ use cosmwasm_std::{attr, to_binary, Addr, Decimal, Timestamp, Uint128};
 use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 use cw_multi_test::{App, BankKeeper, ContractWrapper, Executor};
 
-use white_whale::tokenomics::astro_generator_proxy::Cw20HookMsg;
 use white_whale::tokenomics::lp_emissions::{
-    ConfigResponse, Cw20HookMsg as LpCw20HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+    ConfigResponse, Cw20HookMsg as LpCw20HookMsg, ExecuteMsg, InstantiateMsg, QueryMsg,
     StakerInfoResponse, StateResponse,
 };
 
@@ -1231,7 +1230,7 @@ fn test_claim_rewards() {
     )
     .unwrap();
 
-    let mut state_resp: StateResponse = app
+    let state_resp: StateResponse = app
         .wrap()
         .query_wasm_smart(&lp_emissions_instance, &QueryMsg::State { timestamp: None })
         .unwrap();
@@ -1241,7 +1240,7 @@ fn test_claim_rewards() {
     assert_eq!(Uint128::new(900_000_000), state_resp.total_bond_amount);
     assert_eq!(Uint128::new(899999995500), state_resp.leftover);
 
-    let mut staker_resp: StakerInfoResponse = app
+    let staker_resp: StakerInfoResponse = app
         .wrap()
         .query_wasm_smart(
             &lp_emissions_instance,
@@ -1266,7 +1265,7 @@ fn test_claim_rewards() {
         b.time = Timestamp::from_seconds(1572005001u64);
     });
 
-    let mut staker_resp_before: StakerInfoResponse = app
+    let staker_resp_before: StakerInfoResponse = app
         .wrap()
         .query_wasm_smart(
             &lp_emissions_instance,
@@ -1287,7 +1286,7 @@ fn test_claim_rewards() {
     )
     .unwrap();
 
-    let mut staker_resp_after: StakerInfoResponse = app
+    let _staker_resp_after: StakerInfoResponse = app
         .wrap()
         .query_wasm_smart(
             &lp_emissions_instance,
@@ -1300,7 +1299,7 @@ fn test_claim_rewards() {
 
     assert_eq!(Uint128::new(0), staker_resp.pending_reward);
 
-    let mut staker_balance: BalanceResponse = app
+    let staker_balance: BalanceResponse = app
         .wrap()
         .query_wasm_smart(
             &whale_token_instance,
@@ -1332,7 +1331,7 @@ fn test_claim_rewards() {
     )
     .unwrap();
 
-    let mut staker_resp_after: StakerInfoResponse = app
+    let _staker_resp_after: StakerInfoResponse = app
         .wrap()
         .query_wasm_smart(
             &lp_emissions_instance,

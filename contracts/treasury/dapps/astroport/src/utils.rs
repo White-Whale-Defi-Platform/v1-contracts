@@ -7,7 +7,7 @@ use white_whale::treasury::dapp_base::error::BaseDAppError;
 pub fn has_sufficient_balance(
     deps: Deps,
     memory: &Memory,
-    offer_id: &String,
+    offer_id: &str,
     address: &Addr,
     required: Uint128,
 ) -> Result<(), BaseDAppError> {

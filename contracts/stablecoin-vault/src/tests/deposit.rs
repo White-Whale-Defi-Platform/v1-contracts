@@ -11,30 +11,27 @@ use white_whale::fee::*;
 use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::ust_vault::msg::*;
 
-use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR, };
+use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
-use crate::tests::mock_querier::mock_dependencies;
 use crate::tests::instantiate::mock_instantiate;
+use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 use terraswap::asset::{Asset, AssetInfo};
 
-
 #[test]
 pub fn mock_deposit() {
-
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
     let env = mock_env();
     let msg = ExecuteMsg::ProvideLiquidity {
         asset: Asset {
-            info: AssetInfo::NativeToken{
-                denom: String::from("uusd")
+            info: AssetInfo::NativeToken {
+                denom: String::from("uusd"),
             },
-            amount: Uint128::new(1000)
-        }
-        };
-
+            amount: Uint128::new(1000),
+        },
+    };
 
     let info = mock_info(TEST_CREATOR, &coins(1000, "uusd"));
     execute(deps.as_mut(), env, info, msg);

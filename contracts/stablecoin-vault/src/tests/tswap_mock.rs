@@ -1,7 +1,4 @@
-
-use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, Empty, Response, StdResult, Uint128,
-};
+use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Empty, Response, StdResult, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw20::{BalanceResponse, TokenInfoResponse};
 use cw_storage_plus::Map;
@@ -127,9 +124,7 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
                 MockQueryMsg::Pair {} => Ok(to_binary(&mock_pair_info())?),
                 MockQueryMsg::Pool {} => Ok(to_binary(&mock_pool_info())?),
                 MockQueryMsg::TokenInfo {} => Ok(to_binary(&mock_token_info())?),
-                MockQueryMsg::Balance { address:_ } => {
-                    Ok(to_binary(&mock_balance_info())?)
-                }
+                MockQueryMsg::Balance { address: _ } => Ok(to_binary(&mock_balance_info())?),
             }
         },
     );
