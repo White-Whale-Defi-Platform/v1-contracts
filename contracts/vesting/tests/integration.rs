@@ -1,4 +1,4 @@
-use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage};
+use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
 use cosmwasm_std::{attr, to_binary, Addr, Timestamp, Uint128};
 use cw_multi_test::{App, BankKeeper, ContractWrapper, Executor};
 use white_whale::vesting::{
@@ -110,7 +110,7 @@ fn mint_some_whale(
 #[test]
 fn proper_initialization() {
     let mut app = mock_app();
-    let (vesting_instance, whale_instance, init_msg) = init_contracts(&mut app);
+    let (vesting_instance, _whale_instance, init_msg) = init_contracts(&mut app);
 
     let resp: ConfigResponse = app
         .wrap()
@@ -185,7 +185,7 @@ fn test_transfer_ownership() {
 #[test]
 fn test_create_allocations() {
     let mut app = mock_app();
-    let (vesting_instance, whale_instance, init_msg) = init_contracts(&mut app);
+    let (vesting_instance, whale_instance, _init_msg) = init_contracts(&mut app);
 
     mint_some_whale(
         &mut app,
@@ -384,7 +384,7 @@ fn test_create_allocations() {
         Uint128::from(15_000_000_000000u64)
     );
 
-    let resp: StateResponse = app
+    let _resp: StateResponse = app
         .wrap()
         .query_wasm_smart(&vesting_instance, &QueryMsg::State {})
         .unwrap();

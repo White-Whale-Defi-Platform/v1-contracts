@@ -99,27 +99,6 @@
             }
           },
           "additionalProperties": false
-        },
-        {
-          "description": "Queries the addressbook with the privided key",
-          "type": "object",
-          "required": [
-            "address_book"
-          ],
-          "properties": {
-            "address_book": {
-              "type": "object",
-              "required": [
-                "id"
-              ],
-              "properties": {
-                "id": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "additionalProperties": false
         }
       ]
     },
@@ -128,7 +107,7 @@
       "type": "string"
     },
     "ValueQueryMsg": {
-      "description": "Query message to external contract",
+      "description": "Query message to external contract to get asset value",
       "type": "object",
       "required": [
         "amount",

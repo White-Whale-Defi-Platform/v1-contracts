@@ -1,13 +1,11 @@
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary, StdResult};
+use cosmwasm_std::from_binary;
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
 
-use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg, BaseStateResponse};
-use white_whale_testing::dapp_base::common::{
-    MEMORY_CONTRACT, TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT,
-};
+use white_whale::treasury::dapp_base::msg::{BaseQueryMsg, BaseStateResponse};
+use white_whale_testing::dapp_base::common::{MEMORY_CONTRACT, TRADER_CONTRACT, TREASURY_CONTRACT};
 
-use crate::contract::{execute, query};
-use crate::msg::{ExecuteMsg, QueryMsg};
+use crate::contract::query;
+use crate::msg::QueryMsg;
 use crate::tests::base_mocks::mocks::mock_instantiate;
 
 #[test]

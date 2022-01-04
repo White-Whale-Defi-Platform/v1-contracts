@@ -176,6 +176,12 @@
             "update_config": {
               "type": "object",
               "properties": {
+                "memory": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
                 "trader": {
                   "type": [
                     "string",
@@ -187,47 +193,6 @@
                     "string",
                     "null"
                   ]
-                }
-              }
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "description": "Updates the addressbook",
-          "type": "object",
-          "required": [
-            "update_address_book"
-          ],
-          "properties": {
-            "update_address_book": {
-              "type": "object",
-              "required": [
-                "to_add",
-                "to_remove"
-              ],
-              "properties": {
-                "to_add": {
-                  "type": "array",
-                  "items": {
-                    "type": "array",
-                    "items": [
-                      {
-                        "type": "string"
-                      },
-                      {
-                        "type": "string"
-                      }
-                    ],
-                    "maxItems": 2,
-                    "minItems": 2
-                  }
-                },
-                "to_remove": {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
                 }
               }
             }

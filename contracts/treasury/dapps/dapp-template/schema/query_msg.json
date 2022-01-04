@@ -19,6 +19,7 @@
     "BaseQueryMsg": {
       "oneOf": [
         {
+          "description": "Returns the state of the DApp",
           "type": "object",
           "required": [
             "config"
@@ -26,26 +27,6 @@
           "properties": {
             "config": {
               "type": "object"
-            }
-          },
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "required": [
-            "address_book"
-          ],
-          "properties": {
-            "address_book": {
-              "type": "object",
-              "required": [
-                "id"
-              ],
-              "properties": {
-                "id": {
-                  "type": "string"
-                }
-              }
             }
           },
           "additionalProperties": false

@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{attr, Addr, Decimal, Empty, Timestamp, Uint128};
+use cosmwasm_std::{attr, Addr, Empty, Timestamp, Uint128};
 use terra_mocks::TerraMockQuerier;
-use terra_multi_test::{App, BankKeeper, Contract, ContractWrapper, Executor};
+use terra_multi_test::{App, BankKeeper, ContractWrapper, Executor};
 use terraswap::asset::{AssetInfo, PairInfo};
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
