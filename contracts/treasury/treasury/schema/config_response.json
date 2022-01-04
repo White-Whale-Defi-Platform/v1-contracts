@@ -3,10 +3,10 @@
   "title": "ConfigResponse",
   "type": "object",
   "required": [
-    "traders"
+    "dapps"
   ],
   "properties": {
-    "traders": {
+    "dapps": {
       "type": "array",
       "items": {
         "type": "string"

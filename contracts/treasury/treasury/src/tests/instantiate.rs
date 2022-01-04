@@ -4,7 +4,7 @@ use cosmwasm_std::{Api, Uint128};
 
 use crate::contract::{execute, instantiate};
 
-use terraswap::asset::{AssetInfo, Asset};
+use terraswap::asset::{Asset, AssetInfo};
 use white_whale::treasury::msg::*;
 use white_whale::treasury::state::*;
 use white_whale::treasury::vault_assets::*;
@@ -26,7 +26,7 @@ pub fn _mock_instantiate(deps: DepsMut) {
 }
 
 /**
- * Tests successful instantiation of the contract. 
+ * Tests successful instantiation of the contract.
  * Addition of a dapp
  * Removal of a dapp
  */
@@ -41,34 +41,21 @@ fn successful_initialization() {
     assert_eq!(0, res.messages.len());
 
     let state: State = STATE.load(&deps.storage).unwrap();
-    assert_eq!(
-        state,
-        State {
-            dapps: vec![],
-        }
-    );
+    assert_eq!(state, State { dapps: vec![] });
 
     let msg = ExecuteMsg::AddDApp {
         dapp: DAPP.to_string(),
     };
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     let state: State = STATE.load(&deps.storage).unwrap();
-    assert_eq!(
-        state.dapps[0],
-        deps.api.addr_canonicalize(&DAPP).unwrap(),
-    );
+    assert_eq!(state.dapps[0], deps.api.addr_canonicalize(&DAPP).unwrap(),);
 
     let msg = ExecuteMsg::RemoveDApp {
         dapp: DAPP.to_string(),
     };
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     let state: State = STATE.load(&deps.storage).unwrap();
-    assert_eq!(
-        state,
-        State {
-            dapps: vec![],
-        }
-    );
+    assert_eq!(state, State { dapps: vec![] });
 }
 
 /**
@@ -85,55 +72,47 @@ fn successful_asset_update() {
     assert_eq!(0, res.messages.len());
 
     let state: State = STATE.load(&deps.storage).unwrap();
-    assert_eq!(
-        state,
-        State {
-            dapps: vec![],
-        }
-    );
+    assert_eq!(state, State { dapps: vec![] });
 
-    let test_native_asset = VaultAsset{
+    let test_native_asset = VaultAsset {
         asset: Asset {
-            info: AssetInfo::NativeToken{
-                denom: "base_asset".to_string()
+            info: AssetInfo::NativeToken {
+                denom: "base_asset".to_string(),
             },
-            amount: Uint128::zero()
+            amount: Uint128::zero(),
         },
-        value_reference: None
+        value_reference: None,
     };
 
-    let test_token_asset= VaultAsset{
+    let test_token_asset = VaultAsset {
         asset: Asset {
-            info: AssetInfo::Token{
-                contract_addr: "test_token".to_string()
+            info: AssetInfo::Token {
+                contract_addr: "test_token".to_string(),
             },
-            amount: Uint128::zero()
+            amount: Uint128::zero(),
         },
-        value_reference: None
+        value_reference: None,
     };
-
 
     let msg = ExecuteMsg::UpdateAssets {
-        to_add: vec![test_native_asset.clone(),test_token_asset.clone()],
+        to_add: vec![test_native_asset.clone(), test_token_asset.clone()],
         to_remove: vec![],
     };
 
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
 
     // Get an asset
-    let asset_1: VaultAsset = VAULT_ASSETS.load(&deps.storage, get_identifier(&test_native_asset.asset.info)).unwrap();
-    assert_eq!(
-        test_native_asset,
-        asset_1,
-    );
+    let asset_1: VaultAsset = VAULT_ASSETS
+        .load(&deps.storage, get_identifier(&test_native_asset.asset.info))
+        .unwrap();
+    assert_eq!(test_native_asset, asset_1,);
     // Get the other asset
-    let asset_2: VaultAsset = VAULT_ASSETS.load(&deps.storage, get_identifier(&test_token_asset.asset.info)).unwrap();
-    assert_eq!(
-        test_token_asset,
-        asset_2,
-    );
+    let asset_2: VaultAsset = VAULT_ASSETS
+        .load(&deps.storage, get_identifier(&test_token_asset.asset.info))
+        .unwrap();
+    assert_eq!(test_token_asset, asset_2,);
 
-    // Remove token 
+    // Remove token
     let msg = ExecuteMsg::UpdateAssets {
         to_add: vec![],
         to_remove: vec![test_token_asset.asset.info.clone()],
@@ -141,5 +120,7 @@ fn successful_asset_update() {
 
     let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-    let _failed_load = VAULT_ASSETS.load(&deps.storage, get_identifier(&test_token_asset.asset.info)).unwrap_err();
+    let _failed_load = VAULT_ASSETS
+        .load(&deps.storage, get_identifier(&test_token_asset.asset.info))
+        .unwrap_err();
 }

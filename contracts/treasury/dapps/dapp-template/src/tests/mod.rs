@@ -1,5 +1,5 @@
+mod base_mocks;
 mod instantiate;
+mod integration_tests;
 mod msg;
 mod query;
-mod base_mocks;
-mod integration_tests;

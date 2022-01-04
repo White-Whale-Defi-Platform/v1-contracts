@@ -2,16 +2,16 @@
 
 mod callback;
 mod common;
+pub mod common_integration;
 mod flashloan;
 pub mod instantiate;
-pub mod common_integration;
 
+mod integration_test;
 mod mock_querier;
 mod pool;
-mod integration_test;
 
-mod state;
 mod deposit;
-mod whitelist;
-mod query;
 mod helpers;
+mod query;
+mod state;
+mod whitelist;

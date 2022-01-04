@@ -3,12 +3,12 @@ use cosmwasm_std::{
     StdError, StdResult, Uint128, WasmQuery,
 };
 
-use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg};
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};
 use white_whale::profit_check::msg::{
     ExecuteMsg, InstantiateMsg, LastBalanceResponse, LastProfitResponse, QueryMsg, VaultResponse,
 };
+use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg};
 /*
     Profit check is used by the ust vault to see if a proposed trade is indeed profitable.
     before_trade is called before the trade to set the account balance
@@ -144,9 +144,9 @@ pub fn get_vault_value(deps: Deps) -> StdResult<Uint128> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_env};
+    use crate::mock::mock_dependencies;
+    use cosmwasm_std::testing::mock_env;
     use cosmwasm_std::{from_binary, Api, Coin};
-    use crate::mock::{mock_dependencies};
 
     #[test]
     fn proper_initialization() {
@@ -338,7 +338,6 @@ mod tests {
         .unwrap();
         assert_eq!(0, res.messages.len())
     }
-
 
     #[test]
     fn test_check_before_trade_fails_if_unauthorized() {

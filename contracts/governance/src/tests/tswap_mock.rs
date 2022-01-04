@@ -70,6 +70,7 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
+#[allow(unused_must_use)]
 pub fn mock_pair_info() {
     to_binary(&PairResponse {
         asset_infos: [
@@ -85,6 +86,7 @@ pub fn mock_pair_info() {
     });
 }
 
+#[allow(unused_must_use)]
 pub fn mock_pool_info() {
     to_binary(&PoolResponse {
         assets: [

@@ -3,25 +3,17 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "anchor_min_withdraw_amount",
     "anchor_money_market_address",
     "asset_info",
     "aust_address",
-    "community_fund_addr",
-    "community_fund_fee",
-    "max_community_fund_fee",
-    "pool_address",
+    "flash_loan_fee",
     "profit_check_address",
-    "seignorage_address",
-    "slippage",
+    "stable_cap",
     "token_code_id",
     "warchest_addr",
     "warchest_fee"
   ],
   "properties": {
-    "anchor_min_withdraw_amount": {
-      "$ref": "#/definitions/Uint128"
-    },
     "anchor_money_market_address": {
       "type": "string"
     },
@@ -31,31 +23,31 @@
     "aust_address": {
       "type": "string"
     },
-    "community_fund_addr": {
-      "type": "string"
-    },
-    "community_fund_fee": {
+    "flash_loan_fee": {
       "$ref": "#/definitions/Decimal"
-    },
-    "max_community_fund_fee": {
-      "$ref": "#/definitions/Uint128"
-    },
-    "pool_address": {
-      "type": "string"
     },
     "profit_check_address": {
       "type": "string"
     },
-    "seignorage_address": {
-      "type": "string"
-    },
-    "slippage": {
-      "$ref": "#/definitions/Decimal"
+    "stable_cap": {
+      "$ref": "#/definitions/Uint128"
     },
     "token_code_id": {
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "vault_lp_token_name": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "vault_lp_token_symbol": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "warchest_addr": {
       "type": "string"

@@ -1,23 +1,19 @@
-use cosmwasm_std::{Addr, BlockInfo, coins, Timestamp, Uint128};
 use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::{coins, Addr, BlockInfo, Timestamp, Uint128};
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
 
-use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::denom::UST_DENOM;
-use white_whale_testing::anchor_mock::{
-    contract_anchor_mock, MockInstantiateMsg as AnchorMsg,
-};
-use white_whale_testing::tswap_mock::{
-    contract_receiver_mock, MockInstantiateMsg, set_liq_token_addr,
-};
-use white_whale::ust_vault::msg::*;
+use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
-
-use crate::contract::{
-    DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL, execute,
+use white_whale::ust_vault::msg::*;
+use white_whale_testing::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
+use white_whale_testing::tswap_mock::{
+    contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
 };
+
+use crate::contract::{execute, DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
 use crate::error::StableVaultError;
 use crate::state::STATE;
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
@@ -310,7 +306,6 @@ fn unsuccessful_flashloan_broke() {
     }
 }
 
-
 #[test]
 fn successful_flashloan_without_withdrawing_aust() {
     // Create the owner account
@@ -527,6 +522,4 @@ fn successful_flashloan_without_withdrawing_aust() {
     };
 
     let _ = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
-
 }
-

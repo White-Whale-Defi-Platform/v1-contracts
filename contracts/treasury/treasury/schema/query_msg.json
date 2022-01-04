@@ -3,6 +3,7 @@
   "title": "QueryMsg",
   "oneOf": [
     {
+      "description": "Returns the treasury Config",
       "type": "object",
       "required": [
         "config"
@@ -15,6 +16,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns the total value of all held assets",
       "type": "object",
       "required": [
         "total_value"
@@ -27,6 +29,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns the value of one specific asset",
       "type": "object",
       "required": [
         "holding_value"
@@ -47,6 +50,28 @@
       "additionalProperties": false
     },
     {
+      "description": "Returns the amount of specified tokens this contract holds",
+      "type": "object",
+      "required": [
+        "holding_amount"
+      ],
+      "properties": {
+        "holding_amount": {
+          "type": "object",
+          "required": [
+            "identifier"
+          ],
+          "properties": {
+            "identifier": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Returns the VAULT_ASSETS value for the specified key",
       "type": "object",
       "required": [
         "vault_asset_config"

@@ -18,11 +18,11 @@ use white_whale::tax::deduct_tax;
 use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
 
-use cw2::{set_contract_version, get_contract_version};
+use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use crate::error::StableArbError;
-use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, QueryMsg, MigrateMsg};
+use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 
 use crate::querier::query_market_price;
 

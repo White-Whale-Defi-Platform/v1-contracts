@@ -1,15 +1,18 @@
-
-use cosmwasm_std::{DepsMut, Deps, MessageInfo, Response, StdResult};
+use cosmwasm_std::{Deps, DepsMut, MessageInfo, Response, StdResult};
 
 use crate::memory::item::Memory;
 use crate::treasury::dapp_base::common::BaseDAppResult;
-use crate::treasury::dapp_base::msg::{BaseExecuteMsg,BaseInstantiateMsg};
+use crate::treasury::dapp_base::msg::{BaseExecuteMsg, BaseInstantiateMsg};
 use crate::treasury::dapp_base::state::{ADMIN, BASESTATE};
 
 use super::state::BaseState;
 
 /// Handles the common base execute messages
-pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecuteMsg) -> BaseDAppResult {
+pub fn handle_base_message(
+    deps: DepsMut,
+    info: MessageInfo,
+    message: BaseExecuteMsg,
+) -> BaseDAppResult {
     match message {
         BaseExecuteMsg::UpdateConfig {
             treasury_address,
@@ -24,15 +27,15 @@ pub fn handle_base_message(deps: DepsMut, info: MessageInfo, message: BaseExecut
 pub fn handle_base_init(deps: Deps, msg: BaseInstantiateMsg) -> StdResult<BaseState> {
     // Memory
     let memory = Memory {
-        address: deps.api.addr_validate(&msg.memory_addr)?
+        address: deps.api.addr_validate(&msg.memory_addr)?,
     };
     // Base state
     let state = BaseState {
         treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
         trader: deps.api.addr_validate(&msg.trader)?,
-        memory
+        memory,
     };
-    
+
     Ok(state)
 }
 
