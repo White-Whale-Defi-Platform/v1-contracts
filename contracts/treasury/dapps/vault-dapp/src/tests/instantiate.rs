@@ -31,7 +31,6 @@ pub fn mock_instantiate(deps: DepsMut) {
         .expect("contract successfully handles InstantiateMsg");
 }
 
-
 /**
  * Tests successful instantiation of the contract.
  */
@@ -45,7 +44,9 @@ fn successful_initialization() {
         BaseState {
             treasury_address: deps.api.addr_validate(&TREASURY_CONTRACT).unwrap(),
             trader: deps.api.addr_validate(&TRADER_CONTRACT).unwrap(),
-            memory: Memory { address: deps.api.addr_validate(&MEMORY_CONTRACT).unwrap()}
+            memory: Memory {
+                address: deps.api.addr_validate(&MEMORY_CONTRACT).unwrap()
+            }
         }
     );
 }

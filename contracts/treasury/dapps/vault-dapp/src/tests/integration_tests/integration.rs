@@ -1,5 +1,5 @@
 use cosmwasm_std::{to_binary, Addr, Coin, Decimal, Uint128};
-use cw20::{BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
+use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg, TokenInfoResponse};
 
 use terra_multi_test::{App, ContractWrapper};
 
@@ -7,7 +7,7 @@ use crate::msg::{DepositHookMsg, ExecuteMsg, InstantiateMsg, QueryMsg, StateResp
 use crate::tests::integration_tests::common_integration::{
     init_contracts, mint_some_whale, mock_app, store_token_code,
 };
-use crate::tests::integration_tests::instantiate::{init_vault_dapp, configure_memory};
+use crate::tests::integration_tests::instantiate::{configure_memory, init_vault_dapp};
 use terra_multi_test::Executor;
 use terraswap::asset::Asset;
 
@@ -19,6 +19,7 @@ use white_whale_testing::dapp_base::common::TEST_CREATOR;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 
 use super::common_integration::{whitelist_dapp, BaseContracts};
+use super::update::change_base_to_whale;
 const MILLION: u64 = 1_000_000u64;
 
 #[test]
@@ -26,7 +27,7 @@ fn proper_initialization() {
     let mut app = mock_app();
     let sender = Addr::unchecked(TEST_CREATOR);
     let base_contracts = init_contracts(&mut app);
-    configure_memory(&mut app, sender.clone(), &base_contracts );
+    configure_memory(&mut app, sender.clone(), &base_contracts);
     let (vault_dapp, vault_l_token) = init_vault_dapp(&mut app, sender.clone(), &base_contracts);
 
     let resp: TreasuryMsg::ConfigResponse = app
@@ -38,11 +39,11 @@ fn proper_initialization() {
 }
 
 #[test]
-fn provide_ust_liquidity() {
+fn deposit_and_withdraw_with_native_token() {
     let mut app = mock_app();
     let sender = Addr::unchecked(TEST_CREATOR);
     let base_contracts = init_contracts(&mut app);
-    configure_memory(&mut app, sender.clone(), &base_contracts );
+    configure_memory(&mut app, sender.clone(), &base_contracts);
     let (vault_dapp, vault_l_token) = init_vault_dapp(&mut app, sender.clone(), &base_contracts);
 
     // give sender some uusd
@@ -195,17 +196,25 @@ fn provide_ust_liquidity() {
         ((2_000u64 * MILLION) as f64 * 0.9f64) as u128,
         sender_whale_balance.u128()
     );
+}
 
-    // Change deposit asset to WHALE
-    app.execute_contract(
-        sender.clone(),
-        vault_dapp.clone(),
-        &ExecuteMsg::UpdatePool {
-            deposit_asset: Some("whale".to_string()),
-            assets_to_add: vec![],
-            assets_to_remove: vec![],
-        },
-        &[],
+#[test]
+fn deposit_and_withdraw_with_cw20() {
+    let mut app = mock_app();
+    let sender = Addr::unchecked(TEST_CREATOR);
+    let base_contracts = init_contracts(&mut app);
+    configure_memory(&mut app, sender.clone(), &base_contracts);
+    let (vault_dapp, vault_l_token) = init_vault_dapp(&mut app, sender.clone(), &base_contracts);
+    // Change the base token to whale
+    change_base_to_whale(&mut app, sender.clone(), &base_contracts, &vault_dapp);
+
+    // give sender some uusd
+    app.init_bank_balance(
+        &sender,
+        vec![Coin {
+            denom: "uusd".to_string(),
+            amount: Uint128::from(100u64 * MILLION),
+        }],
     )
     .unwrap();
 
@@ -246,6 +255,87 @@ fn provide_ust_liquidity() {
         }],
     )
     .unwrap_err();
+
+    mint_some_whale(
+        &mut app,
+        sender.clone(),
+        base_contracts.whale.clone(),
+        Uint128::from(10u64 * MILLION),
+        sender.to_string(),
+    );
+
+    // Deposit with WHALE
+    app.execute_contract(
+        sender.clone(),
+        base_contracts.whale.clone(),
+        &Cw20ExecuteMsg::Send {
+            contract: vault_dapp.to_string(),
+            amount: Uint128::from(10u64 * MILLION),
+            msg: to_binary(&DepositHookMsg::ProvideLiquidity {}).unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // All tokens are claimed by sender as he's only provider
+    let owned_locked_value =
+        liquidity_token_value(&app, &vault_l_token, &base_contracts.treasury, &sender);
+    // Base token is whale so it's worth 10 whale
+    assert_eq!(Uint128::from(10u64 * MILLION), owned_locked_value);
+
+    // Add 50 UST to vault, value should be 110 WHALE
+    app.init_bank_balance(
+        &base_contracts.treasury,
+        vec![Coin {
+            denom: "uusd".to_string(),
+            amount: Uint128::from(50u64 * MILLION),
+        }],
+    )
+    .unwrap();
+
+    let owned_locked_value =
+        liquidity_token_value(&app, &vault_l_token, &base_contracts.treasury, &sender);
+    assert_eq!(Uint128::from(110u64 * MILLION), owned_locked_value);
+
+    // Withdraw all from vault.
+    app.execute_contract(
+        sender.clone(),
+        vault_l_token.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: vault_dapp.to_string(),
+            amount: Uint128::from(10u64 * MILLION),
+            msg: to_binary(&DepositHookMsg::WithdrawLiquidity {}).unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    let owned_locked_value =
+        liquidity_token_value(&app, &vault_l_token, &base_contracts.treasury, &sender);
+    // owned value is 0
+    assert_eq!(Uint128::from(0u64 * MILLION), owned_locked_value);
+
+    // User got whale and ust back
+    let sender_balance = app.wrap().query_balance(sender.clone(),"uusd").unwrap().amount;
+
+    // initial balance + vaultvalue - fee
+    // 100 + 50 - (50 * 0.1)
+    // 100 + 45
+    assert_eq!(Uint128::from(145u64 * MILLION), sender_balance);
+
+    // Check whale recieved by withdrawer
+    let whale_balance: BalanceResponse = app
+        .wrap()
+        .query_wasm_smart(
+            &base_contracts.whale,
+            &Cw20QueryMsg::Balance {
+                address: sender.to_string(),
+            },
+        )
+        .unwrap();
+
+    // deposit - 10% fee
+    assert_eq!(Uint128::from(9u64 * MILLION), whale_balance.balance);
 }
 
 fn liquidity_token_value(app: &App, l_token: &Addr, treasury_addr: &Addr, owner: &Addr) -> Uint128 {
@@ -274,4 +364,5 @@ fn liquidity_token_value(app: &App, l_token: &Addr, treasury_addr: &Addr, owner:
     // value per liquidity token = total value/total supply
     let liquidity_token_value = Decimal::from_ratio(vault_res.value, total_supply);
     balance.balance * liquidity_token_value
+
 }

@@ -106,7 +106,6 @@ pub fn init_contracts(app: &mut App) -> BaseContracts {
         b.time = Timestamp::from_seconds(1571797419);
     });
 
-    
     BaseContracts {
         treasury: treasury_instance,
         memory: memory_instance,
@@ -114,7 +113,6 @@ pub fn init_contracts(app: &mut App) -> BaseContracts {
         whale_ust_pair: pair,
         whale_ust: lp,
     }
-    
 }
 
 pub fn mock_app() -> App<Empty> {
