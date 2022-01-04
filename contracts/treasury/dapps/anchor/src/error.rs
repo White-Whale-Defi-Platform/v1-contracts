@@ -13,10 +13,4 @@ pub enum AnchorError {
 
     #[error("{0}")]
     BaseDAppError(#[from] BaseDAppError),
-
-    #[error("You must provide exactly two assets when adding liquidity")]
-    NotTwoAssets {},
-
-    #[error("{} is not part of the provided pool", id)]
-    NotInPool { id: String },
 }

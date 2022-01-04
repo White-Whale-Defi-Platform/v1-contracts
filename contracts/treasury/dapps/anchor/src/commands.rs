@@ -7,12 +7,10 @@ use white_whale::treasury::msg::send_to_treasury;
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::treasury::dapp_base::state::BASESTATE;
-
+use white_whale::treasury::dapp_base::common::ANCHOR_MONEY_MARKET_ID
 use crate::contract::AnchorResult;
 
 // Add the custom dapp-specific message commands here
-const ANCHOR_MONEY_MARKET_ID: &str = "anchor";
-const AUST_TOKEN_ID: &str = "aUST";
 
 /// Constructs and forwards the anchor deposit_stable message for the treasury
 /// The scenario covered here is such that there is UST in the treasury (or whatever similar framework you attach this dapp too)
@@ -22,7 +20,7 @@ pub fn handle_deposit_stable(
     deps: Deps,
     _env: Env,
     msg_info: MessageInfo,
-    deposit_amount: Uint128
+    ust_deposit_amount: Uint128
 ) -> AnchorResult {
     let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
@@ -34,8 +32,6 @@ pub fn handle_deposit_stable(
 
     // Get anchor money market address
     let anchor_address = state.memory.query_contract(deps, &String::from(ANCHOR_MONEY_MARKET_ID))?;
-    // Get aUST address
-    let aust_address = state.memory.query_contract(deps, &String::from(AUST_TOKEN_ID))?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
     // Prepare a deposit_msg using the provided info. 
@@ -58,7 +54,7 @@ pub fn handle_redeem_stable(
     deps: Deps,
     _env: Env,
     info: MessageInfo,
-    to_withdraw: Uint128
+    ust_to_withdraw: Uint128
 ) -> AnchorResult {
     let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
@@ -70,9 +66,6 @@ pub fn handle_redeem_stable(
 
     // Get anchor money market address
     let anchor_address = state.memory.query_contract(deps, &String::from(ANCHOR_MONEY_MARKET_ID))?;
-
-    // Get aUST address
-    let aust_address = state.memory.query_contract(deps, &String::from(AUST_TOKEN_ID))?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
 
