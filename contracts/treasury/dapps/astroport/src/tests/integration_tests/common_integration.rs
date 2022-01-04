@@ -2,7 +2,7 @@ use cosmwasm_std::{Empty, Uint128, Addr, attr, Timestamp};
 use cosmwasm_std::testing::{MOCK_CONTRACT_ADDR, mock_env, MockApi, MockQuerier, MockStorage};
 use terra_mocks::TerraMockQuerier;
 use terra_multi_test::{App, BankKeeper, ContractWrapper, Executor};
-use terraswap::asset::{AssetInfo, PairInfo};
+use astroport::asset::{AssetInfo, PairInfo};
 use white_whale_testing::dapp_base::common::TEST_CREATOR;
 use white_whale::treasury::msg as TreasuryMsg;
 use white_whale::memory::msg as MemoryMsg;
@@ -134,16 +134,39 @@ fn instantiate_pair(mut router: &mut App, owner: &Addr, whale_token_instance: &A
 
     let pair_contract_code_id = store_pair_code(&mut router);
 
-    let msg = terraswap::pair::InstantiateMsg {
+    let factory_contract_code_id = store_factory_code(&mut router);
+
+    let factory_msg = astroport::factory::InstantiateMsg{
+        fee_address: None,
+        generator_address: None,
+        owner: owner.to_string(),
+        pair_configs: vec![], 
+        token_code_id: token_contract_code_id
+    };
+
+    let factory = router
+        .instantiate_contract(
+            factory_contract_code_id,
+            owner.clone(),
+            &factory_msg,
+            &[],
+            String::from("Factory"),
+            None,
+        )
+        .unwrap();
+
+    let msg = astroport::pair::InstantiateMsg {
         asset_infos: [
             AssetInfo::NativeToken {
                 denom: "uusd".to_string(),
             },
             AssetInfo::Token {
-                contract_addr: whale_token_instance.to_string(),
+                contract_addr: whale_token_instance.clone(),
             },
         ],
         token_code_id: token_contract_code_id,
+        factory_addr: Addr::unchecked("factory"),
+        init_params: None
     };
 
     let pair = router
@@ -159,10 +182,10 @@ fn instantiate_pair(mut router: &mut App, owner: &Addr, whale_token_instance: &A
 
     let res: PairInfo = router
         .wrap()
-        .query_wasm_smart(pair.clone(), &terraswap::pair::QueryMsg::Pair {})
+        .query_wasm_smart(pair.clone(), &astroport::pair::QueryMsg::Pair {})
         .unwrap();
-    assert_eq!("Contract #3", res.contract_addr);
-    assert_eq!("Contract #4", res.liquidity_token);
+    assert_eq!("Contract #4", res.contract_addr.to_string());
+    assert_eq!("Contract #5", res.liquidity_token.to_string());
 
     (pair, Addr::unchecked(res.liquidity_token))
 }

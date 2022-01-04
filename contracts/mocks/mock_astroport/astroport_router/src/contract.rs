@@ -48,7 +48,7 @@ pub fn instantiate(
     CONFIG.save(
         deps.storage,
         &Config {
-            astroport_factory: addr_validate_to_lower(deps.api, &msg.astroport_factory)?,
+            astroport_factory: deps.api.addr_validate(&msg.astroport_factory)?,
         },
     )?;
 

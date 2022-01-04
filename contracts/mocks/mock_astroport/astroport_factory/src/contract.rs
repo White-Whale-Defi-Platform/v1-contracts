@@ -53,7 +53,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let mut config = Config {
-        owner: addr_validate_to_lower(deps.api, &msg.owner)?,
+        owner: deps.api.addr_validate(&msg.owner)?,
         token_code_id: msg.token_code_id,
         fee_address: None,
         generator_address: None,
@@ -386,7 +386,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractE
             StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
         })?;
 
-    let pair_contract = addr_validate_to_lower(deps.api, res.get_contract_address())?;
+    let pair_contract = deps.api.addr_validate(res.get_contract_address())?;
 
     PAIRS.save(deps.storage, &tmp.pair_key, &pair_contract)?;
 

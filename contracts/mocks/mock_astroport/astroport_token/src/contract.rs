@@ -51,7 +51,7 @@ pub fn instantiate(
 
     let mint = match msg.mint {
         Some(m) => Some(MinterData {
-            minter: addr_validate_to_lower(deps.api, &m.minter)?,
+            minter: deps.api.addr_validate(&m.minter)?,
             cap: m.cap,
         }),
         None => None,
