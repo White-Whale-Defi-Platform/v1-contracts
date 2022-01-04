@@ -15,7 +15,8 @@ use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;
 use white_whale::profit_check::msg::LastBalanceResponse;
 use white_whale::query::anchor::EpochStateResponse;
-use crate::tests::::anchor_mock::mock_epoch_state;
+use crate::tests::anchor_mock::mock_epoch_state;
+use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, SwapResponse, TerraQueryWrapper, TerraRoute};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.

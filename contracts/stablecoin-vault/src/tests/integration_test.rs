@@ -11,8 +11,8 @@ use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
 use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::ust_vault::msg::ExecuteMsg;
-use crate::tests::::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
-use crate::tests::::tswap_mock::{
+use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
+use crate::tests::tswap_mock::{
     contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
 };
 

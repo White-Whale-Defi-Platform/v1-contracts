@@ -9,7 +9,7 @@ use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
 use white_whale::ust_vault::msg::*;
 use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
-use crate::tests::::tswap_mock::{
+use crate::tests::tswap_mock::{
     contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
 };
 
