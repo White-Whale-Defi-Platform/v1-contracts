@@ -24,6 +24,7 @@ impl Fee {
 pub struct VaultFee {
     pub flash_loan_fee: Fee,
     pub warchest_fee: Fee,
+    pub commission_fee: Fee,
     pub warchest_addr: CanonicalAddr,
 }
 

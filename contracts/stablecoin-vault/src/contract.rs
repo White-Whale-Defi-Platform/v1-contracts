@@ -77,6 +77,9 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
             warchest_fee: Fee {
                 share: msg.warchest_fee,
             },
+            commission_fee: Fee {
+                share: msg.commission_fee,
+            },
             warchest_addr: deps.api.addr_canonicalize(&msg.warchest_addr)?,
         },
     )?;
@@ -177,7 +180,8 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
         ExecuteMsg::SetFee {
             flash_loan_fee,
             warchest_fee,
-        } => set_fee(deps, info, flash_loan_fee, warchest_fee),
+            commission_fee,
+        } => set_fee(deps, info, flash_loan_fee, warchest_fee, commission_fee),
         ExecuteMsg::AddToWhitelist { contract_addr } => add_to_whitelist(deps, info, contract_addr),
         ExecuteMsg::RemoveFromWhitelist { contract_addr } => {
             remove_from_whitelist(deps, info, contract_addr)
@@ -196,6 +200,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             profit_check_address,
             allow_non_whitelisted,
         ),
+        ExecuteMsg::SendWarchestCommission { profit } => {
+            send_commissions(deps.as_ref(), info, profit)
+        }
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
 }
@@ -524,6 +531,32 @@ pub fn try_withdraw_liquidity(
         .add_attributes(attrs))
 }
 
+/// Sends the commission fee which is a function of the profit made by the contract, forwarded by the profit-check contract
+fn send_commissions(deps: Deps, info: MessageInfo, profit: Uint128) -> VaultResult {
+    let state = STATE.load(deps.storage)?;
+    let fees = FEE.load(deps.storage)?;
+    // Check if sender is profit check contract
+    if deps.api.addr_humanize(&state.profit_check_address)? != info.sender {
+        return Err(StableVaultError::Unauthorized {});
+    }
+
+    let commission_amount = fees.commission_fee.compute(profit);
+
+    // Construct commission msg
+    let refund_asset = Asset {
+        info: AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        },
+        amount: commission_amount,
+    };
+    let commission_msg =
+        refund_asset.into_msg(&deps.querier, deps.api.addr_humanize(&fees.warchest_addr)?)?;
+
+    Ok(Response::new()
+        .add_attribute("treasury commission:", commission_amount.to_string())
+        .add_message(commission_msg))
+}
+
 //----------------------------------------------------------------------------------------
 //  HELPER FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
@@ -807,6 +840,7 @@ pub fn set_fee(
     msg_info: MessageInfo,
     flash_loan_fee: Option<Fee>,
     warchest_fee: Option<Fee>,
+    commission_fee: Option<Fee>,
 ) -> VaultResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
@@ -817,6 +851,9 @@ pub fn set_fee(
     }
     if let Some(fee) = warchest_fee {
         fee_config.warchest_fee = fee;
+    }
+    if let Some(fee) = commission_fee {
+        fee_config.commission_fee = fee;
     }
     FEE.save(deps.storage, &fee_config)?;
     Ok(Response::default())
