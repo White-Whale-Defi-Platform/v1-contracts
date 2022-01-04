@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{Addr, StdError};
+use cosmwasm_std::Addr;
 
 use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::error::BaseDAppError;

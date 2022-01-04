@@ -1,15 +1,14 @@
 #![allow(dead_code)]
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Decimal, Empty,
-    OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Decimal, OwnedDeps,
+    Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use cosmwasm_storage::to_length_prefixed;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
 use terra_cosmwasm::{
-    SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuerier, TerraQuery, TerraQueryWrapper,
-    TerraRoute,
+    SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute,
 };
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;

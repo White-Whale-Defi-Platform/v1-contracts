@@ -17,54 +17,6 @@
     {
       "type": "object",
       "required": [
-        "above_peg"
-      ],
-      "properties": {
-        "above_peg": {
-          "type": "object",
-          "required": [
-            "amount",
-            "uaust_withdraw_amount"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Coin"
-            },
-            "uaust_withdraw_amount": {
-              "$ref": "#/definitions/Uint128"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "below_peg"
-      ],
-      "properties": {
-        "below_peg": {
-          "type": "object",
-          "required": [
-            "amount",
-            "uaust_withdraw_amount"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Coin"
-            },
-            "uaust_withdraw_amount": {
-              "$ref": "#/definitions/Uint128"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "provide_liquidity"
       ],
       "properties": {
@@ -85,37 +37,17 @@
     {
       "type": "object",
       "required": [
-        "anchor_deposit"
+        "set_stable_cap"
       ],
       "properties": {
-        "anchor_deposit": {
+        "set_stable_cap": {
           "type": "object",
           "required": [
-            "amount"
+            "stable_cap"
           ],
           "properties": {
-            "amount": {
-              "$ref": "#/definitions/Coin"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "set_slippage"
-      ],
-      "properties": {
-        "set_slippage": {
-          "type": "object",
-          "required": [
-            "slippage"
-          ],
-          "properties": {
-            "slippage": {
-              "$ref": "#/definitions/Decimal"
+            "stable_cap": {
+              "$ref": "#/definitions/Uint128"
             }
           }
         }
@@ -131,10 +63,10 @@
         "set_fee": {
           "type": "object",
           "properties": {
-            "community_fund_fee": {
+            "flash_loan_fee": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/CappedFee"
+                  "$ref": "#/definitions/Fee"
                 },
                 {
                   "type": "null"
@@ -179,19 +111,109 @@
     {
       "type": "object",
       "required": [
-        "set_trader"
+        "add_to_whitelist"
       ],
       "properties": {
-        "set_trader": {
+        "add_to_whitelist": {
           "type": "object",
           "required": [
-            "trader"
+            "contract_addr"
           ],
           "properties": {
-            "trader": {
+            "contract_addr": {
               "type": "string"
             }
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_from_whitelist"
+      ],
+      "properties": {
+        "remove_from_whitelist": {
+          "type": "object",
+          "required": [
+            "contract_addr"
+          ],
+          "properties": {
+            "contract_addr": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "update_state"
+      ],
+      "properties": {
+        "update_state": {
+          "type": "object",
+          "properties": {
+            "allow_non_whitelisted": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "anchor_money_market_address": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "aust_address": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "profit_check_address": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "flash_loan"
+      ],
+      "properties": {
+        "flash_loan": {
+          "type": "object",
+          "required": [
+            "payload"
+          ],
+          "properties": {
+            "payload": {
+              "$ref": "#/definitions/FlashLoanPayload"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "callback"
+      ],
+      "properties": {
+        "callback": {
+          "$ref": "#/definitions/CallbackMsg"
         }
       },
       "additionalProperties": false
@@ -262,35 +284,21 @@
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
       "type": "string"
     },
-    "CappedFee": {
-      "type": "object",
-      "required": [
-        "fee",
-        "max_fee"
-      ],
-      "properties": {
-        "fee": {
-          "$ref": "#/definitions/Fee"
-        },
-        "max_fee": {
-          "$ref": "#/definitions/Uint128"
+    "CallbackMsg": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "after_successful_loan_callback"
+          ],
+          "properties": {
+            "after_successful_loan_callback": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
         }
-      }
-    },
-    "Coin": {
-      "type": "object",
-      "required": [
-        "amount",
-        "denom"
-      ],
-      "properties": {
-        "amount": {
-          "$ref": "#/definitions/Uint128"
-        },
-        "denom": {
-          "type": "string"
-        }
-      }
+      ]
     },
     "Cw20ReceiveMsg": {
       "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
@@ -324,6 +332,21 @@
       "properties": {
         "share": {
           "$ref": "#/definitions/Decimal"
+        }
+      }
+    },
+    "FlashLoanPayload": {
+      "type": "object",
+      "required": [
+        "callback",
+        "requested_asset"
+      ],
+      "properties": {
+        "callback": {
+          "$ref": "#/definitions/Binary"
+        },
+        "requested_asset": {
+          "$ref": "#/definitions/Asset"
         }
       }
     },
