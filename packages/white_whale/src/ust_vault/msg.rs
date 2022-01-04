@@ -18,6 +18,7 @@ pub struct InstantiateMsg {
     pub token_code_id: u64,
     pub warchest_fee: Decimal,
     pub flash_loan_fee: Decimal,
+    pub commission_fee: Decimal,
     pub stable_cap: Uint128,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
@@ -26,35 +27,49 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    /// Receive hook for the liquidity token
     Receive(Cw20ReceiveMsg),
+    /// Provide liquidity to the vault
     ProvideLiquidity {
         asset: Asset,
     },
+    /// Set minimum amount of stables held liquid (not deposited into anchor)
     SetStableCap {
         stable_cap: Uint128,
     },
+    /// Sets the withdraw fee and flash loan fee
     SetFee {
         flash_loan_fee: Option<Fee>,
         warchest_fee: Option<Fee>,
     },
+    /// Forwards the profit amount to the vault, is called by profit-check
+    SendWarchestCommission { 
+        profit: Uint128 
+    },
+    /// Set the admin of the contract
     SetAdmin {
         admin: String,
     },
+    /// Add provided contract to the whitelisted contracts
     AddToWhitelist {
         contract_addr: String,
     },
+    /// Remove provided contract from the whitelisted contracts
     RemoveFromWhitelist {
         contract_addr: String,
     },
+    /// Update the interal State struct
     UpdateState {
         anchor_money_market_address: Option<String>,
         aust_address: Option<String>,
         profit_check_address: Option<String>,
         allow_non_whitelisted: Option<bool>,
     },
+    /// Execute a flashloan
     FlashLoan {
         payload: FlashLoanPayload,
     },
+    /// Internal callback message
     Callback(CallbackMsg),
 }
 
