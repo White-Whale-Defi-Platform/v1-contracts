@@ -1,14 +1,12 @@
-use cosmwasm_std::{
-    CosmosMsg, Coin, Deps, Env, Fraction, MessageInfo, Response, Uint128,
-};
+use cosmwasm_std::{Coin, CosmosMsg, Deps, Env, Fraction, MessageInfo, Response, Uint128};
 
-use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale::treasury::msg::send_to_treasury;
+use crate::contract::AnchorResult;
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::query::anchor::query_aust_exchange_rate;
+use white_whale::treasury::dapp_base::common::ANCHOR_MONEY_MARKET_ID;
+use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::state::BASESTATE;
-use white_whale::treasury::dapp_base::common::ANCHOR_MONEY_MARKET_ID
-use crate::contract::AnchorResult;
+use white_whale::treasury::msg::send_to_treasury;
 
 // Add the custom dapp-specific message commands here
 
@@ -20,7 +18,7 @@ pub fn handle_deposit_stable(
     deps: Deps,
     _env: Env,
     msg_info: MessageInfo,
-    ust_deposit_amount: Uint128
+    ust_deposit_amount: Uint128,
 ) -> AnchorResult {
     let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
@@ -31,10 +29,12 @@ pub fn handle_deposit_stable(
     let treasury_address = &state.treasury_address;
 
     // Get anchor money market address
-    let anchor_address = state.memory.query_contract(deps, &String::from(ANCHOR_MONEY_MARKET_ID))?;
+    let anchor_address = state
+        .memory
+        .query_contract(deps, &String::from(ANCHOR_MONEY_MARKET_ID))?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
-    // Prepare a deposit_msg using the provided info. 
+    // Prepare a deposit_msg using the provided info.
     // The anchor dapp will then use this message and pass it to the treasury for execution
     let deposit_msg: CosmosMsg = anchor_deposit_msg(
         deps,
@@ -54,7 +54,7 @@ pub fn handle_redeem_stable(
     deps: Deps,
     _env: Env,
     info: MessageInfo,
-    ust_to_withdraw: Uint128
+    ust_to_withdraw: Uint128,
 ) -> AnchorResult {
     let state = BASESTATE.load(deps.storage)?;
     // Check if caller is trader.
@@ -65,16 +65,15 @@ pub fn handle_redeem_stable(
     let treasury_address = &state.treasury_address;
 
     // Get anchor money market address
-    let anchor_address = state.memory.query_contract(deps, &String::from(ANCHOR_MONEY_MARKET_ID))?;
+    let anchor_address = state
+        .memory
+        .query_contract(deps, &String::from(ANCHOR_MONEY_MARKET_ID))?;
 
     let mut messages: Vec<CosmosMsg> = vec![];
 
-    let aust_exchange_rate = query_aust_exchange_rate(
-        deps,
-        anchor_address.to_string(),
-    )?;
+    let aust_exchange_rate = query_aust_exchange_rate(deps, anchor_address.to_string())?;
 
-    // Prepare a deposit_msg using the provided info. 
+    // Prepare a deposit_msg using the provided info.
     // The anchor dapp will then use this message and pass it to the treasury for execution
     let withdraw_msg = anchor_withdraw_msg(
         aust_address,

@@ -1,5 +1,4 @@
 #[cfg(test)]
-
 use crate::contract::{DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
 use crate::tests::common_integration::{
     contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_warchest,
@@ -11,17 +10,14 @@ use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
 use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
-use white_whale_testing::anchor_mock::{
-    contract_anchor_mock, MockInstantiateMsg as AnchorMsg,
-};
+use white_whale::ust_vault::msg::ExecuteMsg;
+use white_whale_testing::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
 use white_whale_testing::tswap_mock::{
     contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
 };
-use white_whale::ust_vault::msg::ExecuteMsg;
 
 const DEFAULT_SMALL_AMOUNT_OF_UST: u128 = 10000u128;
 const DEFAULT_LARGE_AMOUNT_OF_UST: u128 = 100000000000000000u128;
-
 
 #[test]
 // setup all the contracts needed for the Vault
@@ -75,7 +71,6 @@ fn stablecoin_vault_fees_are_allocated() {
         .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "WHALE", None)
         .unwrap();
 
-
     // Instantiate the Anchor Mock, the Anchor mock will the be admin of aust allowing it to mint
     let anchor_addr = router
         .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "ANCHOR", None)
@@ -97,11 +92,15 @@ fn stablecoin_vault_fees_are_allocated() {
         marketing: None,
     };
 
-
-
-
     let aust_token_instance = router
-        .instantiate_contract(cw20_code_id, anchor_addr.clone(), &msg, &[], "aUST", Some(anchor_addr.to_string()))
+        .instantiate_contract(
+            cw20_code_id,
+            anchor_addr.clone(),
+            &msg,
+            &[],
+            "aUST",
+            Some(anchor_addr.to_string()),
+        )
         .unwrap();
 
     // set up cw20 helpers
@@ -235,7 +234,6 @@ fn stablecoin_vault_fees_are_allocated() {
 
     set_liq_token_addr(lp_token.to_string());
 
-
     // Provide some liqudity in UST
     let msg = ExecuteMsg::ProvideLiquidity {
         asset: Asset {
@@ -253,7 +251,6 @@ fn stablecoin_vault_fees_are_allocated() {
             &coins(DEFAULT_SMALL_AMOUNT_OF_UST, "uusd"),
         )
         .unwrap();
-
 
     // Withdraw some liquidity
     let msg = Cw20HookMsg::WithdrawLiquidity {};
@@ -273,7 +270,6 @@ fn stablecoin_vault_fees_are_allocated() {
         )
         .unwrap();
     println!("{:?}", res.events);
-
 
     let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
 
@@ -338,7 +334,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         .instantiate_contract(cw20_code_id, owner.clone(), &msg, &[], "WHALE", None)
         .unwrap();
 
-
     // Instantiate the Anchor Mock, the Anchor mock will the be admin of aust allowing it to mint
     let anchor_addr = router
         .instantiate_contract(anchor_id, owner.clone(), &AnchorMsg {}, &[], "ANCHOR", None)
@@ -360,11 +355,15 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         marketing: None,
     };
 
-
-
-
     let aust_token_instance = router
-        .instantiate_contract(cw20_code_id, anchor_addr.clone(), &msg, &[], "aUST", Some(anchor_addr.to_string()))
+        .instantiate_contract(
+            cw20_code_id,
+            anchor_addr.clone(),
+            &msg,
+            &[],
+            "aUST",
+            Some(anchor_addr.to_string()),
+        )
         .unwrap();
 
     // set up cw20 helpers

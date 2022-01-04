@@ -1,15 +1,18 @@
 #![allow(dead_code)]
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Decimal, Empty, OwnedDeps,
-    Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Decimal, Empty,
+    OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 use cosmwasm_storage::to_length_prefixed;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
+use terra_cosmwasm::{
+    SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuerier, TerraQuery, TerraQueryWrapper,
+    TerraRoute,
+};
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;
-use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery,SwapResponse, TerraQuerier, TerraQueryWrapper, TerraRoute};
 use terraswap::pair::SimulationResponse;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
@@ -151,23 +154,24 @@ impl WasmMockQuerier {
                         }
                         _ => panic!("DO NOT ENTER HERE"),
                     }
-                }
-                else if route == &TerraRoute::Market {
+                } else if route == &TerraRoute::Market {
                     match query_data {
-                        TerraQuery::Swap{offer_coin, ask_denom} => {
-                            let res = SwapResponse{
-                                receive: Coin{
+                        TerraQuery::Swap {
+                            offer_coin,
+                            ask_denom,
+                        } => {
+                            let res = SwapResponse {
+                                receive: Coin {
                                     amount: offer_coin.amount,
-                                    denom: String::from(ask_denom)
-                                }
+                                    denom: String::from(ask_denom),
+                                },
                             };
 
                             SystemResult::Ok(ContractResult::from(to_binary(&res)))
                         }
                         _ => panic!("DO NOT ENTER HERE"),
                     }
-                }
-                else {
+                } else {
                     panic!("DO NOT ENTER HERE")
                 }
             }
@@ -176,10 +180,7 @@ impl WasmMockQuerier {
 
                 println!("{:?}", request);
 
-                
                 if contract_addr == &String::from("PAIR0000") {
-                    
-
                     if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
                         let msg_pool = PoolResponse {
                             assets: [
@@ -225,7 +226,7 @@ impl WasmMockQuerier {
                     if binary_response.is_err() {
                         return SystemResult::Err(SystemError::Unknown {});
                     }
-        
+
                     return SystemResult::Ok(ContractResult::Ok(binary_response.unwrap()));
                 } else {
                     match from_binary(&msg).unwrap() {
@@ -265,7 +266,6 @@ impl WasmMockQuerier {
                 }
             }
             QueryRequest::Wasm(WasmQuery::Raw { contract_addr, key }) => {
-
                 let key: &[u8] = key.as_slice();
                 let prefix_pair_info = to_length_prefixed(b"pair_info").to_vec();
 
@@ -313,7 +313,7 @@ impl WasmMockQuerier {
             base,
             terraswap_pair_querier: TerraswapPairQuerier::default(),
             token_querier: TokenQuerier::default(),
-            tax_querier: TaxQuerier::default()
+            tax_querier: TaxQuerier::default(),
         }
     }
 

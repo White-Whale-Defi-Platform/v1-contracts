@@ -2,9 +2,9 @@ use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Respons
 
 use crate::commands::*;
 use crate::error::MemoryError;
-use white_whale::memory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::queries;
 use crate::state::ADMIN;
+use white_whale::memory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 pub type MemoryResult = Result<Response, MemoryError>;
 

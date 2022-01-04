@@ -1,5 +1,5 @@
-use cosmwasm_std::{Api, CosmosMsg, ReplyOn, Response, SubMsg, to_binary, Uint128, WasmMsg};
 use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::{to_binary, Api, CosmosMsg, ReplyOn, Response, SubMsg, Uint128, WasmMsg};
 use cw20::Cw20ReceiveMsg;
 use terraswap::pair::Cw20HookMsg;
 
@@ -8,7 +8,7 @@ use white_whale::ust_vault::msg::CallbackMsg;
 
 use crate::contract::{encapsulate_payload, get_warchest_fee, receive_cw20};
 use crate::error::StableVaultError;
-use crate::state::{STATE};
+use crate::state::STATE;
 use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::{mock_instantiate, WARCHEST_FEE};
 use crate::tests::mock_querier::mock_dependencies;
@@ -37,7 +37,8 @@ fn test_encapsulate_payload() {
                 msg: CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: deps
                         .api
-                        .addr_humanize(&state.profit_check_address).unwrap()
+                        .addr_humanize(&state.profit_check_address)
+                        .unwrap()
                         .to_string(),
                     msg: to_binary(&ProfitCheckMsg::BeforeTrade {}).unwrap(),
                     funds: vec![],
@@ -47,7 +48,9 @@ fn test_encapsulate_payload() {
                 id: 0,
                 gas_limit: None,
                 reply_on: ReplyOn::Never,
-                msg: CallbackMsg::AfterSuccessfulLoanCallback {}.to_cosmos_msg(&env.contract.address).unwrap(),
+                msg: CallbackMsg::AfterSuccessfulLoanCallback {}
+                    .to_cosmos_msg(&env.contract.address)
+                    .unwrap(),
             },
             SubMsg {
                 id: 0,
@@ -56,7 +59,8 @@ fn test_encapsulate_payload() {
                 msg: CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: deps
                         .api
-                        .addr_humanize(&state.profit_check_address).unwrap()
+                        .addr_humanize(&state.profit_check_address)
+                        .unwrap()
                         .to_string(),
                     msg: to_binary(&ProfitCheckMsg::AfterTrade { loan_fee }).unwrap(),
                     funds: vec![],
@@ -79,7 +83,8 @@ fn unsuccessful_receive_cw20_no_swap_available() {
             belief_price: None,
             max_spread: None,
             to: None,
-        }).unwrap(),
+        })
+        .unwrap(),
     };
 
     let res = receive_cw20(deps.as_mut(), mock_env(), info, cw20_msg);
@@ -116,5 +121,8 @@ fn test_get_warchest_fee() {
     let amount = Uint128::new(1000);
 
     let warchest_fee = get_warchest_fee(deps.as_ref(), amount).unwrap();
-    assert_eq!(warchest_fee, amount / Uint128::new(u128::from(WARCHEST_FEE)));
+    assert_eq!(
+        warchest_fee,
+        amount / Uint128::new(u128::from(WARCHEST_FEE))
+    );
 }

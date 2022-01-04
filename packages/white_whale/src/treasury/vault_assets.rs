@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::query::terraswap::{query_asset_balance, query_pool};
 use crate::tax::reverse_decimal;
-use crate::treasury::msg::{ValueQueryMsg, ExternalValueResponse};
+use crate::treasury::msg::{ExternalValueResponse, ValueQueryMsg};
 use crate::treasury::state::*;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::PoolResponse;
@@ -56,13 +56,10 @@ impl VaultAsset {
         set_holding: Option<Uint128>,
     ) -> StdResult<Uint128> {
         // Query how many of these tokens are held in the contract if not set.
-        
 
         let holding: Uint128 = match set_holding {
             Some(setter) => setter,
-            None => {
-                query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?
-            }
+            None => query_asset_balance(deps, &self.asset.info, env.contract.address.clone())?,
         };
         self.asset.amount = holding;
 
@@ -101,7 +98,7 @@ impl VaultAsset {
             }
         }
 
-        // If there is no valueref, it means this token is the base token. 
+        // If there is no valueref, it means this token is the base token.
         Ok(holding)
     }
 
@@ -132,7 +129,7 @@ impl VaultAsset {
 /// By setting this proxy you define the asset to be some
 /// other asset with a multiplier.
 /// For example: AssetInfo = bluna, BaseAsset = uusd, Proxy: luna, multiplier = 1
-/// Each bluna would be valued as one luna. 
+/// Each bluna would be valued as one luna.
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub struct Proxy {
