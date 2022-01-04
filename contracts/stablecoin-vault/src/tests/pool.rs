@@ -1,7 +1,10 @@
 use cosmwasm_std::testing::{mock_env};
-use cosmwasm_std::{Api, MessageInfo, Uint128};
+use cosmwasm_std::{to_binary, Api, MessageInfo, Uint128};
 
 use white_whale::ust_vault::msg::ExecuteMsg;
+use white_whale::denom::UST_DENOM;
+use terraswap::asset::{Asset, AssetInfo};
+use white_whale::ust_vault::msg::FlashLoanPayload;
 
 use crate::contract::execute;
 use crate::error::StableVaultError;
@@ -52,26 +55,4 @@ fn successful_set_stable_cap() {
     let pool_info = POOL_INFO.load(deps.as_mut().storage).unwrap();
     assert_eq!(pool_info.stable_cap, Uint128::from(100u128));
     assert_ne!(pool_info.stable_cap, original_cap);
-}
-
-#[test]
-fn unsuccessful_provide_liquidity_using_flashloan() {
-    /*let mut deps = mock_dependencies(&[]);
-    mock_instantiate(deps.as_mut());
-
-    let msg = ExecuteMsg::ProvideLiquidity {
-        asset: Asset {
-            info: AssetInfo::NativeToken {
-                denom: UST_DENOM.to_string(),
-            },
-            amount: Uint128::from(1000u128),
-        },
-    };
-    let info = mock_info(TEST_CREATOR, &[]);
-
-    let res = execute(deps.as_mut(), mock_env(), info, msg);
-    match res {
-        Err(StableVaultError::DepositDuringLoan {}) => (),
-        _ => panic!("Must return StableVaultError::DepositDuringLoan"),
-    }*/
 }
