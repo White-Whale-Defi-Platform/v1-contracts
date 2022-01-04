@@ -6,7 +6,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use terraswap::asset::AssetInfo;
 
-use super::queries::{query_contracts_from_mem, query_assets_from_mem, query_contract_from_mem, query_asset_from_mem};
+use super::queries::{
+    query_asset_from_mem, query_assets_from_mem, query_contract_from_mem, query_contracts_from_mem,
+};
 
 // Struct that holds address
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -25,14 +27,10 @@ impl Memory {
     }
 
     // Raw query of a single contract Addr
-    pub fn query_contract(
-        &self,
-        deps: Deps,
-        contract_name: &String,
-    ) -> StdResult<Addr> {
+    pub fn query_contract(&self, deps: Deps, contract_name: &String) -> StdResult<Addr> {
         query_contract_from_mem(deps, &self.address, contract_name)
     }
-    
+
     // Raw Query to Memory contract
     pub fn query_assets(
         &self,
@@ -43,11 +41,7 @@ impl Memory {
     }
 
     // Raw query of a single AssetInfo
-    pub fn query_asset(
-        &self,
-        deps: Deps,
-        asset_name: &String,
-    ) -> StdResult<AssetInfo> {
+    pub fn query_asset(&self, deps: Deps, asset_name: &String) -> StdResult<AssetInfo> {
         query_asset_from_mem(deps, &self.address, asset_name)
     }
 }

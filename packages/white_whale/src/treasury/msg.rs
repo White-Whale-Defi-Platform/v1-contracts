@@ -34,8 +34,7 @@ pub enum ExecuteMsg {
 /// Note that the contract doesn't enforce permissions here, this is done
 /// by blockchain logic (in the future by blockchain governance)
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct MigrateMsg {
-}
+pub struct MigrateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -45,17 +44,11 @@ pub enum QueryMsg {
     /// Returns the total value of all held assets
     TotalValue {},
     /// Returns the value of one specific asset
-    HoldingValue {
-        identifier: String,
-    },
+    HoldingValue { identifier: String },
     /// Returns the amount of specified tokens this contract holds
-    HoldingAmount {
-        identifier: String,
-    },
+    HoldingAmount { identifier: String },
     /// Returns the VAULT_ASSETS value for the specified key
-    VaultAssetConfig {
-        identifier: String,
-    },
+    VaultAssetConfig { identifier: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

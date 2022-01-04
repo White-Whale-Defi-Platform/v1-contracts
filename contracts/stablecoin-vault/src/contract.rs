@@ -23,11 +23,10 @@ use white_whale::ust_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
 
+use cw2::{get_contract_version, set_contract_version};
+use semver::Version;
 use white_whale::tax::{compute_tax, into_msg_without_tax};
 use white_whale::ust_vault::msg::*;
-use cw2::{set_contract_version, get_contract_version};
-use semver::Version;
-
 
 use crate::error::StableVaultError;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
@@ -142,10 +141,10 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
     // let mut config: State = from_slice(&data)?;
     // // And use something provided in MigrateMsg to update the state of the migrated contract
     // config.verifier = deps.api.addr_validate(&msg.verifier)?;
-    // // Then store our modified State 
+    // // Then store our modified State
     // deps.storage.set(CONFIG_KEY, &to_vec(&config)?);
     // If we have no need to update the State of the contract then just Response::default() should suffice
-    // in this case, the code is still updated, the migration does not change the contract addr or funds 
+    // in this case, the code is still updated, the migration does not change the contract addr or funds
     // if this is the case you desire, consider making the new Addr part of the MigrateMsg and then doing
     // a payout
 
@@ -282,7 +281,7 @@ pub fn handle_flashloan(
     }
 
     // If caller not whitelisted, calculate flashloan fee
-    
+
     let loan_fee: Uint128 = if whitelisted {
         Uint128::zero()
     } else {
@@ -346,13 +345,14 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         deps.api.addr_humanize(&info.liquidity_token)?,
     )?;
 
-    let share = if total_share == Uint128::zero() || total_deposits_in_ust.checked_sub(deposit)? == Uint128::zero() {
+    let share = if total_share == Uint128::zero()
+        || total_deposits_in_ust.checked_sub(deposit)? == Uint128::zero()
+    {
         // Initial share = collateral amount
         deposit
     } else {
         deposit.multiply_ratio(total_share, total_deposits_in_ust.checked_sub(deposit)?)
     };
-
 
     // mint LP token to sender
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -368,7 +368,6 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
     if stables_in_contract > info.stable_cap * Decimal::percent(150) {
-
         let deposit_amount = stables_in_contract - info.stable_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
         let deposit_msg = anchor_deposit_msg(
@@ -408,8 +407,6 @@ pub fn try_withdraw_liquidity(
     if profit_check_response.last_balance != Uint128::zero() {
         return Err(StableVaultError::DepositDuringLoan {});
     }
-
-
 
     // Logging var
     let mut attrs = vec![];
@@ -518,7 +515,6 @@ pub fn try_withdraw_liquidity(
         })?,
         funds: vec![],
     });
-
 
     Ok(response
         .add_message(refund_msg)
@@ -643,9 +639,12 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     )?;
     let stable_transfer_fee = compute_tax(
         deps,
-        &Coin::new((amount - warchest_fee - anchor_withdraw_fee).u128(), String::from("uusd")),
+        &Coin::new(
+            (amount - warchest_fee - anchor_withdraw_fee).u128(),
+            String::from("uusd"),
+        ),
     )?;
-    // Two transfers (anchor -> vault -> user) so ~2x tax. 
+    // Two transfers (anchor -> vault -> user) so ~2x tax.
     Ok(warchest_fee + anchor_withdraw_fee + stable_transfer_fee)
 }
 

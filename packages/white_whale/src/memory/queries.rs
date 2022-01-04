@@ -33,13 +33,15 @@ pub fn query_asset_from_mem(
     memory_addr: &Addr,
     asset_name: &String,
 ) -> StdResult<AssetInfo> {
-
     let result = deps
         .querier
         .query::<String>(&QueryRequest::Wasm(WasmQuery::Raw {
             contract_addr: memory_addr.to_string(),
             // query assets map
-            key: Binary::from(concat(&to_length_prefixed(b"assets"), asset_name.as_bytes())),
+            key: Binary::from(concat(
+                &to_length_prefixed(b"assets"),
+                asset_name.as_bytes(),
+            )),
         }))?;
     Ok(to_asset_info(deps, result)?)
 }
@@ -52,7 +54,7 @@ pub fn query_contracts_from_mem(
 ) -> StdResult<BTreeMap<String, Addr>> {
     let mut contracts: BTreeMap<String, Addr> = BTreeMap::new();
 
-    // Query over 
+    // Query over
     for contract in contract_names.iter() {
         let result: Addr = deps
             .querier
@@ -76,13 +78,15 @@ pub fn query_contract_from_mem(
     memory_addr: &Addr,
     contract_name: &String,
 ) -> StdResult<Addr> {
-
     let result = deps
         .querier
         .query::<String>(&QueryRequest::Wasm(WasmQuery::Raw {
             contract_addr: memory_addr.to_string(),
             // query assets map
-            key: Binary::from(concat(&to_length_prefixed(b"contracts"), contract_name.as_bytes())),
+            key: Binary::from(concat(
+                &to_length_prefixed(b"contracts"),
+                contract_name.as_bytes(),
+            )),
         }))?;
     // Addresses are checked when stored.
     Ok(Addr::unchecked(result))

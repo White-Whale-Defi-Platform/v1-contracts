@@ -1,17 +1,17 @@
-use cosmwasm_std::{Addr};
 use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::Addr;
 use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
-use white_whale::treasury::dapp_base::state::{ADMIN, BaseState, BASESTATE};
+use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 
 use crate::contract::execute;
-use crate::msg::ExecuteMsg;
 use crate::error::AstroportError;
+use crate::msg::ExecuteMsg;
+use crate::tests::base_mocks::mocks::mock_instantiate;
 use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT};
-use crate::tests::base_mocks::mocks::{mock_instantiate};
 use crate::tests::mock_querier::mock_dependencies;
-use white_whale_testing::dapp_base::common::{MEMORY_CONTRACT};
+use white_whale_testing::dapp_base::common::MEMORY_CONTRACT;
 
 /**
  * BaseExecuteMsg::UpdateConfig
@@ -33,7 +33,10 @@ pub fn test_unsuccessfully_update_config_msg() {
     match res {
         Err(AstroportError::BaseDAppError(BaseDAppError::Admin(_))) => (),
         Ok(_) => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
-        err => panic!("Should return unauthorized Error, Admin(NotAdmin) {:?}", err),
+        err => panic!(
+            "Should return unauthorized Error, Admin(NotAdmin) {:?}",
+            err
+        ),
     }
 }
 
@@ -64,7 +67,6 @@ pub fn test_successfully_update_config_treasury_address_msg() {
         }
     )
 }
-
 
 // #[test]
 // pub fn test_successfully_update_config_none_msg() {
@@ -139,8 +141,6 @@ pub fn test_successfully_set_admin_msg() {
     assert_eq!(admin, Addr::unchecked("new_admin".to_string()));
 }
 
-
-
 /**
  * ExecuteMsg::ProvideLiquidity
  */
@@ -194,7 +194,6 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
 //     mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), WHALE_TOKEN.to_string()));
 //     mock_add_to_address_book(deps.as_mut(), ("pool".to_string(), WHALE_UST_PAIR.to_string()));
 
-
 //     let env = mock_env();
 //     let msg = ExecuteMsg::ProvideLiquidity {
 //         pool_id: "pool".to_string(),
@@ -213,7 +212,6 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
 //     mock_add_to_address_book(deps.as_mut(), ("asset".to_string(), WHALE_TOKEN.to_string()));
 //     mock_add_to_address_book(deps.as_mut(), ("pool".to_string(), WHALE_UST_PAIR.to_string()));
 
-
 //     let env = mock_env();
 //     let msg = ExecuteMsg::DetailedProvideLiquidity {
 //         pool_id: "pool".to_string(),
@@ -227,7 +225,7 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
 
 // #[test]
 // Test to confirm that we can use DetailedProvideLiquidity to provide
-// some assets and then use WithdrawLiqudity to again withdraw those assets. 
+// some assets and then use WithdrawLiqudity to again withdraw those assets.
 // The balances for WHALE_TOKEN and WHALE_UST_LP_TOKEN are mocked and do not reflect real values
 // Interactions of these dapps can be tested via integration tests
 // pub fn test_successfully_withdraw_liqudity(){
@@ -237,7 +235,6 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
 //     mock_add_to_address_book(deps.as_mut(), ("pool".to_string(), WHALE_UST_PAIR.to_string()));
 //     mock_add_to_address_book(deps.as_mut(), ("whale_ust".to_string(), WHALE_UST_LP_TOKEN.to_string()));
 //     mock_add_to_address_book(deps.as_mut(), ("whale_ust_pair".to_string(), WHALE_UST_PAIR.to_string()));
-
 
 //     let env = mock_env();
 //     let msg = ExecuteMsg::DetailedProvideLiquidity {
@@ -269,7 +266,6 @@ pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
 //     mock_add_to_address_book(deps.as_mut(), ("pool".to_string(), WHALE_UST_PAIR.to_string()));
 //     mock_add_to_address_book(deps.as_mut(), ("whale_ust".to_string(), WHALE_UST_LP_TOKEN.to_string()));
 //     mock_add_to_address_book(deps.as_mut(), ("whale_ust_pair".to_string(), WHALE_UST_PAIR.to_string()));
-
 
 //     let env = mock_env();
 //     let msg = ExecuteMsg::SwapAsset {

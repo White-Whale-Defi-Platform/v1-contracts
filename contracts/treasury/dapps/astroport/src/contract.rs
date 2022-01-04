@@ -11,8 +11,8 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
 
 use crate::commands;
-use crate::msg::{ExecuteMsg, QueryMsg};
 use crate::error::AstroportError;
+use crate::msg::{ExecuteMsg, QueryMsg};
 pub type AstroportResult = Result<Response, AstroportError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -35,45 +35,45 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> AstroportResult {
     match msg {
-            ExecuteMsg::ProvideLiquidity {
-                pool_id,
-                main_asset_id,
-                amount,
-            } => commands::provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
-            ExecuteMsg::DetailedProvideLiquidity {
-                pool_id,
-                assets,
-                slippage_tolerance,
-            } => commands::detailed_provide_liquidity(
-                deps.as_ref(),
-                info,
-                assets,
-                pool_id,
-                slippage_tolerance,
-            ),
-            ExecuteMsg::WithdrawLiquidity {
-                lp_token_id,
-                amount,
-            } => commands::withdraw_liquidity(deps.as_ref(), info, lp_token_id, amount),
-            ExecuteMsg::SwapAsset {
-                offer_id,
-                pool_id,
-                amount,
-                max_spread,
-                belief_price,
-            } => commands::astroport_swap(
-                deps.as_ref(),
-                env,
-                info,
-                offer_id,
-                pool_id,
-                amount,
-                max_spread,
-                belief_price,
-            ),
-            ExecuteMsg::Base(message) => {
-                from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message))
-            }
+        ExecuteMsg::ProvideLiquidity {
+            pool_id,
+            main_asset_id,
+            amount,
+        } => commands::provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
+        ExecuteMsg::DetailedProvideLiquidity {
+            pool_id,
+            assets,
+            slippage_tolerance,
+        } => commands::detailed_provide_liquidity(
+            deps.as_ref(),
+            info,
+            assets,
+            pool_id,
+            slippage_tolerance,
+        ),
+        ExecuteMsg::WithdrawLiquidity {
+            lp_token_id,
+            amount,
+        } => commands::withdraw_liquidity(deps.as_ref(), info, lp_token_id, amount),
+        ExecuteMsg::SwapAsset {
+            offer_id,
+            pool_id,
+            amount,
+            max_spread,
+            belief_price,
+        } => commands::astroport_swap(
+            deps.as_ref(),
+            env,
+            info,
+            offer_id,
+            pool_id,
+            amount,
+            max_spread,
+            belief_price,
+        ),
+        ExecuteMsg::Base(message) => {
+            from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message))
+        }
     }
 }
 

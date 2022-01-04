@@ -1,22 +1,23 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::Api;
 use cosmwasm_std::Addr;
+use cosmwasm_std::Api;
 
+use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::state::{BaseState, BASESTATE};
-use white_whale::memory::item::Memory;
 
 use crate::contract::instantiate;
-use white_whale_testing::dapp_base::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT, MEMORY_CONTRACT};
+use white_whale_testing::dapp_base::common::{
+    MEMORY_CONTRACT, TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT,
+};
 
 pub(crate) fn instantiate_msg() -> BaseInstantiateMsg {
     BaseInstantiateMsg {
         treasury_address: TREASURY_CONTRACT.to_string(),
         trader: TRADER_CONTRACT.to_string(),
-        memory_addr: MEMORY_CONTRACT.to_string()
+        memory_addr: MEMORY_CONTRACT.to_string(),
     }
 }
-
 
 /**
  * Tests successful instantiation of the contract.

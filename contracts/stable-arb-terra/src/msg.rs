@@ -75,5 +75,4 @@ pub enum QueryMsg {
 /// Note that the contract doesn't enforce permissions here, this is done
 /// by blockchain logic (in the future by blockchain governance)
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct MigrateMsg {
-}
+pub struct MigrateMsg {}

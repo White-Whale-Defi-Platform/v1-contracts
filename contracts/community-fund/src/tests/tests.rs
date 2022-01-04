@@ -129,7 +129,7 @@ fn unsuccessful_spend_tokens_not_enough_tokens() {
     match res {
         Err(CommunityFundError::InsufficientFunds(_, _)) => (),
         // _ => panic!("Must return CommunityFundError::InsufficientFunds"),
-        _ => ()
+        _ => (),
     }
 }
 
@@ -187,7 +187,7 @@ fn unsuccessful_burn_tokens_not_enough_tokens() {
     match res {
         Err(CommunityFundError::InsufficientFunds(_, _)) => (),
         // _ => panic!("Must return CommunityFundError::InsufficientFunds"),
-        _ => ()
+        _ => (),
     }
 }
 
