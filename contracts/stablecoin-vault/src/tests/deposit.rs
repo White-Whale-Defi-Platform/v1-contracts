@@ -100,7 +100,6 @@ fn successful_update_fee() {
     assert_eq!(Decimal::percent(2), fees.warchest_fee.share);
     assert_eq!(Decimal::percent(2), fees.commission_fee.share);
     assert_eq!(Decimal::percent(2), fees.flash_loan_fee.share);
-
 }
 
 #[test]

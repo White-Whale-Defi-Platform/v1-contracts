@@ -200,7 +200,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             profit_check_address,
             allow_non_whitelisted,
         ),
-        ExecuteMsg::SendWarchestCommission{profit} => send_commissions(deps.as_ref(), info, profit),
+        ExecuteMsg::SendWarchestCommission { profit } => {
+            send_commissions(deps.as_ref(), info, profit)
+        }
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
 }
@@ -535,19 +537,24 @@ fn send_commissions(deps: Deps, info: MessageInfo, profit: Uint128) -> VaultResu
     let fees = FEE.load(deps.storage)?;
     // Check if sender is profit check contract
     if deps.api.addr_humanize(&state.profit_check_address)? != info.sender {
-        return Err(StableVaultError::Unauthorized {})
+        return Err(StableVaultError::Unauthorized {});
     }
 
     let commission_amount = fees.commission_fee.compute(profit);
 
     // Construct commission msg
     let refund_asset = Asset {
-        info: AssetInfo::NativeToken { denom: "uusd".to_string() },
+        info: AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        },
         amount: commission_amount,
     };
-    let commission_msg = refund_asset.into_msg(&deps.querier, deps.api.addr_humanize(&fees.warchest_addr)?)?;
-    
-    Ok(Response::new().add_attribute("treasury commission:", commission_amount.to_string()).add_message(commission_msg))
+    let commission_msg =
+        refund_asset.into_msg(&deps.querier, deps.api.addr_humanize(&fees.warchest_addr)?)?;
+
+    Ok(Response::new()
+        .add_attribute("treasury commission:", commission_amount.to_string())
+        .add_message(commission_msg))
 }
 
 //----------------------------------------------------------------------------------------

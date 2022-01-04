@@ -115,7 +115,7 @@ fn successful_update_fee() {
         warchest_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
-        commission_fee: None
+        commission_fee: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -143,7 +143,7 @@ fn unsuccessful_update_fee_unauthorized() {
         warchest_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
-        commission_fee: None
+        commission_fee: None,
     };
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
