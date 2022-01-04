@@ -27,7 +27,7 @@ impl Memory {
     }
 
     // Raw query of a single contract Addr
-    pub fn query_contract(&self, deps: Deps, contract_name: &String) -> StdResult<Addr> {
+    pub fn query_contract(&self, deps: Deps, contract_name: &str) -> StdResult<Addr> {
         query_contract_from_mem(deps, &self.address, contract_name)
     }
 
@@ -41,7 +41,7 @@ impl Memory {
     }
 
     // Raw query of a single AssetInfo
-    pub fn query_asset(&self, deps: Deps, asset_name: &String) -> StdResult<AssetInfo> {
+    pub fn query_asset(&self, deps: Deps, asset_name: &str) -> StdResult<AssetInfo> {
         query_asset_from_mem(deps, &self.address, asset_name)
     }
 }

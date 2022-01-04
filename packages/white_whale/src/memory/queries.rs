@@ -31,7 +31,7 @@ pub fn query_assets_from_mem(
 pub fn query_asset_from_mem(
     deps: Deps,
     memory_addr: &Addr,
-    asset_name: &String,
+    asset_name: &str,
 ) -> StdResult<AssetInfo> {
     let result = deps
         .querier
@@ -43,7 +43,7 @@ pub fn query_asset_from_mem(
                 asset_name.as_bytes(),
             )),
         }))?;
-    Ok(to_asset_info(deps, result)?)
+    to_asset_info(deps, result)
 }
 
 /// Query contract addresses from Memory Module contract addresses map.
@@ -76,7 +76,7 @@ pub fn query_contracts_from_mem(
 pub fn query_contract_from_mem(
     deps: Deps,
     memory_addr: &Addr,
-    contract_name: &String,
+    contract_name: &str,
 ) -> StdResult<Addr> {
     let result = deps
         .querier
