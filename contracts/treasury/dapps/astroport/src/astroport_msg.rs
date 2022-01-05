@@ -2,8 +2,6 @@ use cosmwasm_std::{to_binary, Addr, Coin, CosmosMsg, Decimal, Deps, Empty, StdRe
 
 use cw20::Cw20ExecuteMsg;
 use terraswap::asset::{Asset, AssetInfo};
-// use terraswap::pair::ExecuteMsg as PairExecuteMsg;
-// use white_whale::astroport_helper::Asset;
 use white_whale::astroport_helper::ExecuteMsg as PairExecuteMsg;
 use white_whale::tax::compute_tax;
 
