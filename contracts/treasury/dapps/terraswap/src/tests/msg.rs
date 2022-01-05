@@ -34,7 +34,7 @@ pub fn test_provide_liquidity_unauthorized_msg() {
 }
 
 #[test]
-pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
+pub fn test_unsuccessfully_provide_liquidity_nonexisting_asset_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
