@@ -1,10 +1,10 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::Addr;
 
+use crate::dapp_base::common::TEST_CREATOR;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
 use white_whale::treasury::dapp_base::state::ADMIN;
-use crate::dapp_base::common::TEST_CREATOR;
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;

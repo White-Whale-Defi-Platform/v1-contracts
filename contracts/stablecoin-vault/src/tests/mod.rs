@@ -10,10 +10,10 @@ mod integration_test;
 mod mock_querier;
 mod pool;
 
+mod anchor_mock;
 mod deposit;
 mod helpers;
-mod anchor_mock;
-mod tswap_mock;
 mod query;
 mod state;
+mod tswap_mock;
 mod whitelist;

@@ -21,25 +21,17 @@ cargo install cargo-run-script
 Now, use it to create your new contract.
 Go to the folder in which you want to place it and run:
 
-**Latest: 1.0.0-beta**
+**Latest: 0.1.0**
 
 ```sh
 cargo generate --git https://github.com/White-Whale-Defi-Platform/dapp-template.git --name DAPP_NAME
 ````
 
-**Older Version**
-
-Pass version as branch flag:
+or
 
 ```sh
-cargo generate --git https://github.com/White-Whale-Defi-Platform/dapp-template.git --branch <version> --name DAPP_NAME
+cargo generate --path path-to-dapp-template --name DAPP_NAME
 ````
-
-Example:
-
-```sh
-cargo generate --git https://github.com/White-Whale-Defi-Platform/dapp-template.git --name DAPP_NAME
-```
 
 You will now have a new folder called `DAPP_NAME` (I hope you changed that to something else)
 containing a simple working contract using the base elements for a treasury dapp you can customize.

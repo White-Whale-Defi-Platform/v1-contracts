@@ -4,14 +4,12 @@ use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
 use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};
 
+use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
+use crate::tests::tswap_mock::{contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg};
 use white_whale::denom::UST_DENOM;
 use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::ust_vault::msg::FlashLoanPayload;
 use white_whale::ust_vault::msg::*;
-use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
-use crate::tests::tswap_mock::{
-    contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
-};
 
 use crate::contract::{execute, DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
 use crate::error::StableVaultError;
