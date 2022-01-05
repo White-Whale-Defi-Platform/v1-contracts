@@ -7,11 +7,12 @@ use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::ust_vault::msg::*;
 
 use crate::contract::{execute, query};
+use crate::pool_info::PoolInfo;
 use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
-/*#[test]
+// #[test]
 pub fn test_config_query() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
@@ -29,12 +30,12 @@ pub fn test_config_query() {
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
 
-    let q_res: PoolInfo = from_binary(&query(deps.as_ref(), env, QueryMsg::Config {}).unwrap()).unwrap();
+    let q_res: PoolInfo = from_binary(&query(deps.as_ref(), env, QueryMsg::PoolConfig {}).unwrap()).unwrap();
     assert_eq!(
         q_res.stable_cap,
         Uint128::from(100_000_000u64)
     )
-}*/
+}
 
 #[test]
 pub fn test_state_query() {
@@ -56,36 +57,6 @@ pub fn test_state_query() {
     let q_res: StateResponse =
         from_binary(&query(deps.as_ref(), env, QueryMsg::State {}).unwrap()).unwrap();
     assert_eq!(q_res.allow_non_whitelisted, false)
-}
-
-//#[test]
-pub fn test_pool_query() {
-    let mut deps = mock_dependencies(&coins(1000, "uusd"));
-    mock_instantiate(deps.as_mut());
-    let env = mock_env();
-
-    //let info = mock_info(TEST_CREATOR, &[]);
-
-    let q_res: PoolResponse =
-        from_binary(&query(deps.as_ref(), env, QueryMsg::PoolConfig {}).unwrap()).unwrap();
-    assert_eq!(
-        q_res.assets,
-        [
-            Asset {
-                amount: Uint128::from(10000u128),
-                info: AssetInfo::NativeToken {
-                    denom: "uwhale".to_string(),
-                },
-            },
-            Asset {
-                amount: Uint128::from(10000u128),
-                info: AssetInfo::NativeToken {
-                    denom: "uusd".to_string(),
-                },
-            },
-        ]
-    );
-    assert_eq!(q_res.total_share, Uint128::from(1000u128))
 }
 
 #[test]
@@ -111,7 +82,7 @@ pub fn test_vault_value_query() {
     assert_eq!(q_res.total_ust_value, Uint128::new(1000))
 }
 
-//#[test]
+#[test]
 pub fn test_vault_estimate_fee_query() {
     let mut deps = mock_dependencies(&[coin(1000, "uusd")]);
     mock_instantiate(deps.as_mut());

@@ -42,7 +42,7 @@ fn successful_handle_callback_without_anchor_deposit() {
 
 #[test]
 fn successful_handle_callback_with_anchor_deposit() {
-    /*let mut deps = mock_dependencies(&[coin(150000001u128, UST_DENOM)]);
+    let mut deps = mock_dependencies(&[coin(150000001u128, UST_DENOM)]);
     mock_instantiate(deps.as_mut());
 
     let msg = ExecuteMsg::Callback {
@@ -51,5 +51,5 @@ fn successful_handle_callback_with_anchor_deposit() {
     let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
-    assert_eq!(0, res.messages.len());*/
+    assert_eq!(1, res.messages.len());
 }

@@ -1,5 +1,5 @@
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
-use white_whale_testing::dapp_base::common::{MEMORY_CONTRACT, TRADER_CONTRACT, TREASURY_CONTRACT};
+use crate::dapp_base::common::{MEMORY_CONTRACT, TRADER_CONTRACT, TREASURY_CONTRACT};
 
 #[allow(dead_code)]
 pub(crate) fn instantiate_msg() -> BaseInstantiateMsg {

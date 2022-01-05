@@ -4,7 +4,7 @@ use cosmwasm_std::{Api, Decimal};
 
 use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::state::{BaseState, BASESTATE};
-use white_whale_testing::dapp_base::common::MEMORY_CONTRACT;
+use crate::dapp_base::common::MEMORY_CONTRACT;
 
 use crate::contract::instantiate;
 use crate::msg::InstantiateMsg;
