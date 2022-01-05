@@ -37,11 +37,14 @@ pub fn receive_cw20(
             }
             try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
         }
-        DepositHookMsg::ProvideLiquidity { asset } => {
-            // Check if deposit amount equals claimed deposit amount
-            if asset.amount != cw20_msg.amount {
-                return Err(VaultError::InvalidAmount {});
-            }
+        DepositHookMsg::ProvideLiquidity {} => {
+            // Construct deposit asset
+            let asset = Asset {
+                info: AssetInfo::Token {
+                    contract_addr: msg_info.sender.to_string(),
+                },
+                amount: cw20_msg.amount,
+            };
             try_provide_liquidity(deps, msg_info, asset, Some(cw20_msg.sender))
         }
     }
@@ -64,7 +67,17 @@ pub fn try_provide_liquidity(
     // Get the liquidity provider address
     let liq_provider = match sender {
         Some(addr) => Addr::unchecked(addr),
-        None => msg_info.sender.clone(),
+        None => {
+            // Check if deposit matches claimed deposit.
+            if asset.is_native_token() {
+                // If native token, assert claimed amount is correct
+                asset.assert_sent_native_token_balance(&msg_info)?;
+                msg_info.sender
+            } else {
+                // Can't add liquidity with cw20 if not using the hook
+                return Err(VaultError::NotUsingCW20Hook {});
+            }
+        }
     };
 
     // Get all the required asset information from the memory contract
@@ -79,15 +92,10 @@ pub fn try_provide_liquidity(
     deposit_info.assert(&asset.info)?;
 
     // Init vector for logging
-    let mut attrs = vec![];
-    // Check if deposit matches claimed deposit.
-    if asset.is_native_token() {
-        // If native token, assert claimed amount is correct
-        asset.assert_sent_native_token_balance(&msg_info)?;
-    }
-    // No else needed, CW20 correct deposit amount is checked in cw20 receive fction
-    attrs.push(("Action:", String::from("Deposit to vault")));
-    attrs.push(("Received funds:", asset.to_string()));
+    let attrs = vec![
+        ("Action:", String::from("Deposit to vault")),
+        ("Received funds:", asset.to_string()),
+    ];
 
     // Received deposit to vault
     let deposit: Uint128 = asset.amount;

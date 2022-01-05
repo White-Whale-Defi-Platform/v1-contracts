@@ -4,7 +4,6 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use terraswap::asset::Asset;
-use white_whale::treasury::msg::ValueQueryMsg;
 use white_whale::{
     fee::Fee,
     treasury::dapp_base::msg::{BaseExecuteMsg, BaseInstantiateMsg, BaseQueryMsg},
@@ -44,14 +43,13 @@ pub enum QueryMsg {
     Base(BaseQueryMsg),
     // Add dapp-specific queries here
     State {},
-    ValueQuery(ValueQueryMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum DepositHookMsg {
     WithdrawLiquidity {},
-    ProvideLiquidity { asset: Asset },
+    ProvideLiquidity {},
 }
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct StateResponse {

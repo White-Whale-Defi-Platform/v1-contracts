@@ -113,7 +113,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::State {} => to_binary(&StateResponse {
             liquidity_token: STATE.load(deps.storage)?.liquidity_token_addr.to_string(),
         }),
-        QueryMsg::ValueQuery(query) => to_binary(&STATE.load(deps.storage)?), //queries::handle_value_query(deps, query),
     }
 }
 
