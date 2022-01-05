@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{coins, from_binary, to_binary, MessageInfo, ReplyOn, SubMsg, WasmMsg};
+use cosmwasm_std::{from_binary, to_binary, MessageInfo, ReplyOn, SubMsg, WasmMsg};
 use cosmwasm_std::{Api, Decimal, Uint128};
 
 use crate::contract::{execute, instantiate, query};
@@ -17,25 +17,8 @@ use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
-use terraswap::asset::{Asset, AssetInfo};
+use terraswap::asset::AssetInfo;
 
-#[test]
-pub fn mock_deposit() {
-    let mut deps = mock_dependencies(&[]);
-    mock_instantiate(deps.as_mut());
-    let env = mock_env();
-    let msg = ExecuteMsg::ProvideLiquidity {
-        asset: Asset {
-            info: AssetInfo::NativeToken {
-                denom: String::from("uusd"),
-            },
-            amount: Uint128::new(1000),
-        },
-    };
-
-    let info = mock_info(TEST_CREATOR, &coins(1000, "uusd"));
-    execute(deps.as_mut(), env, info, msg);
-}
 /**
  * Tests successful instantiation of the contract.
  */

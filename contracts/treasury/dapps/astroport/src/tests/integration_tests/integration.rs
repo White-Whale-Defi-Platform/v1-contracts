@@ -3,51 +3,51 @@ use cw20::Cw20Contract;
 
 use terra_multi_test::{App, ContractWrapper};
 
+use crate::dapp_base::common::TEST_CREATOR;
 use crate::msg::ExecuteMsg;
 use crate::tests::integration_tests::common_integration::{
     init_contracts, mint_some_whale, mock_app,
 };
+use astroport::pair::PoolResponse;
 use terra_multi_test::Executor;
-use terraswap::pair::PoolResponse;
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
-use crate::dapp_base::common::TEST_CREATOR;
 
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg as InstantiateMsg;
 
 use super::common_integration::{whitelist_dapp, BaseContracts};
 const MILLION: u64 = 1_000_000u64;
 
-fn init_terraswap_dapp(app: &mut App, owner: Addr, base_contracts: &BaseContracts) -> Addr {
-    // Upload Terraswap DApp Contract
-    let tswap_dapp_contract = Box::new(ContractWrapper::new(
+fn init_astroport_dapp(app: &mut App, owner: Addr, base_contracts: &BaseContracts) -> Addr {
+    // Upload astroport DApp Contract
+    let astro_dapp_contract = Box::new(ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
     ));
 
-    let tswap_dapp_code_id = app.store_code(tswap_dapp_contract);
+    let astro_dapp_code_id = app.store_code(astro_dapp_contract);
 
-    let tswap_dapp_instantiate_msg = InstantiateMsg {
+    let astro_dapp_instantiate_msg = InstantiateMsg {
         trader: owner.to_string(),
         treasury_address: base_contracts.treasury.to_string(),
         memory_addr: base_contracts.memory.to_string(),
     };
 
     // Init contract
-    let tswap_dapp_instance = app
+    let astro_dapp_instance = app
         .instantiate_contract(
-            tswap_dapp_code_id,
+            astro_dapp_code_id,
             owner.clone(),
-            &tswap_dapp_instantiate_msg,
+            &astro_dapp_instantiate_msg,
             &[],
-            "Tswap_dapp",
+            "astro_dapp",
             None,
         )
         .unwrap();
 
-    whitelist_dapp(app, &owner, &base_contracts.treasury, &tswap_dapp_instance);
-    tswap_dapp_instance
+    whitelist_dapp(app, &owner, &base_contracts.treasury, &astro_dapp_instance);
+    astro_dapp_instance
 }
 
 #[test]
@@ -55,14 +55,14 @@ fn proper_initialization() {
     let mut app = mock_app();
     let sender = Addr::unchecked(TEST_CREATOR);
     let base_contracts = init_contracts(&mut app);
-    let tswap_dapp = init_terraswap_dapp(&mut app, sender.clone(), &base_contracts);
+    let astro_dapp = init_astroport_dapp(&mut app, sender.clone(), &base_contracts);
 
     let resp: TreasuryMsg::ConfigResponse = app
         .wrap()
         .query_wasm_smart(&base_contracts.treasury, &TreasuryMsg::QueryMsg::Config {})
         .unwrap();
 
-    // Check config, tswap dapp is added
+    // Check config, astro dapp is added
     assert_eq!(1, resp.dapps.len());
 
     // Add whale and whale_ust token to the memory assets
@@ -154,10 +154,10 @@ fn proper_initialization() {
         base_contracts.treasury.to_string(),
     );
 
-    // Add liquidity to pair from treasury, through terraswap-dapp
+    // Add liquidity to pair from treasury, through astroport-dapp
     app.execute_contract(
         sender.clone(),
-        tswap_dapp.clone(),
+        astro_dapp.clone(),
         &ExecuteMsg::DetailedProvideLiquidity {
             pool_id: "whale_ust_pair".to_string(),
             assets: vec![
@@ -175,7 +175,7 @@ fn proper_initialization() {
         .wrap()
         .query_wasm_smart(
             base_contracts.whale_ust_pair.clone(),
-            &terraswap::pair::QueryMsg::Pool {},
+            &astroport::pair::QueryMsg::Pool {},
         )
         .unwrap();
 
@@ -193,7 +193,7 @@ fn proper_initialization() {
     // Failed swap UST for WHALE due to max spread
     app.execute_contract(
         sender.clone(),
-        tswap_dapp.clone(),
+        astro_dapp.clone(),
         &ExecuteMsg::SwapAsset {
             pool_id: "whale_ust_pair".to_string(),
             offer_id: "ust".into(),
@@ -206,28 +206,42 @@ fn proper_initialization() {
     .unwrap_err();
 
     // Successfull swap UST for WHALE
-    // app.execute_contract(sender.clone(), tswap_dapp.clone(),
-    //     &ExecuteMsg::SwapAsset {
-    //         pool_id: "whale_ust_pair".to_string(),
-    //         offer_id: "ust".into(),
-    //         amount: Uint128::from(100u64),
-    //         max_spread: None,
-    //         belief_price: None,
-    //     }, &[]).unwrap();
-    // //
-    // let pool_res: PoolResponse = app
-    //     .wrap()
-    //     .query_wasm_smart(base_contracts.whale_ust_pair.clone(), &terraswap::pair::QueryMsg::Pool {})
-    //     .unwrap();
+    app.execute_contract(
+        sender.clone(),
+        astro_dapp.clone(),
+        &ExecuteMsg::SwapAsset {
+            pool_id: "whale_ust_pair".to_string(),
+            offer_id: "ust".into(),
+            amount: Uint128::from(10u64),
+            max_spread: Some(Decimal::percent(50u64)),
+            belief_price: Some(Decimal::one()),
+        },
+        &[],
+    )
+    .unwrap();
+    //
+    let pool_res: PoolResponse = app
+        .wrap()
+        .query_wasm_smart(
+            base_contracts.whale_ust_pair.clone(),
+            &terraswap::pair::QueryMsg::Pool {},
+        )
+        .unwrap();
 
-    // // 1 WHALE and UST in pool
-    // assert_eq!(Uint128::from(1u64*MILLION + 100u64), pool_res.assets[0].amount);
-    // assert_eq!(Uint128::from(1u64*MILLION - 99u64), pool_res.assets[1].amount);
+    // 1 WHALE and UST in pool
+    assert_eq!(
+        Uint128::from(1u64 * MILLION + 10u64),
+        pool_res.assets[0].amount
+    );
+    assert_eq!(
+        Uint128::from(1u64 * MILLION - 9u64),
+        pool_res.assets[1].amount
+    );
 
     // Withdraw half of the liquidity from the pool
     app.execute_contract(
         sender.clone(),
-        tswap_dapp.clone(),
+        astro_dapp.clone(),
         &ExecuteMsg::WithdrawLiquidity {
             lp_token_id: "whale_ust".to_string(),
             amount: Uint128::from(MILLION / 2u64),
@@ -241,21 +255,20 @@ fn proper_initialization() {
         .wrap()
         .query_wasm_smart(
             base_contracts.whale_ust_pair.clone(),
-            &terraswap::pair::QueryMsg::Pool {},
+            &astroport::pair::QueryMsg::Pool {},
         )
         .unwrap();
 
     // Get treasury lp token balance
     let treasury_bal = lp.balance(&app, base_contracts.treasury.clone()).unwrap();
-    // NOTE: Below asset_eq! the - 50 on line 190 and +49 on 192 is needed when lines 154-171 are commented.
     // 1 WHALE and UST in pool
     assert_eq!(
-        Uint128::from((1u64 * MILLION + 100u64) / 2u64 - 50u64),
+        Uint128::from((1u64 * MILLION + 10u64) / 2u64),
         pool_res.assets[0].amount
     );
     // small rounding error
     assert_eq!(
-        Uint128::from((1u64 * MILLION - 98u64) / 2u64 + 49u64),
+        Uint128::from((1u64 * MILLION - 8u64) / 2u64),
         pool_res.assets[1].amount
     );
     // Half of the LP tokens left
@@ -267,7 +280,7 @@ fn proper_initialization() {
     // Should add token at same price as pool
     app.execute_contract(
         sender.clone(),
-        tswap_dapp.clone(),
+        astro_dapp.clone(),
         &ExecuteMsg::ProvideLiquidity {
             pool_id: "whale_ust_pair".to_string(),
             main_asset_id: "whale".to_string(),
@@ -282,7 +295,7 @@ fn proper_initialization() {
         .wrap()
         .query_wasm_smart(
             base_contracts.whale_ust_pair.clone(),
-            &terraswap::pair::QueryMsg::Pool {},
+            &astroport::pair::QueryMsg::Pool {},
         )
         .unwrap();
 

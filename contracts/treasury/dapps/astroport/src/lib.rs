@@ -1,10 +1,10 @@
 mod commands;
 pub mod contract;
+pub mod dapp_base;
 pub mod error;
 pub mod msg;
-pub mod terraswap_msg;
+pub mod astroport_msg;
 pub mod utils;
-pub mod dapp_base; 
 
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
