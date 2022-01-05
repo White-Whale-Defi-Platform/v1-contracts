@@ -1,4 +1,5 @@
 use astroport::asset::{AssetInfo, PairInfo};
+use astroport::factory::{PairConfig, PairType};
 use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{attr, Addr, Empty, Timestamp, Uint128};
 use terra_mocks::TerraMockQuerier;
@@ -143,11 +144,17 @@ fn instantiate_pair(
         fee_address: None,
         generator_address: None,
         owner: owner.to_string(),
-        pair_configs: vec![],
+        pair_configs: vec![PairConfig {
+            code_id: pair_contract_code_id,
+            pair_type: PairType::Xyk{},
+            total_fee_bps: 10u16,
+            maker_fee_bps: 10u16,
+            is_disabled: None,
+        }],
         token_code_id: token_contract_code_id,
     };
 
-    let _factory = router
+    let factory = router
         .instantiate_contract(
             factory_contract_code_id,
             owner.clone(),
@@ -168,7 +175,7 @@ fn instantiate_pair(
             },
         ],
         token_code_id: token_contract_code_id,
-        factory_addr: Addr::unchecked("factory"),
+        factory_addr: factory,
         init_params: None,
     };
 
