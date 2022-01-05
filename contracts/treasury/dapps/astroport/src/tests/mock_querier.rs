@@ -11,7 +11,7 @@ use terra_cosmwasm::{
 };
 use terraswap::asset::{Asset, PairInfo};
 use terraswap::pair::{PoolResponse, QueryMsg as TerraswapQueryMsg};
-use white_whale_testing::dapp_base::common::{WHALE_TOKEN, WHALE_UST_LP_TOKEN, WHALE_UST_PAIR};
+use crate::dapp_base::common::{WHALE_TOKEN, WHALE_UST_LP_TOKEN, WHALE_UST_PAIR};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.

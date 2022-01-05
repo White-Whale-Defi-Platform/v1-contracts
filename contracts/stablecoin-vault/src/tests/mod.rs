@@ -12,6 +12,8 @@ mod pool;
 
 mod deposit;
 mod helpers;
+mod anchor_mock;
+mod tswap_mock;
 mod query;
 mod state;
 mod whitelist;

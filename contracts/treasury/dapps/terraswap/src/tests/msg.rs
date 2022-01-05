@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 
 use white_whale::treasury::dapp_base::error::BaseDAppError;
-use white_whale_testing::dapp_base::common::TRADER_CONTRACT;
+use crate::dapp_base::common::TRADER_CONTRACT;
 
 use crate::contract::execute;
 use crate::error::TerraswapError;

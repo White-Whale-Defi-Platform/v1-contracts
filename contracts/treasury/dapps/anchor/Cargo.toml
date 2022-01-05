@@ -47,4 +47,3 @@ white-whale = { version = "1.0.0", path = "../../../../packages/white_whale" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16" }
-white-whale-testing = { version = "1.0.0", path = "../../../../packages/white_whale_testing" }

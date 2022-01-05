@@ -39,7 +39,6 @@ memory = { version = "0.1.0", path = "../../memory" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16" }
-white-whale-testing = { version = "1.0.0", path = "../../../../packages/white_whale_testing" }
 cw-multi-test = { version = "0.8"}
 terra-mocks = {git ="https://github.com/terra-money/cosmwasm-contracts.git", rev = "b25f4ac2d7bddaa3a18838cfe51d18e1ae855dcd", package = "terra-mocks"}
 terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}

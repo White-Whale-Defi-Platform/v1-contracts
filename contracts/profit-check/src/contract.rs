@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
-    StdError, StdResult, Uint128, WasmQuery,
+    StdError, StdResult, Uint128, WasmQuery, CosmosMsg, Empty, WasmMsg,
 };
 
 use crate::error::ProfitCheckError;
@@ -8,7 +8,7 @@ use crate::state::{State, ADMIN, CONFIG};
 use white_whale::profit_check::msg::{
     ExecuteMsg, InstantiateMsg, LastBalanceResponse, LastProfitResponse, QueryMsg, VaultResponse,
 };
-use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg};
+use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg, ExecuteMsg::SendWarchestCommission as VaultCommissionMsg};
 /*
     Profit check is used by the ust vault to see if a proposed trade is indeed profitable.
     before_trade is called before the trade to set the account balance
@@ -80,11 +80,22 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo, loan_fee: Uint128) -> Profi
         return Err(ProfitCheckError::CancelLosingTrade {});
     }
 
-    conf.last_profit = balance - conf.last_balance;
+    let profit = balance - conf.last_balance;
+
+    conf.last_profit = profit;
     conf.last_balance = Uint128::zero();
     CONFIG.save(deps.storage, &conf)?;
 
-    Ok(Response::default().add_attribute("value after trade: ", balance.to_string()))
+    // Create commission message
+    let commission_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: deps.api.addr_humanize(&conf.vault_address)?.into_string(),
+        msg: to_binary(&VaultCommissionMsg {
+            profit
+        })?,
+        funds: vec![],
+    });
+
+    Ok(Response::default().add_attribute("value after trade: ", balance.to_string()).add_message(commission_msg))
 }
 
 // Set address of UST vault

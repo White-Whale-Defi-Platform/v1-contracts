@@ -4,7 +4,7 @@ use cosmwasm_std::Addr;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
 use white_whale::treasury::dapp_base::state::ADMIN;
-use white_whale_testing::dapp_base::common::TEST_CREATOR;
+use crate::dapp_base::common::TEST_CREATOR;
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;

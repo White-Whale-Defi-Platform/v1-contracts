@@ -2,7 +2,7 @@ use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::DepsMut;
 
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
-use white_whale_testing::dapp_base::common::{
+use crate::dapp_base::common::{
     MEMORY_CONTRACT, TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT,
 };
 
