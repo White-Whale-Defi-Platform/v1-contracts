@@ -20,9 +20,18 @@ Relative path: ../contracts/treasury
 | Name                                                       | Description                                      |
 | ---------------------------------------------------------- | ------------------------------------------------ |
 | [`treasury`](contracts/treasury/treasury)                  | Treasury contract, acts as proxy                 |
+| [`memory`](contracts/treasury/memory)     | address store for address translation             |
+
+## DApp contracts
+
+Relative path: ../contracts/treasury/dapps
+
+| Name                                                       | Description                                      |
+| ---------------------------------------------------------- | ------------------------------------------------ |
+| [`dapp-template`](contracts/treasury/dapps/dapp-template)     | Template dapp that tests all the base_dapp functionality           |
 | [`terraswap-dapp`](contracts/treasury/dapps/terraswap)     | Terraswap message generator contract             |
 | [`astroport-dapp`](contracts/treasury/dapps/astroport)     | Astroport message generator contract             |
-| [`terraswap-dapp`](contracts/treasury/dapps/terraswap)     | Terraswap message generator contract             |
+| [`vault-dapp`](contracts/treasury/dapps/vault)     | Vault contract, allows depositing and withdrawing on treasury contract             |
 
 
 ## Tokenomics contracts

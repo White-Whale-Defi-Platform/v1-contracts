@@ -29,7 +29,6 @@ pub fn mock_dependencies(
 }
 
 /// MockQuerier holds an immutable table of bank balances
-/// TODO: also allow querying contracts
 pub struct MockQuerier {
     bank: BankQuerier,
     // placeholder to add support later

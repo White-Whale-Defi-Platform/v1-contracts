@@ -1,23 +1,6 @@
-use cosmwasm_std::{Addr, Coin, Decimal};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use cosmwasm_std::{Coin, Decimal};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::ExecuteMsg as HandleMsg;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum AnchorMsg {
-    DepositStable {},
-    RedeemStable {},
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum BLunaMsg {
-    Bond { validator: Addr },
-    Unbond {},
-    WithdrawUnbonded {},
-}
 
 pub fn create_terraswap_msg(
     offer: Coin,

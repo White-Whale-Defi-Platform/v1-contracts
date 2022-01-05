@@ -17,7 +17,7 @@ members = [
     "contracts/treasury/dapps/astroport",
     "contracts/treasury/dapps/terraswap",
     "contracts/treasury/dapps/dapp-template",
-    "contracts/treasury/dapps/vault-dapp",
+    "contracts/treasury/dapps/vault",
     "contracts/treasury/memory"
 ]
 

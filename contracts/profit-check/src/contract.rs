@@ -414,7 +414,6 @@ mod tests {
             sender: vault_address.clone(),
             funds: vec![],
         };
-        // TODO: this throws error as vault_address is not in the deps. Whats the best way to solve this?
         let _res = execute(
             deps.as_mut(),
             env,
