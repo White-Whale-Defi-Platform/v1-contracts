@@ -6,12 +6,12 @@ use white_whale::treasury::dapp_base::msg::BaseExecuteMsg;
 use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 
 use crate::contract::execute;
+use crate::dapp_base::common::MEMORY_CONTRACT;
 use crate::error::AstroportError;
 use crate::msg::ExecuteMsg;
 use crate::tests::base_mocks::mocks::mock_instantiate;
 use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT};
 use crate::tests::mock_querier::mock_dependencies;
-use crate::dapp_base::common::MEMORY_CONTRACT;
 
 /**
  * BaseExecuteMsg::UpdateConfig

@@ -3,15 +3,15 @@ use cw20::Cw20Contract;
 
 use terra_multi_test::{App, ContractWrapper};
 
+use crate::dapp_base::common::TEST_CREATOR;
 use crate::msg::ExecuteMsg;
 use crate::tests::integration_tests::common_integration::{
     init_contracts, mint_some_whale, mock_app,
 };
-use terra_multi_test::Executor;
 use astroport::pair::PoolResponse;
+use terra_multi_test::Executor;
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
-use crate::dapp_base::common::TEST_CREATOR;
 
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg as InstantiateMsg;
 
@@ -206,23 +206,37 @@ fn proper_initialization() {
     .unwrap_err();
 
     // Successfull swap UST for WHALE
-    app.execute_contract(sender.clone(), astro_dapp.clone(),
+    app.execute_contract(
+        sender.clone(),
+        astro_dapp.clone(),
         &ExecuteMsg::SwapAsset {
             pool_id: "whale_ust_pair".to_string(),
             offer_id: "ust".into(),
             amount: Uint128::from(10u64),
             max_spread: Some(Decimal::percent(50u64)),
             belief_price: Some(Decimal::one()),
-        }, &[]).unwrap();
+        },
+        &[],
+    )
+    .unwrap();
     //
     let pool_res: PoolResponse = app
         .wrap()
-        .query_wasm_smart(base_contracts.whale_ust_pair.clone(), &terraswap::pair::QueryMsg::Pool {})
+        .query_wasm_smart(
+            base_contracts.whale_ust_pair.clone(),
+            &terraswap::pair::QueryMsg::Pool {},
+        )
         .unwrap();
 
     // 1 WHALE and UST in pool
-    assert_eq!(Uint128::from(1u64*MILLION + 10u64), pool_res.assets[0].amount);
-    assert_eq!(Uint128::from(1u64*MILLION - 9u64), pool_res.assets[1].amount);
+    assert_eq!(
+        Uint128::from(1u64 * MILLION + 10u64),
+        pool_res.assets[0].amount
+    );
+    assert_eq!(
+        Uint128::from(1u64 * MILLION - 9u64),
+        pool_res.assets[1].amount
+    );
 
     // Withdraw half of the liquidity from the pool
     app.execute_contract(
@@ -249,12 +263,12 @@ fn proper_initialization() {
     let treasury_bal = lp.balance(&app, base_contracts.treasury.clone()).unwrap();
     // 1 WHALE and UST in pool
     assert_eq!(
-        Uint128::from((1u64 * MILLION + 10u64) / 2u64 ),
+        Uint128::from((1u64 * MILLION + 10u64) / 2u64),
         pool_res.assets[0].amount
     );
     // small rounding error
     assert_eq!(
-        Uint128::from((1u64 * MILLION - 8u64) / 2u64 ),
+        Uint128::from((1u64 * MILLION - 8u64) / 2u64),
         pool_res.assets[1].amount
     );
     // Half of the LP tokens left
