@@ -33,6 +33,7 @@ pub fn instantiate_msg(token_code_id: u64) -> VaultInstantiateMsg {
         token_code_id: token_code_id,
         warchest_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(100_000_000u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
