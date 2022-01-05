@@ -15,7 +15,7 @@ use white_whale::treasury::msg::send_to_treasury;
 
 use crate::contract::AstroportResult;
 use crate::error::AstroportError;
-use crate::terraswap_msg::{asset_into_swap_msg, deposit_lp_msg};
+use crate::astroport_msg::{asset_into_swap_msg, deposit_lp_msg};
 use crate::utils::has_sufficient_balance;
 
 /// Constructs and forwards the terraswap provide_liquidity message
