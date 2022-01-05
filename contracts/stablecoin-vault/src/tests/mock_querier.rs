@@ -4,19 +4,21 @@
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Decimal, Empty, OwnedDeps,
-    Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Decimal, Empty,
+    OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
 
+use crate::tests::anchor_mock::mock_epoch_state;
 use cosmwasm_storage::to_length_prefixed;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
+use terra_cosmwasm::{
+    SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute,
+};
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;
 use white_whale::profit_check::msg::LastBalanceResponse;
 use white_whale::query::anchor::EpochStateResponse;
-use crate::tests::anchor_mock::mock_epoch_state;
-use terra_cosmwasm::{TaxCapResponse, TaxRateResponse, TerraQuery, SwapResponse, TerraQueryWrapper, TerraRoute};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -69,7 +71,6 @@ pub(crate) fn balances_to_map(
     balances_map
 }
 
-
 #[derive(Clone, Default)]
 pub struct TaxQuerier {
     rate: Decimal,
@@ -93,7 +94,6 @@ pub(crate) fn caps_to_map(caps: &[(&String, &Uint128)]) -> HashMap<String, Uint1
     }
     owner_map
 }
-
 
 #[derive(Clone, Default)]
 pub struct TerraswapPairQuerier {
@@ -157,31 +157,32 @@ impl WasmMockQuerier {
                         }
                         _ => panic!("DO NOT ENTER HERE"),
                     }
-                }
-                else if route == &TerraRoute::Market {
+                } else if route == &TerraRoute::Market {
                     match query_data {
-                        TerraQuery::Swap{offer_coin, ask_denom} => {
-                            let res = SwapResponse{
-                                receive: Coin{
+                        TerraQuery::Swap {
+                            offer_coin,
+                            ask_denom,
+                        } => {
+                            let res = SwapResponse {
+                                receive: Coin {
                                     amount: offer_coin.amount,
-                                    denom: String::from(ask_denom)
-                                }
+                                    denom: String::from(ask_denom),
+                                },
                             };
 
                             SystemResult::Ok(ContractResult::from(to_binary(&res)))
                         }
                         _ => panic!("DO NOT ENTER HERE"),
                     }
-                }
-                else {
+                } else {
                     panic!("DO NOT ENTER HERE")
                 }
             }
             // Manual mocking for smart queries
             // Here we can do alot to mock out messages either by defining a new
-            // MockQueryMsg with each call as a type of it 
+            // MockQueryMsg with each call as a type of it
             // Or for more quick multi-contract mocking consider using the contract_addr
-            // or directly parsing the message if it is unique 
+            // or directly parsing the message if it is unique
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 // Handle calls for Profit Check; LastBalance
                 if contract_addr == &String::from("test_profit_check") {
@@ -362,7 +363,7 @@ impl WasmMockQuerier {
             base,
             terraswap_pair_querier: TerraswapPairQuerier::default(),
             token_querier: TokenQuerier::default(),
-            tax_querier: TaxQuerier::default()
+            tax_querier: TaxQuerier::default(),
         }
     }
 

@@ -21,20 +21,17 @@ pub fn test_config_query() {
     let msg = ExecuteMsg::ProvideLiquidity {
         asset: Asset {
             info: AssetInfo::NativeToken {
-                denom: String::from("uusd")
+                denom: String::from("uusd"),
             },
             amount: Uint128::new(1000),
-        }
+        },
     };
     let info = mock_info(TEST_CREATOR, &coins(1000, "uusd"));
     execute(deps.as_mut(), env.clone(), info, msg).unwrap();
 
-
-    let q_res: PoolInfo = from_binary(&query(deps.as_ref(), env, QueryMsg::PoolConfig {}).unwrap()).unwrap();
-    assert_eq!(
-        q_res.stable_cap,
-        Uint128::from(100_000_000u64)
-    )
+    let q_res: PoolInfo =
+        from_binary(&query(deps.as_ref(), env, QueryMsg::PoolConfig {}).unwrap()).unwrap();
+    assert_eq!(q_res.stable_cap, Uint128::from(100_000_000u64))
 }
 
 #[test]

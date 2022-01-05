@@ -1,8 +1,8 @@
 use cosmwasm_std::from_binary;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 
-use white_whale::treasury::dapp_base::msg::{BaseQueryMsg, BaseStateResponse};
 use crate::dapp_base::common::{MEMORY_CONTRACT, TRADER_CONTRACT, TREASURY_CONTRACT};
+use white_whale::treasury::dapp_base::msg::{BaseQueryMsg, BaseStateResponse};
 
 use crate::contract::query;
 use crate::msg::QueryMsg;

@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use crate::dapp_base::common::{WHALE_TOKEN, WHALE_UST_LP_TOKEN, WHALE_UST_PAIR};
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
     from_binary, from_slice, to_binary, Coin, ContractResult, Decimal, OwnedDeps, Querier,
@@ -11,7 +12,6 @@ use terra_cosmwasm::{
 };
 use terraswap::asset::{Asset, PairInfo};
 use terraswap::pair::{PoolResponse, QueryMsg as TerraswapQueryMsg};
-use crate::dapp_base::common::{WHALE_TOKEN, WHALE_UST_LP_TOKEN, WHALE_UST_PAIR};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.

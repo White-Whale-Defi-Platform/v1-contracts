@@ -1,3 +1,4 @@
+use crate::dapp_base::common::TEST_CREATOR;
 use astroport::asset::{AssetInfo, PairInfo};
 use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{attr, Addr, Empty, Timestamp, Uint128};
@@ -5,7 +6,6 @@ use terra_mocks::TerraMockQuerier;
 use terra_multi_test::{App, BankKeeper, ContractWrapper, Executor};
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
-use crate::dapp_base::common::TEST_CREATOR;
 
 pub struct BaseContracts {
     pub whale: Addr,

@@ -3,14 +3,14 @@ use cosmwasm_std::{
     Deps, DepsMut, Env, Fraction, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdError,
     StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
+use cw2::{get_contract_version, set_contract_version};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 use protobuf::Message;
-
+use semver::Version;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
 use terraswap::querier::{query_balance, query_supply, query_token_balance};
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
-
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::deposit_info::DepositInfo;
@@ -19,18 +19,14 @@ use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
 use white_whale::profit_check::msg::LastBalanceResponse;
 use white_whale::profit_check::msg::QueryMsg as ProfitCheckQueryMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
+use white_whale::tax::{compute_tax, into_msg_without_tax};
+use white_whale::ust_vault::msg::*;
 use white_whale::ust_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
 
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
-use white_whale::tax::{compute_tax, into_msg_without_tax};
-use white_whale::ust_vault::msg::*;
-
 use crate::error::StableVaultError;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, STATE};
 
@@ -200,7 +196,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             profit_check_address,
             allow_non_whitelisted,
         ),
-        ExecuteMsg::SendWarchestCommission { profit } => {
+        ExecuteMsg::SendTreasuryCommission { profit } => {
             send_commissions(deps.as_ref(), info, profit)
         }
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
@@ -902,6 +898,7 @@ pub fn try_query_config(deps: Deps) -> StdResult<PoolInfo> {
 
     info.to_normal(deps)
 }
+
 pub fn try_query_state(deps: Deps) -> StdResult<State> {
     STATE.load(deps.storage)
 }

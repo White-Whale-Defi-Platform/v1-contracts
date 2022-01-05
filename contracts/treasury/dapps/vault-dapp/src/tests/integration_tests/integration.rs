@@ -10,10 +10,10 @@ use crate::tests::integration_tests::common_integration::{
 use terra_multi_test::Executor;
 use terraswap::asset::Asset;
 
+use crate::dapp_base::common::TEST_CREATOR;
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
 use white_whale::treasury::vault_assets::{ValueRef, VaultAsset};
-use crate::dapp_base::common::TEST_CREATOR;
 
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 

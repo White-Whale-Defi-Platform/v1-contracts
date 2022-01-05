@@ -1,14 +1,18 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, QueryRequest, Response,
-    StdError, StdResult, Uint128, WasmQuery, CosmosMsg, Empty, WasmMsg,
+    entry_point, to_binary, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo,
+    QueryRequest, Response, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
+};
+
+use white_whale::profit_check::msg::{
+    ExecuteMsg, InstantiateMsg, LastBalanceResponse, LastProfitResponse, QueryMsg, VaultResponse,
+};
+use white_whale::ust_vault::msg::{
+    ExecuteMsg::SendTreasuryCommission as VaultCommissionMsg, ValueResponse, VaultQueryMsg,
 };
 
 use crate::error::ProfitCheckError;
 use crate::state::{State, ADMIN, CONFIG};
-use white_whale::profit_check::msg::{
-    ExecuteMsg, InstantiateMsg, LastBalanceResponse, LastProfitResponse, QueryMsg, VaultResponse,
-};
-use white_whale::ust_vault::msg::{ValueResponse, VaultQueryMsg, ExecuteMsg::SendWarchestCommission as VaultCommissionMsg};
+
 /*
     Profit check is used by the ust vault to see if a proposed trade is indeed profitable.
     before_trade is called before the trade to set the account balance
@@ -89,13 +93,13 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo, loan_fee: Uint128) -> Profi
     // Create commission message
     let commission_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: deps.api.addr_humanize(&conf.vault_address)?.into_string(),
-        msg: to_binary(&VaultCommissionMsg {
-            profit
-        })?,
+        msg: to_binary(&VaultCommissionMsg { profit })?,
         funds: vec![],
     });
 
-    Ok(Response::default().add_attribute("value after trade: ", balance.to_string()).add_message(commission_msg))
+    Ok(Response::default()
+        .add_attribute("value after trade: ", balance.to_string())
+        .add_message(commission_msg))
 }
 
 // Set address of UST vault
@@ -154,10 +158,12 @@ pub fn get_vault_value(deps: Deps) -> StdResult<Uint128> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::mock::mock_dependencies;
     use cosmwasm_std::testing::mock_env;
     use cosmwasm_std::{from_binary, Api, Coin};
+
+    use crate::mock::mock_dependencies;
+
+    use super::*;
 
     #[test]
     fn proper_initialization() {

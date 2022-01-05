@@ -46,7 +46,7 @@ fn successful_handle_callback_with_anchor_deposit() {
     mock_instantiate(deps.as_mut());
 
     let msg = ExecuteMsg::Callback {
-        0: CallbackMsg::AfterSuccessfulLoanCallback {}
+        0: CallbackMsg::AfterSuccessfulLoanCallback {},
     };
     let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
 
