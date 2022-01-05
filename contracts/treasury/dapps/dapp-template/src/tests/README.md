@@ -1,4 +1,4 @@
-# Tests covered
+[# Tests covered
 
 The `dapp-template` covers all the cases for the base operations that are shared by all dapps. Therefore, unless there
 is a change in the logic, those cases are not covered in other dapps as they are covered by the template.
@@ -25,3 +25,4 @@ is a change in the logic, those cases are not covered in other dapps as they are
 # Coverage
 
 `contract.rs`: 92%
+]()
