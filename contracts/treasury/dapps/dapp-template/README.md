@@ -51,3 +51,7 @@ git commit -m 'Initial Commit'
 git remote add origin YOUR-GIT-URL
 git push -u origin main
 ```
+
+# Tests
+The test cases covered by this dapp are located in [the README file under src/tests/](src/tests/README.md).
+
