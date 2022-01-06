@@ -16,19 +16,19 @@ use white_whale::ust_vault::msg::*;
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
-pub(crate) const WARCHEST_FEE: u64 = 10u64;
+pub(crate) const TREASURY_FEE: u64 = 10u64;
 
 pub fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),
-        warchest_addr: "warchest".to_string(),
+        treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
         token_code_id: 0u64,
-        warchest_fee: Decimal::percent(WARCHEST_FEE),
+        treasury_fee: Decimal::percent(TREASURY_FEE),
         flash_loan_fee: Decimal::permille(5u64),
         commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(100_000_000u64),
@@ -45,12 +45,12 @@ pub fn mock_instantiate(deps: DepsMut) {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),
-        warchest_addr: "warchest".to_string(),
+        treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
         token_code_id: 0u64,
-        warchest_fee: Decimal::percent(10u64),
+        treasury_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
         commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(100_000_000u64),
@@ -112,7 +112,7 @@ fn successful_update_fee() {
         flash_loan_fee: Some(Fee {
             share: Decimal::percent(1),
         }),
-        warchest_fee: Some(Fee {
+        treasury_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
         commission_fee: None,
@@ -126,7 +126,7 @@ fn successful_update_fee() {
     let fee_response: FeeResponse = from_binary(&res).unwrap();
     let fees: VaultFee = fee_response.fees;
     assert_eq!(Decimal::percent(1), fees.flash_loan_fee.share);
-    assert_eq!(Decimal::percent(2), fees.warchest_fee.share);
+    assert_eq!(Decimal::percent(2), fees.treasury_fee.share);
 }
 
 #[test]
@@ -140,7 +140,7 @@ fn unsuccessful_update_fee_unauthorized() {
         flash_loan_fee: Some(Fee {
             share: Decimal::percent(1),
         }),
-        warchest_fee: Some(Fee {
+        treasury_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
         commission_fee: None,
@@ -160,13 +160,13 @@ fn successful_update_fee_unchanged() {
 
     let fees = FEE.load(deps.as_mut().storage).unwrap();
     let original_flash_loan_fee = fees.flash_loan_fee;
-    let original_warchest_fee = fees.warchest_fee;
+    let original_treasury_fee = fees.treasury_fee;
 
     // update fees
     let info = mock_info(TEST_CREATOR, &[]);
     let msg = ExecuteMsg::SetFee {
         flash_loan_fee: None,
-        warchest_fee: None,
+        treasury_fee: None,
         commission_fee: None,
     };
 
@@ -177,7 +177,7 @@ fn successful_update_fee_unchanged() {
     let fee_response: FeeResponse = from_binary(&res).unwrap();
     let fees: VaultFee = fee_response.fees;
     assert_eq!(original_flash_loan_fee.share, fees.flash_loan_fee.share);
-    assert_eq!(original_warchest_fee.share, fees.warchest_fee.share);
+    assert_eq!(original_treasury_fee.share, fees.treasury_fee.share);
 }
 
 #[test]
@@ -225,12 +225,12 @@ fn test_init_with_non_default_vault_lp_token() {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),
-        warchest_addr: "warchest".to_string(),
+        treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
         token_code_id: 10u64,
-        warchest_fee: Decimal::percent(10u64),
+        treasury_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
         commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(1000_000_000u64),

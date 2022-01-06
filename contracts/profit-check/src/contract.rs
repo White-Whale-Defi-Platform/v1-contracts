@@ -9,7 +9,7 @@ use white_whale::profit_check::msg::{
     ExecuteMsg, InstantiateMsg, LastBalanceResponse, LastProfitResponse, QueryMsg, VaultResponse,
 };
 use white_whale::ust_vault::msg::{
-    ExecuteMsg::SendWarchestCommission as VaultCommissionMsg, ValueResponse, VaultQueryMsg,
+    ExecuteMsg::SendTreasuryCommission as VaultCommissionMsg, ValueResponse, VaultQueryMsg,
 };
 /*
     Profit check is used by the ust vault to see if a proposed trade is indeed profitable.

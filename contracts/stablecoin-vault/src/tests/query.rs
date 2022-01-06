@@ -38,7 +38,7 @@ pub fn test_fees_query() {
 
     let q_res: FeeResponse =
         from_binary(&query(deps.as_ref(), env, QueryMsg::Fees {}).unwrap()).unwrap();
-    assert_eq!(q_res.fees.warchest_fee.share, Decimal::percent(10u64));
+    assert_eq!(q_res.fees.treasury_fee.share, Decimal::percent(10u64));
     assert_eq!(q_res.fees.flash_loan_fee.share, Decimal::permille(5u64));
 }
 

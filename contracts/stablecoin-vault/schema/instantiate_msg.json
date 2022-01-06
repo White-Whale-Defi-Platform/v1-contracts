@@ -10,8 +10,8 @@
     "profit_check_address",
     "stable_cap",
     "token_code_id",
-    "warchest_addr",
-    "warchest_fee"
+    "treasury_addr",
+    "treasury_fee"
   ],
   "properties": {
     "anchor_money_market_address": {
@@ -49,10 +49,10 @@
         "null"
       ]
     },
-    "warchest_addr": {
+    "treasury_addr": {
       "type": "string"
     },
-    "warchest_fee": {
+    "treasury_fee": {
       "$ref": "#/definitions/Decimal"
     }
   },

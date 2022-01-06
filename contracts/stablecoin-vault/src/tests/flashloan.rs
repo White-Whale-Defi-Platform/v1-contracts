@@ -16,7 +16,7 @@ use crate::error::StableVaultError;
 use crate::state::STATE;
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 use crate::tests::common_integration::{
-    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_warchest,
+    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_treasury,
     instantiate_msg, mock_app,
 };
 use crate::tests::instantiate::mock_instantiate;
@@ -97,7 +97,7 @@ fn unsuccessful_flashloan_broke() {
     // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
     // Store the gov contract as a code object
-    let warchest_id = router.store_code(contract_warchest());
+    let treasury_id = router.store_code(contract_treasury());
     // Store the profit check needed for the vault on provide and withdrawal of liquidity as well as trading actions
     let profit_check_id = router.store_code(contract_profit_check());
     let anchor_id = router.store_code(contract_anchor_mock());
@@ -155,7 +155,7 @@ fn unsuccessful_flashloan_broke() {
     // Verify the funds have been received
     assert_eq!(owner_balance, Uint128::new(5000));
 
-    // Setup Warchest
+    // Setup Treasury
     let chest_msg = TreasuryInitMsg {
         // admin_addr: owner.to_string(),
         // whale_token_addr: whale_token_instance.to_string(),
@@ -179,14 +179,14 @@ fn unsuccessful_flashloan_broke() {
         denom: "uusd".to_string(),
     };
 
-    // Setup the warchest contract
-    let warchest_addr = router
+    // Setup the treasury contract
+    let treasury_addr = router
         .instantiate_contract(
-            warchest_id,
+            treasury_id,
             owner.clone(),
             &chest_msg,
             &[],
-            "WARCHEST",
+            "TREASURY",
             None,
         )
         .unwrap();
@@ -211,7 +211,7 @@ fn unsuccessful_flashloan_broke() {
     // First prepare an InstantiateMsg for vault contract with the mock terraswap token_code_id
     let vault_msg = instantiate_msg(
         terraswap_id,
-        warchest_addr.to_string(),
+        treasury_addr.to_string(),
         profit_check_addr.to_string(),
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
@@ -265,7 +265,7 @@ fn unsuccessful_flashloan_broke() {
         .unwrap();
 
     // Ensure addresses are not equal to each other
-    assert_ne!(warchest_addr, vault_addr);
+    assert_ne!(treasury_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
 
     // Hook up the vault and profit check
@@ -317,7 +317,7 @@ fn successful_flashloan_without_withdrawing_aust() {
     // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
     // Store the gov contract as a code object
-    let warchest_id = router.store_code(contract_warchest());
+    let treasury_id = router.store_code(contract_treasury());
     // Store the profit check needed for the vault on provide and withdrawal of liquidity as well as trading actions
     let profit_check_id = router.store_code(contract_profit_check());
     let anchor_id = router.store_code(contract_anchor_mock());
@@ -375,7 +375,7 @@ fn successful_flashloan_without_withdrawing_aust() {
     // Verify the funds have been received
     assert_eq!(owner_balance, Uint128::new(5_000));
 
-    // Setup Warchest
+    // Setup Treasury
     let chest_msg = TreasuryInitMsg {
         // admin_addr: owner.to_string(),
         // whale_token_addr: whale_token_instance.to_string(),
@@ -399,14 +399,14 @@ fn successful_flashloan_without_withdrawing_aust() {
         denom: "uusd".to_string(),
     };
 
-    // Setup the warchest contract
-    let warchest_addr = router
+    // Setup the treasury contract
+    let treasury_addr = router
         .instantiate_contract(
-            warchest_id,
+            treasury_id,
             owner.clone(),
             &chest_msg,
             &[],
-            "WARCHEST",
+            "TREASURY",
             None,
         )
         .unwrap();
@@ -431,7 +431,7 @@ fn successful_flashloan_without_withdrawing_aust() {
     // First prepare an InstantiateMsg for vault contract with the mock terraswap token_code_id
     let vault_msg = instantiate_msg(
         terraswap_id,
-        warchest_addr.to_string(),
+        treasury_addr.to_string(),
         profit_check_addr.to_string(),
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
@@ -485,7 +485,7 @@ fn successful_flashloan_without_withdrawing_aust() {
         .unwrap();
 
     // Ensure addresses are not equal to each other
-    assert_ne!(warchest_addr, vault_addr);
+    assert_ne!(treasury_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
 
     // Hook up the vault and profit check

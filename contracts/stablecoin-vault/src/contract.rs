@@ -74,13 +74,13 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
             flash_loan_fee: Fee {
                 share: msg.flash_loan_fee,
             },
-            warchest_fee: Fee {
-                share: msg.warchest_fee,
+            treasury_fee: Fee {
+                share: msg.treasury_fee,
             },
             commission_fee: Fee {
                 share: msg.commission_fee,
             },
-            warchest_addr: deps.api.addr_canonicalize(&msg.warchest_addr)?,
+            treasury_addr: deps.api.addr_canonicalize(&msg.treasury_addr)?,
         },
     )?;
 
@@ -179,9 +179,9 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
         }
         ExecuteMsg::SetFee {
             flash_loan_fee,
-            warchest_fee,
+            treasury_fee,
             commission_fee,
-        } => set_fee(deps, info, flash_loan_fee, warchest_fee, commission_fee),
+        } => set_fee(deps, info, flash_loan_fee, treasury_fee, commission_fee),
         ExecuteMsg::AddToWhitelist { contract_addr } => add_to_whitelist(deps, info, contract_addr),
         ExecuteMsg::RemoveFromWhitelist { contract_addr } => {
             remove_from_whitelist(deps, info, contract_addr)
@@ -200,7 +200,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             profit_check_address,
             allow_non_whitelisted,
         ),
-        ExecuteMsg::SendWarchestCommission { profit } => {
+        ExecuteMsg::SendTreasuryCommission { profit } => {
             send_commissions(deps.as_ref(), info, profit)
         }
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
@@ -422,10 +422,10 @@ pub fn try_withdraw_liquidity(
     let lp_addr = deps.api.addr_humanize(&info.liquidity_token)?;
     let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
     let (total_value, _, uaust_value_in_contract) = compute_total_value(deps.as_ref(), &info)?;
-    // Get warchest fee in LP tokens
-    let warchest_fee = get_warchest_fee(deps.as_ref(), amount)?;
+    // Get treasury fee in LP tokens
+    let treasury_fee = get_treasury_fee(deps.as_ref(), amount)?;
     // Share with fee deducted.
-    let share_ratio: Decimal = Decimal::from_ratio(amount - warchest_fee, total_share);
+    let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
     let mut refund_amount: Uint128 = total_value * share_ratio;
     attrs.push(("Post-fee received:", refund_amount.to_string()));
 
@@ -486,21 +486,21 @@ pub fn try_withdraw_liquidity(
         attrs.push(("After Anchor withdraw:", refund_amount.to_string()));
     };
 
-    // LP token warchest Asset
-    let lp_token_warchest_fee = Asset {
+    // LP token treasury Asset
+    let lp_token_treasury_fee = Asset {
         info: AssetInfo::Token {
             contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
         },
-        amount: warchest_fee,
+        amount: treasury_fee,
     };
 
-    // Construct warchest fee msg.
-    let warchest_fee_msg = fee_config.warchest_fee.msg(
+    // Construct treasury fee msg.
+    let treasury_fee_msg = fee_config.treasury_fee.msg(
         deps.as_ref(),
-        lp_token_warchest_fee,
-        deps.api.addr_humanize(&fee_config.warchest_addr)?,
+        lp_token_treasury_fee,
+        deps.api.addr_humanize(&fee_config.treasury_addr)?,
     )?;
-    attrs.push(("War chest fee:", warchest_fee.to_string()));
+    attrs.push(("War chest fee:", treasury_fee.to_string()));
 
     // Construct refund message
     let refund_asset = Asset {
@@ -518,7 +518,7 @@ pub fn try_withdraw_liquidity(
         contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
         // Burn exludes fee
         msg: to_binary(&Cw20ExecuteMsg::Burn {
-            amount: (amount - warchest_fee),
+            amount: (amount - treasury_fee),
         })?,
         funds: vec![],
     });
@@ -526,7 +526,7 @@ pub fn try_withdraw_liquidity(
     Ok(response
         .add_message(refund_msg)
         .add_message(burn_msg)
-        .add_message(warchest_fee_msg)
+        .add_message(treasury_fee_msg)
         .add_attribute("action:", "withdraw_liquidity")
         .add_attributes(attrs))
 }
@@ -550,7 +550,7 @@ fn send_commissions(deps: Deps, info: MessageInfo, profit: Uint128) -> VaultResu
         amount: commission_amount,
     };
     let commission_msg =
-        refund_asset.into_msg(&deps.querier, deps.api.addr_humanize(&fees.warchest_addr)?)?;
+        refund_asset.into_msg(&deps.querier, deps.api.addr_humanize(&fees.treasury_addr)?)?;
 
     Ok(Response::new()
         .add_attribute("treasury commission:", commission_amount.to_string())
@@ -658,27 +658,27 @@ pub fn compute_total_value(
     Ok((total_deposits_in_ust, stable_amount, aust_value_in_ust))
 }
 
-pub fn get_warchest_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+pub fn get_treasury_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let fee_config = FEE.load(deps.storage)?;
-    let fee = fee_config.warchest_fee.compute(amount);
+    let fee = fee_config.treasury_fee.compute(amount);
     Ok(fee)
 }
 
 pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
-    let warchest_fee = get_warchest_fee(deps, amount)?;
+    let treasury_fee = get_treasury_fee(deps, amount)?;
     let anchor_withdraw_fee = compute_tax(
         deps,
-        &Coin::new((amount - warchest_fee).u128(), String::from("uusd")),
+        &Coin::new((amount - treasury_fee).u128(), String::from("uusd")),
     )?;
     let stable_transfer_fee = compute_tax(
         deps,
         &Coin::new(
-            (amount - warchest_fee - anchor_withdraw_fee).u128(),
+            (amount - treasury_fee - anchor_withdraw_fee).u128(),
             String::from("uusd"),
         ),
     )?;
     // Two transfers (anchor -> vault -> user) so ~2x tax.
-    Ok(warchest_fee + anchor_withdraw_fee + stable_transfer_fee)
+    Ok(treasury_fee + anchor_withdraw_fee + stable_transfer_fee)
 }
 
 //----------------------------------------------------------------------------------------
@@ -839,7 +839,7 @@ pub fn set_fee(
     deps: DepsMut,
     msg_info: MessageInfo,
     flash_loan_fee: Option<Fee>,
-    warchest_fee: Option<Fee>,
+    treasury_fee: Option<Fee>,
     commission_fee: Option<Fee>,
 ) -> VaultResult {
     // Only the admin should be able to call this
@@ -849,8 +849,8 @@ pub fn set_fee(
     if let Some(fee) = flash_loan_fee {
         fee_config.flash_loan_fee = fee;
     }
-    if let Some(fee) = warchest_fee {
-        fee_config.warchest_fee = fee;
+    if let Some(fee) = treasury_fee {
+        fee_config.treasury_fee = fee;
     }
     if let Some(fee) = commission_fee {
         fee_config.commission_fee = fee;

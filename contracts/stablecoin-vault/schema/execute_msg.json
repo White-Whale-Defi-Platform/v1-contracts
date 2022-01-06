@@ -73,7 +73,7 @@
                 }
               ]
             },
-            "warchest_fee": {
+            "treasury_fee": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Fee"
