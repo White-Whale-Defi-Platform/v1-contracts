@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::DepsMut;
+use cosmwasm_std::{Addr, DepsMut};
 use cosmwasm_std::{Api, Decimal};
 
 use white_whale::memory::item::Memory;
@@ -8,6 +8,7 @@ use crate::dapp_base::common::MEMORY_CONTRACT;
 
 use crate::contract::instantiate;
 use crate::msg::InstantiateMsg;
+use crate::state::{STATE, State};
 use crate::tests::base_mocks::mocks::instantiate_msg as base_init_msg;
 use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
 
@@ -48,5 +49,9 @@ fn successful_initialization() {
                 address: deps.api.addr_validate(&MEMORY_CONTRACT).unwrap()
             }
         }
+    );
+    assert_eq!(
+        STATE.load(&deps.storage).unwrap(),
+        State { liquidity_token_addr: Addr::unchecked("")}
     );
 }
