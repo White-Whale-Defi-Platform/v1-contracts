@@ -2,6 +2,8 @@
 
 A novel decentralised arbitrage platform built on the [Terra](https://terra.money) blockchain.
 
+Documentation link: https://white-whale-defi-platform.github.io/docs/
+
 Attention:
 The contracts that we wish to be audited are flagged with **AUDIT**
 
