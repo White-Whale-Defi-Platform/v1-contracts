@@ -10,7 +10,7 @@ use terraswap::querier::query_balance;
 
 use white_whale::denom::LUNA_DENOM;
 
-use white_whale::msg::create_terraswap_msg;
+use white_whale::ust_vault::terraswap::create_terraswap_msg;
 
 use white_whale::deposit_info::ArbBaseAsset;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;

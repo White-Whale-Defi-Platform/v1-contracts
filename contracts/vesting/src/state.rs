@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use white_whale::vesting::{AllocationInfo, Schedule};
+use white_whale::vesting::msg::{AllocationInfo, Schedule};
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const STATE: Item<State> = Item::new("state");

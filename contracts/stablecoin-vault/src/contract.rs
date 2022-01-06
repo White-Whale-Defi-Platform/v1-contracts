@@ -844,8 +844,8 @@ pub fn set_fee(
 ) -> VaultResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-    // TODO: Evaluate this.
     let mut fee_config = FEE.load(deps.storage)?;
+
     if let Some(fee) = flash_loan_fee {
         fee_config.flash_loan_fee = fee;
     }
@@ -855,6 +855,7 @@ pub fn set_fee(
     if let Some(fee) = commission_fee {
         fee_config.commission_fee = fee;
     }
+    
     FEE.save(deps.storage, &fee_config)?;
     Ok(Response::default())
 }

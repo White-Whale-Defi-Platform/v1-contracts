@@ -7,7 +7,6 @@ use terraswap::asset::AssetInfo;
 use white_whale::ust_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 
 // Custom Vault Instant msg func which takes code ID
-// TODO: Clean up func sig or remove
 pub fn instantiate_msg(
     token_code_id: u64,
     war_chest: String,
@@ -17,13 +16,13 @@ pub fn instantiate_msg(
 ) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
         anchor_money_market_address: anchor_addr,
-        aust_address: aust_address,
+        aust_address,
         profit_check_address: profit_check_addr,
         warchest_addr: war_chest,
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
-        token_code_id: token_code_id,
+        token_code_id,
         warchest_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
         commission_fee: Decimal::permille(8u64),

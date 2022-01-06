@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
 use cosmwasm_std::{attr, to_binary, Addr, Timestamp, Uint128};
 use cw_multi_test::{App, BankKeeper, ContractWrapper, Executor};
-use white_whale::emissions::{
+use white_whale::emissions::msg::{
     AllocationInfo, AllocationResponse, ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
     ReceiveMsg, Schedule, SimulateWithdrawResponse, StateResponse,
 };
@@ -602,7 +602,7 @@ fn test_withdraw() {
         .unwrap_err();
     assert_eq!(
         err.to_string(),
-        "white_whale::emissions::AllocationInfo not found"
+        "white_whale::emissions::msg::AllocationInfo not found"
     );
 
     // ######    ERROR :: Withdrawals not allowed yet   ######

@@ -1,4 +1,3 @@
-use crate::msg::AnchorMsg;
 use crate::tax::deduct_tax;
 use cosmwasm_std::{
     to_binary, Addr, Coin, CosmosMsg, Deps, ReplyOn, Response, StdError, StdResult, SubMsg,
@@ -7,6 +6,15 @@ use cosmwasm_std::{
 use cw20::Cw20ExecuteMsg;
 use schemars::JsonSchema;
 use std::fmt;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AnchorMsg {
+    DepositStable {},
+    RedeemStable {},
+}
 
 pub fn try_deposit_to_anchor<T: Clone + fmt::Debug + PartialEq + JsonSchema>(
     anchor_money_market_address: String,
