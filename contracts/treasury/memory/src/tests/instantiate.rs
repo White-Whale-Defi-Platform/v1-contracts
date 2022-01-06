@@ -5,9 +5,9 @@ use cosmwasm_std::DepsMut;
 use crate::contract::{execute, instantiate};
 use crate::tests::common::TEST_CREATOR;
 
+use crate::error::MemoryError;
 use crate::tests::mock_querier::mock_dependencies;
 use white_whale::memory::msg::*;
-use crate::error::MemoryError;
 
 pub(crate) fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {}
@@ -68,5 +68,4 @@ fn unsuccessful_set_admin() {
         Err(MemoryError::Admin(_)) => (),
         _ => panic!("Must return MemoryError::Admin"),
     }
-
 }
