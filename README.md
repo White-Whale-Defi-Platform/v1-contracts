@@ -2,15 +2,19 @@
 
 A novel decentralised arbitrage platform built on the [Terra](https://terra.money) blockchain.
 
+Documentation link: https://white-whale-defi-platform.github.io/docs/
+
+Attention:
+The contracts that we wish to be audited are flagged with **AUDIT**
+
 ## Contracts
 
 | Name                                                       | Description                                  |
 | ---------------------------------------------------------- | -------------------------------------------- |
-| [`stablecoin-vault`](contracts/stablecoin-vault)           | UST vault contract                           |
-| [`stable-arb-terra`](contracts/stable-arb-terra)           | UST arbitrage contract (using Terraswap LPs) |
+| [`stablecoin-vault`](contracts/stablecoin-vault) **AUDIT**          | UST vault contract                           |
+| [`stable-arb-terra`](contracts/stable-arb-terra) **AUDIT**          | UST arbitrage contract (using Terraswap LPs) |
 | [`stable-arb-astro`](contracts/stable-arb-astro)           | UST arbitrage contract (using Terraswap LPs) |
-| [`profit-check`](contracts/profit-check)                   | Profit checker for the UST vault             |
-| [`treasury`](contracts/treasury/treasury)                  | Treasury contract                            |
+| [`profit-check`](contracts/profit-check)         **AUDIT**          | Profit checker for the UST vault             |
 | [`vesting`](contracts/vesting)                             | $WHALE vesting contract                      |
 
 ## Treasury contracts
@@ -19,8 +23,8 @@ Relative path: ../contracts/treasury
 
 | Name                                                       | Description                                      |
 | ---------------------------------------------------------- | ------------------------------------------------ |
-| [`treasury`](contracts/treasury/treasury)                  | Treasury contract, acts as proxy                 |
-| [`memory`](contracts/treasury/memory)     | address store for address translation             |
+| [`treasury`](contracts/treasury/treasury)       **AUDIT**           | Treasury contract, acts as proxy                 |
+| [`memory`](contracts/treasury/memory)   **AUDIT**  | address store for address translation             |
 
 ## DApp contracts
 
@@ -28,10 +32,10 @@ Relative path: ../contracts/treasury/dapps
 
 | Name                                                       | Description                                      |
 | ---------------------------------------------------------- | ------------------------------------------------ |
-| [`dapp-template`](contracts/treasury/dapps/dapp-template)     | Template dapp that tests all the base_dapp functionality           |
-| [`terraswap-dapp`](contracts/treasury/dapps/terraswap)     | Terraswap message generator contract             |
+| [`dapp-template`](contracts/treasury/dapps/dapp-template)  **AUDIT**   | Template dapp that tests all the base_dapp functionality           |
+| [`terraswap-dapp`](contracts/treasury/dapps/terraswap)  **AUDIT**   | Terraswap message generator contract             |
 | [`astroport-dapp`](contracts/treasury/dapps/astroport)     | Astroport message generator contract             |
-| [`vault-dapp`](contracts/treasury/dapps/vault)     | Vault contract, allows depositing and withdrawing on treasury contract             |
+| [`vault-dapp`](contracts/treasury/dapps/vault)   **AUDIT**  | Vault contract, allows depositing and withdrawing on treasury contract             |
 
 
 ## Tokenomics contracts

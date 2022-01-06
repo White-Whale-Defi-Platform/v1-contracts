@@ -1,10 +1,7 @@
-use cosmwasm_std::testing::{mock_env};
+use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Api, MessageInfo, Uint128};
 
 use white_whale::ust_vault::msg::ExecuteMsg;
-
-
-
 
 use crate::contract::execute;
 use crate::error::StableVaultError;

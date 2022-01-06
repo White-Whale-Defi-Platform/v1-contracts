@@ -855,7 +855,7 @@ pub fn set_fee(
     if let Some(fee) = commission_fee {
         fee_config.commission_fee = fee;
     }
-    
+
     FEE.save(deps.storage, &fee_config)?;
     Ok(Response::default())
 }
