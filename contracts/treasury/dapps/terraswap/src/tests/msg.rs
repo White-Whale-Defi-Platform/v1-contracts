@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 
-use white_whale::treasury::dapp_base::error::BaseDAppError;
 use crate::dapp_base::common::TRADER_CONTRACT;
+use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 use crate::contract::execute;
 use crate::error::TerraswapError;
@@ -34,7 +34,7 @@ pub fn test_provide_liquidity_unauthorized_msg() {
 }
 
 #[test]
-pub fn test_successfully_provide_liquidity_nonexisting_asset_msg() {
+pub fn test_unsuccessfully_provide_liquidity_nonexisting_asset_msg() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 

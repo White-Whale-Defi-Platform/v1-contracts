@@ -1,11 +1,9 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::Api;
 
+use crate::dapp_base::common::{MEMORY_CONTRACT, TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
 use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::state::{BaseState, BASESTATE};
-use crate::dapp_base::common::{
-    MEMORY_CONTRACT, TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT,
-};
 
 use crate::contract::instantiate;
 use crate::tests::base_mocks::mocks::instantiate_msg;

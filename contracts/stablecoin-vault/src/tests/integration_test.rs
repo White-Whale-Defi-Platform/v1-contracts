@@ -1,9 +1,11 @@
 #[cfg(test)]
 use crate::contract::{DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
+use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
 use crate::tests::common_integration::{
     contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_warchest,
     instantiate_msg, mock_app,
 };
+use crate::tests::tswap_mock::{contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg};
 use cosmwasm_std::{coins, to_binary, Addr, BlockInfo, Timestamp, Uint128};
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg, MinterResponse};
 use terra_multi_test::Executor;
@@ -11,10 +13,6 @@ use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
 use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::ust_vault::msg::ExecuteMsg;
-use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
-use crate::tests::tswap_mock::{
-    contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg,
-};
 
 const DEFAULT_SMALL_AMOUNT_OF_UST: u128 = 10000u128;
 const DEFAULT_LARGE_AMOUNT_OF_UST: u128 = 100000000000000000u128;

@@ -30,13 +30,9 @@ pub enum ExecuteMsg {
     /// Receive hook for the liquidity token
     Receive(Cw20ReceiveMsg),
     /// Provide liquidity to the vault
-    ProvideLiquidity {
-        asset: Asset,
-    },
+    ProvideLiquidity { asset: Asset },
     /// Set minimum amount of stables held liquid (not deposited into anchor)
-    SetStableCap {
-        stable_cap: Uint128,
-    },
+    SetStableCap { stable_cap: Uint128 },
     /// Sets the withdraw fee and flash loan fee
     SetFee {
         flash_loan_fee: Option<Fee>,
@@ -44,21 +40,13 @@ pub enum ExecuteMsg {
         commission_fee: Option<Fee>,
     },
     /// Forwards the profit amount to the vault, is called by profit-check
-    SendWarchestCommission { 
-        profit: Uint128 
-    },
+    SendWarchestCommission { profit: Uint128 },
     /// Set the admin of the contract
-    SetAdmin {
-        admin: String,
-    },
+    SetAdmin { admin: String },
     /// Add provided contract to the whitelisted contracts
-    AddToWhitelist {
-        contract_addr: String,
-    },
+    AddToWhitelist { contract_addr: String },
     /// Remove provided contract from the whitelisted contracts
-    RemoveFromWhitelist {
-        contract_addr: String,
-    },
+    RemoveFromWhitelist { contract_addr: String },
     /// Update the interal State struct
     UpdateState {
         anchor_money_market_address: Option<String>,
@@ -67,9 +55,7 @@ pub enum ExecuteMsg {
         allow_non_whitelisted: Option<bool>,
     },
     /// Execute a flashloan
-    FlashLoan {
-        payload: FlashLoanPayload,
-    },
+    FlashLoan { payload: FlashLoanPayload },
     /// Internal callback message
     Callback(CallbackMsg),
 }

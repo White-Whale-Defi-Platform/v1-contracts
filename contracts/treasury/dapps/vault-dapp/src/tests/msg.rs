@@ -53,7 +53,7 @@ fn successful_update_fee() {
  * Tests updating the pool of the contract.
  */
 #[test]
-fn update_pool() {
+fn successful_update_pool() {
     // update fees
     let info = mock_info(TEST_CREATOR, &[]);
     let mut deps = mock_dependencies(&[]);
