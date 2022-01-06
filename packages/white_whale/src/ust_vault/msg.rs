@@ -13,10 +13,10 @@ pub struct InstantiateMsg {
     pub anchor_money_market_address: String,
     pub aust_address: String,
     pub profit_check_address: String,
-    pub warchest_addr: String,
+    pub treasury_addr: String,
     pub asset_info: AssetInfo,
     pub token_code_id: u64,
-    pub warchest_fee: Decimal,
+    pub treasury_fee: Decimal,
     pub flash_loan_fee: Decimal,
     pub commission_fee: Decimal,
     pub stable_cap: Uint128,
@@ -36,11 +36,11 @@ pub enum ExecuteMsg {
     /// Sets the withdraw fee and flash loan fee
     SetFee {
         flash_loan_fee: Option<Fee>,
-        warchest_fee: Option<Fee>,
+        treasury_fee: Option<Fee>,
         commission_fee: Option<Fee>,
     },
     /// Forwards the profit amount to the vault, is called by profit-check
-    SendWarchestCommission { profit: Uint128 },
+    SendTreasuryCommission { profit: Uint128 },
     /// Set the admin of the contract
     SetAdmin { admin: String },
     /// Add provided contract to the whitelisted contracts

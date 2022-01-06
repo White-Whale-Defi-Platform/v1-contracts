@@ -2,7 +2,7 @@
 use crate::contract::{DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
 use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
 use crate::tests::common_integration::{
-    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_warchest,
+    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_treasury,
     instantiate_msg, mock_app,
 };
 use crate::tests::tswap_mock::{contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg};
@@ -35,7 +35,7 @@ fn stablecoin_vault_fees_are_allocated() {
     // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
     // Store the gov contract as a code object
-    let warchest_id = router.store_code(contract_warchest());
+    let treasury_id = router.store_code(contract_treasury());
     // Store the profit check needed for the vault on provide and withdrawal of liquidity as well as trading actions
     let profit_check_id = router.store_code(contract_profit_check());
     let anchor_id = router.store_code(contract_anchor_mock());
@@ -109,7 +109,7 @@ fn stablecoin_vault_fees_are_allocated() {
     // Verify the funds have been received
     assert_eq!(owner_balance, Uint128::new(5000));
 
-    // Setup Warchest
+    // Setup Treasury
     let chest_msg = TreasuryInitMsg {
         // admin_addr: owner.to_string(),
         // whale_token_addr: whale_token_instance.to_string(),
@@ -133,14 +133,14 @@ fn stablecoin_vault_fees_are_allocated() {
         denom: "uusd".to_string(),
     };
 
-    // Setup the warchest contract
-    let warchest_addr = router
+    // Setup the treasury contract
+    let treasury_addr = router
         .instantiate_contract(
-            warchest_id,
+            treasury_id,
             owner.clone(),
             &chest_msg,
             &[],
-            "WARCHEST",
+            "TREASURY",
             None,
         )
         .unwrap();
@@ -165,7 +165,7 @@ fn stablecoin_vault_fees_are_allocated() {
     // First prepare an InstantiateMsg for vault contract with the mock terraswap token_code_id
     let vault_msg = instantiate_msg(
         terraswap_id,
-        warchest_addr.to_string(),
+        treasury_addr.to_string(),
         profit_check_addr.to_string(),
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
@@ -219,7 +219,7 @@ fn stablecoin_vault_fees_are_allocated() {
         .unwrap();
 
     // Ensure addresses are not equal to each other
-    assert_ne!(warchest_addr, vault_addr);
+    assert_ne!(treasury_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
 
     // Hook up the vault and profit check
@@ -271,9 +271,9 @@ fn stablecoin_vault_fees_are_allocated() {
 
     let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
 
-    // Verify warchest has received some fees (WIP)
+    // Verify treasury has received some fees (WIP)
     // ensure our balances
-    let war_chest_bal = lp.balance(&router, warchest_addr.clone()).unwrap();
+    let war_chest_bal = lp.balance(&router, treasury_addr.clone()).unwrap();
     assert_eq!(
         war_chest_bal,
         withdraw_amount.checked_div(Uint128::new(10)).unwrap()
@@ -298,7 +298,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     // Store the stablecoin vault as a code object
     let vault_id = router.store_code(contract_stablecoin_vault());
     // Store the gov contract as a code object
-    let warchest_id = router.store_code(contract_warchest());
+    let treasury_id = router.store_code(contract_treasury());
     // Store the profit check needed for the vault on provide and withdrawal of liquidity as well as trading actions
     let profit_check_id = router.store_code(contract_profit_check());
     let anchor_id = router.store_code(contract_anchor_mock());
@@ -372,7 +372,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     // Verify the funds have been received
     assert_eq!(owner_balance, Uint128::new(5000));
 
-    // Setup Warchest
+    // Setup Treasury
     let chest_msg = TreasuryInitMsg {
         // admin_addr: owner.to_string(),
         // whale_token_addr: whale_token_instance.to_string(),
@@ -396,14 +396,14 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         denom: "uusd".to_string(),
     };
 
-    // Setup the warchest contract
-    let warchest_addr = router
+    // Setup the treasury contract
+    let treasury_addr = router
         .instantiate_contract(
-            warchest_id,
+            treasury_id,
             owner.clone(),
             &chest_msg,
             &[],
-            "WARCHEST",
+            "TREASURY",
             None,
         )
         .unwrap();
@@ -428,7 +428,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     // First prepare an InstantiateMsg for vault contract with the mock terraswap token_code_id
     let vault_msg = instantiate_msg(
         terraswap_id,
-        warchest_addr.to_string(),
+        treasury_addr.to_string(),
         profit_check_addr.to_string(),
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
@@ -482,7 +482,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         .unwrap();
 
     // Ensure addresses are not equal to each other
-    assert_ne!(warchest_addr, vault_addr);
+    assert_ne!(treasury_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
 
     // Hook up the vault and profit check
@@ -535,9 +535,9 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
 
     let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
 
-    // Verify warchest has received some fees (WIP)
+    // Verify treasury has received some fees (WIP)
     // ensure our balances
-    let war_chest_bal = lp.balance(&router, warchest_addr.clone()).unwrap();
+    let war_chest_bal = lp.balance(&router, treasury_addr.clone()).unwrap();
     assert_eq!(
         war_chest_bal,
         withdraw_amount.checked_div(Uint128::new(10000)).unwrap()

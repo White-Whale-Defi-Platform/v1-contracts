@@ -6,11 +6,11 @@ use terraswap::pair::Cw20HookMsg;
 use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
 use white_whale::ust_vault::msg::CallbackMsg;
 
-use crate::contract::{encapsulate_payload, get_warchest_fee, receive_cw20};
+use crate::contract::{encapsulate_payload, get_treasury_fee, receive_cw20};
 use crate::error::StableVaultError;
 use crate::state::STATE;
 use crate::tests::common::TEST_CREATOR;
-use crate::tests::instantiate::{mock_instantiate, WARCHEST_FEE};
+use crate::tests::instantiate::{mock_instantiate, TREASURY_FEE};
 use crate::tests::mock_querier::mock_dependencies;
 
 #[test]
@@ -114,15 +114,15 @@ fn unsuccessful_receive_cw20_unauthorized() {
 }
 
 #[test]
-fn test_get_warchest_fee() {
+fn test_get_treasury_fee() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
     let amount = Uint128::new(1000);
 
-    let warchest_fee = get_warchest_fee(deps.as_ref(), amount).unwrap();
+    let treasury_fee = get_treasury_fee(deps.as_ref(), amount).unwrap();
     assert_eq!(
-        warchest_fee,
-        amount / Uint128::new(u128::from(WARCHEST_FEE))
+        treasury_fee,
+        amount / Uint128::new(u128::from(TREASURY_FEE))
     );
 }

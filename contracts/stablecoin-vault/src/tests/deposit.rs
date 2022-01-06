@@ -62,7 +62,7 @@ fn successful_update_fee() {
     // update fees
     let info = mock_info(TEST_CREATOR, &[]);
     let msg = ExecuteMsg::SetFee {
-        warchest_fee: Some(Fee {
+        treasury_fee: Some(Fee {
             share: Decimal::percent(2),
         }),
         flash_loan_fee: Some(Fee {
@@ -80,7 +80,7 @@ fn successful_update_fee() {
     let res = query(deps.as_ref(), mock_env(), QueryMsg::Fees {}).unwrap();
     let fee_response: FeeResponse = from_binary(&res).unwrap();
     let fees: VaultFee = fee_response.fees;
-    assert_eq!(Decimal::percent(2), fees.warchest_fee.share);
+    assert_eq!(Decimal::percent(2), fees.treasury_fee.share);
     assert_eq!(Decimal::percent(2), fees.commission_fee.share);
     assert_eq!(Decimal::percent(2), fees.flash_loan_fee.share);
 }
@@ -111,12 +111,12 @@ fn test_init_with_non_default_vault_lp_token() {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
         profit_check_address: "test_profit_check".to_string(),
-        warchest_addr: "warchest".to_string(),
+        treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
         token_code_id: 0u64,
-        warchest_fee: Decimal::percent(10u64),
+        treasury_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
         commission_fee: Decimal::permille(8u64),
         stable_cap: Uint128::from(100_000_000u64),
