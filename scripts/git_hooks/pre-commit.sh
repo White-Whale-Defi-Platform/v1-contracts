@@ -7,7 +7,7 @@ export PATH=$PATH:/usr/local/bin
 # Install the hook with the --install option.
 #
 
-project_toplevel="$(git rev-parse --show-toplevel)"
+project_toplevel=$(git rev-parse --show-toplevel)
 git_directory=$(git rev-parse --git-dir)
 
 install_hook() {
@@ -35,7 +35,7 @@ fi
 
 # cargo fmt checks
 format_check() {
-  printf "Starting file formatting check...\n------\n"
+  printf "Starting file formatting check...\n"
 
   has_formatting_issues=0
   first_file=1
@@ -43,7 +43,7 @@ format_check() {
 
   # check for issues
   for file in $rust_staged_files; do
-    format_check_result="$(rustfmt --check $file)"
+    format_check_result=$(rustfmt --check $file)
     if [ "$format_check_result" != "" ]; then
       if [ $first_file -eq 0 ]; then
         printf "\n"
@@ -55,7 +55,7 @@ format_check() {
   done
 
   if [ $has_formatting_issues -ne 0 ]; then # there are formatting issues
-    printf "\n------\nFormatting issues were found in files listed above. Trying to format them for you...\n"
+    printf "\nFormatting issues were found in files listed above. Trying to format them for you...\n"
     exit_code=0
 
     for file in $rust_staged_files; do
@@ -84,13 +84,15 @@ format_check() {
 
 # clippy checks
 lint_check() {
-  printf "Starting clippy check...\n------\n"
+  printf "Starting clippy check...\n"
   RUSTFLAGS="-Dwarnings"
-  #cargo clippy -- -D warnings
-
+  cargo clippy --quiet -- -D warnings
+  clippy_exit_code=$?
+  if [ $clippy_exit_code -ne 0 ]; then
+    printf "\nclippy found some issues. Fix them manually and try again :)"
+    exit 1
+  fi
 }
 
 format_check
-#lint_check
-
-exit 1
+lint_check
