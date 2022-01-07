@@ -2,8 +2,8 @@ use cosmwasm_std::{Addr, Coin, Decimal, Uint128};
 use cw20::Cw20Contract;
 
 use terra_multi_test::{App, ContractWrapper};
+use terraswap::asset::AssetInfo;
 
-use crate::dapp_base::common::TEST_CREATOR;
 use crate::msg::ExecuteMsg;
 use crate::tests::integration_tests::common_integration::{
     init_contracts, mint_some_whale, mock_app,
@@ -11,6 +11,7 @@ use crate::tests::integration_tests::common_integration::{
 use astroport::pair::PoolResponse;
 use terra_multi_test::Executor;
 use white_whale::memory::msg as MemoryMsg;
+use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
 use white_whale::treasury::msg as TreasuryMsg;
 
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg as InstantiateMsg;
@@ -72,12 +73,24 @@ fn proper_initialization() {
         base_contracts.memory.clone(),
         &MemoryMsg::ExecuteMsg::UpdateAssetAddresses {
             to_add: vec![
-                ("whale".to_string(), base_contracts.whale.to_string()),
+                (
+                    "whale".to_string(),
+                    AssetInfo::Token {
+                        contract_addr: base_contracts.whale.to_string(),
+                    },
+                ),
                 (
                     "whale_ust".to_string(),
-                    base_contracts.whale_ust.to_string(),
+                    AssetInfo::Token {
+                        contract_addr: base_contracts.whale_ust.to_string(),
+                    },
                 ),
-                ("ust".to_string(), "uusd".to_string()),
+                (
+                    "ust".to_string(),
+                    AssetInfo::NativeToken {
+                        denom: "uusd".to_string(),
+                    },
+                ),
             ],
             to_remove: vec![],
         },

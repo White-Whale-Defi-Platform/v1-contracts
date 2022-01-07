@@ -68,3 +68,10 @@ docker run --rm -v "$(pwd)":/code \
 ```
 
 The optimized contracts are generated in the artifacts/ directory.
+
+## Contributing to this repo
+
+It's great you want to contribute to the development of White Whale! To make sure we are on the same page, make sure
+to add the git pre-commit hook, which will format the code and do some static analysis checks on it.
+
+To install the hook, run `scripts/git_hooks/pre-commit.sh --install`

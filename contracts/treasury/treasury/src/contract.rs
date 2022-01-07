@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Response, StdResult, Uint128,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    StdResult, Uint128,
 };
 
 use crate::error::TreasuryError;
@@ -65,29 +65,11 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> TreasuryResult {
-    // let data = deps
-    //     .storage
-    //     .get(CONFIG_KEY)
-    //     .ok_or_else(|| StdError::not_found("State"))?;
-    // // We can start a new State object from the old one
-    // let mut config: State = from_slice(&data)?;
-    // // And use something provided in MigrateMsg to update the state of the migrated contract
-    // config.verifier = deps.api.addr_validate(&msg.verifier)?;
-    // // Then store our modified State
-    // deps.storage.set(CONFIG_KEY, &to_vec(&config)?);
-    // If we have no need to update the State of the contract then just Response::default() should suffice
-    // in this case, the code is still updated, the migration does not change the contract addr or funds
-    // if this is the case you desire, consider making the new Addr part of the MigrateMsg and then doing
-    // a payout
-
     let version: Version = CONTRACT_VERSION.parse()?;
     let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
 
     if storage_version < version {
         set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-        // If state structure changed in any contract version in the way migration is needed, it
-        // should occur here
     }
     Ok(Response::default())
 }
@@ -102,7 +84,7 @@ pub fn execute_action(
     let state = STATE.load(deps.storage)?;
     if !state
         .dapps
-        .contains(&deps.api.addr_canonicalize(msg_info.sender.as_str())?)
+        .contains(&deps.api.addr_validate(msg_info.sender.as_str())?)
     {
         return Err(TreasuryError::SenderNotWhitelisted {});
     }
@@ -140,12 +122,12 @@ pub fn add_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> TreasuryR
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    if state.dapps.contains(&deps.api.addr_canonicalize(&dapp)?) {
+    if state.dapps.contains(&deps.api.addr_validate(&dapp)?) {
         return Err(TreasuryError::AlreadyInList {});
     }
 
     // Add contract to whitelist.
-    state.dapps.push(deps.api.addr_canonicalize(&dapp)?);
+    state.dapps.push(deps.api.addr_validate(&dapp)?);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
@@ -157,13 +139,13 @@ pub fn remove_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> Treasu
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    if !state.dapps.contains(&deps.api.addr_canonicalize(&dapp)?) {
+    if !state.dapps.contains(&deps.api.addr_validate(&dapp)?) {
         return Err(TreasuryError::NotInList {});
     }
 
     // Remove contract from whitelist.
-    let canonical_addr = deps.api.addr_canonicalize(&dapp)?;
-    state.dapps.retain(|addr| *addr != canonical_addr);
+    let dapp_address = deps.api.addr_validate(&dapp)?;
+    state.dapps.retain(|addr| *addr != dapp_address);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
@@ -197,11 +179,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 /// Returns the whitelisted dapps
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = STATE.load(deps.storage)?;
-    let dapps: Vec<CanonicalAddr> = state.dapps;
+    let dapps: Vec<Addr> = state.dapps;
     let resp = ConfigResponse {
         dapps: dapps
             .iter()
-            .map(|dapp| -> String { deps.api.addr_humanize(dapp).unwrap().to_string() })
+            .map(|dapp| -> String { dapp.to_string() })
             .collect(),
     };
     Ok(resp)

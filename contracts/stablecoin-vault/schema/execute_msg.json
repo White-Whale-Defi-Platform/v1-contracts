@@ -3,6 +3,7 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
+      "description": "Receive hook for the liquidity token",
       "type": "object",
       "required": [
         "receive"
@@ -15,6 +16,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Provide liquidity to the vault",
       "type": "object",
       "required": [
         "provide_liquidity"
@@ -35,6 +37,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Set minimum amount of stables held liquid (not deposited into anchor)",
       "type": "object",
       "required": [
         "set_stable_cap"
@@ -55,6 +58,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Sets the withdraw fee and flash loan fee",
       "type": "object",
       "required": [
         "set_fee"
@@ -63,6 +67,16 @@
         "set_fee": {
           "type": "object",
           "properties": {
+            "commission_fee": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Fee"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "flash_loan_fee": {
               "anyOf": [
                 {
@@ -89,6 +103,28 @@
       "additionalProperties": false
     },
     {
+      "description": "Forwards the profit amount to the vault, is called by profit-check",
+      "type": "object",
+      "required": [
+        "send_treasury_commission"
+      ],
+      "properties": {
+        "send_treasury_commission": {
+          "type": "object",
+          "required": [
+            "profit"
+          ],
+          "properties": {
+            "profit": {
+              "$ref": "#/definitions/Uint128"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Set the admin of the contract",
       "type": "object",
       "required": [
         "set_admin"
@@ -109,6 +145,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Add provided contract to the whitelisted contracts",
       "type": "object",
       "required": [
         "add_to_whitelist"
@@ -129,6 +166,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Remove provided contract from the whitelisted contracts",
       "type": "object",
       "required": [
         "remove_from_whitelist"
@@ -149,6 +187,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Update the interal State struct",
       "type": "object",
       "required": [
         "update_state"
@@ -187,6 +226,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Execute a flashloan",
       "type": "object",
       "required": [
         "flash_loan"
@@ -207,6 +247,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Internal callback message",
       "type": "object",
       "required": [
         "callback"

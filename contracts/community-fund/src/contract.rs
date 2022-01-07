@@ -27,7 +27,7 @@ pub fn instantiate(
     deps.api.addr_validate(&msg.whale_token_addr)?;
 
     let state = State {
-        whale_token_addr: deps.api.addr_canonicalize(&msg.whale_token_addr)?,
+        whale_token_addr: deps.api.addr_validate(&msg.whale_token_addr)?,
     };
 
     STATE.save(deps.storage, &state)?;
@@ -70,11 +70,8 @@ pub fn spend_whale(
 
     let account_addr = deps.api.addr_validate(&info.sender.to_string())?;
 
-    let fund_whale_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_humanize(&state.whale_token_addr)?,
-        account_addr,
-    )?;
+    let fund_whale_balance =
+        query_token_balance(&deps.querier, state.whale_token_addr.clone(), account_addr)?;
     if amount > fund_whale_balance {
         return Err(CommunityFundError::InsufficientFunds(
             amount,
@@ -84,7 +81,7 @@ pub fn spend_whale(
 
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
+            contract_addr: state.whale_token_addr.to_string(),
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Transfer { recipient, amount })?,
         })),
@@ -98,11 +95,8 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
 
     let account_addr = deps.api.addr_validate(&info.sender.to_string())?;
 
-    let fund_whale_balance = query_token_balance(
-        &deps.querier,
-        deps.api.addr_humanize(&state.whale_token_addr)?,
-        account_addr,
-    )?;
+    let fund_whale_balance =
+        query_token_balance(&deps.querier, state.whale_token_addr.clone(), account_addr)?;
 
     if amount > fund_whale_balance {
         return Err(CommunityFundError::InsufficientFunds(
@@ -113,7 +107,7 @@ pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFu
 
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps.api.addr_humanize(&state.whale_token_addr)?.to_string(),
+            contract_addr: state.whale_token_addr.to_string(),
             funds: vec![],
             msg: to_binary(&Cw20ExecuteMsg::Burn { amount })?,
         })),
@@ -130,6 +124,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<Binary> {
     let state = STATE.load(deps.storage)?;
     to_binary(&ConfigResponse {
-        token_addr: deps.api.addr_humanize(&state.whale_token_addr)?,
+        token_addr: state.whale_token_addr,
     })
 }

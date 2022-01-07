@@ -7,14 +7,12 @@ import json
 import pathlib
 import sys
 from typing import List
-# temp workaround
-sys.path.append('/workspaces/devcontainer/White-Whale-SDK/src')
-sys.path.append(pathlib.Path(__file__).parent.resolve())
 
-from white_whale.contracts.terraswap_dapp import *
-from white_whale.contracts.treasury import *
+
+from sdk.contracts.terraswap_dapp import *
+from sdk.contracts.treasury import *
 from terra_sdk.core.coins import Coin
-from white_whale.deploy import get_deployer
+from sdk.deploy import get_deployer
 
 def execute_on_treasury_msg(msgs: any, coins: List[Coin]):
     msg = MsgExecuteContract(

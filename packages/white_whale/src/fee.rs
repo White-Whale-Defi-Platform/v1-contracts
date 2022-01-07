@@ -1,8 +1,7 @@
-use cosmwasm_std::{Addr, CanonicalAddr, Decimal, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 use cosmwasm_std::{CosmosMsg, Deps, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
 use terraswap::asset::Asset;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -25,7 +24,7 @@ pub struct VaultFee {
     pub flash_loan_fee: Fee,
     pub treasury_fee: Fee,
     pub commission_fee: Fee,
-    pub treasury_addr: CanonicalAddr,
+    pub treasury_addr: Addr,
 }
 
 #[cfg(test)]

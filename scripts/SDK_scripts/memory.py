@@ -7,13 +7,11 @@ import json
 import pathlib
 import sys
 from typing import List
-# temp workaround
-sys.path.append('/workspaces/devcontainer/White-Whale-SDK/src')
-sys.path.append(pathlib.Path(__file__).parent.resolve())
 
-from white_whale.contracts.memory import *
+
+from sdk.contracts.memory import *
 from terra_sdk.core.coins import Coin
-from white_whale.deploy import get_deployer
+from sdk.deploy import get_deployer
 
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"

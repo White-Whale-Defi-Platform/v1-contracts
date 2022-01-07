@@ -24,7 +24,7 @@ jobs:
       - name: Setup | Rust
         uses: ATiltedTree/setup-rust@v1
         with:
-          rust-version: 1.53.0
+          rust-version: 1.58.1
           components: clippy
       - name: Build | Lint
         run: cargo clippy -- -D warnings
@@ -52,7 +52,7 @@ jobs:
       - name: Setup | Rust
         uses: ATiltedTree/setup-rust@v1
         with:
-          rust-version: 1.53.0
+          rust-version: 1.58.1
       - name: Unit Test | Test
         run: cargo unit-test
       - name: Schema | Test

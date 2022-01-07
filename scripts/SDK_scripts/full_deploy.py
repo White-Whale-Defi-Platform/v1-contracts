@@ -4,15 +4,13 @@ import json
 import pathlib
 import sys
 # temp workaround
-sys.path.append('/workspaces/devcontainer/White-Whale-SDK/src')
-sys.path.append(pathlib.Path(__file__).parent.resolve())
-
 from terra_sdk.core.auth import StdFee
-from white_whale.deploy import get_deployer
+from sdk.client import Client
+from sdk.deploy import get_deployer
 from terra_sdk.core.coins import Coin
-from white_whale.contracts.stable_vault import *
-from white_whale.contracts.stable_arb import *
-from white_whale.contracts.community import *
+from sdk.contracts.stable_vault import *
+from sdk.contracts.stable_arb import *
+from sdk.contracts.community import *
 
 #------------------------
 #   Run with: $ cd /workspaces/devcontainer/contracts ; /usr/bin/env /bin/python3 -- /workspaces/devcontainer/contracts/scripts/full_deploy.py 

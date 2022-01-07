@@ -1,6 +1,5 @@
 mod commands;
 pub mod contract;
-pub mod dapp_base;
 pub mod msg;
 
 #[cfg(test)]

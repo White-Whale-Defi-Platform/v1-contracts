@@ -2,8 +2,8 @@ use cosmwasm_std::{Addr, Coin, Decimal, Uint128};
 use cw20::Cw20Contract;
 
 use terra_multi_test::{App, ContractWrapper};
+use terraswap::asset::AssetInfo;
 
-use crate::dapp_base::common::TEST_CREATOR;
 use crate::msg::ExecuteMsg;
 use crate::tests::integration_tests::common_integration::{
     init_contracts, mint_some_whale, mock_app,
@@ -11,6 +11,7 @@ use crate::tests::integration_tests::common_integration::{
 use terra_multi_test::Executor;
 use terraswap::pair::PoolResponse;
 use white_whale::memory::msg as MemoryMsg;
+use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
 use white_whale::treasury::msg as TreasuryMsg;
 
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg as InstantiateMsg;
@@ -72,12 +73,24 @@ fn proper_initialization() {
         base_contracts.memory.clone(),
         &MemoryMsg::ExecuteMsg::UpdateAssetAddresses {
             to_add: vec![
-                ("whale".to_string(), base_contracts.whale.to_string()),
+                (
+                    "whale".to_string(),
+                    AssetInfo::Token {
+                        contract_addr: base_contracts.whale.to_string(),
+                    },
+                ),
                 (
                     "whale_ust".to_string(),
-                    base_contracts.whale_ust.to_string(),
+                    AssetInfo::Token {
+                        contract_addr: base_contracts.whale_ust.to_string(),
+                    },
                 ),
-                ("ust".to_string(), "uusd".to_string()),
+                (
+                    "ust".to_string(),
+                    AssetInfo::NativeToken {
+                        denom: "uusd".to_string(),
+                    },
+                ),
             ],
             to_remove: vec![],
         },
@@ -238,6 +251,18 @@ fn proper_initialization() {
         pool_res.assets[1].amount
     );
 
+    // try withdrawing zero, this will fail with an error
+    app.execute_contract(
+        sender.clone(),
+        tswap_dapp.clone(),
+        &ExecuteMsg::WithdrawLiquidity {
+            lp_token_id: "whale_ust".to_string(),
+            amount: Uint128::zero(),
+        },
+        &[],
+    )
+    .unwrap_err();
+
     // Withdraw half of the liquidity from the pool
     app.execute_contract(
         sender.clone(),
@@ -290,6 +315,20 @@ fn proper_initialization() {
         &[],
     )
     .unwrap();
+
+    // Provide zero liquidity
+    // this should fail with an error
+    app.execute_contract(
+        sender.clone(),
+        tswap_dapp.clone(),
+        &ExecuteMsg::ProvideLiquidity {
+            pool_id: "whale_ust_pair".to_string(),
+            main_asset_id: "whale".to_string(),
+            amount: Uint128::zero(),
+        },
+        &[],
+    )
+    .unwrap_err();
 
     //
     let pool_res_after: PoolResponse = app

@@ -28,7 +28,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let state = State {
-        vault_address: deps.api.addr_canonicalize(&msg.vault_address.to_string())?,
+        vault_address: deps.api.addr_validate(&msg.vault_address.to_string())?,
         denom: msg.denom,
         last_balance: Uint128::zero(),
         last_profit: Uint128::zero(),
@@ -52,7 +52,7 @@ pub fn execute(deps: DepsMut, _env: Env, info: MessageInfo, msg: ExecuteMsg) -> 
 // Resets last trade and sets current UST balance of caller
 pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
     let mut conf = CONFIG.load(deps.storage)?;
-    if deps.api.addr_canonicalize(&info.sender.to_string())? != conf.vault_address {
+    if info.sender != conf.vault_address {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
@@ -72,7 +72,7 @@ pub fn before_trade(deps: DepsMut, info: MessageInfo) -> ProfitCheckResult {
 // Checks if balance increased after the trade
 pub fn after_trade(deps: DepsMut, info: MessageInfo, loan_fee: Uint128) -> ProfitCheckResult {
     let mut conf = CONFIG.load(deps.storage)?;
-    if deps.api.addr_canonicalize(&info.sender.to_string())? != conf.vault_address {
+    if info.sender != conf.vault_address {
         return Err(ProfitCheckError::Std(StdError::generic_err("Unauthorized")));
     }
 
@@ -90,7 +90,7 @@ pub fn after_trade(deps: DepsMut, info: MessageInfo, loan_fee: Uint128) -> Profi
 
     // Create commission message
     let commission_msg: CosmosMsg<Empty> = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&conf.vault_address)?.into_string(),
+        contract_addr: conf.vault_address.into_string(),
         msg: to_binary(&VaultCommissionMsg { profit })?,
         funds: vec![],
     });
@@ -109,7 +109,7 @@ pub fn set_vault_address(
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
     let mut conf = CONFIG.load(deps.storage)?;
-    conf.vault_address = deps.api.addr_canonicalize(&vault_address)?;
+    conf.vault_address = deps.api.addr_validate(&vault_address)?;
     CONFIG.save(deps.storage, &conf)?;
 
     Ok(Response::default())
@@ -141,14 +141,14 @@ pub fn try_query_last_balance(deps: Deps) -> StdResult<LastBalanceResponse> {
 pub fn try_query_vault_address(deps: Deps) -> StdResult<VaultResponse> {
     let conf = CONFIG.load(deps.storage)?;
     Ok(VaultResponse {
-        vault_address: deps.api.addr_humanize(&conf.vault_address)?,
+        vault_address: conf.vault_address,
     })
 }
 
 pub fn get_vault_value(deps: Deps) -> StdResult<Uint128> {
     let config = CONFIG.load(deps.storage)?;
     let response: ValueResponse = deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: deps.api.addr_humanize(&config.vault_address)?.to_string(),
+        contract_addr: config.vault_address.to_string(),
         msg: to_binary(&VaultQueryMsg::VaultValue {})?,
     }))?;
     Ok(response.total_ust_value)

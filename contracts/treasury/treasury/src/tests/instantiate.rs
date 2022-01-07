@@ -48,7 +48,7 @@ fn successful_initialization() {
     };
     let _res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
     let state: State = STATE.load(&deps.storage).unwrap();
-    assert_eq!(state.dapps[0], deps.api.addr_canonicalize(&DAPP).unwrap(),);
+    assert_eq!(state.dapps[0], deps.api.addr_validate(&DAPP).unwrap(),);
 
     let msg = ExecuteMsg::RemoveDApp {
         dapp: DAPP.to_string(),
