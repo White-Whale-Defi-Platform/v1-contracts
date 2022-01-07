@@ -23,7 +23,7 @@ if [ "$1" = "--install" ]; then
       install_hook
       ;;
     *)
-      echo "Skipping hook installation :("
+      printf "Skipping hook installation :("
       exit $?
       ;;
     esac
@@ -33,26 +33,64 @@ if [ "$1" = "--install" ]; then
   exit $?
 fi
 
-# check for formatting
+# cargo fmt checks
+format_check() {
+  printf "Starting file formatting check...\n------\n"
 
-has_issues=0
-first_file=1
+  has_formatting_issues=0
+  first_file=1
+  rust_staged_files=$(git diff --name-only --staged -- '*.rs')
 
-for file in $(git diff --name-only --staged -- '*.rs'); do
-    format_check_result="$(rustfmt --skip-children --force --write-mode diff $file 2>/dev/null || true)"
+  # check for issues
+  for file in $rust_staged_files; do
+    format_check_result="$(rustfmt --check $file)"
     if [ "$format_check_result" != "" ]; then
-        if [ $first_file -eq 0 ]; then
-            echo -n ", "
-        fi
-        echo -n "$file"
-        has_issues=1
-        first_file=0
+      if [ $first_file -eq 0 ]; then
+        printf "\n"
+      fi
+      printf "$file"
+      has_formatting_issues=1
+      first_file=0
     fi
-done
+  done
 
-if [ $has_issues -eq 0 ]; then
-    exit 0
-fi
+  if [ $has_formatting_issues -ne 0 ]; then # there are formatting issues
+    printf "\n------\nFormatting issues were found in files listed above. Trying to format them for you...\n"
+    exit_code=0
 
-echo ". Formatting issues were found in files listed above. Format your code with cargo fmt."
+    for file in $rust_staged_files; do
+      rustfmt $file
+      format_exit_code=$?
+
+      if [ $format_exit_code -ne 0 ]; then
+        # rustfmt couldn't format the current file
+        exit_code=1
+      else
+        not_staged_file=$(git diff --name-only -- $file)
+
+        if [ $not_staged_file != "" ]; then # it means the file changed and it's not staged, i.e. rustfmt did the job.
+          git add $not_staged_file
+        fi
+      fi
+    done
+
+    if [ $exit_code -ne 0 ]; then
+      printf "rustfmt failed to format some files. Please review, fix them and stage them manually."
+      exit 1
+    fi
+
+  fi
+}
+
+# clippy checks
+lint_check() {
+  printf "Starting clippy check...\n------\n"
+  RUSTFLAGS="-Dwarnings"
+  #cargo clippy -- -D warnings
+
+}
+
+format_check
+#lint_check
+
 exit 1
