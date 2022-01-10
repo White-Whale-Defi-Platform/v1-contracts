@@ -68,7 +68,7 @@ format_check() {
       else
         not_staged_file=$(git diff --name-only -- $file)
 
-        if [ "$not_staged_file" != "" ]; then # it means the file changed and it's not staged, i.e. rustfmt did the job.
+        if [ $not_staged_file != "" ]; then # it means the file changed and it's not staged, i.e. rustfmt did the job.
           git add $not_staged_file
         fi
       fi
