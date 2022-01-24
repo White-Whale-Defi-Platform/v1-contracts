@@ -67,9 +67,11 @@
             "stablecoin_peg_arb": "",
             "treasury": "",
             "terraswap_dapp": "",
-            "governance": "",
-            "emissions": "",
-            "dex_arbitrage": "2028"
-        }
+            "governance": "2146",
+            "emissions": "2147",
+            "dex_arbitrage": "2028",
+            "stable_arb_astro": "2247"
+        },
+        "stable_arb_astro": "terra1sk7rlehf372pjv7djet3remhwffzzje2fz2lu2"
     }
 }
