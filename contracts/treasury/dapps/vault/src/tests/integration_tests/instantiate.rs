@@ -5,7 +5,7 @@ use terra_multi_test::{App, ContractWrapper};
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 use crate::tests::integration_tests::common_integration::{mint_some_whale, store_token_code};
 use terra_multi_test::Executor;
-use terraswap::asset::Asset;
+use terraswap::asset::{Asset, AssetInfo};
 
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::msg as TreasuryMsg;
@@ -144,12 +144,24 @@ pub fn configure_memory(app: &mut App, sender: Addr, base_contracts: &BaseContra
         base_contracts.memory.clone(),
         &MemoryMsg::ExecuteMsg::UpdateAssetAddresses {
             to_add: vec![
-                ("whale".to_string(), base_contracts.whale.to_string()),
+                (
+                    "whale".to_string(),
+                    AssetInfo::Token {
+                        contract_addr: base_contracts.whale.to_string(),
+                    },
+                ),
                 (
                     "whale_ust".to_string(),
-                    base_contracts.whale_ust.to_string(),
+                    AssetInfo::Token {
+                        contract_addr: base_contracts.whale_ust.to_string(),
+                    },
                 ),
-                ("ust".to_string(), "uusd".to_string()),
+                (
+                    "ust".to_string(),
+                    AssetInfo::NativeToken {
+                        denom: "uusd".to_string(),
+                    },
+                ),
             ],
             to_remove: vec![],
         },
