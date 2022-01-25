@@ -73,19 +73,24 @@ fn proper_initialization() {
         base_contracts.memory.clone(),
         &MemoryMsg::ExecuteMsg::UpdateAssetAddresses {
             to_add: vec![
-                ("whale".to_string(), AssetInfo::Token{
-                    contract_addr: base_contracts.whale.to_string()
-                }
+                (
+                    "whale".to_string(),
+                    AssetInfo::Token {
+                        contract_addr: base_contracts.whale.to_string(),
+                    },
                 ),
                 (
                     "whale_ust".to_string(),
-                    AssetInfo::Token{
-                        contract_addr: base_contracts.whale_ust.to_string()
+                    AssetInfo::Token {
+                        contract_addr: base_contracts.whale_ust.to_string(),
                     },
                 ),
-                ("ust".to_string(), AssetInfo::NativeToken{
-                    denom: "uusd".to_string(),
-                }),
+                (
+                    "ust".to_string(),
+                    AssetInfo::NativeToken {
+                        denom: "uusd".to_string(),
+                    },
+                ),
             ],
             to_remove: vec![],
         },
