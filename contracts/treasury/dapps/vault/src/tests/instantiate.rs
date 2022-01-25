@@ -2,7 +2,6 @@ use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{Addr, DepsMut};
 use cosmwasm_std::{Api, Decimal};
 
-use crate::dapp_base::common::MEMORY_CONTRACT;
 use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::state::{BaseState, BASESTATE};
 
@@ -11,6 +10,7 @@ use crate::msg::InstantiateMsg;
 use crate::state::{State, STATE};
 use crate::tests::base_mocks::mocks::instantiate_msg as base_init_msg;
 use crate::tests::common::{TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT};
+use white_whale::treasury::dapp_base::common_test::MEMORY_CONTRACT;
 
 pub(crate) fn vault_instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
