@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use cosmwasm_std::{Addr, Binary, Deps, QueryRequest, StdResult, WasmQuery};
 
-use crate::denom::is_denom;
 use cosmwasm_storage::to_length_prefixed;
 use terraswap::asset::AssetInfo;
 
@@ -90,21 +89,6 @@ pub fn query_contract_from_mem(
         }))?;
     // Addresses are checked when stored.
     Ok(Addr::unchecked(result))
-}
-
-/// Returns the asset info for a given string (either denom or contract addr)
-#[inline]
-pub fn to_asset_info(deps: Deps, address_or_denom: String) -> StdResult<AssetInfo> {
-    return if is_denom(address_or_denom.as_str()) {
-        Ok(AssetInfo::NativeToken {
-            denom: address_or_denom,
-        })
-    } else {
-        deps.api.addr_validate(address_or_denom.as_str())?;
-        Ok(AssetInfo::Token {
-            contract_addr: address_or_denom,
-        })
-    };
 }
 
 #[inline]
