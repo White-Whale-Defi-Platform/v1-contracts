@@ -11,7 +11,7 @@ use crate::tests::integration_tests::instantiate::{configure_memory, init_vault_
 use terra_multi_test::Executor;
 use terraswap::asset::Asset;
 
-use crate::dapp_base::common::TEST_CREATOR;
+use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
 use white_whale::treasury::msg as TreasuryMsg;
 
 use super::update::change_base_to_whale;

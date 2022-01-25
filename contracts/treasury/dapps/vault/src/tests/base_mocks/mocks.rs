@@ -1,4 +1,6 @@
-use crate::dapp_base::common::{MEMORY_CONTRACT, TRADER_CONTRACT, TREASURY_CONTRACT};
+use white_whale::treasury::dapp_base::common_test::{
+    MEMORY_CONTRACT, TRADER_CONTRACT, TREASURY_CONTRACT,
+};
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 
 #[allow(dead_code)]
