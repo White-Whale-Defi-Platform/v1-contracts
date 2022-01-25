@@ -32,9 +32,9 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            anchor_money_market_address: deps.api.addr_canonicalize("test_mm").unwrap(),
-            aust_address: deps.api.addr_canonicalize("test_aust").unwrap(),
-            profit_check_address: deps.api.addr_canonicalize("test_profit_check").unwrap(),
+            anchor_money_market_address: deps.api.addr_validate("test_mm").unwrap(),
+            aust_address: deps.api.addr_validate("test_aust").unwrap(),
+            profit_check_address: deps.api.addr_validate("test_profit_check").unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false
         }
