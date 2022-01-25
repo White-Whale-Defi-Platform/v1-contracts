@@ -1,8 +1,8 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, CanonicalAddr, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order,
-    Response, StdResult, Uint128,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
+    StdResult, Uint128,
 };
 
 use crate::error::TreasuryError;
@@ -102,7 +102,7 @@ pub fn execute_action(
     let state = STATE.load(deps.storage)?;
     if !state
         .dapps
-        .contains(&deps.api.addr_canonicalize(msg_info.sender.as_str())?)
+        .contains(&deps.api.addr_validate(msg_info.sender.as_str())?)
     {
         return Err(TreasuryError::SenderNotWhitelisted {});
     }
@@ -140,12 +140,12 @@ pub fn add_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> TreasuryR
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    if state.dapps.contains(&deps.api.addr_canonicalize(&dapp)?) {
+    if state.dapps.contains(&deps.api.addr_validate(&dapp)?) {
         return Err(TreasuryError::AlreadyInList {});
     }
 
     // Add contract to whitelist.
-    state.dapps.push(deps.api.addr_canonicalize(&dapp)?);
+    state.dapps.push(deps.api.addr_validate(&dapp)?);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
@@ -157,13 +157,13 @@ pub fn remove_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> Treasu
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut state = STATE.load(deps.storage)?;
-    if !state.dapps.contains(&deps.api.addr_canonicalize(&dapp)?) {
+    if !state.dapps.contains(&deps.api.addr_validate(&dapp)?) {
         return Err(TreasuryError::NotInList {});
     }
 
     // Remove contract from whitelist.
-    let canonical_addr = deps.api.addr_canonicalize(&dapp)?;
-    state.dapps.retain(|addr| *addr != canonical_addr);
+    let dapp_address = deps.api.addr_validate(&dapp)?;
+    state.dapps.retain(|addr| *addr != dapp_address);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
@@ -197,11 +197,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 /// Returns the whitelisted dapps
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state = STATE.load(deps.storage)?;
-    let dapps: Vec<CanonicalAddr> = state.dapps;
+    let dapps: Vec<Addr> = state.dapps;
     let resp = ConfigResponse {
         dapps: dapps
             .iter()
-            .map(|dapp| -> String { deps.api.addr_humanize(dapp).unwrap().to_string() })
+            .map(|dapp| -> String { dapp.to_string() })
             .collect(),
     };
     Ok(resp)
