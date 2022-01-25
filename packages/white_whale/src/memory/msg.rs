@@ -15,7 +15,7 @@ pub enum ExecuteMsg {
         to_remove: Vec<String>,
     },
     UpdateAssetAddresses {
-        to_add: Vec<(String, String)>,
+        to_add: Vec<(String, AssetInfo)>,
         to_remove: Vec<String>,
     },
     /// Sets a new Admin

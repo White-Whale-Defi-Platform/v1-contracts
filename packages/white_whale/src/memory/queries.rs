@@ -17,12 +17,12 @@ pub fn query_assets_from_mem(
     for asset in asset_names.iter() {
         let result = deps
             .querier
-            .query::<String>(&QueryRequest::Wasm(WasmQuery::Raw {
+            .query::<AssetInfo>(&QueryRequest::Wasm(WasmQuery::Raw {
                 contract_addr: memory_addr.to_string(),
                 // query assets map
                 key: Binary::from(concat(&to_length_prefixed(b"assets"), asset.as_bytes())),
             }))?;
-        assets.insert(asset.clone(), to_asset_info(deps, result)?);
+        assets.insert(asset.clone(), result);
     }
     Ok(assets)
 }
@@ -35,7 +35,7 @@ pub fn query_asset_from_mem(
 ) -> StdResult<AssetInfo> {
     let result = deps
         .querier
-        .query::<String>(&QueryRequest::Wasm(WasmQuery::Raw {
+        .query::<AssetInfo>(&QueryRequest::Wasm(WasmQuery::Raw {
             contract_addr: memory_addr.to_string(),
             // query assets map
             key: Binary::from(concat(
@@ -43,7 +43,7 @@ pub fn query_asset_from_mem(
                 asset_name.as_bytes(),
             )),
         }))?;
-    to_asset_info(deps, result)
+    Ok(result)
 }
 
 /// Query contract addresses from Memory Module contract addresses map.
