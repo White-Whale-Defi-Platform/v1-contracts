@@ -17,6 +17,9 @@ pub enum TerraswapError {
     #[error("You must provide exactly two assets when adding liquidity")]
     NotTwoAssets {},
 
+    #[error("You must provide an amount greater than zero for {}", asset)]
+    ZeroAmount { asset: String },
+
     #[error("{} is not part of the provided pool", id)]
     NotInPool { id: String },
 }
