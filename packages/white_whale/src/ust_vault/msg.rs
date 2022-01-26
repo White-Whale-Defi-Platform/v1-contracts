@@ -109,6 +109,8 @@ pub enum VaultQueryMsg {
     Fees {},
     EstimateWithdrawFee { amount: Uint128 },
     VaultValue {},
+    LastBalance {},
+    LastProfit {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

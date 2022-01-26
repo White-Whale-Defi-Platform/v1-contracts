@@ -862,6 +862,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::EstimateWithdrawFee { amount } => {
             to_binary(&estimate_withdraw_fee(deps, amount)?)
         }
+        QueryMsg::LastBalance {} => to_binary(&try_query_last_balance(deps)?),
+        QueryMsg::LastProfit {} => to_binary(&try_query_last_profit(deps)?),
     }
 }
 
@@ -918,4 +920,18 @@ pub fn total_value(deps: Deps) -> StdResult<(Uint128, Uint128, Uint128)> {
 pub fn query_total_value(deps: Deps) -> StdResult<ValueResponse> {
     let (total_ust_value, _, _) = total_value(deps)?;
     Ok(ValueResponse { total_ust_value })
+}
+
+pub fn try_query_last_profit(deps: Deps) -> StdResult<LastProfitResponse> {
+    let conf = PROFIT.load(deps.storage)?;
+    Ok(LastProfitResponse {
+        last_profit: conf.last_profit,
+    })
+}
+
+pub fn try_query_last_balance(deps: Deps) -> StdResult<LastBalanceResponse> {
+    let conf = PROFIT.load(deps.storage)?;
+    Ok(LastBalanceResponse {
+        last_balance: conf.last_balance,
+    })
 }
