@@ -136,29 +136,11 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
-    // let data = deps
-    //     .storage
-    //     .get(CONFIG_KEY)
-    //     .ok_or_else(|| StdError::not_found("State"))?;
-    // // We can start a new State object from the old one
-    // let mut config: State = from_slice(&data)?;
-    // // And use something provided in MigrateMsg to update the state of the migrated contract
-    // config.verifier = deps.api.addr_validate(&msg.verifier)?;
-    // // Then store our modified State
-    // deps.storage.set(CONFIG_KEY, &to_vec(&config)?);
-    // If we have no need to update the State of the contract then just Response::default() should suffice
-    // in this case, the code is still updated, the migration does not change the contract addr or funds
-    // if this is the case you desire, consider making the new Addr part of the MigrateMsg and then doing
-    // a payout
-
     let version: Version = CONTRACT_VERSION.parse()?;
     let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
 
     if storage_version < version {
         set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-        // If state structure changed in any contract version in the way migration is needed, it
-        // should occur here
     }
     Ok(Response::default())
 }
