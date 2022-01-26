@@ -49,7 +49,7 @@ print(BLOCK_END_TIME - BLOCK_START_TIME)
 print((END_TIME - START_TIME).total_seconds())
 # mnemonic = "napkin guess language merit split slice source happy field search because volcano staff section depth clay inherit result assist rubber list tilt chef start"
 # mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
-# mnemonic="tissue rookie private pole asthma write chronic mango draw industry rude because cargo video found bar system ice velvet capable odor domain aware ghost"
+
 claimer = "terra10lm49e6ufm8cfpwcmcltvxkv3s6cqeunyjhaj5"
 deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None, return_msg=False)
 # deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
