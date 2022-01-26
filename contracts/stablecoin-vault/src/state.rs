@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::CanonicalAddr;
+use cosmwasm_std::{CanonicalAddr, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 
@@ -16,11 +16,17 @@ use crate::pool_info::PoolInfoRaw;
 pub struct State {
     pub anchor_money_market_address: CanonicalAddr,
     pub aust_address: CanonicalAddr,
-    pub profit_check_address: CanonicalAddr,
     pub whitelisted_contracts: Vec<CanonicalAddr>,
     pub allow_non_whitelisted: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ProfitCheck {
+    pub last_balance: Uint128,
+    pub last_profit: Uint128,
+}
+
+pub const PROFIT: Item<ProfitCheck> = Item::new("\u{0}{6}profit");
 pub const ADMIN: Admin = Admin::new("admin");
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");
 pub const POOL_INFO: Item<PoolInfoRaw> = Item::new("\u{0}{4}pool");

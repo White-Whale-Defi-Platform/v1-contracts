@@ -12,7 +12,6 @@ use terraswap::asset::{Asset, AssetInfo};
 pub struct InstantiateMsg {
     pub anchor_money_market_address: String,
     pub aust_address: String,
-    pub profit_check_address: String,
     pub treasury_addr: String,
     pub asset_info: AssetInfo,
     pub token_code_id: u64,
@@ -39,8 +38,6 @@ pub enum ExecuteMsg {
         treasury_fee: Option<Fee>,
         commission_fee: Option<Fee>,
     },
-    /// Forwards the profit amount to the vault, is called by profit-check
-    SendTreasuryCommission { profit: Uint128 },
     /// Set the admin of the contract
     SetAdmin { admin: String },
     /// Add provided contract to the whitelisted contracts
@@ -51,7 +48,6 @@ pub enum ExecuteMsg {
     UpdateState {
         anchor_money_market_address: Option<String>,
         aust_address: Option<String>,
-        profit_check_address: Option<String>,
         allow_non_whitelisted: Option<bool>,
     },
     /// Execute a flashloan
@@ -88,7 +84,7 @@ impl CallbackMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CallbackMsg {
-    AfterSuccessfulLoanCallback {},
+    AfterTrade { loan_fee: Uint128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -146,4 +142,14 @@ pub struct StateResponse {
     pub aust_address: String,
     pub profit_check_address: String,
     pub allow_non_whitelisted: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct LastBalanceResponse {
+    pub last_balance: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct LastProfitResponse {
+    pub last_profit: Uint128,
 }

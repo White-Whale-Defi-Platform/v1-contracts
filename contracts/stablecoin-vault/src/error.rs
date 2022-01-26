@@ -40,6 +40,12 @@ pub enum StableVaultError {
 
     #[error("You can not deposit into the vault during a flashloan.")]
     DepositDuringLoan {},
+
+    #[error("Cancel losing trade.")]
+    CancelLosingTrade {},
+
+    #[error("Last balance is non-zero, you can only call this function once.")]
+    Nonzero {},
 }
 
 impl From<semver::Error> for StableVaultError {
