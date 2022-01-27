@@ -341,7 +341,7 @@ pub fn set_vault_addr(deps: DepsMut, msg_info: MessageInfo, vault_address: Strin
 
     let mut state = STATE.load(deps.storage)?;
     // Get the old vault
-    let previous_vault = state.vault_address.clone().to_string();
+    let previous_vault = state.vault_address.to_string();
     // Store the new vault addr
     state.vault_address = deps.api.addr_validate(&vault_address)?;
     STATE.save(deps.storage, &state)?;
