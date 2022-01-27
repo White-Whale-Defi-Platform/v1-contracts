@@ -112,22 +112,28 @@ pub fn detailed_provide_liquidity(
 
     // Iterate over provided assets
     for asset in assets {
-        let asset_info = state.memory.query_asset(deps, &asset.0)?;
+        let (asset_token, asset_amount) = asset;
+        // Make sure the asset_amount is greater than zero since zero transfers fail
+        if asset_amount == Uint128::zero() {
+            return Err(TerraswapError::ZeroAmount { asset: asset_token });
+        }
+
+        let asset_info = state.memory.query_asset(deps, &asset_token)?;
         // Check if pool contains the asset
         if pool_info.assets.iter().any(|a| a.info == asset_info) {
             let asset_balance = query_asset_balance(deps, &asset_info, treasury_address.clone())?;
             // Check if treasury has enough of this asset
-            if asset_balance < asset.1 {
+            if asset_balance < asset_amount {
                 return Err(BaseDAppError::Broke {}.into());
             }
             // Append asset to list
             assets_to_send.push(Asset {
                 info: asset_info,
-                amount: asset.1,
+                amount: asset_amount,
             })
         } else {
             // Error if asset info not found in pool
-            return Err(TerraswapError::NotInPool { id: asset.0 });
+            return Err(TerraswapError::NotInPool { id: asset_token });
         }
     }
     let asset_array: [Asset; 2] = [assets_to_send[0].clone(), assets_to_send[1].clone()];
@@ -150,6 +156,11 @@ pub fn withdraw_liquidity(
     if msg_info.sender != state.trader {
         return Err(BaseDAppError::Unauthorized {}.into());
     }
+    // Make sure the amount to withdraw is greater than zero since zero transfers fail
+    if amount == Uint128::zero() {
+        return Err(TerraswapError::ZeroAmount { asset: lp_token_id });
+    }
+
     let treasury_address = &state.treasury_address;
 
     // Get lp token address

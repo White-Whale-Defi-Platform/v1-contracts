@@ -251,6 +251,18 @@ fn proper_initialization() {
         pool_res.assets[1].amount
     );
 
+    // try withdrawing zero, this will fail with an error
+    app.execute_contract(
+        sender.clone(),
+        tswap_dapp.clone(),
+        &ExecuteMsg::WithdrawLiquidity {
+            lp_token_id: "whale_ust".to_string(),
+            amount: Uint128::zero(),
+        },
+        &[],
+    )
+    .unwrap_err();
+
     // Withdraw half of the liquidity from the pool
     app.execute_contract(
         sender.clone(),
@@ -303,6 +315,20 @@ fn proper_initialization() {
         &[],
     )
     .unwrap();
+
+    // Provide zero liquidity
+    // this should fail with an error
+    app.execute_contract(
+        sender.clone(),
+        tswap_dapp.clone(),
+        &ExecuteMsg::ProvideLiquidity {
+            pool_id: "whale_ust_pair".to_string(),
+            main_asset_id: "whale".to_string(),
+            amount: Uint128::zero(),
+        },
+        &[],
+    )
+    .unwrap_err();
 
     //
     let pool_res_after: PoolResponse = app
