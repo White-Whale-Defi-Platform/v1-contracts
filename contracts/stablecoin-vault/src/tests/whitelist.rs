@@ -82,7 +82,7 @@ fn successful_add_to_whitelist() {
         .whitelisted_contracts;
     assert_eq!(1, whitelisted_contracts.len());
     assert_eq!(
-        deps.api.addr_canonicalize(ARB_CONTRACT).unwrap(),
+        deps.api.addr_validate(ARB_CONTRACT).unwrap(),
         whitelisted_contracts[0]
     );
 }
@@ -153,7 +153,7 @@ fn successful_remove_from_whitelist() {
     //one contract should be whitelisted
     assert_eq!(1, whitelisted_contracts.len());
     assert_eq!(
-        deps.api.addr_canonicalize(ARB_CONTRACT).unwrap(),
+        deps.api.addr_validate(ARB_CONTRACT).unwrap(),
         whitelisted_contracts[0]
     );
 

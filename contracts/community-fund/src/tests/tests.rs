@@ -50,7 +50,7 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            whale_token_addr: deps.api.addr_canonicalize(MOCK_CONTRACT_ADDR).unwrap(),
+            whale_token_addr: deps.api.addr_validate(MOCK_CONTRACT_ADDR).unwrap(),
         }
     );
 }

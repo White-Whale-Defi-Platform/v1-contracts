@@ -94,7 +94,7 @@ fn successful_initialization() {
     let state: State = STATE.load(&deps.storage).unwrap();
     assert_eq!(
         state.whitelisted_contracts[0],
-        deps.api.addr_canonicalize(&ARB_CONTRACT).unwrap(),
+        deps.api.addr_validate(&ARB_CONTRACT).unwrap(),
     );
 }
 

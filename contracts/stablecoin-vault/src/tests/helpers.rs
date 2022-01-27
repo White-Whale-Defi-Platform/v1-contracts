@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{to_binary, Api, CosmosMsg, ReplyOn, Response, SubMsg, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, CosmosMsg, ReplyOn, Response, SubMsg, Uint128, WasmMsg};
 use cw20::Cw20ReceiveMsg;
 use terraswap::pair::Cw20HookMsg;
 
@@ -35,11 +35,7 @@ fn test_encapsulate_payload() {
                 gas_limit: None,
                 reply_on: ReplyOn::Never,
                 msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: deps
-                        .api
-                        .addr_humanize(&state.profit_check_address)
-                        .unwrap()
-                        .to_string(),
+                    contract_addr: state.profit_check_address.to_string(),
                     msg: to_binary(&ProfitCheckMsg::BeforeTrade {}).unwrap(),
                     funds: vec![],
                 }),
@@ -57,11 +53,7 @@ fn test_encapsulate_payload() {
                 gas_limit: None,
                 reply_on: ReplyOn::Never,
                 msg: CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: deps
-                        .api
-                        .addr_humanize(&state.profit_check_address)
-                        .unwrap()
-                        .to_string(),
+                    contract_addr: state.profit_check_address.to_string(),
                     msg: to_binary(&ProfitCheckMsg::AfterTrade { loan_fee }).unwrap(),
                     funds: vec![],
                 }),
