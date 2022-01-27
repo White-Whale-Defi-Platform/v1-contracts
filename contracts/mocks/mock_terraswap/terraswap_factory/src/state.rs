@@ -1,13 +1,13 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr, Api, Order, StdResult, Storage};
+use cosmwasm_std::{Api, CanonicalAddr, Order, StdResult, Storage};
 use cw_storage_plus::{Bound, Item, Map};
 use terraswap::asset::{AssetInfoRaw, PairInfo, PairInfoRaw};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub owner: Addr,
+    pub owner: CanonicalAddr,
     pub pair_code_id: u64,
     pub token_code_id: u64,
 }
@@ -92,7 +92,7 @@ mod test {
         store_config(
             &mut deps.storage,
             &Config {
-                owner: deps.api.addr_validate("owner0000").unwrap(),
+                owner: deps.api.addr_canonicalize("owner0000").unwrap(),
                 pair_code_id: 1,
                 token_code_id: 1,
             },

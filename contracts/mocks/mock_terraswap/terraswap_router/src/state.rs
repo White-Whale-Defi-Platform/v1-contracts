@@ -1,12 +1,12 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::Addr;
+use cosmwasm_std::CanonicalAddr;
 use cw_storage_plus::Item;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
-    pub terraswap_factory: Addr,
+    pub terraswap_factory: CanonicalAddr,
 }
 
 // put the length bytes at the first for compatibility with legacy singleton store
@@ -34,7 +34,7 @@ mod test {
         store_config(
             &mut deps.storage,
             &Config {
-                terraswap_factory: deps.api.addr_validate("addr0000").unwrap(),
+                terraswap_factory: deps.api.addr_canonicalize("addr0000").unwrap(),
             },
         )
         .unwrap();

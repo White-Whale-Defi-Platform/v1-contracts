@@ -24,7 +24,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     let config = Config {
-        owner: deps.api.addr_validate(info.sender.as_str())?,
+        owner: deps.api.addr_canonicalize(info.sender.as_str())?,
         token_code_id: msg.token_code_id,
         pair_code_id: msg.pair_code_id,
     };
@@ -58,7 +58,7 @@ pub fn execute_update_config(
     let mut config: Config = CONFIG.load(deps.storage)?;
 
     // permission check
-    if info.sender != config.owner {
+    if deps.api.addr_canonicalize(info.sender.as_str())? != config.owner {
         return Err(StdError::generic_err("unauthorized"));
     }
 
@@ -66,7 +66,7 @@ pub fn execute_update_config(
         // validate address format
         let _ = deps.api.addr_validate(&owner)?;
 
-        config.owner = deps.api.addr_validate(&owner)?;
+        config.owner = deps.api.addr_canonicalize(&owner)?;
     }
 
     if let Some(token_code_id) = token_code_id {
@@ -174,7 +174,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state: Config = CONFIG.load(deps.storage)?;
     let resp = ConfigResponse {
-        owner: state.owner.to_string(),
+        owner: deps.api.addr_humanize(&state.owner)?.to_string(),
         token_code_id: state.token_code_id,
         pair_code_id: state.pair_code_id,
     };
