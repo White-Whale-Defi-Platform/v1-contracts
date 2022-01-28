@@ -25,7 +25,6 @@ pub fn instantiate_msg(token_code_id: u64) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
-        profit_check_address: "test_profit_check".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
@@ -461,7 +460,6 @@ fn gov_can_update_vault_config_through_polls() {
     let stable_cap_change_msg = to_binary(&white_whale::ust_vault::msg::ExecuteMsg::UpdateState {
         anchor_money_market_address: Some("market_addr".to_string()),
         aust_address: Some("aust".to_string()),
-        profit_check_address: Some("profit".to_string()),
         allow_non_whitelisted: Some(false),
     })
     .unwrap();
