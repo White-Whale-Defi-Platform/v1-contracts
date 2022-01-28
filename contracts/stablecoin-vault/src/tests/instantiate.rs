@@ -77,8 +77,8 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            anchor_money_market_address: deps.api.addr_canonicalize("test_mm").unwrap(),
-            aust_address: deps.api.addr_canonicalize("test_aust").unwrap(),
+            anchor_money_market_address: deps.api.addr_validate("test_mm").unwrap(),
+            aust_address: deps.api.addr_validate("test_aust").unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false,
         }
@@ -91,7 +91,7 @@ fn successful_initialization() {
     let state: State = STATE.load(&deps.storage).unwrap();
     assert_eq!(
         state.whitelisted_contracts[0],
-        deps.api.addr_canonicalize(&ARB_CONTRACT).unwrap(),
+        deps.api.addr_validate(&ARB_CONTRACT).unwrap(),
     );
 }
 

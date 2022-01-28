@@ -15,8 +15,7 @@ pub fn test_config_query() {
     mock_instantiate(deps.as_mut());
     let env = mock_env();
 
-    // Errors because canonical -> human address conversion errors on fake contract names
-    query(deps.as_ref(), env, QueryMsg::PoolConfig {}).unwrap_err();
+    query(deps.as_ref(), env, QueryMsg::PoolConfig {}).unwrap();
 }
 
 #[test]

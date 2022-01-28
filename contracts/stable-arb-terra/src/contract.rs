@@ -44,9 +44,9 @@ pub fn instantiate(
     // Use CW2 to set the contract version, this is needed for migrations
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let state = State {
-        vault_address: deps.api.addr_canonicalize(&msg.vault_address)?,
-        seignorage_address: deps.api.addr_canonicalize(&msg.seignorage_address)?,
-        pool_address: deps.api.addr_canonicalize(&msg.pool_address)?,
+        vault_address: deps.api.addr_validate(&msg.vault_address)?,
+        seignorage_address: deps.api.addr_validate(&msg.seignorage_address)?,
+        pool_address: deps.api.addr_validate(&msg.pool_address)?,
     };
 
     // Store the initial config
@@ -152,7 +152,7 @@ fn call_flashloan(
     // Call stablecoin Vault
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: deps.api.addr_humanize(&state.vault_address)?.to_string(),
+            contract_addr: state.vault_address.to_string(),
             msg: to_binary(&VaultMsg::FlashLoan { payload })?,
             funds: vec![],
         })),
@@ -173,7 +173,7 @@ pub fn try_arb_below_peg(
     let deposit_info = ARB_BASE_ASSET.load(deps.storage)?;
 
     // Ensure the caller is the vault
-    if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.vault_address {
+    if msg_info.sender != state.vault_address {
         return Err(StableArbError::Unauthorized {});
     }
 
@@ -208,7 +208,7 @@ pub fn try_arb_below_peg(
 
     // Terraswap msg, swap LUNA -> STABLE
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
+        contract_addr: state.pool_address.to_string(),
         funds: vec![offer_coin.clone()],
         msg: to_binary(&create_terraswap_msg(
             offer_coin,
@@ -247,7 +247,7 @@ pub fn try_arb_above_peg(
     let deposit_info = ARB_BASE_ASSET.load(deps.storage)?;
 
     // Ensure the caller is the vault
-    if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != state.vault_address {
+    if msg_info.sender != state.vault_address {
         return Err(StableArbError::Unauthorized {});
     }
 
@@ -266,11 +266,8 @@ pub fn try_arb_above_peg(
         return Err(StableArbError::Broke {});
     }
     // Simulate first tx with Terraswap
-    let expected_luna_received = simulate_terraswap_swap(
-        deps.as_ref(),
-        deps.api.addr_humanize(&state.pool_address)?,
-        lent_coin.clone(),
-    )?;
+    let expected_luna_received =
+        simulate_terraswap_swap(deps.as_ref(), state.pool_address.clone(), lent_coin.clone())?;
 
     // Construct offer for Market Swap
     let offer_coin = Coin {
@@ -280,7 +277,7 @@ pub fn try_arb_above_peg(
 
     // Terraswap msg, swap STABLE -> LUNA
     let terraswap_msg: CosmosMsg<TerraMsgWrapper> = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&state.pool_address)?.to_string(),
+        contract_addr: state.pool_address.to_string(),
         funds: vec![lent_coin.clone()],
         msg: to_binary(&create_terraswap_msg(
             lent_coin.clone(),
@@ -329,7 +326,7 @@ fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
     };
 
     Ok(Response::new().add_message(CosmosMsg::Bank(BankMsg::Send {
-        to_address: deps.api.addr_humanize(&state.vault_address)?.to_string(),
+        to_address: state.vault_address.to_string(),
         amount: vec![repay_asset.deduct_tax(&deps.querier)?],
     })))
 }
@@ -344,9 +341,9 @@ pub fn set_vault_addr(deps: DepsMut, msg_info: MessageInfo, vault_address: Strin
 
     let mut state = STATE.load(deps.storage)?;
     // Get the old vault
-    let previous_vault = deps.api.addr_humanize(&state.vault_address)?.to_string();
+    let previous_vault = state.vault_address.to_string();
     // Store the new vault addr
-    state.vault_address = deps.api.addr_canonicalize(&vault_address)?;
+    state.vault_address = deps.api.addr_validate(&vault_address)?;
     STATE.save(deps.storage, &state)?;
     // Respond and note the previous vault address
     Ok(Response::new()

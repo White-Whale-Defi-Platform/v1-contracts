@@ -57,12 +57,12 @@ fn successful_set_state() {
     assert_eq!(
         new_state.anchor_money_market_address,
         deps.api
-            .addr_canonicalize("new_anchor_money_market_address")
+            .addr_validate("new_anchor_money_market_address")
             .unwrap()
     );
     assert_eq!(
         new_state.aust_address,
-        deps.api.addr_canonicalize("new_aust_address").unwrap()
+        deps.api.addr_validate("new_aust_address").unwrap()
     );
     assert_eq!(new_state.allow_non_whitelisted, true);
 }

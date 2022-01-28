@@ -58,9 +58,9 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            vault_address: deps.api.addr_canonicalize(&VAULT_CONTRACT).unwrap(),
-            seignorage_address: deps.api.addr_canonicalize(&"seignorage").unwrap(),
-            pool_address: deps.api.addr_canonicalize(&"terraswap_pool").unwrap(),
+            vault_address: deps.api.addr_validate(&VAULT_CONTRACT).unwrap(),
+            seignorage_address: deps.api.addr_validate(&"seignorage").unwrap(),
+            pool_address: deps.api.addr_validate(&"terraswap_pool").unwrap(),
         }
     );
 

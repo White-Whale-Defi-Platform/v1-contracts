@@ -1,33 +1,29 @@
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, BankMsg, Binary, CanonicalAddr, Coin, CosmosMsg, Decimal,
-    Deps, DepsMut, Env, Fraction, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult,
-    SubMsg, Uint128, WasmMsg,
+    entry_point, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
+    DepsMut, Env, Fraction, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
+use cw2::{get_contract_version, set_contract_version};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 use protobuf::Message;
-
+use semver::Version;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::pair::Cw20HookMsg;
 use terraswap::querier::{query_balance, query_supply, query_token_balance};
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
-
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
 use white_whale::query::anchor::query_aust_exchange_rate;
+use white_whale::tax::{compute_tax, into_msg_without_tax};
+use white_whale::ust_vault::msg::*;
 use white_whale::ust_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
 
-use cw2::{get_contract_version, set_contract_version};
-use semver::Version;
-use white_whale::tax::{compute_tax, into_msg_without_tax};
-use white_whale::ust_vault::msg::*;
-
 use crate::error::StableVaultError;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 
@@ -47,10 +43,8 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     // Use CW2 to set the contract version, this is needed for migrations
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let state = State {
-        anchor_money_market_address: deps
-            .api
-            .addr_canonicalize(&msg.anchor_money_market_address)?,
-        aust_address: deps.api.addr_canonicalize(&msg.aust_address)?,
+        anchor_money_market_address: deps.api.addr_validate(&msg.anchor_money_market_address)?,
+        aust_address: deps.api.addr_validate(&msg.aust_address)?,
         whitelisted_contracts: vec![],
         allow_non_whitelisted: false,
     };
@@ -76,14 +70,14 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
             commission_fee: Fee {
                 share: msg.commission_fee,
             },
-            treasury_addr: deps.api.addr_canonicalize(&msg.treasury_addr)?,
+            treasury_addr: deps.api.addr_validate(&msg.treasury_addr)?,
         },
     )?;
 
     // Setup and save the relevant pools info in state. The saved pool will be the one used by the vault.
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
-        liquidity_token: CanonicalAddr::from(vec![]),
+        liquidity_token: Addr::unchecked(""),
         stable_cap: msg.stable_cap,
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?,
@@ -220,7 +214,7 @@ pub fn handle_flashloan(
     deposit_info.assert(&payload.requested_asset.info)?;
 
     // Check if sender is whitelisted
-    if !whitelisted_contracts.contains(&deps.api.addr_canonicalize(&info.sender.to_string())?) {
+    if !whitelisted_contracts.contains(&deps.api.addr_validate(&info.sender.to_string())?) {
         // Check if non-whitelisted are allowed to borrow
         if state.allow_non_whitelisted {
             whitelisted = false;
@@ -247,16 +241,12 @@ pub fn handle_flashloan(
     if (requested_asset.amount + Uint128::from(FEE_BUFFER)) > stables_available {
         // Attempt to remove some money from anchor
         let to_withdraw = (requested_asset.amount + Uint128::from(FEE_BUFFER)) - stables_available;
-        let aust_exchange_rate = query_aust_exchange_rate(
-            deps.as_ref(),
-            deps.api
-                .addr_humanize(&state.anchor_money_market_address)?
-                .to_string(),
-        )?;
+        let aust_exchange_rate =
+            query_aust_exchange_rate(deps.as_ref(), state.anchor_money_market_address.to_string())?;
 
         let withdraw_msg = anchor_withdraw_msg(
-            deps.api.addr_humanize(&state.aust_address)?,
-            deps.api.addr_humanize(&state.anchor_money_market_address)?,
+            state.aust_address,
+            state.anchor_money_market_address,
             to_withdraw * aust_exchange_rate.inv().unwrap(),
         )?;
         // Add msg to response and update withdrawn value
@@ -321,10 +311,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
     let (total_deposits_in_ust, stables_in_contract, _) =
         compute_total_value(deps.as_ref(), &info)?;
     // Get total supply of LP tokens and calculate share
-    let total_share = query_supply(
-        &deps.querier,
-        deps.api.addr_humanize(&info.liquidity_token)?,
-    )?;
+    let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
     let share = if total_share == Uint128::zero()
         || total_deposits_in_ust.checked_sub(deposit)? == Uint128::zero()
@@ -337,7 +324,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
 
     // mint LP token to sender
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
+        contract_addr: info.liquidity_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Mint {
             recipient: msg_info.sender.to_string(),
             amount: share,
@@ -353,7 +340,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
         let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
         let deposit_msg = anchor_deposit_msg(
             deps.as_ref(),
-            deps.api.addr_humanize(&state.anchor_money_market_address)?,
+            state.anchor_money_market_address,
             anchor_deposit,
         )?;
         return Ok(response.add_message(deposit_msg));
@@ -386,7 +373,7 @@ pub fn try_withdraw_liquidity(
     let mut attrs = vec![];
 
     // Calculate share of pool and requested pool value
-    let lp_addr = deps.api.addr_humanize(&info.liquidity_token)?;
+    let lp_addr = info.liquidity_token.clone();
     let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
     let (total_value, _, uaust_value_in_contract) = compute_total_value(deps.as_ref(), &info)?;
     // Get treasury fee in LP tokens
@@ -401,7 +388,7 @@ pub fn try_withdraw_liquidity(
     // Available aUST
     let max_aust_amount = query_token_balance(
         &deps.querier,
-        deps.api.addr_humanize(&state.aust_address)?,
+        state.aust_address.clone(),
         env.contract.address,
     )?;
     let mut withdrawn_ust = Asset {
@@ -413,18 +400,14 @@ pub fn try_withdraw_liquidity(
 
     // If we have aUST, try repay with that
     if max_aust_amount > Uint128::zero() {
-        let aust_exchange_rate = query_aust_exchange_rate(
-            deps.as_ref(),
-            deps.api
-                .addr_humanize(&state.anchor_money_market_address)?
-                .to_string(),
-        )?;
+        let aust_exchange_rate =
+            query_aust_exchange_rate(deps.as_ref(), state.anchor_money_market_address.to_string())?;
 
         if uaust_value_in_contract < refund_amount {
             // Withdraw all aUST left
             let withdraw_msg = anchor_withdraw_msg(
-                deps.api.addr_humanize(&state.aust_address)?,
-                deps.api.addr_humanize(&state.anchor_money_market_address)?,
+                state.aust_address.clone(),
+                state.anchor_money_market_address,
                 max_aust_amount,
             )?;
             // Add msg to response and update withdrawn value
@@ -435,8 +418,8 @@ pub fn try_withdraw_liquidity(
             let withdraw_amount = refund_amount * aust_exchange_rate.inv().unwrap();
 
             let withdraw_msg = anchor_withdraw_msg(
-                deps.api.addr_humanize(&state.aust_address)?,
-                deps.api.addr_humanize(&state.anchor_money_market_address)?,
+                state.aust_address,
+                state.anchor_money_market_address,
                 withdraw_amount,
             )?;
             // Add msg to response and update withdrawn value
@@ -456,7 +439,7 @@ pub fn try_withdraw_liquidity(
     // LP token treasury Asset
     let lp_token_treasury_fee = Asset {
         info: AssetInfo::Token {
-            contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
+            contract_addr: info.liquidity_token.to_string(),
         },
         amount: treasury_fee,
     };
@@ -465,7 +448,7 @@ pub fn try_withdraw_liquidity(
     let treasury_fee_msg = fee_config.treasury_fee.msg(
         deps.as_ref(),
         lp_token_treasury_fee,
-        deps.api.addr_humanize(&fee_config.treasury_addr)?,
+        fee_config.treasury_addr,
     )?;
     attrs.push(("War chest fee:", treasury_fee.to_string()));
 
@@ -482,7 +465,7 @@ pub fn try_withdraw_liquidity(
     });
     // LP burn msg
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: deps.api.addr_humanize(&info.liquidity_token)?.to_string(),
+        contract_addr: info.liquidity_token.to_string(),
         // Burn exludes fee
         msg: to_binary(&Cw20ExecuteMsg::Burn {
             amount: (amount - treasury_fee),
@@ -511,8 +494,7 @@ fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultRes
         },
         amount: commission_amount,
     };
-    let commission_msg =
-        refund_asset.into_msg(&deps.querier, deps.api.addr_humanize(&fees.treasury_addr)?)?;
+    let commission_msg = refund_asset.into_msg(&deps.querier, fees.treasury_addr)?;
 
     Ok(Response::new()
         .add_attribute("treasury commission:", commission_amount.to_string())
@@ -621,7 +603,7 @@ pub fn receive_cw20(
         Cw20HookMsg::Swap { .. } => Err(StableVaultError::NoSwapAvailable {}),
         Cw20HookMsg::WithdrawLiquidity {} => {
             let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-            if deps.api.addr_canonicalize(&msg_info.sender.to_string())? != info.liquidity_token {
+            if deps.api.addr_validate(&msg_info.sender.to_string())? != info.liquidity_token {
                 return Err(StableVaultError::Unauthorized {});
             }
             try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
@@ -645,12 +627,8 @@ pub fn compute_total_value(
 
     let aust_info = info.asset_infos[1].to_normal(deps.api)?;
     let aust_amount = aust_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
-    let aust_exchange_rate = query_aust_exchange_rate(
-        deps,
-        deps.api
-            .addr_humanize(&state.anchor_money_market_address)?
-            .to_string(),
-    )?;
+    let aust_exchange_rate =
+        query_aust_exchange_rate(deps, state.anchor_money_market_address.to_string())?;
     let aust_value_in_ust = aust_exchange_rate * aust_amount;
 
     let total_deposits_in_ust = stable_amount + aust_value_in_ust;
@@ -697,7 +675,7 @@ fn try_anchor_deposit(deps: DepsMut, env: Env) -> VaultResult {
         let anchor_deposit = Coin::new(deposit_amount.u128(), stable_denom);
         let deposit_msg = anchor_deposit_msg(
             deps.as_ref(),
-            deps.api.addr_humanize(&state.anchor_money_market_address)?,
+            state.anchor_money_market_address,
             anchor_deposit,
         )?;
 
@@ -719,7 +697,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 
         let api = deps.api;
         POOL_INFO.update(deps.storage, |mut meta| -> StdResult<_> {
-            meta.liquidity_token = api.addr_canonicalize(liquidity_token)?;
+            meta.liquidity_token = api.addr_validate(liquidity_token)?;
             Ok(meta)
         })?;
 
@@ -746,11 +724,11 @@ pub fn update_state(
     let api = deps.api;
 
     if let Some(anchor_money_market_address) = anchor_money_market_address {
-        state.anchor_money_market_address = api.addr_canonicalize(&anchor_money_market_address)?;
+        state.anchor_money_market_address = api.addr_validate(&anchor_money_market_address)?;
     }
 
     if let Some(aust_address) = aust_address {
-        state.aust_address = api.addr_canonicalize(&aust_address)?;
+        state.aust_address = api.addr_validate(&aust_address)?;
     }
 
     if let Some(allow_non_whitelisted) = allow_non_whitelisted {
@@ -786,7 +764,7 @@ pub fn add_to_whitelist(
     // Check if contract is already in whitelist
     if state
         .whitelisted_contracts
-        .contains(&deps.api.addr_canonicalize(&contract_addr)?)
+        .contains(&deps.api.addr_validate(&contract_addr)?)
     {
         return Err(StableVaultError::AlreadyWhitelisted {});
     }
@@ -794,7 +772,7 @@ pub fn add_to_whitelist(
     // Add contract to whitelist.
     state
         .whitelisted_contracts
-        .push(deps.api.addr_canonicalize(&contract_addr)?);
+        .push(deps.api.addr_validate(&contract_addr)?);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
@@ -813,13 +791,13 @@ pub fn remove_from_whitelist(
     // Check if contract is in whitelist
     if !state
         .whitelisted_contracts
-        .contains(&deps.api.addr_canonicalize(&contract_addr)?)
+        .contains(&deps.api.addr_validate(&contract_addr)?)
     {
         return Err(StableVaultError::NotWhitelisted {});
     }
 
     // Remove contract from whitelist.
-    let canonical_addr = deps.api.addr_canonicalize(&contract_addr)?;
+    let canonical_addr = deps.api.addr_validate(&contract_addr)?;
     state
         .whitelisted_contracts
         .retain(|addr| *addr != canonical_addr);
@@ -899,6 +877,7 @@ pub fn try_query_config(deps: Deps) -> StdResult<PoolInfo> {
 
     info.to_normal(deps)
 }
+
 pub fn try_query_state(deps: Deps) -> StdResult<State> {
     STATE.load(deps.storage)
 }
@@ -906,10 +885,7 @@ pub fn try_query_state(deps: Deps) -> StdResult<State> {
 pub fn try_query_pool_state(deps: Deps) -> StdResult<PoolResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let assets: [Asset; 2] = info.query_pools(deps, info.contract_addr.clone())?;
-    let total_share: Uint128 = query_supply(
-        &deps.querier,
-        deps.api.addr_humanize(&info.liquidity_token)?,
-    )?;
+    let total_share: Uint128 = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
     let (total_value_in_ust, _, _) = compute_total_value(deps, &info)?;
 
