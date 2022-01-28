@@ -29,7 +29,7 @@ use crate::error::StableVaultError;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 
 use crate::response::MsgInstantiateContractResponse;
-use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
+use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 
 const FEE_BUFFER: u64 = 10_000_000u64;
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
@@ -94,6 +94,13 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         ],
     };
     POOL_INFO.save(deps.storage, pool_info)?;
+
+    let profit = ProfitCheck {
+        last_balance: Uint128::zero(),
+        last_profit: Uint128::zero(),
+    };
+    PROFIT.save(deps.storage, &profit)?;
+
     // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
 
