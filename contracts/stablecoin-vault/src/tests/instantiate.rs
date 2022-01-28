@@ -22,7 +22,6 @@ pub fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
-        profit_check_address: "test_profit_check".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
@@ -44,7 +43,6 @@ pub fn mock_instantiate(deps: DepsMut) {
     let msg = InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
-        profit_check_address: "test_profit_check".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
@@ -81,7 +79,6 @@ fn successful_initialization() {
         State {
             anchor_money_market_address: deps.api.addr_canonicalize("test_mm").unwrap(),
             aust_address: deps.api.addr_canonicalize("test_aust").unwrap(),
-            profit_check_address: deps.api.addr_canonicalize("test_profit_check").unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false,
         }
@@ -224,7 +221,6 @@ fn test_init_with_non_default_vault_lp_token() {
     let msg = InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
-        profit_check_address: "test_profit_check".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),

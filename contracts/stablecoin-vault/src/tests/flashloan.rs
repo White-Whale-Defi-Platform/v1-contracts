@@ -16,8 +16,7 @@ use crate::error::StableVaultError;
 use crate::state::STATE;
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 use crate::tests::common_integration::{
-    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_treasury,
-    instantiate_msg, mock_app,
+    contract_cw20_token, contract_stablecoin_vault, contract_treasury, instantiate_msg, mock_app,
 };
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
@@ -99,7 +98,6 @@ fn unsuccessful_flashloan_broke() {
     // Store the gov contract as a code object
     let treasury_id = router.store_code(contract_treasury());
     // Store the profit check needed for the vault on provide and withdrawal of liquidity as well as trading actions
-    let profit_check_id = router.store_code(contract_profit_check());
     let anchor_id = router.store_code(contract_anchor_mock());
 
     // Set the block height and time, we will later modify this to simulate time passing
@@ -174,11 +172,6 @@ fn unsuccessful_flashloan_broke() {
         )
         .unwrap();
 
-    let profit_check_msg = white_whale::profit_check::msg::InstantiateMsg {
-        vault_address: tswap_addr.to_string(),
-        denom: "uusd".to_string(),
-    };
-
     // Setup the treasury contract
     let treasury_addr = router
         .instantiate_contract(
@@ -187,18 +180,6 @@ fn unsuccessful_flashloan_broke() {
             &chest_msg,
             &[],
             "TREASURY",
-            None,
-        )
-        .unwrap();
-
-    // Setup the profit check contract
-    let profit_check_addr = router
-        .instantiate_contract(
-            profit_check_id,
-            owner.clone(),
-            &profit_check_msg,
-            &[],
-            "PROFIT",
             None,
         )
         .unwrap();
@@ -212,7 +193,6 @@ fn unsuccessful_flashloan_broke() {
     let vault_msg = instantiate_msg(
         terraswap_id,
         treasury_addr.to_string(),
-        profit_check_addr.to_string(),
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
     );
@@ -268,14 +248,6 @@ fn unsuccessful_flashloan_broke() {
     assert_ne!(treasury_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
 
-    // Hook up the vault and profit check
-    let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault {
-        vault_address: vault_addr.to_string(),
-    };
-    router
-        .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
-        .unwrap();
-
     // Whitelist contract
     let msg = ExecuteMsg::AddToWhitelist {
         contract_addr: ARB_CONTRACT.to_string(),
@@ -319,7 +291,6 @@ fn successful_flashloan_without_withdrawing_aust() {
     // Store the gov contract as a code object
     let treasury_id = router.store_code(contract_treasury());
     // Store the profit check needed for the vault on provide and withdrawal of liquidity as well as trading actions
-    let profit_check_id = router.store_code(contract_profit_check());
     let anchor_id = router.store_code(contract_anchor_mock());
 
     // Set the block height and time, we will later modify this to simulate time passing
@@ -394,11 +365,6 @@ fn successful_flashloan_without_withdrawing_aust() {
         )
         .unwrap();
 
-    let profit_check_msg = white_whale::profit_check::msg::InstantiateMsg {
-        vault_address: tswap_addr.to_string(),
-        denom: "uusd".to_string(),
-    };
-
     // Setup the treasury contract
     let treasury_addr = router
         .instantiate_contract(
@@ -407,18 +373,6 @@ fn successful_flashloan_without_withdrawing_aust() {
             &chest_msg,
             &[],
             "TREASURY",
-            None,
-        )
-        .unwrap();
-
-    // Setup the profit check contract
-    let profit_check_addr = router
-        .instantiate_contract(
-            profit_check_id,
-            owner.clone(),
-            &profit_check_msg,
-            &[],
-            "PROFIT",
             None,
         )
         .unwrap();
@@ -432,7 +386,6 @@ fn successful_flashloan_without_withdrawing_aust() {
     let vault_msg = instantiate_msg(
         terraswap_id,
         treasury_addr.to_string(),
-        profit_check_addr.to_string(),
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
     );
@@ -487,14 +440,6 @@ fn successful_flashloan_without_withdrawing_aust() {
     // Ensure addresses are not equal to each other
     assert_ne!(treasury_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
-
-    // Hook up the vault and profit check
-    let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault {
-        vault_address: vault_addr.to_string(),
-    };
-    router
-        .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
-        .unwrap();
 
     ////////////
 
