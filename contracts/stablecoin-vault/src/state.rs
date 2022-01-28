@@ -1,7 +1,7 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::CanonicalAddr;
+use cosmwasm_std::Addr;
 use cw_controllers::Admin;
 use cw_storage_plus::Item;
 
@@ -14,10 +14,10 @@ use crate::pool_info::PoolInfoRaw;
 // The Stablecoin-vault State contains configuration options for the vault including
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
-    pub anchor_money_market_address: CanonicalAddr,
-    pub aust_address: CanonicalAddr,
-    pub profit_check_address: CanonicalAddr,
-    pub whitelisted_contracts: Vec<CanonicalAddr>,
+    pub anchor_money_market_address: Addr,
+    pub aust_address: Addr,
+    pub profit_check_address: Addr,
+    pub whitelisted_contracts: Vec<Addr>,
     pub allow_non_whitelisted: bool,
 }
 

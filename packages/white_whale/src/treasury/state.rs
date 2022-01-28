@@ -2,7 +2,7 @@ use cw_controllers::Admin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{Addr, CanonicalAddr, Decimal, Deps, Env, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Deps, Env, StdResult, Uint128};
 use cw_storage_plus::{Item, Map};
 
 use crate::query::terraswap::query_pool;
@@ -14,7 +14,7 @@ pub static LUNA_DENOM: &str = "uluna";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
-    pub dapps: Vec<CanonicalAddr>,
+    pub dapps: Vec<Addr>,
 }
 
 pub const STATE: Item<State> = Item::new("\u{0}{5}state");

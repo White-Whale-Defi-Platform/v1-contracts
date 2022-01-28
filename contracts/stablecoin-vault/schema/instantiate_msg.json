@@ -6,6 +6,7 @@
     "anchor_money_market_address",
     "asset_info",
     "aust_address",
+    "commission_fee",
     "flash_loan_fee",
     "profit_check_address",
     "stable_cap",
@@ -23,6 +24,9 @@
     "aust_address": {
       "type": "string"
     },
+    "commission_fee": {
+      "$ref": "#/definitions/Decimal"
+    },
     "flash_loan_fee": {
       "$ref": "#/definitions/Decimal"
     },
@@ -37,6 +41,12 @@
       "format": "uint64",
       "minimum": 0.0
     },
+    "treasury_addr": {
+      "type": "string"
+    },
+    "treasury_fee": {
+      "$ref": "#/definitions/Decimal"
+    },
     "vault_lp_token_name": {
       "type": [
         "string",
@@ -48,12 +58,6 @@
         "string",
         "null"
       ]
-    },
-    "treasury_addr": {
-      "type": "string"
-    },
-    "treasury_fee": {
-      "$ref": "#/definitions/Decimal"
     }
   },
   "definitions": {
