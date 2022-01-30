@@ -1,7 +1,7 @@
 [package]
 name = "dapp-template"
 version = "0.1.0"
-authors = ["White Whale"]
+authors = ["CyberHoward", "Kerber0x", "0xFable"]
 edition = "2018"
 
 exclude = [
