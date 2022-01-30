@@ -54,7 +54,7 @@ pub fn handle_deposit_stable(
 /// Caller address -> anchor-dapp -> Treasury executes message prepared by the anchor-dapp invoked by the caller address which is an admin
 pub fn handle_redeem_stable(
     deps: Deps,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     ust_to_withdraw: Uint128,
 ) -> AnchorResult {
@@ -78,7 +78,7 @@ pub fn handle_redeem_stable(
 
     let mut messages: Vec<CosmosMsg> = vec![];
 
-    let aust_exchange_rate = query_aust_exchange_rate(deps, anchor_address.to_string())?;
+    let aust_exchange_rate = query_aust_exchange_rate(env, deps, anchor_address.to_string())?;
 
     // Prepare a deposit_msg using the provided info.
     // The anchor dapp will then use this message and pass it to the treasury for execution
