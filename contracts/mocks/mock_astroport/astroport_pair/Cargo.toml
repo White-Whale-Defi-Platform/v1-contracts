@@ -24,7 +24,7 @@ backtraces = ["cosmwasm-std/backtraces", "cosmwasm-vm/backtraces"]
 
 [dependencies]
 integer-sqrt = "0.1.5"
-astroport = {git = "https://github.com/astroport-fi/astroport-core.git", branch = "master"}
+astroport = {git = "https://github.com/astroport-fi/astroport-core.git", rev = "15a1ad64cfc471840ed85a16c020cedf9f18d4e7", package = "astroport"}
 cw2 = { version = "0.8" }
 cw20 = { version = "0.8" }
 cosmwasm-std = { version = "0.16.0" }
@@ -40,6 +40,6 @@ cosmwasm-vm = { version = "0.16.0", default-features = false, features = ["itera
 cosmwasm-schema = "0.16.0"
 terra-cosmwasm = { version = "2.2.0" }
 astroport-token = {path = "../astroport_token"}
-terra-multi-test = {git = "https://github.com/astroport-fi/terra-plus.git"}
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}
 astroport-factory = {path = "../astroport_factory"}
 proptest = "0.10.1"
