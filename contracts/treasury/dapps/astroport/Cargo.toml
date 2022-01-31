@@ -55,7 +55,7 @@ cosmwasm-vm = { version = "0.16.0", default-features = false, features = ["itera
 treasury = { version = "0.1.0", path = "../../treasury" }
 memory = { version = "0.1.0", path = "../../memory" }
 cw20-base = { version = "0.8", features = ["library"] }
+astroport = {git = "https://github.com/astroport-fi/astroport-core.git", rev = "05bfb278302d462c355e47ed67566a8a97f417dd", package = "astroport"}
 astroport-factory = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_factory" }
 astroport-pair = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_pair" }
 astroport-token = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_token" }
-astroport = {git = "https://github.com/astroport-fi/astroport-core.git", rev = "05bfb278302d462c355e47ed67566a8a97f417dd", package = "astroport"}
