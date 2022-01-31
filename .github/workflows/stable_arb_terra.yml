@@ -15,45 +15,60 @@ defaults:
     working-directory: contracts/stable-arb-terra
 
 jobs:
-  lint:
-    name: Lint
+  lint_test_and_check:
+    name: Test and Check
     runs-on: ubuntu-latest
+
     steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@v2
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
+      - name: Cancel Previous Runs
+        uses: styfle/cancel-workflow-action@0.9.1
         with:
-          rust-version: 1.53.0
-          components: clippy
-      - name: Build | Lint
-        run: cargo clippy -- -D warnings
-  compile:
-    name: Compile
-    runs-on: ubuntu-latest
-    steps:
-      - name: Setup | Checkout
+          access_token: ${{ github.token }}
+
+      - name: Checkout sources
         uses: actions/checkout@v2
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
+      - uses: actions/cache@v2
         with:
-          rust-version: stable
-      - name: Dependencies | Compile
-        run: cargo update
-      - name: Build | Compile
-        run: cargo check
-  test:
-    name: Test
-    runs-on:  ubuntu-latest
-    needs: [compile]
-    steps:
-      - name: Setup | Checkout
-        uses: actions/checkout@v2
-      - name: Setup | Rust
-        uses: ATiltedTree/setup-rust@v1
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/git/checkouts
+            ~/.cargo/git/db
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
         with:
-          rust-version: 1.53.0
-      - name: Unit Test | Test
-        run: cargo unit-test
-      - name: Schema | Test
-        run: cargo schema
+          profile: minimal
+          toolchain: 1.57.0
+          override: true
+          components: rustfmt, clippy
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --no-fail-fast --locked
+        env:
+          RUST_BACKTRACE: 1
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: -- -D warnings
+          
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --all -- --check

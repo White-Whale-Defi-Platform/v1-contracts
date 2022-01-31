@@ -16,7 +16,7 @@ defaults:
 
 jobs:
   lint_test_and_check:
-    name: Test and check
+    name: Test and Check
     runs-on: ubuntu-latest
 
     steps:
