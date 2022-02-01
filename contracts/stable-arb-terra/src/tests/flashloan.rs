@@ -9,7 +9,7 @@ use terraswap::asset::{Asset, AssetInfo};
 
 use crate::error::StableArbError;
 use crate::msg::*;
-use crate::tests::common::{TEST_CREATOR, VAULT_ASSET};
+use crate::tests::common::{POOL_NAME, TEST_CREATOR, VAULT_ASSET};
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
@@ -28,6 +28,7 @@ fn successfull_flashloan_call() {
                 denom: VAULT_ASSET.to_string(),
             },
         },
+        pool_name: POOL_NAME.to_string(),
         slippage: Decimal::percent(1),
         belief_price: Decimal::from_str("420").unwrap(),
     };
@@ -55,6 +56,7 @@ fn unsuccessfull_flashloan_call_wrong_denom() {
                 denom: "ukrt".to_string(),
             },
         },
+        pool_name: POOL_NAME.to_string(),
         slippage: Decimal::percent(1),
         belief_price: Decimal::from_str("420").unwrap(),
     };

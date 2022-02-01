@@ -17,7 +17,6 @@ pub(crate) fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
-        pool_address: "terraswap_pool".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
@@ -31,7 +30,6 @@ pub fn mock_instantiate(deps: DepsMut) {
     let msg = InstantiateMsg {
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
-        pool_address: "terraswap_pool".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
@@ -60,7 +58,6 @@ fn successful_initialization() {
         State {
             vault_address: deps.api.addr_validate(&VAULT_CONTRACT).unwrap(),
             seignorage_address: deps.api.addr_validate(&"seignorage").unwrap(),
-            pool_address: deps.api.addr_validate(&"terraswap_pool").unwrap(),
         }
     );
 

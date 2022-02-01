@@ -22,6 +22,9 @@ pub enum StableArbError {
 
     #[error("Not enough funds to perform arb-trade")]
     Broke {},
+
+    #[error("The name of the proposed pool can not have length 0.")]
+    InvalidPoolName {},
 }
 
 impl From<semver::Error> for StableArbError {

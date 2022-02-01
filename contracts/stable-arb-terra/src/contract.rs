@@ -26,7 +26,7 @@ use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, MigrateMsg
 
 use crate::querier::query_market_price;
 
-use crate::state::{State, ADMIN, ARB_BASE_ASSET, STATE};
+use crate::state::{State, ADMIN, ARB_BASE_ASSET, POOLS, STATE};
 
 type VaultResult = Result<Response<TerraMsgWrapper>, StableArbError>;
 
@@ -46,7 +46,6 @@ pub fn instantiate(
     let state = State {
         vault_address: deps.api.addr_validate(&msg.vault_address)?,
         seignorage_address: deps.api.addr_validate(&msg.seignorage_address)?,
-        pool_address: deps.api.addr_validate(&msg.pool_address)?,
     };
 
     // Store the initial config
@@ -79,6 +78,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
                 .add_attribute("previous admin", previous_admin)
                 .add_attribute("admin", admin))
         }
+        ExecuteMsg::UpdatePools { to_add, to_remove } => update_pools(deps, to_add, to_remove),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
 }
@@ -178,6 +178,7 @@ pub fn try_arb_below_peg(
     }
 
     // Set vars
+    let pool_address = POOLS.load(deps.storage, &details.pool_name)?;
     let denom = deposit_info.get_denom()?;
     let lent_coin = deduct_tax(
         deps.as_ref(),
@@ -208,7 +209,7 @@ pub fn try_arb_below_peg(
 
     // Terraswap msg, swap LUNA -> STABLE
     let terraswap_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.pool_address.to_string(),
+        contract_addr: pool_address.to_string(),
         funds: vec![offer_coin.clone()],
         msg: to_binary(&create_terraswap_msg(
             offer_coin,
@@ -252,6 +253,7 @@ pub fn try_arb_above_peg(
     }
 
     // Set vars
+    let pool_address = POOLS.load(deps.storage, &details.pool_name)?;
     let denom = deposit_info.get_denom()?;
     let lent_coin = deduct_tax(
         deps.as_ref(),
@@ -267,7 +269,7 @@ pub fn try_arb_above_peg(
     }
     // Simulate first tx with Terraswap
     let expected_luna_received =
-        simulate_terraswap_swap(deps.as_ref(), state.pool_address.clone(), lent_coin.clone())?;
+        simulate_terraswap_swap(deps.as_ref(), pool_address.clone(), lent_coin.clone())?;
 
     // Construct offer for Market Swap
     let offer_coin = Coin {
@@ -277,7 +279,7 @@ pub fn try_arb_above_peg(
 
     // Terraswap msg, swap STABLE -> LUNA
     let terraswap_msg: CosmosMsg<TerraMsgWrapper> = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.pool_address.to_string(),
+        contract_addr: pool_address.to_string(),
         funds: vec![lent_coin.clone()],
         msg: to_binary(&create_terraswap_msg(
             lent_coin.clone(),
@@ -329,6 +331,34 @@ fn after_successful_trade_callback(deps: DepsMut, env: Env) -> VaultResult {
         to_address: state.vault_address.to_string(),
         amount: vec![repay_asset.deduct_tax(&deps.querier)?],
     })))
+}
+
+pub fn update_pools(
+    deps: DepsMut,
+    to_add: Option<Vec<(String, String)>>,
+    to_remove: Option<Vec<String>>,
+) -> VaultResult {
+    if let Some(pools_to_add) = to_add {
+        for (name, new_address) in pools_to_add.into_iter() {
+            if name.is_empty() {
+                return Err(StableArbError::InvalidPoolName {});
+            };
+            // validate addr
+            POOLS.save(
+                deps.storage,
+                name.as_str(),
+                &deps.api.addr_validate(&new_address)?,
+            )?;
+        }
+    }
+
+    if let Some(pools_to_remove) = to_remove {
+        for name in pools_to_remove.into_iter() {
+            POOLS.remove(deps.storage, name.as_str());
+        }
+    }
+
+    Ok(Response::new().add_attribute("action", "update pool addresses"))
 }
 
 //----------------------------------------------------------------------------------------

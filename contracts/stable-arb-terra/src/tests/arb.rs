@@ -1,6 +1,6 @@
 use crate::msg::ExecuteMsg;
 use crate::msg::*;
-use crate::tests::common::VAULT_CONTRACT;
+use crate::tests::common::{POOL_NAME, VAULT_CONTRACT};
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 use cosmwasm_std::testing::{mock_env, mock_info};
@@ -26,6 +26,7 @@ fn when_given_a_below_peg_msg_then_handle_returns_first_a_mint_then_a_terraswap_
                 denom: "uusd".to_string(),
             },
         },
+        pool_name: POOL_NAME.to_string(),
         slippage: Decimal::percent(1),
         belief_price: Decimal::percent(420),
     };
@@ -74,6 +75,7 @@ fn when_given_an_above_peg_msg_then_handle_returns_first_a_terraswap_then_a_mint
                 denom: "uusd".to_string(),
             },
         },
+        pool_name: POOL_NAME.to_string(),
         slippage: Decimal::percent(1),
         belief_price: Decimal::percent(420),
     };

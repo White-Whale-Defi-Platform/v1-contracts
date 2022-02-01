@@ -10,7 +10,6 @@ use terraswap::asset::{Asset, AssetInfo};
 pub struct InstantiateMsg {
     pub vault_address: String,
     pub seignorage_address: String,
-    pub pool_address: String,
     pub asset_info: AssetInfo,
 }
 
@@ -29,6 +28,10 @@ pub enum ExecuteMsg {
     },
     SetAdmin {
         admin: String,
+    },
+    UpdatePools {
+        to_add: Option<Vec<(String, String)>>,
+        to_remove: Option<Vec<String>>,
     },
     Callback(CallbackMsg),
 }
@@ -59,6 +62,7 @@ pub struct ArbDetails {
     pub asset: Asset,
     pub slippage: Decimal,
     pub belief_price: Decimal,
+    pub pool_name: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
