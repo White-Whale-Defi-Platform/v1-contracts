@@ -8,7 +8,6 @@
     "aust_address",
     "commission_fee",
     "flash_loan_fee",
-    "profit_check_address",
     "stable_cap",
     "token_code_id",
     "treasury_addr",
@@ -29,9 +28,6 @@
     },
     "flash_loan_fee": {
       "$ref": "#/definitions/Decimal"
-    },
-    "profit_check_address": {
-      "type": "string"
     },
     "stable_cap": {
       "$ref": "#/definitions/Uint128"

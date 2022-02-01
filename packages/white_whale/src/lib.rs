@@ -6,7 +6,6 @@ pub mod deposit_info;
 pub mod emissions;
 pub mod fee;
 pub mod memory;
-pub mod profit_check;
 pub mod query;
 pub mod tax;
 pub mod tokenomics;

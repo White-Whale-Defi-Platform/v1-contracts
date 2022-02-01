@@ -18,7 +18,6 @@ fn unsuccessful_set_state_unauthorized() {
     let msg = ExecuteMsg::UpdateState {
         anchor_money_market_address: None,
         aust_address: None,
-        profit_check_address: None,
         allow_non_whitelisted: None,
     };
     let info = MessageInfo {
@@ -43,7 +42,6 @@ fn successful_set_state() {
     let msg = ExecuteMsg::UpdateState {
         anchor_money_market_address: Some(String::from("new_anchor_money_market_address")),
         aust_address: Some(String::from("new_aust_address")),
-        profit_check_address: Some(String::from("new_profit_check_address")),
         allow_non_whitelisted: Some(true),
     };
     let info = MessageInfo {
@@ -65,10 +63,6 @@ fn successful_set_state() {
     assert_eq!(
         new_state.aust_address,
         deps.api.addr_validate("new_aust_address").unwrap()
-    );
-    assert_eq!(
-        new_state.profit_check_address,
-        deps.api.addr_validate("new_profit_check_address").unwrap()
     );
     assert_eq!(new_state.allow_non_whitelisted, true);
 }

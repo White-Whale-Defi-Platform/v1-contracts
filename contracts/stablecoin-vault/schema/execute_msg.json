@@ -103,27 +103,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Forwards the profit amount to the vault, is called by profit-check",
-      "type": "object",
-      "required": [
-        "send_treasury_commission"
-      ],
-      "properties": {
-        "send_treasury_commission": {
-          "type": "object",
-          "required": [
-            "profit"
-          ],
-          "properties": {
-            "profit": {
-              "$ref": "#/definitions/Uint128"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "Set the admin of the contract",
       "type": "object",
       "required": [
@@ -209,12 +188,6 @@
               ]
             },
             "aust_address": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
-            "profit_check_address": {
               "type": [
                 "string",
                 "null"
@@ -330,11 +303,19 @@
         {
           "type": "object",
           "required": [
-            "after_successful_loan_callback"
+            "after_trade"
           ],
           "properties": {
-            "after_successful_loan_callback": {
-              "type": "object"
+            "after_trade": {
+              "type": "object",
+              "required": [
+                "loan_fee"
+              ],
+              "properties": {
+                "loan_fee": {
+                  "$ref": "#/definitions/Uint128"
+                }
+              }
             }
           },
           "additionalProperties": false

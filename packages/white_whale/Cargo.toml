@@ -1,7 +1,7 @@
 [package]
 name = "white-whale"
 version = "1.0.0"
-authors = ["White Whale"]
+authors = ["CyberHoward", "Kerber0x", "0xFable"]
 edition = "2018"
 description = "Common helpers for other white whale"
 license = "Apache-2.0"
