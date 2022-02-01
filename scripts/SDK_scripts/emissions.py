@@ -33,7 +33,6 @@ START_TIME = datetime.datetime(year=YEAR, month=MONTH, day=DAY, hour=HOUR)
 BLOCK_START_TIME = (START_TIME - datetime.datetime(1970, 1, 1)).total_seconds()
 
 DURATION = datetime.timedelta(days=90)
-# DURATION = datetime.timedelta(minutes=4)
 
 END_TIME = START_TIME + DURATION
 
