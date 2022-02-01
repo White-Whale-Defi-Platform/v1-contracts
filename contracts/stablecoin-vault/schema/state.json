@@ -6,7 +6,6 @@
     "allow_non_whitelisted",
     "anchor_money_market_address",
     "aust_address",
-    "profit_check_address",
     "whitelisted_contracts"
   ],
   "properties": {
@@ -17,9 +16,6 @@
       "$ref": "#/definitions/Addr"
     },
     "aust_address": {
-      "$ref": "#/definitions/Addr"
-    },
-    "profit_check_address": {
       "$ref": "#/definitions/Addr"
     },
     "whitelisted_contracts": {

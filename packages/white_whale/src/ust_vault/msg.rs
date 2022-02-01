@@ -56,6 +56,12 @@ pub enum ExecuteMsg {
     Callback(CallbackMsg),
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct FlashLoanPayload {
+    pub requested_asset: Asset,
+    pub callback: Binary,
+}
+
 /// MigrateMsg allows a privileged contract administrator to run
 /// a migration on the contract. In this case it is just migrating
 /// from one terra code to the same code, but taking advantage of the
@@ -65,6 +71,12 @@ pub enum ExecuteMsg {
 /// by blockchain logic (in the future by blockchain governance)
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct MigrateMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum CallbackMsg {
+    AfterTrade { loan_fee: Uint128 },
+}
 
 // Modified from
 // https://github.com/CosmWasm/cosmwasm-plus/blob/v0.2.3/packages/cw20/src/receiver.rs#L15
@@ -83,25 +95,6 @@ impl CallbackMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum CallbackMsg {
-    AfterTrade { loan_fee: Uint128 },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct PoolResponse {
-    pub assets: [Asset; 2],
-    pub total_value_in_ust: Uint128,
-    pub total_share: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct FlashLoanPayload {
-    pub requested_asset: Asset,
-    pub callback: Binary,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
 pub enum VaultQueryMsg {
     PoolConfig {},
     PoolState {},
@@ -113,6 +106,13 @@ pub enum VaultQueryMsg {
     LastProfit {},
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct PoolResponse {
+    pub assets: [Asset; 2],
+    pub total_value_in_ust: Uint128,
+    pub total_share: Uint128,
+    pub liquidity_token: String,
+}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositResponse {
     pub deposit: Uint128,

@@ -909,6 +909,7 @@ pub fn try_query_pool_state(env: Env, deps: Deps) -> StdResult<PoolResponse> {
         assets,
         total_value_in_ust,
         total_share,
+        liquidity_token: info.liquidity_token.into(),
     })
 }
 
