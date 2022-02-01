@@ -148,6 +148,7 @@ pub fn execute(
             token_code_id,
             fee_address,
             generator_address,
+            ..
         } => execute_update_config(
             deps,
             env,
@@ -346,7 +347,7 @@ pub fn execute_create_pair(
             msg: to_binary(&PairInstantiateMsg {
                 asset_infos: asset_infos.clone(),
                 token_code_id: config.token_code_id,
-                factory_addr: env.contract.address,
+                factory_addr: env.contract.address.to_string(),
                 init_params,
             })?,
             funds: vec![],
@@ -483,6 +484,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
             .collect(),
         fee_address: config.fee_address,
         generator_address: config.generator_address,
+        whitelist_code_id: 0,
     };
 
     Ok(resp)

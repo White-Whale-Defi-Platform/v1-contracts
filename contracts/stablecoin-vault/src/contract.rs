@@ -146,7 +146,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        ExecuteMsg::ProvideLiquidity { asset } => try_provide_liquidity(deps, info, asset),
+        ExecuteMsg::ProvideLiquidity { asset } => try_provide_liquidity(deps, env, info, asset),
         ExecuteMsg::SetStableCap { stable_cap } => set_stable_cap(deps, info, stable_cap),
         ExecuteMsg::SetAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
@@ -227,7 +227,7 @@ pub fn handle_flashloan(
 
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value, stables_available, _) = compute_total_value(deps.as_ref(), &pool_info)?;
+    let (total_value, stables_available, _) = compute_total_value(&env, deps.as_ref(), &pool_info)?;
     let requested_asset = payload.requested_asset;
 
     if total_value < requested_asset.amount + Uint128::from(FEE_BUFFER) {
@@ -241,8 +241,11 @@ pub fn handle_flashloan(
     if (requested_asset.amount + Uint128::from(FEE_BUFFER)) > stables_available {
         // Attempt to remove some money from anchor
         let to_withdraw = (requested_asset.amount + Uint128::from(FEE_BUFFER)) - stables_available;
-        let aust_exchange_rate =
-            query_aust_exchange_rate(deps.as_ref(), state.anchor_money_market_address.to_string())?;
+        let aust_exchange_rate = query_aust_exchange_rate(
+            env.clone(),
+            deps.as_ref(),
+            state.anchor_money_market_address.to_string(),
+        )?;
 
         let withdraw_msg = anchor_withdraw_msg(
             state.aust_address,
@@ -278,14 +281,19 @@ pub fn handle_flashloan(
     response = response.add_message(return_call);
 
     // Sets the current value of the vault and save logs
-    response = response.add_attributes(before_trade(deps.branch())?);
+    response = response.add_attributes(before_trade(deps.branch(), env.clone())?);
 
     // Call encapsulate function
     encapsulate_payload(deps.as_ref(), env, response, loan_fee)
 }
 
 // This function should be called alongside a deposit of UST into the contract.
-pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset) -> VaultResult {
+pub fn try_provide_liquidity(
+    deps: DepsMut,
+    env: Env,
+    msg_info: MessageInfo,
+    asset: Asset,
+) -> VaultResult {
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let profit = PROFIT.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
@@ -309,7 +317,7 @@ pub fn try_provide_liquidity(deps: DepsMut, msg_info: MessageInfo, asset: Asset)
 
     // Get total value in Vault
     let (total_deposits_in_ust, stables_in_contract, _) =
-        compute_total_value(deps.as_ref(), &info)?;
+        compute_total_value(&env, deps.as_ref(), &info)?;
     // Get total supply of LP tokens and calculate share
     let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
@@ -375,7 +383,8 @@ pub fn try_withdraw_liquidity(
     // Calculate share of pool and requested pool value
     let lp_addr = info.liquidity_token.clone();
     let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
-    let (total_value, _, uaust_value_in_contract) = compute_total_value(deps.as_ref(), &info)?;
+    let (total_value, _, uaust_value_in_contract) =
+        compute_total_value(&env, deps.as_ref(), &info)?;
     // Get treasury fee in LP tokens
     let treasury_fee = get_treasury_fee(deps.as_ref(), amount)?;
     // Share with fee deducted.
@@ -389,7 +398,7 @@ pub fn try_withdraw_liquidity(
     let max_aust_amount = query_token_balance(
         &deps.querier,
         state.aust_address.clone(),
-        env.contract.address,
+        env.contract.address.clone(),
     )?;
     let mut withdrawn_ust = Asset {
         info: AssetInfo::NativeToken {
@@ -400,8 +409,11 @@ pub fn try_withdraw_liquidity(
 
     // If we have aUST, try repay with that
     if max_aust_amount > Uint128::zero() {
-        let aust_exchange_rate =
-            query_aust_exchange_rate(deps.as_ref(), state.anchor_money_market_address.to_string())?;
+        let aust_exchange_rate = query_aust_exchange_rate(
+            env,
+            deps.as_ref(),
+            state.anchor_money_market_address.to_string(),
+        )?;
 
         if uaust_value_in_contract < refund_amount {
             // Withdraw all aUST left
@@ -502,7 +514,7 @@ fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultRes
 }
 
 // Resets last trade and sets current UST balance of caller
-pub fn before_trade(deps: DepsMut) -> StdResult<Vec<(&str, String)>> {
+pub fn before_trade(deps: DepsMut, env: Env) -> StdResult<Vec<(&str, String)>> {
     let mut conf = PROFIT.load(deps.storage)?;
 
     // last_balance call can not be reset until after the loan.
@@ -515,7 +527,7 @@ pub fn before_trade(deps: DepsMut) -> StdResult<Vec<(&str, String)>> {
     conf.last_profit = Uint128::zero();
 
     // Index 0 = total_value
-    conf.last_balance = total_value(deps.as_ref())?.0;
+    conf.last_balance = total_value(deps.as_ref(), &env)?.0;
     PROFIT.save(deps.storage, &conf)?;
 
     Ok(vec![(
@@ -532,11 +544,11 @@ pub fn after_trade(
     loan_fee: Uint128,
 ) -> VaultResult {
     // Deposit funds into anchor if applicable.
-    let response = try_anchor_deposit(deps.branch(), env)?;
+    let response = try_anchor_deposit(deps.branch(), env.clone())?;
 
     let mut conf = PROFIT.load(deps.storage)?;
 
-    let balance = total_value(deps.as_ref())?.0;
+    let balance = total_value(deps.as_ref(), &env)?.0;
 
     // Check if balance increased with expected fee, otherwise cancel everything
     if balance < conf.last_balance + loan_fee {
@@ -614,6 +626,7 @@ pub fn receive_cw20(
 /// compute total value of deposits in UST and return a tuple with those values.
 /// (total, stable, aust)
 pub fn compute_total_value(
+    env: &Env,
     deps: Deps,
     info: &PoolInfoRaw,
 ) -> StdResult<(Uint128, Uint128, Uint128)> {
@@ -627,8 +640,11 @@ pub fn compute_total_value(
 
     let aust_info = info.asset_infos[1].to_normal(deps.api)?;
     let aust_amount = aust_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
-    let aust_exchange_rate =
-        query_aust_exchange_rate(deps, state.anchor_money_market_address.to_string())?;
+    let aust_exchange_rate = query_aust_exchange_rate(
+        env.clone(),
+        deps,
+        state.anchor_money_market_address.to_string(),
+    )?;
     let aust_value_in_ust = aust_exchange_rate * aust_amount;
 
     let total_deposits_in_ust = stable_amount + aust_value_in_ust;
@@ -837,13 +853,13 @@ pub fn set_fee(
 //----------------------------------------------------------------------------------------
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::PoolConfig {} => to_binary(&try_query_config(deps)?),
-        QueryMsg::PoolState {} => to_binary(&try_query_pool_state(deps)?),
+        QueryMsg::PoolState {} => to_binary(&try_query_pool_state(env, deps)?),
         QueryMsg::State {} => to_binary(&try_query_state(deps)?),
         QueryMsg::Fees {} => to_binary(&query_fees(deps)?),
-        QueryMsg::VaultValue {} => to_binary(&query_total_value(deps)?),
+        QueryMsg::VaultValue {} => to_binary(&query_total_value(env, deps)?),
         QueryMsg::EstimateWithdrawFee { amount } => {
             to_binary(&estimate_withdraw_fee(deps, amount)?)
         }
@@ -882,12 +898,12 @@ pub fn try_query_state(deps: Deps) -> StdResult<State> {
     STATE.load(deps.storage)
 }
 
-pub fn try_query_pool_state(deps: Deps) -> StdResult<PoolResponse> {
+pub fn try_query_pool_state(env: Env, deps: Deps) -> StdResult<PoolResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let assets: [Asset; 2] = info.query_pools(deps, info.contract_addr.clone())?;
     let total_share: Uint128 = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
-    let (total_value_in_ust, _, _) = compute_total_value(deps, &info)?;
+    let (total_value_in_ust, _, _) = compute_total_value(&env, deps, &info)?;
 
     Ok(PoolResponse {
         assets,
@@ -896,12 +912,13 @@ pub fn try_query_pool_state(deps: Deps) -> StdResult<PoolResponse> {
     })
 }
 
-pub fn total_value(deps: Deps) -> StdResult<(Uint128, Uint128, Uint128)> {
+pub fn total_value(deps: Deps, env: &Env) -> StdResult<(Uint128, Uint128, Uint128)> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    compute_total_value(deps, &info)
+    compute_total_value(env, deps, &info)
 }
-pub fn query_total_value(deps: Deps) -> StdResult<ValueResponse> {
-    let (total_ust_value, _, _) = total_value(deps)?;
+pub fn query_total_value(env: Env, deps: Deps) -> StdResult<ValueResponse> {
+    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let (total_ust_value, _, _) = compute_total_value(&env, deps, &info)?;
     Ok(ValueResponse { total_ust_value })
 }
 
