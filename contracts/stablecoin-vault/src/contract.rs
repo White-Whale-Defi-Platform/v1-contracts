@@ -27,7 +27,6 @@ use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 
-const FEE_BUFFER: u64 = 10_000_000u64;
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
 pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
@@ -230,7 +229,11 @@ pub fn handle_flashloan(
     let (total_value, stables_available, _) = compute_total_value(&env, deps.as_ref(), &pool_info)?;
     let requested_asset = payload.requested_asset;
 
-    if total_value < requested_asset.amount + Uint128::from(FEE_BUFFER) {
+    // Max tax buffer will be 2 transfers of the borrowed assets
+    // Anchor -> Vault -> Caller
+    let tax_buffer = Uint128::from(2u32) * requested_asset.compute_tax(&deps.querier)?;
+
+    if total_value < requested_asset.amount + tax_buffer {
         return Err(StableVaultError::Broke {});
     }
     // Init response
@@ -238,9 +241,9 @@ pub fn handle_flashloan(
 
     // Withdraw funds from Anchor if needed
     // FEE_BUFFER as buffer for fees and taxes
-    if (requested_asset.amount + Uint128::from(FEE_BUFFER)) > stables_available {
+    if (requested_asset.amount + tax_buffer) > stables_available {
         // Attempt to remove some money from anchor
-        let to_withdraw = (requested_asset.amount + Uint128::from(FEE_BUFFER)) - stables_available;
+        let to_withdraw = (requested_asset.amount + tax_buffer) - stables_available;
         let aust_exchange_rate = query_aust_exchange_rate(
             env.clone(),
             deps.as_ref(),
