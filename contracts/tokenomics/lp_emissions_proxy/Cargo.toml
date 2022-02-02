@@ -1,7 +1,7 @@
 [package]
 name = "whale-lp-staking-proxy"
 version = "1.0.0"
-authors = ["Astromartion"]
+authors = ["Astromartian"]
 edition = "2018"
 
 
