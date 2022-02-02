@@ -17,7 +17,6 @@ use terra_cosmwasm::{
 };
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
 use terraswap::pair::PoolResponse;
-use white_whale::profit_check::msg::LastBalanceResponse;
 use white_whale::query::anchor::EpochStateResponse;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
@@ -184,16 +183,6 @@ impl WasmMockQuerier {
             // Or for more quick multi-contract mocking consider using the contract_addr
             // or directly parsing the message if it is unique
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                // Handle calls for Profit Check; LastBalance
-                if contract_addr == &String::from("test_profit_check") {
-                    println!("{:?}", request);
-
-                    return SystemResult::Ok(ContractResult::from(to_binary(
-                        &LastBalanceResponse {
-                            last_balance: Uint128::zero(),
-                        },
-                    )));
-                }
                 // Handle calls for Profit Check; LastBalance
                 if contract_addr == &String::from("test_mm") {
                     println!("{:?}", request);

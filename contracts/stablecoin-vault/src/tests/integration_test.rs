@@ -2,8 +2,7 @@
 use crate::contract::{DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
 use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
 use crate::tests::common_integration::{
-    contract_cw20_token, contract_profit_check, contract_stablecoin_vault, contract_treasury,
-    instantiate_msg, mock_app,
+    contract_cw20_token, contract_stablecoin_vault, contract_treasury, instantiate_msg, mock_app,
 };
 use crate::tests::tswap_mock::{contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg};
 use cosmwasm_std::{coins, to_binary, Addr, BlockInfo, Timestamp, Uint128};
@@ -37,7 +36,6 @@ fn stablecoin_vault_fees_are_allocated() {
     // Store the gov contract as a code object
     let treasury_id = router.store_code(contract_treasury());
     // Store the profit check needed for the vault on provide and withdrawal of liquidity as well as trading actions
-    let profit_check_id = router.store_code(contract_profit_check());
     let anchor_id = router.store_code(contract_anchor_mock());
 
     // Set the block height and time, we will later modify this to simulate time passing
@@ -128,11 +126,6 @@ fn stablecoin_vault_fees_are_allocated() {
         )
         .unwrap();
 
-    let profit_check_msg = white_whale::profit_check::msg::InstantiateMsg {
-        vault_address: tswap_addr.to_string(),
-        denom: "uusd".to_string(),
-    };
-
     // Setup the treasury contract
     let treasury_addr = router
         .instantiate_contract(
@@ -141,18 +134,6 @@ fn stablecoin_vault_fees_are_allocated() {
             &chest_msg,
             &[],
             "TREASURY",
-            None,
-        )
-        .unwrap();
-
-    // Setup the profit check contract
-    let profit_check_addr = router
-        .instantiate_contract(
-            profit_check_id,
-            owner.clone(),
-            &profit_check_msg,
-            &[],
-            "PROFIT",
             None,
         )
         .unwrap();
@@ -166,7 +147,6 @@ fn stablecoin_vault_fees_are_allocated() {
     let vault_msg = instantiate_msg(
         terraswap_id,
         treasury_addr.to_string(),
-        profit_check_addr.to_string(),
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
     );
@@ -221,14 +201,6 @@ fn stablecoin_vault_fees_are_allocated() {
     // Ensure addresses are not equal to each other
     assert_ne!(treasury_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
-
-    // Hook up the vault and profit check
-    let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault {
-        vault_address: vault_addr.to_string(),
-    };
-    let _ = router
-        .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
-        .unwrap();
 
     set_liq_token_addr(lp_token.to_string());
 
@@ -262,14 +234,14 @@ fn stablecoin_vault_fees_are_allocated() {
     let res = router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked("Contract #7"),
+            Addr::unchecked("Contract #6"),
             &send_msg,
             &[],
         )
         .unwrap();
     println!("{:?}", res.events);
 
-    let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
+    let lp = Cw20Contract(Addr::unchecked("Contract #6").clone());
 
     // Verify treasury has received some fees (WIP)
     // ensure our balances
@@ -300,7 +272,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     // Store the gov contract as a code object
     let treasury_id = router.store_code(contract_treasury());
     // Store the profit check needed for the vault on provide and withdrawal of liquidity as well as trading actions
-    let profit_check_id = router.store_code(contract_profit_check());
     let anchor_id = router.store_code(contract_anchor_mock());
 
     // Set the block height and time, we will later modify this to simulate time passing
@@ -390,12 +361,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
             None,
         )
         .unwrap();
-
-    let profit_check_msg = white_whale::profit_check::msg::InstantiateMsg {
-        vault_address: tswap_addr.to_string(),
-        denom: "uusd".to_string(),
-    };
-
     // Setup the treasury contract
     let treasury_addr = router
         .instantiate_contract(
@@ -404,18 +369,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
             &chest_msg,
             &[],
             "TREASURY",
-            None,
-        )
-        .unwrap();
-
-    // Setup the profit check contract
-    let profit_check_addr = router
-        .instantiate_contract(
-            profit_check_id,
-            owner.clone(),
-            &profit_check_msg,
-            &[],
-            "PROFIT",
             None,
         )
         .unwrap();
@@ -429,7 +382,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     let vault_msg = instantiate_msg(
         terraswap_id,
         treasury_addr.to_string(),
-        profit_check_addr.to_string(),
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
     );
@@ -484,14 +436,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     // Ensure addresses are not equal to each other
     assert_ne!(treasury_addr, vault_addr);
     assert_ne!(vault_addr, tswap_addr);
-
-    // Hook up the vault and profit check
-    let msg = white_whale::profit_check::msg::ExecuteMsg::SetVault {
-        vault_address: vault_addr.to_string(),
-    };
-    router
-        .execute_contract(owner.clone(), profit_check_addr.clone(), &msg, &[])
-        .unwrap();
 
     // Provide some liqudity in UST
     let msg = ExecuteMsg::ProvideLiquidity {
@@ -526,14 +470,14 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
     let res = router
         .execute_contract(
             owner.clone(),
-            Addr::unchecked("Contract #7"),
+            Addr::unchecked("Contract #6"),
             &send_msg,
             &[],
         )
         .unwrap();
     println!("{:?}", res.events);
 
-    let lp = Cw20Contract(Addr::unchecked("Contract #7").clone());
+    let lp = Cw20Contract(Addr::unchecked("Contract #6").clone());
 
     // Verify treasury has received some fees (WIP)
     // ensure our balances

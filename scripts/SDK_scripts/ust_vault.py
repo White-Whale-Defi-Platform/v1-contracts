@@ -23,29 +23,26 @@ from white_whale.contracts.community import *
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
 std_fee = StdFee(10*690000, "1200000uusd")
 
-deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None)
-# deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
+# deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None)
+deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
 
-profit_check = ProfitCheckContract(deployer)
 vault = StableVaultContract(deployer)
-ust_arb_terra = StableArbContract(deployer,"terra")
-ust_arb_astro = StableArbContract(deployer,"astro")
+ust_arb_terra = StableArbContract(deployer)
+# ust_arb_astro = StableArbContract(deployer,"astro")
 create = False
 
 if create:
-    profit_check.create()
     vault.create()
     ust_arb_terra.create()
-    vault.add_to_whitelist(ust_arb_terra.address)
-    ust_arb_astro.create()
-    vault.add_to_whitelist(ust_arb_astro.address)
+    vault.add_to_whitelist(ust_arb_terra.get(ust_arb_terra.name))
+    # ust_arb_astro.create()
+    # vault.add_to_whitelist(ust_arb_astro.address)
 
 # ust_arb.call_arb(1)
 # print(vault.address)
-profit_check.get_vault()
 vault.query_vault_value()
 # deployer.send_funds(ust_arb.address, [Coin("uusd", 10000000)])
-vault.provide_liquidity(5_000_000)
+# vault.provide_liquidity(5_000_000)
 
 # community_fund.simulate_deposit(1_000_000)
 

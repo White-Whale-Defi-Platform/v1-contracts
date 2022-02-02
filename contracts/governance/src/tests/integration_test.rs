@@ -25,7 +25,6 @@ pub fn instantiate_msg(token_code_id: u64) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
         aust_address: "test_aust".to_string(),
-        profit_check_address: "test_profit_check".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
@@ -452,16 +451,14 @@ fn gov_can_update_vault_config_through_polls() {
     // Get the current stable_cap to later compare with
     let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::State {};
 
-    let state_response: white_whale::ust_vault::msg::StateResponse = router
+    let _state_response: white_whale::ust_vault::msg::StateResponse = router
         .wrap()
         .query_wasm_smart(vault_addr.clone(), &config_msg)
         .unwrap();
-    let original_profit_check_addr: String = state_response.profit_check_address;
 
     let stable_cap_change_msg = to_binary(&white_whale::ust_vault::msg::ExecuteMsg::UpdateState {
         anchor_money_market_address: Some("market_addr".to_string()),
         aust_address: Some("aust".to_string()),
-        profit_check_address: Some("profit".to_string()),
         allow_non_whitelisted: Some(false),
     })
     .unwrap();
@@ -529,14 +526,8 @@ fn gov_can_update_vault_config_through_polls() {
 
     // Get the new stable_cap
     let config_msg = white_whale::ust_vault::msg::VaultQueryMsg::State {};
-    let state_response: white_whale::ust_vault::msg::StateResponse = router
+    let _state_response: white_whale::ust_vault::msg::StateResponse = router
         .wrap()
         .query_wasm_smart(vault_addr.clone(), &config_msg)
         .unwrap();
-    let new_profit_check_addr: String = state_response.profit_check_address;
-    // Ensure the stable cap has been updated to a new value
-    assert_ne!(
-        original_profit_check_addr, new_profit_check_addr,
-        "The original stable cap logged before gov proposal is the same as the new stable cap"
-    );
 }

@@ -1,7 +1,7 @@
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
-    DepsMut, Env, Fraction, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdError,
-    StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
+    DepsMut, Env, Fraction, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
@@ -15,9 +15,6 @@ use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
-use white_whale::profit_check::msg::ExecuteMsg as ProfitCheckMsg;
-use white_whale::profit_check::msg::LastBalanceResponse;
-use white_whale::profit_check::msg::QueryMsg as ProfitCheckQueryMsg;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::tax::{compute_tax, into_msg_without_tax};
 use white_whale::ust_vault::msg::*;
@@ -28,7 +25,7 @@ use white_whale::ust_vault::msg::{
 use crate::error::StableVaultError;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::response::MsgInstantiateContractResponse;
-use crate::state::{State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, STATE};
+use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 
 const FEE_BUFFER: u64 = 10_000_000u64;
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
@@ -48,7 +45,6 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     let state = State {
         anchor_money_market_address: deps.api.addr_validate(&msg.anchor_money_market_address)?,
         aust_address: deps.api.addr_validate(&msg.aust_address)?,
-        profit_check_address: deps.api.addr_validate(&msg.profit_check_address)?,
         whitelisted_contracts: vec![],
         allow_non_whitelisted: false,
     };
@@ -92,6 +88,13 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         ],
     };
     POOL_INFO.save(deps.storage, pool_info)?;
+
+    let profit = ProfitCheck {
+        last_balance: Uint128::zero(),
+        last_profit: Uint128::zero(),
+    };
+    PROFIT.save(deps.storage, &profit)?;
+
     // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
 
@@ -166,19 +169,14 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
         ExecuteMsg::UpdateState {
             anchor_money_market_address,
             aust_address,
-            profit_check_address,
             allow_non_whitelisted,
         } => update_state(
             deps,
             info,
             anchor_money_market_address,
             aust_address,
-            profit_check_address,
             allow_non_whitelisted,
         ),
-        ExecuteMsg::SendTreasuryCommission { profit } => {
-            send_commissions(deps.as_ref(), info, profit)
-        }
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
 }
@@ -193,8 +191,7 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
         return Err(StableVaultError::NotCallback {});
     }
     match msg {
-        CallbackMsg::AfterSuccessfulLoanCallback {} => after_successful_loan_callback(deps, env),
-        // Possibility to add more callbacks in future.
+        CallbackMsg::AfterTrade { loan_fee } => after_trade(deps, env, info, loan_fee),
     }
 }
 
@@ -203,7 +200,7 @@ fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg
 //----------------------------------------------------------------------------------------
 
 pub fn handle_flashloan(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     payload: FlashLoanPayload,
@@ -283,6 +280,9 @@ pub fn handle_flashloan(
 
     response = response.add_message(return_call);
 
+    // Sets the current value of the vault and save logs
+    response = response.add_attributes(before_trade(deps.branch(), env.clone())?);
+
     // Call encapsulate function
     encapsulate_payload(deps.as_ref(), env, response, loan_fee)
 }
@@ -295,17 +295,12 @@ pub fn try_provide_liquidity(
     asset: Asset,
 ) -> VaultResult {
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
+    let profit = PROFIT.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let denom = deposit_info.clone().get_denom()?;
 
-    // User is not able to deposit into the vault if he is using the flashloan
-    let profit_check_response: LastBalanceResponse =
-        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: state.profit_check_address.to_string(),
-            msg: to_binary(&ProfitCheckQueryMsg::LastBalance {})?,
-        }))?;
-    if profit_check_response.last_balance != Uint128::zero() {
+    if profit.last_balance != Uint128::zero() {
         return Err(StableVaultError::DepositDuringLoan {});
     }
 
@@ -373,16 +368,12 @@ pub fn try_withdraw_liquidity(
     amount: Uint128,
 ) -> VaultResult {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let profit = PROFIT.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
     let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let fee_config = FEE.load(deps.storage)?;
-    // User is not able to withdraw from the vault if he is using the flashloan
-    let profit_check_response: LastBalanceResponse =
-        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-            contract_addr: state.profit_check_address.to_string(),
-            msg: to_binary(&ProfitCheckQueryMsg::LastBalance {})?,
-        }))?;
-    if profit_check_response.last_balance != Uint128::zero() {
+
+    if profit.last_balance != Uint128::zero() {
         return Err(StableVaultError::DepositDuringLoan {});
     }
 
@@ -503,13 +494,8 @@ pub fn try_withdraw_liquidity(
 }
 
 /// Sends the commission fee which is a function of the profit made by the contract, forwarded by the profit-check contract
-fn send_commissions(deps: Deps, info: MessageInfo, profit: Uint128) -> VaultResult {
-    let state = STATE.load(deps.storage)?;
+fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultResult {
     let fees = FEE.load(deps.storage)?;
-    // Check if sender is profit check contract
-    if state.profit_check_address != info.sender {
-        return Err(StableVaultError::Unauthorized {});
-    }
 
     let commission_amount = fees.commission_fee.compute(profit);
 
@@ -527,6 +513,63 @@ fn send_commissions(deps: Deps, info: MessageInfo, profit: Uint128) -> VaultResu
         .add_message(commission_msg))
 }
 
+// Resets last trade and sets current UST balance of caller
+pub fn before_trade(deps: DepsMut, env: Env) -> StdResult<Vec<(&str, String)>> {
+    let mut conf = PROFIT.load(deps.storage)?;
+
+    // last_balance call can not be reset until after the loan.
+    if conf.last_balance != Uint128::zero() {
+        return Err(StdError::generic_err(
+            StableVaultError::Nonzero {}.to_string(),
+        ));
+    }
+
+    conf.last_profit = Uint128::zero();
+
+    // Index 0 = total_value
+    conf.last_balance = total_value(deps.as_ref(), &env)?.0;
+    PROFIT.save(deps.storage, &conf)?;
+
+    Ok(vec![(
+        "value before trade: ",
+        conf.last_balance.to_string(),
+    )])
+}
+
+// Checks if balance increased after the trade
+pub fn after_trade(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    loan_fee: Uint128,
+) -> VaultResult {
+    // Deposit funds into anchor if applicable.
+    let response = try_anchor_deposit(deps.branch(), env.clone())?;
+
+    let mut conf = PROFIT.load(deps.storage)?;
+
+    let balance = total_value(deps.as_ref(), &env)?.0;
+
+    // Check if balance increased with expected fee, otherwise cancel everything
+    if balance < conf.last_balance + loan_fee {
+        return Err(StableVaultError::CancelLosingTrade {});
+    }
+
+    let profit = balance - conf.last_balance;
+
+    conf.last_profit = profit;
+    conf.last_balance = Uint128::zero();
+    PROFIT.save(deps.storage, &conf)?;
+
+    let commission_response = send_commissions(deps.as_ref(), info, profit)?;
+
+    Ok(response
+        // Send commission of profit to Treasury
+        .add_submessages(commission_response.messages)
+        .add_attributes(commission_response.attributes)
+        .add_attribute("value after commission: ", balance.to_string()))
+}
+
 //----------------------------------------------------------------------------------------
 //  HELPER FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
@@ -536,27 +579,17 @@ fn send_commissions(deps: Deps, info: MessageInfo, profit: Uint128) -> VaultResu
 /// with the vault funds and makes sure the funds are returned by
 /// the borrower.
 pub fn encapsulate_payload(
-    deps: Deps,
+    _deps: Deps,
     env: Env,
     response: Response,
     loan_fee: Uint128,
 ) -> VaultResult {
-    let state = STATE.load(deps.storage)?;
-
-    let total_response: Response = Response::new();
+    let total_response: Response = Response::new().add_attributes(response.attributes);
 
     // Callback for after the loan
-    let after_loan_msg =
-        CallbackMsg::AfterSuccessfulLoanCallback {}.to_cosmos_msg(&env.contract.address)?;
+    let after_trade = CallbackMsg::AfterTrade { loan_fee }.to_cosmos_msg(&env.contract.address)?;
 
     Ok(total_response
-        // Call profit-check contract to store current value of funds
-        // held in this contract
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: state.profit_check_address.to_string(),
-            msg: to_binary(&ProfitCheckMsg::BeforeTrade {})?,
-            funds: vec![],
-        }))
         // Add response that:
         // 1. Withdraws funds from Anchor if needed
         // 2. Sends funds to the borrower
@@ -564,14 +597,9 @@ pub fn encapsulate_payload(
         .add_submessages(response.messages)
         // After borrower actions, deposit the received funds back into
         // Anchor if applicable
-        .add_message(after_loan_msg)
-        // Call the profit-check again to cancel the borrow if
+        // Call profit-check to cancel the borrow if
         // no profit is made.
-        .add_message(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: state.profit_check_address.to_string(),
-            msg: to_binary(&ProfitCheckMsg::AfterTrade { loan_fee })?,
-            funds: vec![],
-        })))
+        .add_message(after_trade))
 }
 
 /// handler function invoked when the stablecoin-vault contract receives
@@ -595,7 +623,8 @@ pub fn receive_cw20(
     }
 }
 
-// compute total value of deposits in UST and return a tuple with those values.
+/// compute total value of deposits in UST and return a tuple with those values.
+/// (total, stable, aust)
 pub fn compute_total_value(
     env: &Env,
     deps: Deps,
@@ -649,7 +678,7 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
 //  CALLBACK FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-fn after_successful_loan_callback(deps: DepsMut, env: Env) -> VaultResult {
+fn try_anchor_deposit(deps: DepsMut, env: Env) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     let stable_denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
     let stables_in_contract =
@@ -702,7 +731,6 @@ pub fn update_state(
     info: MessageInfo,
     anchor_money_market_address: Option<String>,
     aust_address: Option<String>,
-    profit_check_address: Option<String>,
     allow_non_whitelisted: Option<bool>,
 ) -> VaultResult {
     // Only the admin should be able to call this
@@ -717,10 +745,6 @@ pub fn update_state(
 
     if let Some(aust_address) = aust_address {
         state.aust_address = api.addr_validate(&aust_address)?;
-    }
-
-    if let Some(profit_check_address) = profit_check_address {
-        state.profit_check_address = api.addr_validate(&profit_check_address)?;
     }
 
     if let Some(allow_non_whitelisted) = allow_non_whitelisted {
@@ -839,6 +863,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::EstimateWithdrawFee { amount } => {
             to_binary(&estimate_withdraw_fee(deps, amount)?)
         }
+        QueryMsg::LastBalance {} => to_binary(&try_query_last_balance(deps)?),
+        QueryMsg::LastProfit {} => to_binary(&try_query_last_profit(deps)?),
     }
 }
 
@@ -883,11 +909,30 @@ pub fn try_query_pool_state(env: Env, deps: Deps) -> StdResult<PoolResponse> {
         assets,
         total_value_in_ust,
         total_share,
+        liquidity_token: info.liquidity_token.into(),
     })
 }
 
+pub fn total_value(deps: Deps, env: &Env) -> StdResult<(Uint128, Uint128, Uint128)> {
+    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    compute_total_value(env, deps, &info)
+}
 pub fn query_total_value(env: Env, deps: Deps) -> StdResult<ValueResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (total_ust_value, _, _) = compute_total_value(&env, deps, &info)?;
     Ok(ValueResponse { total_ust_value })
+}
+
+pub fn try_query_last_profit(deps: Deps) -> StdResult<LastProfitResponse> {
+    let conf = PROFIT.load(deps.storage)?;
+    Ok(LastProfitResponse {
+        last_profit: conf.last_profit,
+    })
+}
+
+pub fn try_query_last_balance(deps: Deps) -> StdResult<LastBalanceResponse> {
+    let conf = PROFIT.load(deps.storage)?;
+    Ok(LastBalanceResponse {
+        last_balance: conf.last_balance,
+    })
 }

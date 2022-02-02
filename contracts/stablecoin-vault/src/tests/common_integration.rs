@@ -10,14 +10,12 @@ use white_whale::ust_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 pub fn instantiate_msg(
     token_code_id: u64,
     war_chest: String,
-    profit_check_addr: String,
     anchor_addr: String,
     aust_address: String,
 ) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
         anchor_money_market_address: anchor_addr,
         aust_address,
-        profit_check_address: profit_check_addr,
         treasury_addr: war_chest,
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
@@ -53,15 +51,6 @@ pub fn contract_treasury() -> Box<dyn Contract<Empty>> {
 
 pub fn contract_stablecoin_vault() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new_with_empty(execute, instantiate, query).with_reply(reply);
-    Box::new(contract)
-}
-
-pub fn contract_profit_check() -> Box<dyn Contract<Empty>> {
-    let contract = ContractWrapper::new_with_empty(
-        profit_check::contract::execute,
-        profit_check::contract::instantiate,
-        profit_check::contract::query,
-    );
     Box::new(contract)
 }
 
