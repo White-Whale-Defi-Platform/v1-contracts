@@ -13,6 +13,8 @@ use crate::msg::*;
 use crate::tests::common::{TEST_CREATOR, VAULT_CONTRACT};
 use crate::tests::mock_querier::mock_dependencies;
 
+use super::common::POOL_NAME;
+
 pub(crate) fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
         vault_address: VAULT_CONTRACT.to_string(),
@@ -26,7 +28,7 @@ pub(crate) fn instantiate_msg() -> InstantiateMsg {
 /**
  * Mocks instantiation.
  */
-pub fn mock_instantiate(deps: DepsMut) {
+pub fn mock_instantiate(mut deps: DepsMut) {
     let msg = InstantiateMsg {
         vault_address: VAULT_CONTRACT.to_string(),
         seignorage_address: "seignorage".to_string(),
@@ -36,8 +38,15 @@ pub fn mock_instantiate(deps: DepsMut) {
     };
 
     let info = mock_info(TEST_CREATOR, &[]);
-    let _res = instantiate(deps, mock_env(), info, msg)
+    let _res = instantiate(deps.branch(), mock_env(), info.clone(), msg)
         .expect("contract successfully handles InstantiateMsg");
+
+    let add_pool_msg = ExecuteMsg::UpdatePools{ 
+        to_add: Some(vec![(POOL_NAME.to_string(), "terraswap_pool".to_string(), )]),
+        to_remove: None
+    };
+    
+    let _res = execute(deps, mock_env(),info, add_pool_msg).unwrap();
 }
 
 /**
@@ -83,4 +92,37 @@ fn successfull_set_admin() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn successfull_set_vault() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    // update admin
+    let info = mock_info(TEST_CREATOR, &[]);
+    let msg = ExecuteMsg::SetVault {
+        vault: "new_vault".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+    assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn unsuccessfull_set_vault() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    // update admin
+    let info = mock_info("someone", &[]);
+    let msg = ExecuteMsg::SetVault {
+        vault: "new_vault".to_string(),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Ok(_) => panic!("caller is not admin, should error"),
+        Err(_) => ()
+    }
 }
