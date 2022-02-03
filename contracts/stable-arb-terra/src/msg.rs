@@ -33,6 +33,9 @@ pub enum ExecuteMsg {
         to_add: Option<Vec<(String, String)>>,
         to_remove: Option<Vec<String>>,
     },
+    SetVault {
+        vault: String,
+    },
     Callback(CallbackMsg),
 }
 
