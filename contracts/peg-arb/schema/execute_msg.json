@@ -89,6 +89,68 @@
     {
       "type": "object",
       "required": [
+        "update_pools"
+      ],
+      "properties": {
+        "update_pools": {
+          "type": "object",
+          "properties": {
+            "to_add": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "array",
+                "items": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "string"
+                  }
+                ],
+                "maxItems": 2,
+                "minItems": 2
+              }
+            },
+            "to_remove": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "set_vault"
+      ],
+      "properties": {
+        "set_vault": {
+          "type": "object",
+          "required": [
+            "vault"
+          ],
+          "properties": {
+            "vault": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "callback"
       ],
       "properties": {
@@ -105,6 +167,7 @@
       "required": [
         "asset",
         "belief_price",
+        "pool_name",
         "slippage"
       ],
       "properties": {
@@ -113,6 +176,9 @@
         },
         "belief_price": {
           "$ref": "#/definitions/Decimal"
+        },
+        "pool_name": {
+          "type": "string"
         },
         "slippage": {
           "$ref": "#/definitions/Decimal"

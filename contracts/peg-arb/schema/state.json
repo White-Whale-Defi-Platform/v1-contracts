@@ -3,14 +3,10 @@
   "title": "State",
   "type": "object",
   "required": [
-    "pool_address",
     "seignorage_address",
     "vault_address"
   ],
   "properties": {
-    "pool_address": {
-      "$ref": "#/definitions/Addr"
-    },
     "seignorage_address": {
       "$ref": "#/definitions/Addr"
     },

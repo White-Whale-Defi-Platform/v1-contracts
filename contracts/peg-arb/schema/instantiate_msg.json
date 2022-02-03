@@ -4,16 +4,12 @@
   "type": "object",
   "required": [
     "asset_info",
-    "pool_address",
     "seignorage_address",
     "vault_address"
   ],
   "properties": {
     "asset_info": {
       "$ref": "#/definitions/AssetInfo"
-    },
-    "pool_address": {
-      "type": "string"
     },
     "seignorage_address": {
       "type": "string"

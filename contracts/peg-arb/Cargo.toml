@@ -1,12 +1,12 @@
 [package]
-name = "stable-arb-terra"
+name = "peg-arb"
 version = "0.1.0"
 authors = ["CyberHoward", "Kerber0x", "0xFable"]
 edition = "2018"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
-  "stable-arb-terra.wasm",
+  "contract.wasm",
   "hash.txt",
 ]
 
