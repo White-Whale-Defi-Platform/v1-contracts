@@ -785,6 +785,13 @@ pub fn add_to_whitelist(
         return Err(StableVaultError::AlreadyWhitelisted {});
     }
 
+    // This is a limit to prevent potentially running out of gas when doing lookups
+    // on the whitelist
+    let whitelist_limit = 100;
+    if state.whitelisted_contracts.len() > whitelist_limit {
+        return Err(StableVaultError::WhitelistLimitReached {});
+    }
+
     // Add contract to whitelist.
     state
         .whitelisted_contracts
