@@ -207,6 +207,7 @@ fn test_create_allocations() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -220,6 +221,7 @@ fn test_create_allocations() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -233,6 +235,7 @@ fn test_create_allocations() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
 
@@ -502,6 +505,7 @@ fn test_create_allocations() {
                                 cliff: 7776000u64,
                                 duration: 31536000u64,
                             }),
+                            canceled: false,
                         },
                     )],
                 })
@@ -538,6 +542,7 @@ fn test_withdraw() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -551,6 +556,7 @@ fn test_withdraw() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -568,6 +574,7 @@ fn test_withdraw() {
                 cliff: 7770000u64,
                 duration: 31536000u64,
             }),
+            canceled: false,
         },
     ));
 
@@ -814,6 +821,7 @@ fn test_terminate() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -827,6 +835,7 @@ fn test_terminate() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -844,6 +853,7 @@ fn test_terminate() {
                 cliff: 7770000u64,
                 duration: 31536000u64,
             }),
+            canceled: false,
         },
     ));
 
@@ -863,7 +873,7 @@ fn test_terminate() {
     )
     .unwrap();
 
-    // ######    ERROR :: Unauthorized    ######
+    // ######    ERROR :: Unauthorized    ######F
 
     let err = app
         .execute_contract(
@@ -910,6 +920,17 @@ fn test_terminate() {
         &[],
     )
     .unwrap();
+
+    // Try to terminate again, should err
+    app.execute_contract(
+        Addr::unchecked(OWNER.clone()),
+        vesting_instance.clone(),
+        &ExecuteMsg::Terminate {
+            user_address: "team_1".to_string(),
+        },
+        &[],
+    )
+    .unwrap_err();
 
     let resp: SimulateWithdrawResponse = app
         .wrap()

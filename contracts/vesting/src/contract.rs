@@ -192,13 +192,13 @@ fn handle_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> StdResult<Resp
 
     let unlock_schedule = match allocation.unlock_schedule.clone() {
         Some(schedule) => schedule,
-        None => { 
-        if allocation.canceled {
-            Schedule::zero()
-        } else {
-            config.default_unlock_schedule
+        None => {
+            if allocation.canceled {
+                Schedule::zero()
+            } else {
+                config.default_unlock_schedule
+            }
         }
-    }
     };
 
     let whale_unlocked = compute_vested_or_unlocked_amount(
@@ -269,7 +269,7 @@ fn handle_terminate(
     // Check if canceled
     if allocation.canceled {
         return Err(StdError::generic_err("Allocation is already canceled"));
-    } 
+    }
 
     let unlock_schedule = match &allocation.unlock_schedule {
         Some(schedule) => schedule,
