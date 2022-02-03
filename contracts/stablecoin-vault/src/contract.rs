@@ -838,12 +838,21 @@ pub fn set_fee(
     let mut fee_config = FEE.load(deps.storage)?;
 
     if let Some(fee) = flash_loan_fee {
+        if fee.share >= Decimal::percent(100) {
+            return Err(StableVaultError::FeesTooHigh{});
+        }
         fee_config.flash_loan_fee = fee;
     }
     if let Some(fee) = treasury_fee {
+        if fee.share >= Decimal::percent(100) {
+            return Err(StableVaultError::FeesTooHigh{});
+        }
         fee_config.treasury_fee = fee;
     }
     if let Some(fee) = commission_fee {
+        if fee.share >= Decimal::percent(100) {
+            return Err(StableVaultError::FeesTooHigh{});
+        }
         fee_config.commission_fee = fee;
     }
 
