@@ -1,5 +1,5 @@
 
-name: Astroport UST Arb
+name: Peg Arb
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
 
 defaults:
   run:
-    working-directory: contracts/stable-arb-astro
+    working-directory: contracts/peg-arb
 
 jobs:
   lint:

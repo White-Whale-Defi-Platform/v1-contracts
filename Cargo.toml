@@ -3,7 +3,6 @@ members = [
     "packages/*", 
     "contracts/governance",
     "contracts/community-fund",
-    # "contracts/profit-check",
     "contracts/peg-arb",
     "contracts/stablecoin-vault",
     "contracts/emissions",
