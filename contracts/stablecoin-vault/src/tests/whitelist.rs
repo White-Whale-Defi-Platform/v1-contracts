@@ -1,12 +1,15 @@
+use cosmwasm_std::testing::{mock_env, mock_info};
+use cosmwasm_std::{Api, MessageInfo};
+
+use white_whale::memory::LIST_SIZE_LIMIT;
+use white_whale::ust_vault::msg::ExecuteMsg;
+
 use crate::contract::execute;
 use crate::error::StableVaultError;
-use crate::state::STATE;
+use crate::state::{State, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
-use cosmwasm_std::testing::mock_env;
-use cosmwasm_std::{Api, MessageInfo};
-use white_whale::ust_vault::msg::ExecuteMsg;
 
 /**
  * Tests adding to whitelist
@@ -52,6 +55,34 @@ fn unsuccessful_add_to_whitelist_already_whitelisted() {
     match res {
         Err(StableVaultError::AlreadyWhitelisted {}) => (),
         _ => panic!("Must return StableVaultError::AlreadyWhitelisted"),
+    }
+}
+
+#[test]
+fn unsuccessful_add_to_whitelist_limit_exceeded() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    let info = mock_info(TEST_CREATOR, &[]);
+
+    for n in 0..LIST_SIZE_LIMIT + 1 {
+        let mut contract_addr = "contract".to_owned();
+        let number = n.to_string().to_owned();
+        contract_addr.push_str(&number);
+
+        let msg = ExecuteMsg::AddToWhitelist { contract_addr };
+
+        match execute(deps.as_mut(), mock_env(), info.clone(), msg.clone()) {
+            Ok(_) => {
+                let state: State = STATE.load(&deps.storage).unwrap();
+                assert!(state.whitelisted_contracts.len() <= LIST_SIZE_LIMIT);
+            }
+            Err(StableVaultError::WhitelistLimitReached {}) => {
+                let state: State = STATE.load(&deps.storage).unwrap();
+                assert_eq!(state.whitelisted_contracts.len(), LIST_SIZE_LIMIT);
+                ()
+            } //expected at n > LIST_SIZE_LIMIT
+            Err(e) => panic!("Unexpected error: {:?}", e),
+        }
     }
 }
 

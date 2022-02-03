@@ -15,6 +15,7 @@ use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
+use white_whale::memory::LIST_SIZE_LIMIT;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::tax::{compute_tax, into_msg_without_tax};
 use white_whale::ust_vault::msg::*;
@@ -786,6 +787,11 @@ pub fn add_to_whitelist(
         .contains(&deps.api.addr_validate(&contract_addr)?)
     {
         return Err(StableVaultError::AlreadyWhitelisted {});
+    }
+
+    // This is a limit to prevent potentially running out of gas when doing lookups on the whitelist
+    if state.whitelisted_contracts.len() >= LIST_SIZE_LIMIT {
+        return Err(StableVaultError::WhitelistLimitReached {});
     }
 
     // Add contract to whitelist.

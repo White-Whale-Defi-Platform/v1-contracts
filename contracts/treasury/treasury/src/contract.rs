@@ -1,14 +1,15 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+use cosmwasm_std::Order::Ascending;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Empty, Env, MessageInfo, Order, Response,
     StdResult, Uint128,
 };
-
-use crate::error::TreasuryError;
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 use terraswap::asset::AssetInfo;
+
+use white_whale::memory::LIST_SIZE_LIMIT;
 use white_whale::query::terraswap::query_asset_balance;
 use white_whale::treasury::msg::{
     ConfigResponse, ExecuteMsg, HoldingValueResponse, InstantiateMsg, MigrateMsg, QueryMsg,
@@ -16,6 +17,9 @@ use white_whale::treasury::msg::{
 };
 use white_whale::treasury::state::{State, ADMIN, STATE, VAULT_ASSETS};
 use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
+
+use crate::error::TreasuryError;
+
 type TreasuryResult = Result<Response, TreasuryError>;
 
 /*
@@ -102,6 +106,15 @@ pub fn update_assets(
     // Only Admin can call this method
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
+    // Check the vault size to be within the size limit to prevent running out of gas when doing lookups
+    let current_vault_size = VAULT_ASSETS
+        .keys(deps.storage, None, None, Ascending)
+        .count();
+    let delta: i128 = to_add.len() as i128 - to_remove.len() as i128;
+    if current_vault_size as i128 + delta > LIST_SIZE_LIMIT as i128 {
+        return Err(TreasuryError::AssetsLimitReached {});
+    }
+
     for new_asset in to_add.into_iter() {
         let id = get_identifier(&new_asset.asset.info).as_str();
         // update function for new or existing keys
@@ -124,6 +137,11 @@ pub fn add_dapp(deps: DepsMut, msg_info: MessageInfo, dapp: String) -> TreasuryR
     let mut state = STATE.load(deps.storage)?;
     if state.dapps.contains(&deps.api.addr_validate(&dapp)?) {
         return Err(TreasuryError::AlreadyInList {});
+    }
+
+    // This is a limit to prevent potentially running out of gas when doing lookups on the dapps list
+    if state.dapps.len() >= LIST_SIZE_LIMIT {
+        return Err(TreasuryError::DAppsLimitReached {});
     }
 
     // Add contract to whitelist.

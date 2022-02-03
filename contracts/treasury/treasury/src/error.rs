@@ -16,11 +16,17 @@ pub enum TreasuryError {
     #[error("DApp is already whitelisted")]
     AlreadyInList {},
 
+    #[error("The DApps list has reached its limit, can't add more DApps.")]
+    DAppsLimitReached {},
+
     #[error("DApp not found in whitelist")]
     NotInList {},
 
     #[error("Sender is not whitelisted")]
     SenderNotWhitelisted {},
+
+    #[error("The Assets list has reached its limit, can't add more Assets.")]
+    AssetsLimitReached {},
 
     #[error(
         "Treasury balance too low, {} requested but it only has {}",
