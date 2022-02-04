@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, WasmMsg,
+    Response, StdResult, WasmMsg, Order,
 };
 
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
@@ -27,7 +27,7 @@ use crate::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, MigrateMsg
 use crate::querier::query_market_price;
 
 use crate::state::{State, ADMIN, ARB_BASE_ASSET, POOLS, STATE};
-
+use white_whale::memory::LIST_SIZE_LIMIT;
 type VaultResult = Result<Response<TerraMsgWrapper>, StableArbError>;
 
 // version info for migration info
@@ -349,10 +349,16 @@ pub fn update_pools(
     to_add: Option<Vec<(String, String)>>,
     to_remove: Option<Vec<String>>,
 ) -> VaultResult {
+
     if let Some(pools_to_add) = to_add {
+
+        if POOLS.keys(deps.storage, None, None, Order::Ascending).count() >= LIST_SIZE_LIMIT {
+            return Err(StableArbError::PoolLimitReached {});
+        }
+
         for (name, new_address) in pools_to_add.into_iter() {
             if name.is_empty() {
-                return Err(StableArbError::InvalidPoolName {});
+                return Err(StableArbError::EmptyPoolName {});
             };
             // validate addr
             POOLS.save(

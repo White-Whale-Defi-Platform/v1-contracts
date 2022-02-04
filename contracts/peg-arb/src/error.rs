@@ -24,7 +24,10 @@ pub enum StableArbError {
     Broke {},
 
     #[error("The name of the proposed pool can not have length 0.")]
-    InvalidPoolName {},
+    EmptyPoolName {},
+
+    #[error("The pool list has reached its limit, can't store more contracts.")]
+    PoolLimitReached {},
 }
 
 impl From<semver::Error> for StableArbError {
