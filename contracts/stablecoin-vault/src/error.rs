@@ -32,6 +32,9 @@ pub enum StableVaultError {
     #[error("Not enough funds to perform trade")]
     Broke {},
 
+    #[error("The provided fee is invalid")]
+    InvalidFee {},
+
     #[error("The requesting contract is not whitelisted.")]
     NotWhitelisted {},
 

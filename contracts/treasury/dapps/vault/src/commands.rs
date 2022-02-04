@@ -290,7 +290,7 @@ pub fn set_fee(deps: DepsMut, msg_info: MessageInfo, new_fee: Fee) -> VaultResul
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
-    if new_fee.share > Decimal::one() {
+    if new_fee.share >= Decimal::one() {
         return Err(VaultError::InvalidFee {});
     }
 

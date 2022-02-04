@@ -17,6 +17,7 @@ use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
+use crate::error::StableVaultError;
 use terraswap::asset::AssetInfo;
 
 /**
@@ -82,6 +83,49 @@ fn successful_update_fee() {
     assert_eq!(Decimal::percent(2), fees.treasury_fee.share);
     assert_eq!(Decimal::percent(2), fees.commission_fee.share);
     assert_eq!(Decimal::percent(2), fees.flash_loan_fee.share);
+}
+
+#[test]
+fn sad_path_update_fee() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    // update fees with an amount that should fail validation
+    let info = mock_info(TEST_CREATOR, &[]);
+    let msg = ExecuteMsg::SetFee {
+        treasury_fee: Some(Fee {
+            share: Decimal::percent(200),
+        }),
+        flash_loan_fee: Some(Fee {
+            share: Decimal::percent(200),
+        }),
+        commission_fee: Some(Fee {
+            share: Decimal::percent(200),
+        }),
+    };
+    // Also test with exactly 100. We cant set fees as 100 otherwise theres nothing but fees
+    let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap_err();
+    match res {
+        StableVaultError::InvalidFee {} => (),
+        _ => panic!("DO NOT ENTER HERE"),
+    }
+    let msg = ExecuteMsg::SetFee {
+        treasury_fee: Some(Fee {
+            share: Decimal::percent(100),
+        }),
+        flash_loan_fee: Some(Fee {
+            share: Decimal::percent(100),
+        }),
+        commission_fee: Some(Fee {
+            share: Decimal::percent(100),
+        }),
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
+    match res {
+        StableVaultError::InvalidFee {} => (),
+        _ => panic!("DO NOT ENTER HERE"),
+    }
 }
 
 #[test]
