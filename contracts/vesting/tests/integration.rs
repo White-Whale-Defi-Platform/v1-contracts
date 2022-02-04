@@ -873,7 +873,7 @@ fn test_terminate() {
     )
     .unwrap();
 
-    // ######    ERROR :: Unauthorized    ######F
+    // ######    ERROR :: Unauthorized    ######
 
     let err = app
         .execute_contract(

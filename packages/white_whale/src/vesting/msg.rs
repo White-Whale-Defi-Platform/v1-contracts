@@ -91,7 +91,7 @@ pub struct AllocationInfo {
     pub vest_schedule: Schedule,
     /// Parameters controlling the unlocking process
     pub unlock_schedule: Option<Schedule>,
-    // Indicates if this vesting allo has been cancled
+    /// Indicates if this vesting allo has been canceled
     pub canceled: bool,
 }
 
