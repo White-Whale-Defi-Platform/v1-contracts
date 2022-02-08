@@ -16,7 +16,7 @@ use crate::tests::mock_querier::mock_dependencies;
 const OFFER_AMOUNT: u64 = 100_000_000u64;
 
 #[test]
-fn unsuccessfull_self_callback() {
+fn unsuccessful_self_callback() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
@@ -34,7 +34,7 @@ fn unsuccessfull_self_callback() {
 }
 
 #[test]
-fn unsuccessfull_vault_callback() {
+fn unsuccessful_vault_callback() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 

@@ -193,7 +193,7 @@ fn successfull_set_admin() {
 }
 
 #[test]
-fn unsuccessfull_set_admin_unauthorized() {
+fn unsuccessful_set_admin_unauthorized() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 

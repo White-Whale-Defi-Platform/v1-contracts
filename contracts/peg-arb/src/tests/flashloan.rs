@@ -43,7 +43,7 @@ fn successfull_flashloan_call() {
 }
 
 #[test]
-fn unsuccessfull_flashloan_call_wrong_denom() {
+fn unsuccessful_flashloan_call_wrong_denom() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 

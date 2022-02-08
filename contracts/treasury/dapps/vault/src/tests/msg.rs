@@ -69,7 +69,7 @@ fn successful_update_pool() {
 }
 
 /**
- * Tests unsuccessfull updating the pool of the contract.
+ * Tests unsuccessful updating the pool of the contract.
  */
 #[test]
 fn unsuccessful_update_pool() {
