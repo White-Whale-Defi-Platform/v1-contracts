@@ -218,7 +218,7 @@ fn proper_initialization() {
     )
     .unwrap_err();
 
-    // Successfull swap UST for WHALE
+    // Successful swap UST for WHALE
     app.execute_contract(
         sender.clone(),
         tswap_dapp.clone(),
