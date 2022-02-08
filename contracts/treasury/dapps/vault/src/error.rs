@@ -38,6 +38,6 @@ pub enum VaultError {
     #[error("The provided fee is invalid")]
     InvalidFee {},
 
-    #[error("The actual amount of tokens transfered is different from the claimed amount.")]
+    #[error("The actual amount of tokens transferred is different from the claimed amount.")]
     InvalidAmount {},
 }
