@@ -29,7 +29,7 @@ pub fn instantiate(
         &Config {
             owner: deps.api.addr_validate(&msg.owner)?,
             gov: deps.api.addr_validate(&msg.gov)?,
-            refund_recepient: deps.api.addr_validate(&msg.refund_recepient)?,
+            refund_recipient: deps.api.addr_validate(&msg.refund_recipient)?,
             whale_token: deps.api.addr_validate(&msg.whale_token)?,
             default_unlock_schedule: msg.default_unlock_schedule,
         },
@@ -298,7 +298,7 @@ fn handle_terminate(
     let msgs: Vec<WasmMsg> = vec![WasmMsg::Execute {
         contract_addr: config.whale_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
-            recipient: config.refund_recepient.to_string(),
+            recipient: config.refund_recipient.to_string(),
             amount: whale_to_refund,
         })?,
         funds: vec![],
@@ -321,7 +321,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(ConfigResponse {
         gov: config.gov.to_string(),
         owner: config.owner.to_string(),
-        refund_recepient: config.refund_recepient.to_string(),
+        refund_recipient: config.refund_recipient.to_string(),
         whale_token: config.whale_token.to_string(),
         default_unlock_schedule: config.default_unlock_schedule,
     })
