@@ -36,10 +36,16 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> CommunityFundResult {
     match msg {
-        ExecuteMsg::Spend { recipient, amount } => {
-            commands::spend_whale(deps.as_ref(), info, recipient, amount)
+        ExecuteMsg::Spend { recipient, amount } => commands::spend_whale(
+            deps.as_ref(),
+            info,
+            recipient,
+            _env.contract.address,
+            amount,
+        ),
+        ExecuteMsg::Burn { amount } => {
+            commands::burn_whale(deps.as_ref(), info, _env.contract.address, amount)
         }
-        ExecuteMsg::Burn { amount } => commands::burn_whale(deps.as_ref(), info, amount),
         ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
     }
 }

@@ -1,4 +1,6 @@
-use cosmwasm_std::{to_binary, CosmosMsg, Deps, DepsMut, MessageInfo, Response, Uint128, WasmMsg};
+use cosmwasm_std::{
+    to_binary, Addr, CosmosMsg, Deps, DepsMut, MessageInfo, Response, Uint128, WasmMsg,
+};
 use cw20::Cw20ExecuteMsg;
 use terraswap::querier::query_token_balance;
 
@@ -11,9 +13,11 @@ pub fn spend_whale(
     deps: Deps,
     info: MessageInfo,
     recipient: String,
+    fund_contract_addr: Addr,
     amount: Uint128,
 ) -> CommunityFundResult {
-    check_fund_balance(deps, &info, amount)?;
+    ADMIN.assert_admin(deps, &info.sender)?;
+    check_fund_balance(deps, fund_contract_addr, amount)?;
     let state = STATE.load(deps.storage)?;
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -25,8 +29,14 @@ pub fn spend_whale(
 }
 
 /// Call burn on WHALE cw20 token
-pub fn burn_whale(deps: Deps, info: MessageInfo, amount: Uint128) -> CommunityFundResult {
-    check_fund_balance(deps, &info, amount)?;
+pub fn burn_whale(
+    deps: Deps,
+    info: MessageInfo,
+    fund_contract_addr: Addr,
+    amount: Uint128,
+) -> CommunityFundResult {
+    ADMIN.assert_admin(deps, &info.sender)?;
+    check_fund_balance(deps, fund_contract_addr, amount)?;
     let state = STATE.load(deps.storage)?;
     Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -56,16 +66,13 @@ pub fn set_admin(
 /// Checks whether or not the community fund has enough balance to make a transaction
 fn check_fund_balance(
     deps: Deps,
-    info: &MessageInfo,
+    fund_contract_addr: Addr,
     amount: Uint128,
 ) -> Result<(), CommunityFundError> {
-    ADMIN.assert_admin(deps, &info.sender)?;
     let state = STATE.load(deps.storage)?;
 
-    let account_addr = deps.api.addr_validate(&info.sender.to_string())?;
-
     let fund_whale_balance =
-        query_token_balance(&deps.querier, state.whale_token_addr, account_addr)?;
+        query_token_balance(&deps.querier, state.whale_token_addr, fund_contract_addr)?;
     if amount > fund_whale_balance {
         return Err(CommunityFundError::InsufficientFunds(
             amount,
