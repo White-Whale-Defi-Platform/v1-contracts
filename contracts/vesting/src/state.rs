@@ -13,7 +13,7 @@ pub struct Config {
     /// Account which can create new allocations
     pub owner: Addr,
     /// Account which will receive refunds upon allocation terminations
-    pub refund_recepient: Addr,
+    pub refund_recipient: Addr,
     /// Address of WHALE token
     pub whale_token: Addr,
     /// By default, unlocking starts at WhiteWhale launch, with a cliff of 12 months and a duration of 12 months.

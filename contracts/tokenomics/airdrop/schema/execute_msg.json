@@ -93,13 +93,13 @@
           "type": "object",
           "required": [
             "amount",
-            "recepient"
+            "recipient"
           ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
             },
-            "recepient": {
+            "recipient": {
               "type": "string"
             }
           }

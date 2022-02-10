@@ -96,7 +96,7 @@ fn mint_some_whale(
 ) {
     let msg = cw20::Cw20ExecuteMsg::Mint {
         recipient: to.clone(),
-        amount: amount,
+        amount,
     };
     let res = app
         .execute_contract(owner.clone(), whale_token_instance.clone(), &msg, &[])
@@ -224,7 +224,7 @@ fn test_transfer_unclaimed_tokens() {
             Addr::unchecked("wrong_owner"),
             airdrop_instance.clone(),
             &ExecuteMsg::TransferUnclaimedTokens {
-                recepient: "recepient".to_string(),
+                recipient: "recipient".to_string(),
                 amount: Uint128::from(1000000 as u64),
             },
             &[],
@@ -245,7 +245,7 @@ fn test_transfer_unclaimed_tokens() {
             Addr::unchecked(init_msg.owner.clone().unwrap()),
             airdrop_instance.clone(),
             &ExecuteMsg::TransferUnclaimedTokens {
-                recepient: "recepient".to_string(),
+                recipient: "recipient".to_string(),
                 amount: Uint128::from(1000000 as u64),
             },
             &[],
@@ -269,7 +269,7 @@ fn test_transfer_unclaimed_tokens() {
             Addr::unchecked(init_msg.owner.clone().unwrap()),
             airdrop_instance.clone(),
             &ExecuteMsg::TransferUnclaimedTokens {
-                recepient: "recepient".to_string(),
+                recipient: "recipient".to_string(),
                 amount: Uint128::from(100_000_000_0000 as u64),
             },
             &[],
@@ -286,7 +286,7 @@ fn test_transfer_unclaimed_tokens() {
         Addr::unchecked(init_msg.owner.clone().unwrap()),
         airdrop_instance.clone(),
         &ExecuteMsg::TransferUnclaimedTokens {
-            recepient: "recepient".to_string(),
+            recipient: "recipient".to_string(),
             amount: Uint128::from(100_000_00 as u64),
         },
         &[],

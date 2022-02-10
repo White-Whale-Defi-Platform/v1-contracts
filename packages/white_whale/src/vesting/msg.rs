@@ -8,7 +8,7 @@ pub struct InstantiateMsg {
     /// Account which can create new allocations
     pub owner: String,
     /// Account which will receive refunds upon allocation terminations
-    pub refund_recepient: String,
+    pub refund_recipient: String,
     /// Address of WHALE token
     pub whale_token: String,
     /// By default, unlocking starts at WhiteWhale launch, with a cliff of 12 months and a duration of 12 months.

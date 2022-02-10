@@ -756,7 +756,7 @@ pub fn update_state(
     }
 
     STATE.save(deps.storage, &state)?;
-    Ok(Response::new().add_attribute("Update:", "Successfull"))
+    Ok(Response::new().add_attribute("Update:", "Successful"))
 }
 
 pub fn set_stable_cap(deps: DepsMut, msg_info: MessageInfo, stable_cap: Uint128) -> VaultResult {

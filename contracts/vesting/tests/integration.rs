@@ -60,7 +60,7 @@ fn init_contracts(app: &mut App) -> (Addr, Addr, InstantiateMsg) {
 
     let vesting_instantiate_msg = InstantiateMsg {
         owner: OWNER.clone().to_string(),
-        refund_recepient: "refund_recepient".to_string(),
+        refund_recipient: "refund_recipient".to_string(),
         whale_token: whale_token_instance.to_string(),
         default_unlock_schedule: Schedule {
             start_time: 0u64,
@@ -119,7 +119,7 @@ fn proper_initialization() {
 
     // Check config
     assert_eq!(init_msg.owner, resp.owner);
-    assert_eq!(init_msg.refund_recepient, resp.refund_recepient);
+    assert_eq!(init_msg.refund_recipient, resp.refund_recipient);
     assert_eq!(init_msg.whale_token, resp.whale_token);
     assert_eq!(
         init_msg.default_unlock_schedule,
@@ -174,7 +174,7 @@ fn test_transfer_ownership() {
 
     // Check config
     assert_eq!("new_owner".to_string(), resp.owner);
-    assert_eq!(init_msg.refund_recepient, resp.refund_recepient);
+    assert_eq!(init_msg.refund_recipient, resp.refund_recipient);
     assert_eq!(init_msg.whale_token, resp.whale_token);
     assert_eq!(
         init_msg.default_unlock_schedule,
