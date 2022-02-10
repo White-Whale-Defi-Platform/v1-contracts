@@ -3,9 +3,10 @@ use cosmwasm_std::{coin, from_binary, Api, DepsMut, MessageInfo, Uint128};
 
 use cw_controllers::AdminResponse;
 
+use crate::commands::{burn_whale, spend_whale};
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 
-use crate::contract::{burn_whale, execute, instantiate, query, spend_whale};
+use crate::contract::{execute, instantiate, query};
 use crate::error::CommunityFundError;
 use crate::msg::InstantiateMsg;
 use crate::state::{State, ADMIN, STATE};
