@@ -38,6 +38,9 @@ pub enum ReceiveMsg {
     CreateAllocations {
         allocations: Vec<(String, AllocationInfo)>,
     },
+    IncreaseAllocation {
+        allocation: (String, Uint128),
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

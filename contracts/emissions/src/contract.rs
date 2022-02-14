@@ -65,6 +65,15 @@ fn handle_receive_cw20(
             cw20_msg.amount,
             allocations,
         ),
+        ReceiveMsg::IncreaseAllocation { allocation } => increase_allocation(
+            deps,
+            env,
+            info.clone(),
+            cw20_msg.sender,
+            info.sender,
+            cw20_msg.amount,
+            allocation,
+        ),
     }
 }
 
@@ -164,6 +173,56 @@ fn handle_create_allocations(
                     ALLOCATIONS.save(deps.storage, &user, &allocation_info)?;
                 }
             },
+        }
+    }
+
+    STATE.save(deps.storage, &state)?;
+    Ok(Response::default())
+}
+
+fn increase_allocation(
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
+    creator: String,
+    deposit_token: Addr,
+    deposit_amount: Uint128,
+    allocation: (String, Uint128),
+) -> StdResult<Response> {
+    let config = CONFIG.load(deps.storage)?;
+    let mut state = STATE.may_load(deps.storage)?.unwrap_or_default();
+
+    // CHECK :: Only owner can create allocations
+    if deps.api.addr_validate(&creator)? != config.owner {
+        return Err(StdError::generic_err("Only owner can create allocations"));
+    }
+
+    // CHECK :: Only WHALE Token can be  can be deposited
+    if deposit_token != config.whale_token {
+        return Err(StdError::generic_err("Only WHALE token can be deposited"));
+    }
+
+    // CHECK :: Number of WHALE Tokens sent need to be equal to the sum of newly vested balances
+    if deposit_amount != allocation.1 {
+        return Err(StdError::generic_err("WHALE deposit amount mismatch"));
+    }
+
+    state.total_whale_deposited += deposit_amount;
+    state.remaining_whale_tokens += deposit_amount;
+
+    let (user_unchecked, _) = allocation;
+    let user = deps.api.addr_validate(&user_unchecked)?;
+
+    match ALLOCATIONS.load(deps.storage, &user) {
+        Ok(mut allocation_info) => {
+            allocation_info.total_amount += deposit_amount;
+            ALLOCATIONS.save(deps.storage, &user, &allocation_info)?;
+        }
+        Err(..) => {
+            return Err(StdError::generic_err(format!(
+                "Allocation does not exist for user {}",
+                user
+            )));
         }
     }
 
