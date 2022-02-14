@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     entry_point, to_binary, BankMsg, Binary, Coin, CosmosMsg, Deps, DepsMut, Env, MessageInfo,
-    Response, StdResult, WasmMsg, Order,
+    Order, Response, StdResult, WasmMsg,
 };
 
 use terra_cosmwasm::{create_swap_msg, TerraMsgWrapper};
@@ -77,18 +77,18 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             Ok(Response::default()
                 .add_attribute("previous admin", previous_admin)
                 .add_attribute("admin", admin))
-        },
+        }
         ExecuteMsg::SetVault { vault } => {
             ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
             let vault_addr = deps.api.addr_validate(&vault)?;
             let mut state = STATE.load(deps.storage)?;
             let previous_vault = state.vault_address;
             state.vault_address = vault_addr;
-            STATE.save(deps.storage,&state)?;
+            STATE.save(deps.storage, &state)?;
             Ok(Response::default()
                 .add_attribute("previous vault", previous_vault)
                 .add_attribute("vault", vault))
-        },
+        }
         ExecuteMsg::UpdatePools { to_add, to_remove } => update_pools(deps, to_add, to_remove),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
     }
@@ -349,10 +349,12 @@ pub fn update_pools(
     to_add: Option<Vec<(String, String)>>,
     to_remove: Option<Vec<String>>,
 ) -> VaultResult {
-
     if let Some(pools_to_add) = to_add {
-
-        if POOLS.keys(deps.storage, None, None, Order::Ascending).count() >= LIST_SIZE_LIMIT {
+        if POOLS
+            .keys(deps.storage, None, None, Order::Ascending)
+            .count()
+            >= LIST_SIZE_LIMIT
+        {
             return Err(StableArbError::PoolLimitReached {});
         }
 

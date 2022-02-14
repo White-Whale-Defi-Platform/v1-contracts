@@ -233,7 +233,8 @@ pub fn handle_flashloan(
 
     // Max tax buffer will be 2 transfers of the borrowed assets
     // Anchor -> Vault -> Caller
-    let tax_buffer = Uint128::from(2u32) * requested_asset.compute_tax(&deps.querier)? + Uint128::from(ROUNDING_ERR_COMPENSATION);
+    let tax_buffer = Uint128::from(2u32) * requested_asset.compute_tax(&deps.querier)?
+        + Uint128::from(ROUNDING_ERR_COMPENSATION);
 
     if total_value < requested_asset.amount + tax_buffer {
         return Err(StableVaultError::Broke {});

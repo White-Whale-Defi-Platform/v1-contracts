@@ -41,12 +41,12 @@ pub fn mock_instantiate(mut deps: DepsMut) {
     let _res = instantiate(deps.branch(), mock_env(), info.clone(), msg)
         .expect("contract successfully handles InstantiateMsg");
 
-    let add_pool_msg = ExecuteMsg::UpdatePools{ 
-        to_add: Some(vec![(POOL_NAME.to_string(), "terraswap_pool".to_string(), )]),
-        to_remove: None
+    let add_pool_msg = ExecuteMsg::UpdatePools {
+        to_add: Some(vec![(POOL_NAME.to_string(), "terraswap_pool".to_string())]),
+        to_remove: None,
     };
-    
-    let _res = execute(deps, mock_env(),info, add_pool_msg).unwrap();
+
+    let _res = execute(deps, mock_env(), info, add_pool_msg).unwrap();
 }
 
 /**
@@ -123,6 +123,6 @@ fn unsuccessfull_set_vault() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
         Ok(_) => panic!("caller is not admin, should error"),
-        Err(_) => ()
+        Err(_) => (),
     }
 }
