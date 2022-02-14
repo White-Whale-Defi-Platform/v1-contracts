@@ -44,7 +44,7 @@ pub fn update_contract_addresses(
         CONTRACT_ADDRESSES.remove(deps.storage, name.as_str());
     }
 
-    Ok(Response::new().add_attribute("action", "updated contract addressses"))
+    Ok(Response::new().add_attribute("action", "updated contract addresses"))
 }
 
 /// Adds, updates or removes provided addresses.

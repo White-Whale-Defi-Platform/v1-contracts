@@ -110,7 +110,7 @@ fn successful_set_vault() {
 }
 
 #[test]
-fn unsuccessfull_set_vault() {
+fn unsuccessful_set_vault() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 

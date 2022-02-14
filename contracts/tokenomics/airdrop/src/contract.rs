@@ -89,8 +89,8 @@ pub fn execute(
             merkle_proof,
             root_index,
         } => handle_claim(deps, env, info, claim_amount, merkle_proof, root_index),
-        ExecuteMsg::TransferUnclaimedTokens { recepient, amount } => {
-            handle_transfer_unclaimed_tokens(deps, env, info, recepient, amount)
+        ExecuteMsg::TransferUnclaimedTokens { recipient, amount } => {
+            handle_transfer_unclaimed_tokens(deps, env, info, recipient, amount)
         }
     }
 }

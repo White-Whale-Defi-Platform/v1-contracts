@@ -29,7 +29,7 @@ pub enum ExecuteMsg {
         root_index: u32,
     },
     /// Admin function to facilitate transfer of the unclaimed WHALE Tokens
-    TransferUnclaimedTokens { recepient: String, amount: Uint128 },
+    TransferUnclaimedTokens { recipient: String, amount: Uint128 },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
