@@ -210,6 +210,7 @@ fn test_create_allocations() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -223,6 +224,7 @@ fn test_create_allocations() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -236,6 +238,7 @@ fn test_create_allocations() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
 
@@ -505,6 +508,7 @@ fn test_create_allocations() {
                                 cliff: 7776000u64,
                                 duration: 31536000u64,
                             }),
+                            canceled: false,
                         },
                     )],
                 })
@@ -541,6 +545,7 @@ fn test_withdraw() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -554,6 +559,7 @@ fn test_withdraw() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -571,6 +577,7 @@ fn test_withdraw() {
                 cliff: 7770000u64,
                 duration: 31536000u64,
             }),
+            canceled: false,
         },
     ));
 
@@ -859,6 +866,7 @@ fn test_terminate() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -872,6 +880,7 @@ fn test_terminate() {
                 duration: 31536000u64,
             },
             unlock_schedule: None,
+            canceled: false,
         },
     ));
     allocations.push((
@@ -889,6 +898,7 @@ fn test_terminate() {
                 cliff: 7770000u64,
                 duration: 31536000u64,
             }),
+            canceled: false,
         },
     ));
 
@@ -992,4 +1002,172 @@ fn test_terminate() {
     assert_eq!(resp.total_whale_vested, Uint128::from(3428278u64));
     assert_eq!(resp.withdrawn_amount, Uint128::from(0u64));
     assert_eq!(resp.withdrawable_amount, Uint128::from(0u64));
+}
+
+#[test]
+fn test_increase_allo() {
+    let mut app = mock_app();
+    let (emission_instance, whale_instance, _) = init_contracts(&mut app);
+
+    mint_some_whale(
+        &mut app,
+        Addr::unchecked(OWNER.clone()),
+        whale_instance.clone(),
+        Uint128::new(1_000_000_000_000000),
+        OWNER.to_string(),
+    );
+
+    let mut allocations: Vec<(String, AllocationInfo)> = vec![];
+    allocations.push((
+        "investor_1".to_string(),
+        AllocationInfo {
+            total_amount: Uint128::from(5_000_000_000000u64),
+            withdrawn_amount: Uint128::from(0u64),
+            vest_schedule: Schedule {
+                start_time: 1642402274u64,
+                cliff: 0u64,
+                duration: 31536000u64,
+            },
+            unlock_schedule: None,
+            canceled: false,
+        },
+    ));
+    allocations.push((
+        "advisor_1".to_string(),
+        AllocationInfo {
+            total_amount: Uint128::from(5_000_000_000000u64),
+            withdrawn_amount: Uint128::from(0u64),
+            vest_schedule: Schedule {
+                start_time: 1642402274u64,
+                cliff: 7776000u64,
+                duration: 31536000u64,
+            },
+            unlock_schedule: None,
+            canceled: false,
+        },
+    ));
+    allocations.push((
+        "team_1".to_string(),
+        AllocationInfo {
+            total_amount: Uint128::from(5_000_000_000000u64),
+            withdrawn_amount: Uint128::from(0u64),
+            vest_schedule: Schedule {
+                start_time: 1642402274u64,
+                cliff: 7776000u64,
+                duration: 31536000u64,
+            },
+            unlock_schedule: Some(Schedule {
+                start_time: 1642400000u64,
+                cliff: 7770000u64,
+                duration: 31536000u64,
+            }),
+            canceled: false,
+        },
+    ));
+
+    // SUCCESSFULLY CREATES ALLOCATIONS
+    app.execute_contract(
+        Addr::unchecked(OWNER.clone()),
+        whale_instance.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: emission_instance.clone().to_string(),
+            amount: Uint128::from(15_000_000_000000u64),
+            msg: to_binary(&ReceiveMsg::CreateAllocations {
+                allocations: allocations.clone(),
+            })
+            .unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    // ######    ERROR :: Unauthorized    ######
+
+    let err = app
+        .execute_contract(
+            Addr::unchecked("NOT_OWNER".to_string()),
+            emission_instance.clone(),
+            &ExecuteMsg::Terminate {
+                user_address: "investor_1".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err();
+    assert_eq!(err.to_string(), "Generic error: Unauthorized");
+
+    // ######    ERROR :: No WHALE available to refund.    ######
+
+    let err = app
+        .execute_contract(
+            Addr::unchecked(OWNER.clone()),
+            emission_instance.clone(),
+            &ExecuteMsg::Terminate {
+                user_address: "investor_1".to_string(),
+            },
+            &[],
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "Generic error: No WHALE available to refund."
+    );
+
+    // ######    SUCCESSFULLY INCREASE ALLOCATION   ######
+
+    app.execute_contract(
+        Addr::unchecked(OWNER.clone()),
+        whale_instance.clone(),
+        &cw20::Cw20ExecuteMsg::Send {
+            contract: emission_instance.clone().to_string(),
+            amount: Uint128::from(5_000_000_000000u64),
+            msg: to_binary(&ReceiveMsg::IncreaseAllocation {
+                allocation: ("team_1".to_string(), Uint128::from(5_000_000_000000u64)),
+            })
+            .unwrap(),
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.update_block(|b| {
+        b.height += 17280;
+        b.time = Timestamp::from_seconds(1642402273)
+    });
+
+    let resp: SimulateWithdrawResponse = app
+        .wrap()
+        .query_wasm_smart(
+            &emission_instance,
+            &QueryMsg::SimulateWithdraw {
+                account: "team_1".to_string(),
+                timestamp: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(resp.total_whale_locked, Uint128::from(10_000_000_000000u64));
+    assert_eq!(resp.total_whale_vested, Uint128::from(0u64));
+    assert_eq!(resp.withdrawable_amount, Uint128::from(0u64));
+    assert_eq!(resp.total_whale_vested, Uint128::from(0u64));
+    assert_eq!(resp.withdrawn_amount, Uint128::from(0u64));
+
+    app.update_block(|b| {
+        b.height += 17280;
+        b.time = Timestamp::from_seconds(1650178275)
+    });
+
+    let resp: SimulateWithdrawResponse = app
+        .wrap()
+        .query_wasm_smart(
+            &emission_instance,
+            &QueryMsg::SimulateWithdraw {
+                account: "team_1".to_string(),
+                timestamp: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(resp.total_whale_locked, Uint128::from(10_000_000_000000u64));
+    assert_eq!(resp.total_whale_vested, Uint128::from(2465753741755u64));
+    assert_eq!(resp.withdrawable_amount, Uint128::from(2465753741755u64));
+    assert_eq!(resp.total_whale_vested, Uint128::from(2465753741755u64));
+    assert_eq!(resp.withdrawn_amount, Uint128::from(0u64));
 }

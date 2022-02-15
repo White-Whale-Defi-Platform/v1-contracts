@@ -38,6 +38,9 @@ pub enum ReceiveMsg {
     CreateAllocations {
         allocations: Vec<(String, AllocationInfo)>,
     },
+    IncreaseAllocation {
+        allocation: (String, Uint128),
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -93,6 +96,8 @@ pub struct AllocationInfo {
     pub vest_schedule: Schedule,
     /// Parameters controlling the unlocking process
     pub unlock_schedule: Option<Schedule>,
+    /// Indicates if this vesting allo has been canceled
+    pub canceled: bool,
 }
 
 // Parameters describing a typical vesting schedule
@@ -104,4 +109,14 @@ pub struct Schedule {
     pub cliff: u64,
     /// Number of seconds taken by tokens to be fully vested
     pub duration: u64,
+}
+
+impl Schedule {
+    pub fn zero() -> Schedule {
+        Schedule {
+            start_time: 0u64,
+            cliff: 0u64,
+            duration: 0u64,
+        }
+    }
 }

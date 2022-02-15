@@ -31,6 +31,7 @@ use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROF
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
 pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
+const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
 
 type VaultResult = Result<Response, StableVaultError>;
 
@@ -232,7 +233,8 @@ pub fn handle_flashloan(
 
     // Max tax buffer will be 2 transfers of the borrowed assets
     // Anchor -> Vault -> Caller
-    let tax_buffer = Uint128::from(2u32) * requested_asset.compute_tax(&deps.querier)?;
+    let tax_buffer = Uint128::from(2u32) * requested_asset.compute_tax(&deps.querier)?
+        + Uint128::from(ROUNDING_ERR_COMPENSATION);
 
     if total_value < requested_asset.amount + tax_buffer {
         return Err(StableVaultError::Broke {});
