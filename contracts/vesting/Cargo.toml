@@ -3,6 +3,7 @@ name = "white-whale-vesting"
 version = "1.0.0"
 authors = ["Terraform Labs, PTE."]
 edition = "2018"
+license = "MIT"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
