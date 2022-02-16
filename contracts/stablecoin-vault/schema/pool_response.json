@@ -4,6 +4,7 @@
   "type": "object",
   "required": [
     "assets",
+    "liquidity_token",
     "total_share",
     "total_value_in_ust"
   ],
@@ -15,6 +16,9 @@
       },
       "maxItems": 2,
       "minItems": 2
+    },
+    "liquidity_token": {
+      "type": "string"
     },
     "total_share": {
       "$ref": "#/definitions/Uint128"

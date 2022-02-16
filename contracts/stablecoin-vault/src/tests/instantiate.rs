@@ -1,18 +1,17 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{from_binary, to_binary, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
 use cosmwasm_std::{Api, Decimal, Uint128};
-
-use crate::contract::{execute, instantiate, query};
-use crate::state::{State, FEE, STATE};
 use cw20::MinterResponse;
-
-use crate::error::StableVaultError;
 use terraswap::asset::AssetInfo;
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
+
 use white_whale::fee::*;
 use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::ust_vault::msg::*;
 
+use crate::contract::{execute, instantiate, query};
+use crate::error::StableVaultError;
+use crate::state::{State, FEE, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
@@ -93,6 +92,63 @@ fn successful_initialization() {
         state.whitelisted_contracts[0],
         deps.api.addr_validate(&ARB_CONTRACT).unwrap(),
     );
+}
+
+#[test]
+fn unsuccessful_initialization_invalid_fees() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        anchor_money_market_address: "test_mm".to_string(),
+        aust_address: "test_aust".to_string(),
+        treasury_addr: "treasury".to_string(),
+        asset_info: AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        },
+        token_code_id: 0u64,
+        treasury_fee: Decimal::percent(100), //invalid fee
+        flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
+        stable_cap: Uint128::from(100_000_000u64),
+        vault_lp_token_name: None,
+        vault_lp_token_symbol: None,
+    };
+
+    let info = mock_info(TEST_CREATOR, &[]);
+    let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
+    match res {
+        Err(StableVaultError::InvalidFee {}) => (),
+        _ => panic!("Must return StableVaultError::InvalidFee"),
+    }
+}
+
+#[test]
+fn unsuccessful_initialization_invalid_asset() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        anchor_money_market_address: "test_mm".to_string(),
+        aust_address: "test_aust".to_string(),
+        treasury_addr: "treasury".to_string(),
+        asset_info: AssetInfo::Token {
+            //invalid asset
+            contract_addr: "token address".to_string(),
+        },
+        token_code_id: 0u64,
+        treasury_fee: Decimal::percent(10u64),
+        flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
+        stable_cap: Uint128::from(100_000_000u64),
+        vault_lp_token_name: None,
+        vault_lp_token_symbol: None,
+    };
+
+    let info = mock_info(TEST_CREATOR, &[]);
+    let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
+    match res {
+        Err(StableVaultError::NotNativeToken {}) => (),
+        _ => panic!("Must return StableVaultError::NotNativeToken"),
+    }
 }
 
 /**

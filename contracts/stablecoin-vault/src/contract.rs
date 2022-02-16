@@ -52,6 +52,11 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
+
+    // Check if the provided asset is a native token
+    if !msg.asset_info.is_native_token() {
+        return Err(StableVaultError::NotNativeToken {});
+    }
     DEPOSIT_INFO.save(
         deps.storage,
         &DepositInfo {
@@ -59,21 +64,20 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         },
     )?;
     // Setup the fees system with a fee and other contract addresses
-    FEE.save(
-        deps.storage,
-        &VaultFee {
-            flash_loan_fee: Fee {
-                share: msg.flash_loan_fee,
-            },
-            treasury_fee: Fee {
-                share: msg.treasury_fee,
-            },
-            commission_fee: Fee {
-                share: msg.commission_fee,
-            },
-            treasury_addr: deps.api.addr_validate(&msg.treasury_addr)?,
-        },
-    )?;
+    let fee_config = VaultFee {
+        flash_loan_fee: check_fee(Fee {
+            share: msg.flash_loan_fee,
+        })?,
+        treasury_fee: check_fee(Fee {
+            share: msg.treasury_fee,
+        })?,
+        commission_fee: check_fee(Fee {
+            share: msg.commission_fee,
+        })?,
+        treasury_addr: deps.api.addr_validate(&msg.treasury_addr)?,
+    };
+
+    FEE.save(deps.storage, &fee_config)?;
 
     // Setup and save the relevant pools info in state. The saved pool will be the one used by the vault.
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
@@ -846,26 +850,25 @@ pub fn set_fee(
     let mut fee_config = FEE.load(deps.storage)?;
 
     if let Some(fee) = flash_loan_fee {
-        if fee.share >= Decimal::percent(100) {
-            return Err(StableVaultError::InvalidFee {});
-        }
-        fee_config.flash_loan_fee = fee;
+        fee_config.flash_loan_fee = check_fee(fee)?;
     }
     if let Some(fee) = treasury_fee {
-        if fee.share >= Decimal::percent(100) {
-            return Err(StableVaultError::InvalidFee {});
-        }
-        fee_config.treasury_fee = fee;
+        fee_config.treasury_fee = check_fee(fee)?;
     }
     if let Some(fee) = commission_fee {
-        if fee.share >= Decimal::percent(100) {
-            return Err(StableVaultError::InvalidFee {});
-        }
-        fee_config.commission_fee = fee;
+        fee_config.commission_fee = check_fee(fee)?;
     }
 
     FEE.save(deps.storage, &fee_config)?;
     Ok(Response::default())
+}
+
+/// Checks that the given [Fee] is valid, i.e. it's lower than 100%
+fn check_fee(fee: Fee) -> Result<Fee, StableVaultError> {
+    if fee.share >= Decimal::percent(100) {
+        return Err(StableVaultError::InvalidFee {});
+    }
+    Ok(fee)
 }
 
 //----------------------------------------------------------------------------------------
@@ -937,6 +940,7 @@ pub fn total_value(deps: Deps, env: &Env) -> StdResult<(Uint128, Uint128, Uint12
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     compute_total_value(env, deps, &info)
 }
+
 pub fn query_total_value(env: Env, deps: Deps) -> StdResult<ValueResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (total_ust_value, _, _) = compute_total_value(&env, deps, &info)?;

@@ -29,6 +29,9 @@ pub enum StableVaultError {
     #[error("Initialization values make no sense.")]
     InvalidInit {},
 
+    #[error("The provided asset is not a native token.")]
+    NotNativeToken {},
+
     #[error("Not enough funds to perform trade")]
     Broke {},
 
