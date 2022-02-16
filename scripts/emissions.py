@@ -23,18 +23,18 @@ from white_whale.contracts.emissions import *
 
 MILLION = 1_000_000
 
-YEAR = 2021
-MONTH = 12
-DAY = 12
+YEAR = 2022
+MONTH = 2
+DAY = 15
 # 5 AM UTC
-HOUR = 5
-# START_TIME = datetime.datetime(year=YEAR, month=MONTH, day=DAY, hour=HOUR)
-START_TIME = datetime.datetime.utcnow() + datetime.timedelta(minutes=10);
+HOUR = 20
+START_TIME = datetime.datetime(year=YEAR, month=MONTH, day=DAY, hour=HOUR)
+# START_TIME = datetime.datetime.utcnow() + datetime.timedelta(minutes=10);
 
 # Start time in linux language
 BLOCK_START_TIME = (START_TIME - datetime.datetime(1970, 1, 1)).total_seconds()
 # 3 day duration (=72h)
-DURATION = datetime.timedelta(days=30)
+DURATION = datetime.timedelta(days=30*8)
 # DURATION = datetime.timedelta(minutes=3)
 
 END_TIME = START_TIME + DURATION
@@ -53,11 +53,11 @@ print((END_TIME - START_TIME).total_seconds())
 mnemonic = "coin reunion grab unlock jump reason year estate device elevator clean orbit pencil spawn very hope floor actual very clay stereo federal correct beef"
 # Account that claims the tokens
 claimer = "terra10lm49e6ufm8cfpwcmcltvxkv3s6cqeunyjhaj5"
-# deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None)
-deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
+deployer = get_deployer(mnemonic=mnemonic, chain_id="columbus-5", fee=None)
+# deployer = get_deployer(mnemonic=mnemonic, chain_id="bombay-12", fee=None)
 
 emissions = Emissions(deployer)
-create = True
+create = False
 print(f'gov address: {emissions.get("governance")}')
 
 input("Confirm")
@@ -66,7 +66,7 @@ if create:
     # TODO: make multisig owner 
     emissions.create(int(BLOCK_START_TIME), int(DURATION.total_seconds()))
 
-deployer.whale_balance()
+# deployer.whale_balance()
 
-emissions.create_vesting(int(50_000*MILLION), int(BLOCK_START_TIME), int(DURATION.total_seconds()), claimer)
+emissions.create_vesting(int(12_800_000*MILLION), int(BLOCK_START_TIME), int(DURATION.total_seconds()), claimer)
    

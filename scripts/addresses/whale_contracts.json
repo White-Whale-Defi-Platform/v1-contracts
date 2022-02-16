@@ -1,8 +1,8 @@
 {
     "bombay-12": {
         "profit_check": "terra1c4q30edghg42vwxej24362hyrjaj64p4q8h6yw",
-        "stablecoin_vault": "terra1zljypewdglfl5f6ntfl2r3epgxjmzh05qnjknv",
-        "liquidity_token": "terra1z4hyc87tuln35nu465d5equke4nf7xqepx7rtg",
+        "stablecoin_vault": "terra16fm9kttspjz62tthcd54uhqq474pa6jhc9q06e",
+        "liquidity_token": "terra1j3y67hfwelyg40l9huv4ye3vyz4y7xe4sd5szw",
         "governance": "terra1ytsms4c9e3nxzvucuxe385c9rcm8tfjvuzv5j7",
         "whale_token": "terra183cvzy6knvva6mpvzcq86uyfxw0nd4925m0d0m",
         "whale_ust_pool": "terra1xq3v5rp0w84ugqesv9m5q3xdx04akacsdlk5z7",
@@ -25,7 +25,7 @@
             "governance": "31696",
             "token_code_id": "148",
             "profit_check": "",
-            "stablecoin_vault": "38950",
+            "stablecoin_vault": "41519",
             "stablecoin_peg_arb": "",
             "emissions": "32733",
             "treasury": "29584",
@@ -34,44 +34,50 @@
             "dex_arbitrage": "29133",
             "vault_dapp": "29585",
             "stable_arb_astro": "33103",
-            "stable_arb_terra": "38952"
+            "stable_arb_terra": "38952",
+            "peg_arb": "39941"
         },
         "vault_dapp": "terra13ktp4tld8xdg38d8349y0w60le2jv43wnfkkq6",
         "stable_arb_astro": "terra106m2sur3rzyq7cnu5ujx008t39y6pkr63gca8c",
-        "stable_arb_terra": "terra1cjfgs6ldh46a9c27m7dlan8fnh0v886snc7777"
+        "stable_arb_terra": "terra1cjfgs6ldh46a9c27m7dlan8fnh0v886snc7777",
+        "peg_arb": "terra1x7pnypgey652zss6s8d6vdpws4wneex235t8n4"
     },
     "columbus-5": {
         "profit_check": "terra18ykdvsgknscc02l7793jrtx5s0rd7et5shzj7g",
-        "stablecoin_vault": "terra1j3l9e29rv8dmz35lhx8d4yk8qfct6aahdy4c77",
-        "liquidity_token": "terra1994nxa36w0xxj46e8pd8kanxjuc4astnm2ncxm",
+        "stablecoin_vault": "terra1ec3r2esp9cqekqqvn0wd6nwrjslnwxm7fh8egy",
+        "liquidity_token": "terra1w0p5zre38ecdy3ez8efd5h9fvgum5s206xknrg",
         "governance": "terra15qv7cr7t2s4cfskq82mskq0d397hadflrazuj7",
         "whale_token": "terra1php5m8a6qd68z02t3zpw4jv2pj4vgw4wz0t8mz",
         "whale_ust_pool": "terra13zkn22u6fs550xdmx2s2mydesd0ym4jk3r4um3",
         "community_fund": "terra1vjjs2cekma9s0axev989e68lkdx7mgjl0pnaak",
         "stablecoin_peg_arb": "terra1m7ewqlgkxtyq7fn8mgsx2lpuu4r02xd0qcq02l",
-        "treasury": "",
+        "treasury": "terra1cnt2dls25u40wqyjgq72stuyjrwn0u5r6m5sm5",
         "terraswap_dapp": "",
         "terraswap_factory": "",
         "test_whale_token": "",
         "lbp_lp_token": "",
         "whale_ust_terraswap_pair": "",
         "LBP_factory": "",
-        "emissions": "terra1p6zufc8xemp5lrd6d8fz9met3lmtkee4qfgg8h",
+        "emissions": "terra1v28mj7jm5vgx2rau4tk2kvz6j9ajn9q02p2ad5",
         "dex_arbitrage": "terra158p2ya4vxy44dhcel6sul6tu63xfvex2ny0sur",
         "multisig": "terra1vjws6sa429u48dlw8s6mycr62nalyhakxc4v7v",
         "vLUNA": "",
         "code_id": {
             "token_code_id": "3",
             "profit_check": "",
-            "stablecoin_vault": "",
+            "stablecoin_vault": "2776",
             "stablecoin_peg_arb": "",
             "treasury": "",
             "terraswap_dapp": "",
             "governance": "2146",
-            "emissions": "2147",
+            "emissions": "2947",
             "dex_arbitrage": "2028",
-            "stable_arb_astro": "2247"
+            "stable_arb_astro": "2247",
+            "peg_arb": "2694",
+            "whale_dex_arb_rover": "2770"
         },
-        "stable_arb_astro": "terra1sk7rlehf372pjv7djet3remhwffzzje2fz2lu2"
+        "stable_arb_astro": "terra1sk7rlehf372pjv7djet3remhwffzzje2fz2lu2",
+        "peg_arb": "terra19zalqh5e79sdjacvr6auq7psdg4ru6av75aga6",
+        "whale_dex_arb_rover": "terra13fwsh3j8gug52y5x3tmguj3fwhr6c7nxm9kl06"
     }
 }
