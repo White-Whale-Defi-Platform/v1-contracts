@@ -52,6 +52,11 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
+
+    // Check if the provided asset is a native token
+    if !msg.asset_info.is_native_token() {
+        return Err(StableVaultError::NotNativeToken {});
+    }
     DEPOSIT_INFO.save(
         deps.storage,
         &DepositInfo {
@@ -935,6 +940,7 @@ pub fn total_value(deps: Deps, env: &Env) -> StdResult<(Uint128, Uint128, Uint12
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     compute_total_value(env, deps, &info)
 }
+
 pub fn query_total_value(env: Env, deps: Deps) -> StdResult<ValueResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (total_ust_value, _, _) = compute_total_value(&env, deps, &info)?;

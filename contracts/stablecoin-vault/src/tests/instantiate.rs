@@ -122,6 +122,35 @@ fn unsuccessful_initialization_invalid_fees() {
     }
 }
 
+#[test]
+fn unsuccessful_initialization_invalid_asset() {
+    let mut deps = mock_dependencies(&[]);
+
+    let msg = InstantiateMsg {
+        anchor_money_market_address: "test_mm".to_string(),
+        aust_address: "test_aust".to_string(),
+        treasury_addr: "treasury".to_string(),
+        asset_info: AssetInfo::Token {
+            //invalid asset
+            contract_addr: "token address".to_string(),
+        },
+        token_code_id: 0u64,
+        treasury_fee: Decimal::percent(10u64),
+        flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
+        stable_cap: Uint128::from(100_000_000u64),
+        vault_lp_token_name: None,
+        vault_lp_token_symbol: None,
+    };
+
+    let info = mock_info(TEST_CREATOR, &[]);
+    let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
+    match res {
+        Err(StableVaultError::NotNativeToken {}) => (),
+        _ => panic!("Must return StableVaultError::NotNativeToken"),
+    }
+}
+
 /**
  * Tests updating the fees of the contract.
  */
