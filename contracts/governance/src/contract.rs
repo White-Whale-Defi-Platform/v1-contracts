@@ -18,8 +18,8 @@ use crate::state::{
     VotersResponseItem,
 };
 use crate::validators::{
-    validate_poll_description, validate_poll_link, validate_poll_title, validate_quorum,
-    validate_threshold,
+    validate_poll_description, validate_poll_link, validate_poll_period, validate_poll_title,
+    validate_quorum, validate_threshold,
 };
 
 pub(crate) const MAX_QUORUM: Decimal = Decimal::one();
@@ -40,6 +40,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     validate_quorum(msg.quorum)?;
     validate_threshold(msg.threshold)?;
+    validate_poll_period(msg.timelock_period, msg.expiration_period)?;
 
     let config = Config {
         whale_token: CanonicalAddr::from(vec![]),
@@ -798,6 +799,8 @@ pub fn update_config(
         if let Some(expiration_period) = expiration_period {
             config.expiration_period = expiration_period;
         }
+
+        validate_poll_period(config.timelock_period, config.expiration_period)?;
 
         if let Some(proposal_deposit) = proposal_deposit {
             config.proposal_deposit = proposal_deposit;
