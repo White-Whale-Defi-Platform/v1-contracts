@@ -85,3 +85,18 @@ pub fn validate_poll_description(description: &str) -> Result<(), ContractError>
         Ok(())
     }
 }
+
+/**
+ * Validates both the expiration_period and timelock_period so that the poll is valid,
+ * i.e. it's not expired before it is executed.
+ */
+pub fn validate_poll_period(
+    timelock_period: u64,
+    expiration_period: u64,
+) -> Result<(), ContractError> {
+    if expiration_period < timelock_period {
+        return Err(ContractError::InvalidPollPeriod {});
+    }
+
+    Ok(())
+}

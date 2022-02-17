@@ -2,9 +2,10 @@ use crate::contract::{
     MAX_DESC_LENGTH, MAX_LINK_LENGTH, MAX_TITLE_LENGTH, MIN_DESC_LENGTH, MIN_LINK_LENGTH,
     MIN_TITLE_LENGTH,
 };
+use crate::tests::common::{DEFAULT_EXPIRATION_PERIOD, DEFAULT_TIMELOCK_PERIOD};
 use crate::validators::{
-    validate_decimal_value, validate_poll_description, validate_poll_link, validate_poll_title,
-    validate_quorum, validate_threshold,
+    validate_decimal_value, validate_poll_description, validate_poll_link, validate_poll_period,
+    validate_poll_title, validate_quorum, validate_threshold,
 };
 use cosmwasm_std::Decimal;
 use std::str::FromStr;
@@ -234,4 +235,26 @@ fn valid_poll_description() {
     assert!(desc.len() >= MIN_DESC_LENGTH && desc.len() <= MAX_DESC_LENGTH);
     let valid = validate_poll_description(&desc).unwrap();
     assert_eq!(valid, ());
+}
+
+/**
+ * Tests [validate_poll_period] with a valid value, i.e. timelock_period < expiration_period.
+ */
+#[test]
+fn valid_poll_period() {
+    let timelock_period = DEFAULT_TIMELOCK_PERIOD;
+    let expiration_period = DEFAULT_EXPIRATION_PERIOD;
+    assert!(expiration_period > timelock_period);
+    let valid = validate_poll_period(timelock_period, expiration_period).unwrap();
+    assert_eq!(valid, ());
+}
+
+/**
+ * Tests [validate_poll_period] with an invalid value, i.e. timelock_period > expiration_period.
+ */
+#[test]
+fn invalid_poll_period() {
+    let timelock_period = 20000u64;
+    let expiration_period = 10000u64;
+    validate_poll_period(timelock_period, expiration_period).unwrap_err();
 }

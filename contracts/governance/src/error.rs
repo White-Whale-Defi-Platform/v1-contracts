@@ -83,4 +83,7 @@ pub enum ContractError {
 
     #[error("Timelock period has not expired")]
     TimelockNotExpired {},
+
+    #[error("Invalid poll period. Expiration period is earlier than the timelock period.")]
+    InvalidPollPeriod {},
 }
