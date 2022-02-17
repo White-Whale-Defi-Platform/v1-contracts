@@ -234,7 +234,7 @@ fn unsuccessful_update_config_invalid_poll_period() {
     mock_instantiate(deps.as_mut());
     mock_register_voting_token(deps.as_mut());
 
-    // update owner
+    // update invalid timelock and expiration periods
     let info = mock_info(TEST_CREATOR, &[]);
     let msg = ExecuteMsg::UpdateConfig {
         owner: None,
@@ -251,6 +251,66 @@ fn unsuccessful_update_config_invalid_poll_period() {
     match res {
         Ok(_) => panic!("Must return error"),
         Err(ContractError::InvalidPollPeriod {}) => (),
+        Err(e) => panic!("Unexpected error: {:?}", e),
+    }
+}
+
+#[test]
+fn unsuccessful_update_config_invalid_quorum() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    // invalid quorum, MAX_QUORUM: Decimal = Decimal::one();
+    let info = mock_info(TEST_CREATOR, &[]);
+    let msg = ExecuteMsg::UpdateConfig {
+        owner: None,
+        quorum: Some(Decimal::from_ratio(
+            Uint128::from(2u128),
+            Uint128::from(1u128),
+        )),
+        threshold: None,
+        voting_period: None,
+        timelock_period: None,
+        expiration_period: None,
+        proposal_deposit: None,
+        snapshot_period: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::PollQuorumInvalidValue { .. }) => (),
+        Err(e) => panic!("Unexpected error: {:?}", e),
+    }
+}
+
+#[test]
+fn unsuccessful_update_config_invalid_threshold() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+    mock_register_voting_token(deps.as_mut());
+
+    // invalid threshold, MAX_THRESHOLD: Decimal = Decimal::one();
+    let info = mock_info(TEST_CREATOR, &[]);
+    let msg = ExecuteMsg::UpdateConfig {
+        owner: None,
+        quorum: None,
+        threshold: Some(Decimal::from_ratio(
+            Uint128::from(2u128),
+            Uint128::from(1u128),
+        )),
+        voting_period: None,
+        timelock_period: None,
+        expiration_period: None,
+        proposal_deposit: None,
+        snapshot_period: None,
+    };
+
+    let res = execute(deps.as_mut(), mock_env(), info, msg);
+    match res {
+        Ok(_) => panic!("Must return error"),
+        Err(ContractError::PollThresholdInvalidValue { .. }) => (),
         Err(e) => panic!("Unexpected error: {:?}", e),
     }
 }
