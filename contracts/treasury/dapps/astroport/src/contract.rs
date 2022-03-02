@@ -12,7 +12,7 @@ use white_whale::treasury::vault_assets::{get_identifier, VaultAsset};
 
 use crate::commands;
 use crate::error::AstroportError;
-use crate::msg::{ExecuteMsg, QueryMsg};
+use white_whale::dapps::astroport::msg::{ExecuteMsg, QueryMsg};
 pub type AstroportResult = Result<Response, AstroportError>;
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -4,7 +4,7 @@ use cw20::Cw20Contract;
 use terra_multi_test::{App, ContractWrapper};
 use terraswap::asset::AssetInfo;
 
-use crate::msg::ExecuteMsg;
+use white_whale::dapps::astroport::msg::ExecuteMsg;
 use crate::tests::integration_tests::common_integration::{
     init_contracts, mint_some_whale, mock_app,
 };

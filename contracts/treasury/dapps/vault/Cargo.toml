@@ -34,9 +34,7 @@ terra-cosmwasm = "2.2"
 terraswap = "2.4.0"
 thiserror = { version = "1.0.21" }
 white-whale = { version = "1.0.0", path = "../../../../packages/white_whale" }
-dapp-template = { version = "0.1.0", path = "../dapp-template" }
 protobuf = { version = "2", features = ["with-bytes"] }
-memory = { version = "0.1.0", path = "../../memory" }
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16" }
@@ -47,7 +45,7 @@ terraswap = "2.4.0"
 cw20-base = { version = "0.8", features = ["library"] }
 cw20 = { version = "0.8" }
 treasury = { version = "0.1.0", path = "../../treasury" }
-memory = { version = "0.1.0", path = "../../memory" }
 terraswap-factory = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_factory" }
 terraswap-pair = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_pair" }
 terraswap-token = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_token" }
+memory = { version = "0.1.0", path = "../../memory" }

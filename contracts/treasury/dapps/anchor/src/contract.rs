@@ -5,7 +5,7 @@ use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Respons
 
 use crate::commands;
 use crate::error::AnchorError;
-use crate::msg::{ExecuteMsg, QueryMsg};
+use white_whale::dapps::anchor::msg::{ExecuteMsg, QueryMsg};
 use white_whale::memory::item::Memory;
 use white_whale::treasury::dapp_base::commands::{self as dapp_base_commands, handle_base_init};
 use white_whale::treasury::dapp_base::common::BaseDAppResult;

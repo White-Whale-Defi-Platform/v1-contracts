@@ -4,7 +4,7 @@ use terra_multi_test::{App, ContractWrapper, Executor};
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
 
-use crate::msg::InstantiateMsg;
+use white_whale::community_fund::msg::InstantiateMsg;
 use crate::tests::integration_tests::common_integration::{
     get_whale_balance, init_whale_contract, mint_some_whale, mock_app,
 };

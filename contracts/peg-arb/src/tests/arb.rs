@@ -1,5 +1,5 @@
-use crate::msg::ExecuteMsg;
-use crate::msg::*;
+
+use white_whale::peg_arb::msg::*;
 use crate::tests::common::{POOL_NAME, VAULT_CONTRACT};
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;

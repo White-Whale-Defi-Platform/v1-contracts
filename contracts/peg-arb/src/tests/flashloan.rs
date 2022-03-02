@@ -8,7 +8,7 @@ use crate::contract::execute;
 use terraswap::asset::{Asset, AssetInfo};
 
 use crate::error::StableArbError;
-use crate::msg::*;
+use white_whale::peg_arb::msg::*;
 use crate::tests::common::{POOL_NAME, TEST_CREATOR, VAULT_ASSET};
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;

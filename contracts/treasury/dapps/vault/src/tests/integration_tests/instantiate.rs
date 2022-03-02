@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Coin, Decimal, Uint128};
 
 use terra_multi_test::{App, ContractWrapper};
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
+use white_whale::dapps::vault::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 use crate::tests::integration_tests::common_integration::{mint_some_whale, store_token_code};
 use terra_multi_test::Executor;
 use terraswap::asset::{Asset, AssetInfo};

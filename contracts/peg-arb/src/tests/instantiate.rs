@@ -9,7 +9,7 @@ use terraswap::asset::AssetInfo;
 
 use white_whale::deposit_info::ArbBaseAsset;
 
-use crate::msg::*;
+use white_whale::peg_arb::msg::*;
 use crate::tests::common::{TEST_CREATOR, VAULT_CONTRACT};
 use crate::tests::mock_querier::mock_dependencies;
 

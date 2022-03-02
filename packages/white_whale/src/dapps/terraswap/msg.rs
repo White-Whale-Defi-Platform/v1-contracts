@@ -1,14 +1,13 @@
+use cosmwasm_std::{Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
-use cosmwasm_std::{Decimal, Uint128};
-use white_whale::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg};
+use crate::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
+    /// dApp base messages that handle updating the config and addressbook
     Base(BaseExecuteMsg),
-    // Add dapp-specific messages here
     /// Constructs a provide liquidity msg and forwards it to the treasury
     /// Calculates the required asset amount for the second asset in the pool.
     ProvideLiquidity {
@@ -40,6 +39,6 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    /// Handles all the base query msgs
     Base(BaseQueryMsg),
-    // Add dapp-specific queries here
 }

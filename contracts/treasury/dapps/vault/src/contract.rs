@@ -23,7 +23,7 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 use crate::response::MsgInstantiateContractResponse;
 
 use crate::error::VaultError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
+use white_whale::dapps::vault::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 use crate::state::{Pool, State, FEE, POOL, STATE};
 use crate::{commands, queries};
 pub type VaultResult = Result<Response, VaultError>;

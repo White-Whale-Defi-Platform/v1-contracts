@@ -5,7 +5,7 @@ use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 use crate::contract::execute;
 use crate::error::TerraswapError;
-use crate::msg::ExecuteMsg;
+use white_whale::dapps::terraswap::msg::ExecuteMsg;
 use crate::tests::base_mocks::mocks::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
