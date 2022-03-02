@@ -22,7 +22,9 @@ use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
 use crate::error::StableArbError;
-use white_whale::peg_arb::msg::{ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use white_whale::peg_arb::msg::{
+    ArbDetails, CallbackMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
 
 use crate::querier::query_market_price;
 

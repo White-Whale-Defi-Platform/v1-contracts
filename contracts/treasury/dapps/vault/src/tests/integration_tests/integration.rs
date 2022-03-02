@@ -3,13 +3,13 @@ use cw20::{BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg, TokenInfoResponse};
 
 use terra_multi_test::App;
 
-use white_whale::dapps::vault::msg::{DepositHookMsg, ExecuteMsg};
 use crate::tests::integration_tests::common_integration::{
     init_contracts, mint_some_whale, mock_app,
 };
 use crate::tests::integration_tests::instantiate::{configure_memory, init_vault_dapp};
 use terra_multi_test::Executor;
 use terraswap::asset::Asset;
+use white_whale::dapps::vault::msg::{DepositHookMsg, ExecuteMsg};
 
 use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
 use white_whale::treasury::msg as TreasuryMsg;

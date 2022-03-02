@@ -3,10 +3,10 @@ use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 use crate::contract::execute;
 use crate::error::AstroportError;
-use white_whale::dapps::astroport::msg::ExecuteMsg;
 use crate::tests::base_mocks::mocks::mock_instantiate;
 use crate::tests::common::TRADER_CONTRACT;
 use crate::tests::mock_querier::mock_dependencies;
+use white_whale::dapps::astroport::msg::ExecuteMsg;
 
 /**
  * ExecuteMsg::ProvideLiquidity

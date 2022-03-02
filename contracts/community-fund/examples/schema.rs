@@ -1,9 +1,9 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use white_whale::community_fund::msg::InstantiateMsg;
 use community_fund::state::State;
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+use white_whale::community_fund::msg::InstantiateMsg;
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg};
 
 fn main() {

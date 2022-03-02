@@ -151,7 +151,7 @@ fn instantiate_pair(
             total_fee_bps: 10u16,
             maker_fee_bps: 10u16,
             is_disabled: false,
-            is_generator_disabled: false
+            is_generator_disabled: false,
         }],
         token_code_id: token_contract_code_id,
     };

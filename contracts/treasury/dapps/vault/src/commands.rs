@@ -11,9 +11,9 @@ use white_whale::treasury::msg::send_to_treasury;
 
 use crate::contract::VaultResult;
 use crate::error::VaultError;
-use white_whale::dapps::vault::msg::DepositHookMsg;
 use crate::state::{Pool, State, FEE, POOL, STATE};
 use terraswap::querier::query_supply;
+use white_whale::dapps::vault::msg::DepositHookMsg;
 use white_whale::fee::Fee;
 use white_whale::query::terraswap::query_asset_balance;
 use white_whale::query::vault::query_total_value;

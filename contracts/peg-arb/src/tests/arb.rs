@@ -1,5 +1,3 @@
-
-use white_whale::peg_arb::msg::*;
 use crate::tests::common::{POOL_NAME, VAULT_CONTRACT};
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
@@ -7,6 +5,7 @@ use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{coins, CosmosMsg, Decimal, Uint128};
 use terra_cosmwasm::TerraRoute;
 use terraswap::asset::{Asset, AssetInfo};
+use white_whale::peg_arb::msg::*;
 
 use crate::contract::execute;
 const OFFER_AMOUNT: u64 = 1000u64;

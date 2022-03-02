@@ -4,12 +4,12 @@ use cw20::Cw20Contract;
 use terra_multi_test::{App, ContractWrapper};
 use terraswap::asset::AssetInfo;
 
-use white_whale::dapps::terraswap::msg::ExecuteMsg;
 use crate::tests::integration_tests::common_integration::{
     init_contracts, mint_some_whale, mock_app,
 };
 use terra_multi_test::Executor;
 use terraswap::pair::PoolResponse;
+use white_whale::dapps::terraswap::msg::ExecuteMsg;
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
 use white_whale::treasury::msg as TreasuryMsg;
