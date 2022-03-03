@@ -6,8 +6,8 @@ use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use terraswap::asset::{Asset, AssetInfo};
 use terra_rust_script_derive::contract;
+use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 pub struct InstantiateMsg {
