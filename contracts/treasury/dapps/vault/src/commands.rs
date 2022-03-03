@@ -174,20 +174,22 @@ pub fn try_withdraw_liquidity(
     // Init response
     let response = Response::new();
 
-    // LP token fee
-    let lp_token_treasury_fee = Asset {
-        info: AssetInfo::Token {
-            contract_addr: state.liquidity_token_addr.to_string(),
-        },
-        amount: treasury_fee,
-    };
-
-    // Construct treasury fee msg
-    let treasury_fee_msg = fee.msg(
-        deps.as_ref(),
-        lp_token_treasury_fee,
-        base_state.treasury_address.clone(),
-    )?;
+    if !treasury_fee.is_zero() {
+        // LP token fee
+        let lp_token_treasury_fee = Asset {
+            info: AssetInfo::Token {
+                contract_addr: state.liquidity_token_addr.to_string(),
+            },
+            amount: treasury_fee,
+        };
+    
+        // Construct treasury fee msg
+        let treasury_fee_msg = fee.msg(
+            deps.as_ref(),
+            lp_token_treasury_fee,
+            base_state.treasury_address.clone(),
+        )?;
+    }
     attrs.push(("Treasury fee:", treasury_fee.to_string()));
 
     // Get asset holdings of vault and calculate amount to return
