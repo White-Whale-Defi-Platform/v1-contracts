@@ -1,6 +1,6 @@
 use crate::contract::{execute, query};
-use crate::msg::{ExecuteMsg, QueryMsg};
-use crate::state::{
+use white_whale::governance::msg::{ExecuteMsg, QueryMsg};
+use white_whale::governance::state::{
     bank_read, bank_store, poll_store, poll_voter_read, poll_voter_store, state_read, Cw20HookMsg,
     OrderBy, Poll, PollStatus, StakerResponse, State, TokenManager, VoteOption, VoterInfo,
     VotersResponse, VotersResponseItem,

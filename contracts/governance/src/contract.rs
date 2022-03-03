@@ -8,9 +8,9 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use white_whale::governance::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::{query_staker, stake_voting_tokens, withdraw_voting_tokens};
-use crate::state::{
+use white_whale::governance::state::{
     bank_read, bank_store, config_read, config_store, poll_indexer_store, poll_read, poll_store,
     poll_voter_read, poll_voter_store, read_poll_voters, read_polls, state_read, state_store,
     Config, ConfigResponse, Cw20HookMsg, ExecuteData, OrderBy, Poll, PollExecuteMsg, PollResponse,

@@ -1,4 +1,4 @@
-use crate::state::{OrderBy, PollStatus, VoteOption};
+use crate::governance::state::{OrderBy, PollStatus, VoteOption};
 use cosmwasm_std::{Decimal, Uint128};
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
