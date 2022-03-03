@@ -172,7 +172,7 @@ pub fn try_withdraw_liquidity(
     let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
 
     // Init response
-    let response = Response::new();
+    let mut response = Response::new();
 
     if !treasury_fee.is_zero() {
         // LP token fee
@@ -182,13 +182,16 @@ pub fn try_withdraw_liquidity(
             },
             amount: treasury_fee,
         };
-    
+
         // Construct treasury fee msg
         let treasury_fee_msg = fee.msg(
             deps.as_ref(),
             lp_token_treasury_fee,
             base_state.treasury_address.clone(),
         )?;
+
+        // Transfer fee
+        response = response.add_message(treasury_fee_msg);
     }
     attrs.push(("Treasury fee:", treasury_fee.to_string()));
 
@@ -238,8 +241,6 @@ pub fn try_withdraw_liquidity(
 
     Ok(response
         .add_attribute("Action:", "Withdraw Liquidity")
-        // Transfer fee
-        .add_message(treasury_fee_msg)
         // Burn LP tokens
         .add_message(burn_msg)
         // Send treasury funds to owner
