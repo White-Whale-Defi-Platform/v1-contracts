@@ -1,10 +1,11 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use terra_rust_script_derive::contract;
 
 use crate::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg};
 use cosmwasm_std::{Decimal, Uint128};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Base(BaseExecuteMsg),
@@ -37,7 +38,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Base(BaseQueryMsg),

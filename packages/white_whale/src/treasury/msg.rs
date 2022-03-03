@@ -1,14 +1,14 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-
+use terra_rust_script_derive::contract;
 use cosmwasm_std::{to_binary, Addr, CosmosMsg, Empty, StdResult, Uint128, WasmMsg};
 
 use crate::treasury::vault_assets::VaultAsset;
 use terraswap::asset::AssetInfo;
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 pub struct InstantiateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Sets the admin
@@ -33,10 +33,10 @@ pub enum ExecuteMsg {
 ///
 /// Note that the contract doesn't enforce permissions here, this is done
 /// by blockchain logic (in the future by blockchain governance)
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 pub struct MigrateMsg {}
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     /// Returns the treasury Config

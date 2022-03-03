@@ -2,8 +2,9 @@ use crate::treasury::dapp_base::msg::{BaseExecuteMsg, BaseQueryMsg};
 use cosmwasm_std::{Decimal, Uint128};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use terra_rust_script_derive::contract;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// dApp base messages that handle updating the config and addressbook
@@ -36,7 +37,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     /// Handles all the base query msgs
