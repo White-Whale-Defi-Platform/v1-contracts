@@ -4,7 +4,7 @@ use white_whale::treasury::dapp_base::common_test::TRADER_CONTRACT;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 use crate::contract::execute;
-use crate::error::TerraswapError;
+use crate::error::HidingGameError;
 use crate::tests::base_mocks::mocks::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 use white_whale::dapps::terraswap::msg::ExecuteMsg;
@@ -27,7 +27,7 @@ pub fn test_provide_liquidity_unauthorized_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
 
     match res {
-        Err(TerraswapError::BaseDAppError(BaseDAppError::Unauthorized {})) => (),
+        Err(HidingGameError::BaseDAppError(BaseDAppError::Unauthorized {})) => (),
         Ok(_) => panic!("Should return unauthorized Error, DAppError::Unauthorized"),
         _ => panic!("Should return unauthorized Error, DAppError::Unauthorized"),
     }
@@ -49,7 +49,7 @@ pub fn test_unsuccessfully_provide_liquidity_nonexisting_asset_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
 
     match res {
-        Err(TerraswapError::Std(_)) => (),
+        Err(HidingGameError::Std(_)) => (),
         Ok(_) => panic!("Should return NotFound Err"),
         _ => panic!("Should return NotFound Err"),
     }

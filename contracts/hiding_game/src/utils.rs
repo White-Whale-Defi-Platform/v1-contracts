@@ -6,6 +6,7 @@ use white_whale::treasury::dapp_base::error::BaseDAppError;
 /// Checks if the given address has enough tokens with a given offer_id
 pub fn check_dex_arb_profit(
     deps: Deps,
+    memory: &Memory,
     offer_id: &str,
     address: &Addr,
     required: Uint128,

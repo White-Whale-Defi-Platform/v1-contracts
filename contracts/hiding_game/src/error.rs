@@ -4,7 +4,7 @@ use thiserror::Error;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum TerraswapError {
+pub enum HidingGameError {
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -20,6 +20,12 @@ pub enum TerraswapError {
     #[error("You must provide an amount greater than zero for {}", asset)]
     ZeroAmount { asset: String },
 
+    #[error("No trading pair registered for {0}")]
+    NoRegisteredPair(String),
+
     #[error("{} is not part of the provided pool", id)]
     NotInPool { id: String },
+
+    #[error("Call is not a callback!")]
+    NotCallback {},
 }

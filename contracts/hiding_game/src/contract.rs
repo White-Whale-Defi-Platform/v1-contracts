@@ -1,34 +1,39 @@
 use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
+use white_whale::treasury::vault_assets::VaultAsset;
 
 use crate::commands;
-use crate::error::TerraswapError;
-use white_whale::dapps::terraswap::msg::{ExecuteMsg, QueryMsg};
+use crate::error::HidingGameError;
+use crate::state::{Config, CONFIG, ADMIN};
+use white_whale::hiding_game::*;
 use white_whale::memory::item::Memory;
-use white_whale::treasury::dapp_base::commands as dapp_base_commands;
-use white_whale::treasury::dapp_base::common::BaseDAppResult;
-use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
-use white_whale::treasury::dapp_base::queries as dapp_base_queries;
-use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
+pub type HidingGameResult = Result<Response, HidingGameError>;
 
-pub type TerraswapResult = Result<Response, TerraswapError>;
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> StdResult<Response> {
+    Ok(Response::default())
+}
+
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: BaseInstantiateMsg,
-) -> BaseDAppResult {
-    let state = BaseState {
-        treasury_address: deps.api.addr_validate(&msg.treasury_address)?,
-        trader: deps.api.addr_validate(&msg.trader)?,
+    msg: InstantiateMsg,
+) -> HidingGameResult {
+    let config = Config {
+        dex_arb_addr: deps.api.addr_validate(&msg.dex_arb_addr)?,
+        seignorage_addr: deps.api.addr_validate(&msg.seignorage_addr)?,
+        vault_addr: deps.api.addr_validate(&msg.vault_addr)?,
+        whale: msg.whale,
+        rebait_ratio: msg.rebait_ratio,
         memory: Memory {
-            address: deps.api.addr_validate(&msg.memory_addr)?,
+            address: deps.api.addr_validate(&msg.memory)?,
         },
     };
 
     // Store the initial config
-    BASESTATE.save(deps.storage, &state)?;
+    CONFIG.save(deps.storage, &config)?;
 
     // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
@@ -37,62 +42,29 @@ pub fn instantiate(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> TerraswapResult {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> HidingGameResult {
     match msg {
-        ExecuteMsg::ProvideLiquidity {
-            pool_id,
-            main_asset_id,
-            amount,
-        } => commands::provide_liquidity(deps.as_ref(), info, main_asset_id, pool_id, amount),
-        ExecuteMsg::DetailedProvideLiquidity {
-            pool_id,
-            assets,
-            slippage_tolerance,
-        } => commands::detailed_provide_liquidity(
-            deps.as_ref(),
-            info,
-            assets,
-            pool_id,
-            slippage_tolerance,
-        ),
-        ExecuteMsg::WithdrawLiquidity {
-            lp_token_id,
-            amount,
-        } => commands::withdraw_liquidity(deps.as_ref(), info, lp_token_id, amount),
-        ExecuteMsg::SwapAsset {
-            offer_id,
-            pool_id,
-            amount,
-            max_spread,
-            belief_price,
-        } => commands::terraswap_swap(
-            deps.as_ref(),
-            env,
-            info,
-            offer_id,
-            pool_id,
-            amount,
-            max_spread,
-            belief_price,
-        ),
-        ExecuteMsg::Base(message) => {
-            from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message))
-        }
+    ExecuteMsg::UpdateConfig {  } => todo!(),
+    ExecuteMsg::WhaleTrade { pair, offer, amount, max_spread, belief_price } => todo!(),
+    ExecuteMsg::SetAdmin { admin } => todo!(),
+}
+}
+
+
+fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> HidingGameResult {
+    // Callback functions can only be called this contract itself
+    if info.sender != env.contract.address {
+        return Err(HidingGameError::NotCallback {});
+    }
+    match msg {
+        CallbackMsg::AfterTrade {} => commands::after_trade(deps, env, info, loan_fee),
     }
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
+        
     }
 }
 
-/// Required to convert BaseDAppResult into TerraswapResult
-/// Can't implement the From trait directly
-fn from_base_dapp_result(result: BaseDAppResult) -> TerraswapResult {
-    match result {
-        Err(e) => Err(e.into()),
-        Ok(r) => Ok(r),
-    }
-}

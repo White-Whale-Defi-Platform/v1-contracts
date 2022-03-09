@@ -20,7 +20,7 @@ use super::common_integration::{whitelist_dapp, BaseContracts};
 const MILLION: u64 = 1_000_000u64;
 
 fn init_terraswap_dapp(app: &mut App, owner: Addr, base_contracts: &BaseContracts) -> Addr {
-    // Upload Terraswap DApp Contract
+    // Upload HidingGame DApp Contract
     let tswap_dapp_contract = Box::new(ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
