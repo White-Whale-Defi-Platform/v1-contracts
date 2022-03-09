@@ -4,13 +4,13 @@ use white_whale::governance::state::{
     state_store, Config, Poll, State, TokenManager,
 };
 
-use white_whale::governance::state::{PollStatus, StakerResponse};
 use cosmwasm_std::{
     to_binary, Addr, CanonicalAddr, CosmosMsg, Deps, DepsMut, MessageInfo, Response, StdResult,
     Storage, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use terraswap::querier::query_token_balance;
+use white_whale::governance::state::{PollStatus, StakerResponse};
 
 pub fn stake_voting_tokens(
     deps: DepsMut,

@@ -6,11 +6,11 @@ use cw_multi_test::{App, BankKeeper, Contract, ContractWrapper, Executor};
 
 use white_whale::governance::msg::{ExecuteMsg, InstantiateMsg};
 
-use white_whale::governance::state::{Cw20HookMsg, PollExecuteMsg, VoteOption};
 use crate::tests::common::{
     DEFAULT_EXPIRATION_PERIOD, DEFAULT_FIX_PERIOD, DEFAULT_QUORUM, DEFAULT_THRESHOLD,
     DEFAULT_TIMELOCK_PERIOD, DEFAULT_VOTING_PERIOD,
 };
+use white_whale::governance::state::{Cw20HookMsg, PollExecuteMsg, VoteOption};
 
 use crate::tests::tswap_mock::{contract_receiver_mock, MockInstantiateMsg};
 use stablecoin_vault::contract::{execute, instantiate, query, reply};
