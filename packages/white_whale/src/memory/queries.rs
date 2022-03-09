@@ -71,6 +71,34 @@ pub fn query_contracts_from_mem(
     Ok(contracts)
 }
 
+/// Query contract addresses from Memory Module contract addresses map while catching error if value not present.
+pub fn try_query_contracts_from_mem(
+    deps: Deps,
+    memory_addr: &Addr,
+    contract_names: &[String],
+) -> BTreeMap<String, Addr> {
+    let mut contracts: BTreeMap<String, Addr> = BTreeMap::new();
+
+    // Query over
+    for contract in contract_names.iter() {
+        let result: Result<Addr, cosmwasm_std::StdError> = deps
+            .querier
+            .query::<Addr>(&QueryRequest::Wasm(WasmQuery::Raw {
+                contract_addr: memory_addr.to_string(),
+                key: Binary::from(concat(
+                    // Query contracts map
+                    &to_length_prefixed(b"contracts"),
+                    contract.as_bytes(),
+                )),
+            }));
+        // catch error if not preset
+        if let Ok(res) = result {
+            contracts.insert(contract.clone(), res);
+        }
+    }
+    contracts
+}
+
 /// Query single contract address from mem
 pub fn query_contract_from_mem(
     deps: Deps,

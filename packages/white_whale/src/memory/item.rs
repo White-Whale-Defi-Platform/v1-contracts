@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use terraswap::asset::AssetInfo;
 
 use super::queries::{
-    query_asset_from_mem, query_assets_from_mem, query_contract_from_mem, query_contracts_from_mem,
+    query_asset_from_mem, query_assets_from_mem, query_contract_from_mem, query_contracts_from_mem, try_query_contracts_from_mem,
 };
 
 // Struct that holds address
@@ -29,6 +29,15 @@ impl Memory {
     // Raw query of a single contract Addr
     pub fn query_contract(&self, deps: Deps, contract_name: &str) -> StdResult<Addr> {
         query_contract_from_mem(deps, &self.address, contract_name)
+    }
+
+    // Raw Query to Memory contract
+    pub fn try_query_contracts(
+        &self,
+        deps: Deps,
+        contract_names: &[String],
+    ) -> BTreeMap<String, Addr> {
+        try_query_contracts_from_mem(deps, &self.address, contract_names)
     }
 
     // Raw Query to Memory contract
