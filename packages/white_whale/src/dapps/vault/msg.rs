@@ -2,14 +2,14 @@ use cosmwasm_std::Decimal;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use terra_rust_script_derive::contract;
+use terra_rust_script_derive::CosmWasmContract;
 
 use crate::{
     fee::Fee,
     treasury::dapp_base::msg::{BaseExecuteMsg, BaseInstantiateMsg, BaseQueryMsg},
 };
 use terraswap::asset::Asset;
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 pub struct InstantiateMsg {
     pub base: BaseInstantiateMsg,
     pub token_code_id: u64,
@@ -19,7 +19,7 @@ pub struct InstantiateMsg {
     pub vault_lp_token_symbol: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     Base(BaseExecuteMsg),
@@ -38,7 +38,7 @@ pub enum ExecuteMsg {
     },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     Base(BaseQueryMsg),
@@ -46,13 +46,13 @@ pub enum QueryMsg {
     State {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum DepositHookMsg {
     WithdrawLiquidity {},
     ProvideLiquidity {},
 }
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, contract)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 pub struct StateResponse {
     pub liquidity_token: String,
 }
