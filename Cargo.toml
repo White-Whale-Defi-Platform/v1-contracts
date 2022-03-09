@@ -17,6 +17,7 @@ members = [
     "contracts/treasury/dapps/dapp-template",
     "contracts/treasury/dapps/vault",
     "contracts/treasury/memory",
+    "contracts/hiding_game"
 ]
 
 [profile.release]
