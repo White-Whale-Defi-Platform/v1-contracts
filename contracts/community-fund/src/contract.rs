@@ -3,8 +3,8 @@ use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 
 use crate::commands;
 use crate::error::CommunityFundError;
-use crate::msg::InstantiateMsg;
 use crate::state::{State, ADMIN, STATE};
+use white_whale::community_fund::msg::InstantiateMsg;
 
 /*
     The Community fund holds the protocol treasury and has control over the protocol owned liquidity.

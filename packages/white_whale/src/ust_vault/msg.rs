@@ -6,9 +6,10 @@ use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use terra_rust_script_derive::CosmWasmContract;
 use terraswap::asset::{Asset, AssetInfo};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 pub struct InstantiateMsg {
     pub anchor_money_market_address: String,
     pub aust_address: String,
@@ -23,7 +24,7 @@ pub struct InstantiateMsg {
     pub vault_lp_token_symbol: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Receive hook for the liquidity token
@@ -69,7 +70,7 @@ pub struct FlashLoanPayload {
 ///
 /// Note that the contract doesn't enforce permissions here, this is done
 /// by blockchain logic (in the future by blockchain governance)
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 pub struct MigrateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -93,7 +94,7 @@ impl CallbackMsg {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum VaultQueryMsg {
     PoolConfig {},

@@ -2,7 +2,6 @@ pub mod astroport_msg;
 mod commands;
 pub mod contract;
 pub mod error;
-pub mod msg;
 pub mod utils;
 
 #[cfg(test)]

@@ -5,8 +5,8 @@ use white_whale::community_fund::msg::ExecuteMsg;
 
 use crate::contract::{execute, instantiate};
 use crate::error::CommunityFundError;
-use crate::msg::InstantiateMsg;
 use crate::state::{State, ADMIN, STATE};
+use white_whale::community_fund::msg::InstantiateMsg;
 
 const TEST_CREATOR: &str = "creator";
 

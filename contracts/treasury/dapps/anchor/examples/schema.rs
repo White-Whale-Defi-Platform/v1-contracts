@@ -3,7 +3,7 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use anchor::msg::{ExecuteMsg, QueryMsg};
+use white_whale::dapps::anchor::msg::{ExecuteMsg, QueryMsg};
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
 use white_whale::treasury::dapp_base::state::BaseState;
 

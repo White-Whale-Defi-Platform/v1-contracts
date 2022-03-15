@@ -7,11 +7,6 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
 
 use crate::contract::{execute, query};
-use crate::msg::{ExecuteMsg, QueryMsg};
-use crate::state::{
-    bank_read, poll_voter_read, state_read, Cw20HookMsg, OrderBy, PollExecuteMsg, PollResponse,
-    PollStatus, PollsResponse, StakerResponse, State, VoteOption, VoterInfo, VotersResponse,
-};
 use crate::tests::common::{
     mock_env_height, DEFAULT_EXPIRATION_PERIOD, DEFAULT_PROPOSAL_DEPOSIT, DEFAULT_TIMELOCK_PERIOD,
     DEFAULT_VOTING_PERIOD, TEST_CREATOR, TEST_VOTER, TEST_VOTER_2, TEST_VOTER_3, VOTING_TOKEN,
@@ -19,6 +14,11 @@ use crate::tests::common::{
 use crate::tests::mock_querier::mock_dependencies;
 use crate::tests::{common, instantiate};
 use crate::ContractError;
+use white_whale::governance::msg::{ExecuteMsg, QueryMsg};
+use white_whale::governance::state::{
+    bank_read, poll_voter_read, state_read, Cw20HookMsg, OrderBy, PollExecuteMsg, PollResponse,
+    PollStatus, PollsResponse, StakerResponse, State, VoteOption, VoterInfo, VotersResponse,
+};
 
 pub fn mock_register_voting_token(deps: DepsMut) {
     let info = mock_info(TEST_CREATOR, &[]);

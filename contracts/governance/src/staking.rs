@@ -1,16 +1,16 @@
 use crate::error::ContractError;
-use crate::state::{
+use white_whale::governance::state::{
     bank_read, bank_store, config_read, config_store, poll_read, poll_voter_store, state_read,
     state_store, Config, Poll, State, TokenManager,
 };
 
-use crate::state::{PollStatus, StakerResponse};
 use cosmwasm_std::{
     to_binary, Addr, CanonicalAddr, CosmosMsg, Deps, DepsMut, MessageInfo, Response, StdResult,
     Storage, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use terraswap::querier::query_token_balance;
+use white_whale::governance::state::{PollStatus, StakerResponse};
 
 pub fn stake_voting_tokens(
     deps: DepsMut,

@@ -2,7 +2,7 @@ use cosmwasm_std::{Addr, Uint128};
 
 use terra_multi_test::App;
 
-use crate::msg::ExecuteMsg;
+use white_whale::dapps::vault::msg::ExecuteMsg;
 
 use terra_multi_test::Executor;
 use terraswap::asset::Asset;

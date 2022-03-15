@@ -141,6 +141,7 @@ fn instantiate_pair(
     let factory_contract_code_id = store_factory_code(&mut router);
 
     let factory_msg = astroport::factory::InstantiateMsg {
+        whitelist_code_id: 0u64,
         fee_address: None,
         generator_address: None,
         owner: owner.to_string(),
@@ -149,7 +150,8 @@ fn instantiate_pair(
             pair_type: PairType::Xyk {},
             total_fee_bps: 10u16,
             maker_fee_bps: 10u16,
-            is_disabled: None,
+            is_disabled: false,
+            is_generator_disabled: false,
         }],
         token_code_id: token_contract_code_id,
     };
@@ -175,7 +177,7 @@ fn instantiate_pair(
             },
         ],
         token_code_id: token_contract_code_id,
-        factory_addr: factory,
+        factory_addr: factory.into_string(),
         init_params: None,
     };
 

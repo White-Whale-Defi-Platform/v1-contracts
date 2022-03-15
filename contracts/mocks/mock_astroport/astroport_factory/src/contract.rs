@@ -332,7 +332,7 @@ pub fn execute_create_pair(
         .map_err(|_| ContractError::PairConfigNotFound {})?;
 
     // Check if pair config is disabled
-    if pair_config.is_disabled.is_some() && pair_config.is_disabled.unwrap() {
+    if pair_config.is_disabled {
         return Err(ContractError::PairConfigDisabled {});
     }
 

@@ -4,10 +4,10 @@ use terra_multi_test::{App, ContractWrapper, Executor};
 use white_whale::community_fund::msg::{ConfigResponse, ExecuteMsg, QueryMsg};
 use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
 
-use crate::msg::InstantiateMsg;
 use crate::tests::integration_tests::common_integration::{
     get_whale_balance, init_whale_contract, mint_some_whale, mock_app,
 };
+use white_whale::community_fund::msg::InstantiateMsg;
 
 fn init_fund_contract(app: &mut App, owner: Addr, whale_token_addr: &Addr) -> Addr {
     let fund_dapp_contract = Box::new(ContractWrapper::new(

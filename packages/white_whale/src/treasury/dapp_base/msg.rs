@@ -1,14 +1,15 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use terra_rust_script_derive::CosmWasmContract;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 pub struct BaseInstantiateMsg {
     pub treasury_address: String,
     pub trader: String,
     pub memory_addr: String,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum BaseExecuteMsg {
     /// Updates the base config
@@ -21,7 +22,7 @@ pub enum BaseExecuteMsg {
     SetAdmin { admin: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum BaseQueryMsg {
     /// Returns the state of the DApp

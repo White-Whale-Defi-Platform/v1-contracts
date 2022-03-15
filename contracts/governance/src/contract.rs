@@ -8,18 +8,18 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::querier::query_token_balance;
 
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::staking::{query_staker, stake_voting_tokens, withdraw_voting_tokens};
-use crate::state::{
+use crate::validators::{
+    validate_poll_description, validate_poll_link, validate_poll_period, validate_poll_title,
+    validate_quorum, validate_threshold,
+};
+use white_whale::governance::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use white_whale::governance::state::{
     bank_read, bank_store, config_read, config_store, poll_indexer_store, poll_read, poll_store,
     poll_voter_read, poll_voter_store, read_poll_voters, read_polls, state_read, state_store,
     Config, ConfigResponse, Cw20HookMsg, ExecuteData, OrderBy, Poll, PollExecuteMsg, PollResponse,
     PollStatus, PollsResponse, State, StateResponse, VoteOption, VoterInfo, VotersResponse,
     VotersResponseItem,
-};
-use crate::validators::{
-    validate_poll_description, validate_poll_link, validate_poll_period, validate_poll_title,
-    validate_quorum, validate_threshold,
 };
 
 pub(crate) const MAX_QUORUM: Decimal = Decimal::one();

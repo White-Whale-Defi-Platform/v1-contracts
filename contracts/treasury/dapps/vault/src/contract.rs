@@ -23,9 +23,9 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 use crate::response::MsgInstantiateContractResponse;
 
 use crate::error::VaultError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 use crate::state::{Pool, State, FEE, POOL, STATE};
 use crate::{commands, queries};
+use white_whale::dapps::vault::msg::{ExecuteMsg, InstantiateMsg, QueryMsg, StateResponse};
 pub type VaultResult = Result<Response, VaultError>;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;

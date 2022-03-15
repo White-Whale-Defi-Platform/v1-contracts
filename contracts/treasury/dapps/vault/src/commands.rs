@@ -11,9 +11,9 @@ use white_whale::treasury::msg::send_to_treasury;
 
 use crate::contract::VaultResult;
 use crate::error::VaultError;
-use crate::msg::DepositHookMsg;
 use crate::state::{Pool, State, FEE, POOL, STATE};
 use terraswap::querier::query_supply;
+use white_whale::dapps::vault::msg::DepositHookMsg;
 use white_whale::fee::Fee;
 use white_whale::query::terraswap::query_asset_balance;
 use white_whale::query::vault::query_total_value;
@@ -172,22 +172,27 @@ pub fn try_withdraw_liquidity(
     let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
 
     // Init response
-    let response = Response::new();
+    let mut response = Response::new();
 
-    // LP token fee
-    let lp_token_treasury_fee = Asset {
-        info: AssetInfo::Token {
-            contract_addr: state.liquidity_token_addr.to_string(),
-        },
-        amount: treasury_fee,
-    };
+    if !treasury_fee.is_zero() {
+        // LP token fee
+        let lp_token_treasury_fee = Asset {
+            info: AssetInfo::Token {
+                contract_addr: state.liquidity_token_addr.to_string(),
+            },
+            amount: treasury_fee,
+        };
 
-    // Construct treasury fee msg
-    let treasury_fee_msg = fee.msg(
-        deps.as_ref(),
-        lp_token_treasury_fee,
-        base_state.treasury_address.clone(),
-    )?;
+        // Construct treasury fee msg
+        let treasury_fee_msg = fee.msg(
+            deps.as_ref(),
+            lp_token_treasury_fee,
+            base_state.treasury_address.clone(),
+        )?;
+
+        // Transfer fee
+        response = response.add_message(treasury_fee_msg);
+    }
     attrs.push(("Treasury fee:", treasury_fee.to_string()));
 
     // Get asset holdings of vault and calculate amount to return
@@ -236,8 +241,6 @@ pub fn try_withdraw_liquidity(
 
     Ok(response
         .add_attribute("Action:", "Withdraw Liquidity")
-        // Transfer fee
-        .add_message(treasury_fee_msg)
         // Burn LP tokens
         .add_message(burn_msg)
         // Send treasury funds to owner

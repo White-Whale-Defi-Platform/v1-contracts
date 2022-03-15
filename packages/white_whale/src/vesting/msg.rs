@@ -2,8 +2,9 @@ use cosmwasm_std::Uint128;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use terra_rust_script_derive::CosmWasmContract;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 pub struct InstantiateMsg {
     /// Account which can create new allocations
     pub owner: String,
@@ -16,7 +17,7 @@ pub struct InstantiateMsg {
     pub default_unlock_schedule: Schedule,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     /// Admin function. Update addresses of owner
@@ -29,7 +30,7 @@ pub enum ExecuteMsg {
     Terminate { user_address: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 #[serde(rename_all = "snake_case")]
 pub enum ReceiveMsg {
     /// Create new allocations
