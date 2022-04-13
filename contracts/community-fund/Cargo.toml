@@ -39,7 +39,7 @@ white-whale = { version = "1.0.0", path = "../../packages/white_whale" }
 
 [dev-dependencies]
 cosmwasm-schema = "0.16.7"
-cw-multi-test = { version = "0.8"}
-terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}
+cw-multi-test = { version = "0.13.2"}
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="e0dcab33c0a414c6cfb2c24b78ddc606f574325f", package = "terra-multi-test"}
 terra-mocks = {git ="https://github.com/terra-money/cosmwasm-contracts.git", rev = "b25f4ac2d7bddaa3a18838cfe51d18e1ae855dcd", package = "terra-mocks"}
 cw20-base = { version = "0.8", features = ["library"] }
