@@ -19,8 +19,8 @@ backtraces = ["cosmwasm-std/backtraces"]
 [dependencies]
 terra-cosmwasm = { version = "2.2.0" }
 cosmwasm-bignumber = "2.2"
-cosmwasm-std = { version = "0.16", features = ["iterator"] }
-cosmwasm-storage = { version = "0.16", features = ["iterator"] }
+cosmwasm-std = { version = "0.16.7", features = ["iterator"] }
+cosmwasm-storage = { version = "0.16.7", features = ["iterator"] }
 cw-controllers = { version = "0.8" }
 cw-storage-plus = { version = "0.8" }
 cw20 = { version = "0.8" }
