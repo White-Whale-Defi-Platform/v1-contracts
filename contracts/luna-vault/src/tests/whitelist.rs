@@ -5,7 +5,7 @@ use white_whale::memory::LIST_SIZE_LIMIT;
 use white_whale::ust_vault::msg::ExecuteMsg;
 
 use crate::contract::execute;
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use crate::state::{State, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 use crate::tests::instantiate::mock_instantiate;
@@ -29,7 +29,7 @@ fn unsuccessful_add_to_whitelist_unauthorized() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::Admin(_)) => (),
+        Err(LunaVaultError::Admin(_)) => (),
         _ => panic!("Must return StableVaultError::Admin"),
     }
 }
@@ -53,7 +53,7 @@ fn unsuccessful_add_to_whitelist_already_whitelisted() {
     // repeat the same whitelisting
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::AlreadyWhitelisted {}) => (),
+        Err(LunaVaultError::AlreadyWhitelisted {}) => (),
         _ => panic!("Must return StableVaultError::AlreadyWhitelisted"),
     }
 }
@@ -76,7 +76,7 @@ fn unsuccessful_add_to_whitelist_limit_exceeded() {
                 let state: State = STATE.load(&deps.storage).unwrap();
                 assert!(state.whitelisted_contracts.len() <= LIST_SIZE_LIMIT);
             }
-            Err(StableVaultError::WhitelistLimitReached {}) => {
+            Err(LunaVaultError::WhitelistLimitReached {}) => {
                 let state: State = STATE.load(&deps.storage).unwrap();
                 assert_eq!(state.whitelisted_contracts.len(), LIST_SIZE_LIMIT);
                 ()
@@ -136,7 +136,7 @@ fn unsuccessful_remove_from_whitelist_unauthorized() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::Admin(_)) => (),
+        Err(LunaVaultError::Admin(_)) => (),
         _ => panic!("Must return StableVaultError::Admin"),
     }
 }
@@ -156,7 +156,7 @@ fn unsuccessful_remove_from_whitelist_not_whitelisted() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::NotWhitelisted {}) => (),
+        Err(LunaVaultError::NotWhitelisted {}) => (),
         _ => panic!("Must return StableVaultError::NotWhitelisted"),
     }
 }

@@ -12,7 +12,7 @@ use white_whale::ust_vault::msg::FlashLoanPayload;
 use white_whale::ust_vault::msg::*;
 
 use crate::contract::{execute, DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use crate::state::STATE;
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 use crate::tests::common_integration::{
@@ -47,7 +47,7 @@ fn unsuccessful_flashloan_no_base_token() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::Std(_)) => (),
+        Err(LunaVaultError::Std(_)) => (),
         _ => panic!("Must return StdError::generic_err from DepositInfo::assert"),
     }
 }
@@ -78,7 +78,7 @@ fn unsuccessful_flashloan_not_whitelisted() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::NotWhitelisted {}) => (),
+        Err(LunaVaultError::NotWhitelisted {}) => (),
         _ => panic!("Must return StableVaultError::NotWhitelisted"),
     }
 }

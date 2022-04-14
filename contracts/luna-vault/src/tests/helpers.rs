@@ -6,7 +6,7 @@ use terraswap::pair::Cw20HookMsg;
 use white_whale::ust_vault::msg::CallbackMsg;
 
 use crate::contract::{encapsulate_payload, get_treasury_fee, receive_cw20};
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::{mock_instantiate, TREASURY_FEE};
 use crate::tests::mock_querier::mock_dependencies;
@@ -56,7 +56,7 @@ fn unsuccessful_receive_cw20_no_swap_available() {
 
     let res = receive_cw20(deps.as_mut(), mock_env(), info, cw20_msg);
     match res {
-        Err(StableVaultError::NoSwapAvailable {}) => (),
+        Err(LunaVaultError::NoSwapAvailable {}) => (),
         _ => panic!("Must return StableVaultError::NoSwapAvailable"),
     }
 }
@@ -75,7 +75,7 @@ fn unsuccessful_receive_cw20_unauthorized() {
 
     let res = receive_cw20(deps.as_mut(), mock_env(), info, cw20_msg);
     match res {
-        Err(StableVaultError::Unauthorized {}) => (),
+        Err(LunaVaultError::Unauthorized {}) => (),
         _ => panic!("Must return StableVaultError::Unauthorized"),
     }
 }

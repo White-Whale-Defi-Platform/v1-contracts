@@ -5,7 +5,7 @@ use white_whale::denom::UST_DENOM;
 use white_whale::ust_vault::msg::{CallbackMsg, ExecuteMsg};
 
 use crate::contract::execute;
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
@@ -23,7 +23,7 @@ fn unsuccessful_handle_callback_not_same_contract() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::NotCallback {}) => (),
+        Err(LunaVaultError::NotCallback {}) => (),
         _ => panic!("Must return StableVaultError::NotCallback"),
     }
 }

@@ -4,7 +4,7 @@ use cosmwasm_std::{Api, MessageInfo, Uint128};
 use white_whale::ust_vault::msg::ExecuteMsg;
 
 use crate::contract::execute;
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use crate::state::POOL_INFO;
 use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::mock_instantiate;
@@ -25,7 +25,7 @@ fn unsuccessful_set_stable_cap_unauthorized() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::Admin(_)) => (),
+        Err(LunaVaultError::Admin(_)) => (),
         _ => panic!("Must return StableVaultError::Admin"),
     }
 }

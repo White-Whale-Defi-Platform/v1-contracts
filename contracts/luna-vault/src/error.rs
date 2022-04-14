@@ -4,7 +4,7 @@ use cosmwasm_std::{OverflowError, StdError};
 use cw_controllers::AdminError;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum StableVaultError {
+pub enum LunaVaultError {
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -57,7 +57,7 @@ pub enum StableVaultError {
     Nonzero {},
 }
 
-impl From<semver::Error> for StableVaultError {
+impl From<semver::Error> for LunaVaultError {
     fn from(err: semver::Error) -> Self {
         Self::SemVer(err.to_string())
     }

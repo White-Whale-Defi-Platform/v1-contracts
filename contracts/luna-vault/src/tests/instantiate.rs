@@ -10,7 +10,7 @@ use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::ust_vault::msg::*;
 
 use crate::contract::{execute, instantiate, query};
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use crate::state::{State, FEE, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
@@ -20,7 +20,7 @@ pub(crate) const TREASURY_FEE: u64 = 10u64;
 pub fn instantiate_msg() -> InstantiateMsg {
     InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
-        aust_address: "test_aust".to_string(),
+        bluna_address: "test_aust".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
@@ -41,7 +41,7 @@ pub fn instantiate_msg() -> InstantiateMsg {
 pub fn mock_instantiate(deps: DepsMut) {
     let msg = InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
-        aust_address: "test_aust".to_string(),
+        bluna_address: "test_aust".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
@@ -77,7 +77,7 @@ fn successful_initialization() {
         state,
         State {
             anchor_money_market_address: deps.api.addr_validate("test_mm").unwrap(),
-            aust_address: deps.api.addr_validate("test_aust").unwrap(),
+            bluna_address: deps.api.addr_validate("test_aust").unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false,
         }
@@ -100,7 +100,7 @@ fn unsuccessful_initialization_invalid_fees() {
 
     let msg = InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
-        aust_address: "test_aust".to_string(),
+        bluna_address: "test_aust".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
@@ -117,7 +117,7 @@ fn unsuccessful_initialization_invalid_fees() {
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
     match res {
-        Err(StableVaultError::InvalidFee {}) => (),
+        Err(LunaVaultError::InvalidFee {}) => (),
         _ => panic!("Must return StableVaultError::InvalidFee"),
     }
 }
@@ -128,7 +128,7 @@ fn unsuccessful_initialization_invalid_asset() {
 
     let msg = InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
-        aust_address: "test_aust".to_string(),
+        bluna_address: "test_aust".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::Token {
             //invalid asset
@@ -146,7 +146,7 @@ fn unsuccessful_initialization_invalid_asset() {
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
     match res {
-        Err(StableVaultError::NotNativeToken {}) => (),
+        Err(LunaVaultError::NotNativeToken {}) => (),
         _ => panic!("Must return StableVaultError::NotNativeToken"),
     }
 }
@@ -201,7 +201,7 @@ fn unsuccessful_update_fee_unauthorized() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::Admin(_)) => (),
+        Err(LunaVaultError::Admin(_)) => (),
         _ => panic!("Must return StableVaultError::Admin"),
     }
 }
@@ -261,7 +261,7 @@ fn unsuccessful_set_admin_unauthorized() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::Admin(_)) => (),
+        Err(LunaVaultError::Admin(_)) => (),
         _ => panic!("Must return StableVaultError::Admin"),
     }
 }
@@ -276,7 +276,7 @@ fn test_init_with_non_default_vault_lp_token() {
     // Define a custom Init Msg with the custom token info provided
     let msg = InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
-        aust_address: "test_aust".to_string(),
+        bluna_address: "test_aust".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),

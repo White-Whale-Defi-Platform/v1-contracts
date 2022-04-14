@@ -18,25 +18,25 @@ use white_whale::fee::{Fee, VaultFee};
 use white_whale::memory::LIST_SIZE_LIMIT;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::tax::{compute_tax, into_msg_without_tax};
-use white_whale::ust_vault::msg::*;
-use white_whale::ust_vault::msg::{
+use white_whale::luna_vault::msg::*;
+use white_whale::luna_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
 
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
-pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale UST Vault LP Token";
-pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVUst";
+pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale Luna Vault LP Token";
+pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVLuna";
 const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
 
-type VaultResult = Result<Response, StableVaultError>;
+type VaultResult = Result<Response, LunaVaultError>;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:stablecoin-vault";
+const CONTRACT_NAME: &str = "crates.io:ww-luna-vault";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -45,7 +45,8 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let state = State {
         anchor_money_market_address: deps.api.addr_validate(&msg.anchor_money_market_address)?,
-        aust_address: deps.api.addr_validate(&msg.aust_address)?,
+        bluna_address: deps.api.addr_validate(&msg.bluna_address)?,
+        memory_address: deps.api.addr_validate(&msg.memory_addr)?,
         whitelisted_contracts: vec![],
         allow_non_whitelisted: false,
     };
@@ -55,7 +56,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
 
     // Check if the provided asset is a native token
     if !msg.asset_info.is_native_token() {
-        return Err(StableVaultError::NotNativeToken {});
+        return Err(LunaVaultError::NotNativeToken {});
     }
     DEPOSIT_INFO.save(
         deps.storage,
@@ -79,6 +80,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
 
     FEE.save(deps.storage, &fee_config)?;
 
+    //TODO ???
     // Setup and save the relevant pools info in state. The saved pool will be the one used by the vault.
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
@@ -87,7 +89,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?,
             AssetInfo::Token {
-                contract_addr: msg.aust_address,
+                contract_addr: msg.bluna_address,
             }
             .to_raw(deps.api)?,
         ],
@@ -127,7 +129,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
                 }),
             })?,
             funds: vec![],
-            label: "White Whale Stablecoin Vault LP".to_string(),
+            label: "White Whale Luna Vault LP".to_string(),
         }
         .into(),
         gas_limit: None,
@@ -173,13 +175,15 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
         ExecuteMsg::FlashLoan { payload } => handle_flashloan(deps, env, info, payload),
         ExecuteMsg::UpdateState {
             anchor_money_market_address,
-            aust_address,
+            bluna_address,
+            memory_address,
             allow_non_whitelisted,
         } => update_state(
             deps,
             info,
             anchor_money_market_address,
-            aust_address,
+            bluna_address,
+            memory_address,
             allow_non_whitelisted,
         ),
         ExecuteMsg::Callback(msg) => _handle_callback(deps, env, info, msg),
@@ -193,7 +197,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
 fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> VaultResult {
     // Callback functions can only be called this contract itself
     if info.sender != env.contract.address {
-        return Err(StableVaultError::NotCallback {});
+        return Err(LunaVaultError::NotCallback {});
     }
     match msg {
         CallbackMsg::AfterTrade { loan_fee } => after_trade(deps, env, info, loan_fee),
@@ -224,7 +228,7 @@ pub fn handle_flashloan(
         if state.allow_non_whitelisted {
             whitelisted = false;
         } else {
-            return Err(StableVaultError::NotWhitelisted {});
+            return Err(LunaVaultError::NotWhitelisted {});
         }
     } else {
         whitelisted = true;
@@ -241,7 +245,7 @@ pub fn handle_flashloan(
         + Uint128::from(ROUNDING_ERR_COMPENSATION);
 
     if total_value < requested_asset.amount + tax_buffer {
-        return Err(StableVaultError::Broke {});
+        return Err(LunaVaultError::Broke {});
     }
     // Init response
     let mut response = Response::new().add_attribute("Action", "Flashloan");
@@ -258,7 +262,7 @@ pub fn handle_flashloan(
         )?;
 
         let withdraw_msg = anchor_withdraw_msg(
-            state.aust_address,
+            state.bluna_address,
             state.anchor_money_market_address,
             to_withdraw * aust_exchange_rate.inv().unwrap(),
         )?;
@@ -311,7 +315,7 @@ pub fn try_provide_liquidity(
     let denom = deposit_info.clone().get_denom()?;
 
     if profit.last_balance != Uint128::zero() {
-        return Err(StableVaultError::DepositDuringLoan {});
+        return Err(LunaVaultError::DepositDuringLoan {});
     }
 
     // Init vector for logging
@@ -384,7 +388,7 @@ pub fn try_withdraw_liquidity(
     let fee_config = FEE.load(deps.storage)?;
 
     if profit.last_balance != Uint128::zero() {
-        return Err(StableVaultError::DepositDuringLoan {});
+        return Err(LunaVaultError::DepositDuringLoan {});
     }
 
     // Logging var
@@ -407,7 +411,7 @@ pub fn try_withdraw_liquidity(
     // Available aUST
     let max_aust_amount = query_token_balance(
         &deps.querier,
-        state.aust_address.clone(),
+        state.bluna_address.clone(),
         env.contract.address.clone(),
     )?;
     let mut withdrawn_ust = Asset {
@@ -428,7 +432,7 @@ pub fn try_withdraw_liquidity(
         if uaust_value_in_contract < refund_amount {
             // Withdraw all aUST left
             let withdraw_msg = anchor_withdraw_msg(
-                state.aust_address.clone(),
+                state.bluna_address.clone(),
                 state.anchor_money_market_address,
                 max_aust_amount,
             )?;
@@ -440,7 +444,7 @@ pub fn try_withdraw_liquidity(
             let withdraw_amount = refund_amount * aust_exchange_rate.inv().unwrap();
 
             let withdraw_msg = anchor_withdraw_msg(
-                state.aust_address,
+                state.bluna_address,
                 state.anchor_money_market_address,
                 withdraw_amount,
             )?;
@@ -530,7 +534,7 @@ pub fn before_trade(deps: DepsMut, env: Env) -> StdResult<Vec<(&str, String)>> {
     // last_balance call can not be reset until after the loan.
     if conf.last_balance != Uint128::zero() {
         return Err(StdError::generic_err(
-            StableVaultError::Nonzero {}.to_string(),
+            LunaVaultError::Nonzero {}.to_string(),
         ));
     }
 
@@ -562,7 +566,7 @@ pub fn after_trade(
 
     // Check if balance increased with expected fee, otherwise cancel everything
     if balance < conf.last_balance + loan_fee {
-        return Err(StableVaultError::CancelLosingTrade {});
+        return Err(LunaVaultError::CancelLosingTrade {});
     }
 
     let profit = balance - conf.last_balance;
@@ -622,11 +626,11 @@ pub fn receive_cw20(
     cw20_msg: Cw20ReceiveMsg,
 ) -> VaultResult {
     match from_binary(&cw20_msg.msg)? {
-        Cw20HookMsg::Swap { .. } => Err(StableVaultError::NoSwapAvailable {}),
+        Cw20HookMsg::Swap { .. } => Err(LunaVaultError::NoSwapAvailable {}),
         Cw20HookMsg::WithdrawLiquidity {} => {
             let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
             if deps.api.addr_validate(&msg_info.sender.to_string())? != info.liquidity_token {
-                return Err(StableVaultError::Unauthorized {});
+                return Err(LunaVaultError::Unauthorized {});
             }
             try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
         }
@@ -740,7 +744,8 @@ pub fn update_state(
     deps: DepsMut,
     info: MessageInfo,
     anchor_money_market_address: Option<String>,
-    aust_address: Option<String>,
+    bluna_address: Option<String>,
+    memory_address: Option<String>,
     allow_non_whitelisted: Option<bool>,
 ) -> VaultResult {
     // Only the admin should be able to call this
@@ -753,8 +758,11 @@ pub fn update_state(
         state.anchor_money_market_address = api.addr_validate(&anchor_money_market_address)?;
     }
 
-    if let Some(aust_address) = aust_address {
-        state.aust_address = api.addr_validate(&aust_address)?;
+    if let Some(bluna_address) = bluna_address {
+        state.bluna_address = api.addr_validate(&bluna_address)?;
+    }
+    if let Some(memory_address) = memory_address {
+        state.memory_address = api.addr_validate(&memory_address)?;
     }
 
     if let Some(allow_non_whitelisted) = allow_non_whitelisted {
@@ -792,12 +800,12 @@ pub fn add_to_whitelist(
         .whitelisted_contracts
         .contains(&deps.api.addr_validate(&contract_addr)?)
     {
-        return Err(StableVaultError::AlreadyWhitelisted {});
+        return Err(LunaVaultError::AlreadyWhitelisted {});
     }
 
     // This is a limit to prevent potentially running out of gas when doing lookups on the whitelist
     if state.whitelisted_contracts.len() >= LIST_SIZE_LIMIT {
-        return Err(StableVaultError::WhitelistLimitReached {});
+        return Err(LunaVaultError::WhitelistLimitReached {});
     }
 
     // Add contract to whitelist.
@@ -824,7 +832,7 @@ pub fn remove_from_whitelist(
         .whitelisted_contracts
         .contains(&deps.api.addr_validate(&contract_addr)?)
     {
-        return Err(StableVaultError::NotWhitelisted {});
+        return Err(LunaVaultError::NotWhitelisted {});
     }
 
     // Remove contract from whitelist.
@@ -864,9 +872,9 @@ pub fn set_fee(
 }
 
 /// Checks that the given [Fee] is valid, i.e. it's lower than 100%
-fn check_fee(fee: Fee) -> Result<Fee, StableVaultError> {
+fn check_fee(fee: Fee) -> Result<Fee, LunaVaultError> {
     if fee.share >= Decimal::percent(100) {
-        return Err(StableVaultError::InvalidFee {});
+        return Err(LunaVaultError::InvalidFee {});
     }
     Ok(fee)
 }

@@ -15,7 +15,7 @@ pub fn instantiate_msg(
 ) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
         anchor_money_market_address: anchor_addr,
-        aust_address,
+        bluna_address: aust_address,
         treasury_addr: war_chest,
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),

@@ -11,11 +11,12 @@ use white_whale::fee::VaultFee;
 use crate::pool_info::PoolInfoRaw;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-// The Stablecoin-vault State contains configuration options for the vault including
+// The luna-vault State contains configuration options for the vault including
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
     pub anchor_money_market_address: Addr,
-    pub aust_address: Addr,
+    pub bluna_address: Addr,
+    pub memory_address: Addr,
     pub whitelisted_contracts: Vec<Addr>,
     pub allow_non_whitelisted: bool,
 }

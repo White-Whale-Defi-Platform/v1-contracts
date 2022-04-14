@@ -17,7 +17,7 @@ use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use terraswap::asset::AssetInfo;
 
 /**
@@ -34,7 +34,7 @@ fn successful_initialization() {
         state,
         State {
             anchor_money_market_address: deps.api.addr_validate("test_mm").unwrap(),
-            aust_address: deps.api.addr_validate("test_aust").unwrap(),
+            bluna_address: deps.api.addr_validate("test_aust").unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false
         }
@@ -106,7 +106,7 @@ fn sad_path_update_fee() {
     // Also test with exactly 100. We cant set fees as 100 otherwise theres nothing but fees
     let res = execute(deps.as_mut(), mock_env(), info.clone(), msg).unwrap_err();
     match res {
-        StableVaultError::InvalidFee {} => (),
+        LunaVaultError::InvalidFee {} => (),
         _ => panic!("DO NOT ENTER HERE"),
     }
     let msg = ExecuteMsg::SetFee {
@@ -123,7 +123,7 @@ fn sad_path_update_fee() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap_err();
     match res {
-        StableVaultError::InvalidFee {} => (),
+        LunaVaultError::InvalidFee {} => (),
         _ => panic!("DO NOT ENTER HERE"),
     }
 }
@@ -152,7 +152,7 @@ fn test_init_with_non_default_vault_lp_token() {
 
     let msg = InstantiateMsg {
         anchor_money_market_address: "test_mm".to_string(),
-        aust_address: "test_aust".to_string(),
+        bluna_address: "test_aust".to_string(),
         treasury_addr: "treasury".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),

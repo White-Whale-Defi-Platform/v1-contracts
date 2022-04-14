@@ -4,7 +4,7 @@ use cosmwasm_std::{Api, MessageInfo};
 use white_whale::ust_vault::msg::ExecuteMsg;
 
 use crate::contract::execute;
-use crate::error::StableVaultError;
+use crate::error::LunaVaultError;
 use crate::state::STATE;
 use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::mock_instantiate;
@@ -27,7 +27,7 @@ fn unsuccessful_set_state_unauthorized() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
-        Err(StableVaultError::Admin(_)) => (),
+        Err(LunaVaultError::Admin(_)) => (),
         _ => panic!("Must return StableVaultError::Admin"),
     }
 }
@@ -61,7 +61,7 @@ fn successful_set_state() {
             .unwrap()
     );
     assert_eq!(
-        new_state.aust_address,
+        new_state.bluna_address,
         deps.api.addr_validate("new_aust_address").unwrap()
     );
     assert_eq!(new_state.allow_non_whitelisted, true);
