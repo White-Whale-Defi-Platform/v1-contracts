@@ -32,8 +32,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Provide liquidity to the vault
     ProvideLiquidity { asset: Asset },
-    /// Set minimum amount of stables held liquid (not deposited into anchor)
-    SetStableCap { stable_cap: Uint128 },
+    /// Set minimum amount of luna held liquid (not deposited somewhere else)
+    SetLunaCap { luna_cap: Uint128 },
     /// Sets the withdraw fee and flash loan fee
     SetFee {
         flash_loan_fee: Option<Fee>,
@@ -112,7 +112,7 @@ pub enum VaultQueryMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolResponse {
     pub assets: [Asset; 2],
-    pub total_value_in_ust: Uint128,
+    pub total_value_in_luna: Uint128,
     pub total_share: Uint128,
     pub liquidity_token: String,
 }
@@ -123,7 +123,7 @@ pub struct DepositResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ValueResponse {
-    pub total_ust_value: Uint128,
+    pub total_luna_value: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -8,7 +8,7 @@ pub struct PoolInfo {
     pub asset_infos: [AssetInfo; 2],
     pub contract_addr: Addr,
     pub liquidity_token: Addr,
-    pub stable_cap: Uint128,
+    pub luna_cap: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -16,14 +16,14 @@ pub struct PoolInfoRaw {
     pub asset_infos: [AssetInfoRaw; 2],
     pub contract_addr: Addr,
     pub liquidity_token: Addr,
-    pub stable_cap: Uint128,
+    pub luna_cap: Uint128,
 }
 
 impl PoolInfoRaw {
     pub fn to_normal(&self, deps: Deps) -> StdResult<PoolInfo> {
         Ok(PoolInfo {
             liquidity_token: self.liquidity_token.clone(),
-            stable_cap: self.stable_cap,
+            luna_cap: self.luna_cap,
             contract_addr: self.contract_addr.clone(),
             asset_infos: [
                 self.asset_infos[0].to_normal(deps.api)?,

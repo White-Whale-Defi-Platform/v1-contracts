@@ -13,6 +13,7 @@ use terraswap::querier::{query_balance, query_supply, query_token_balance};
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 
 use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
+use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
 use white_whale::memory::LIST_SIZE_LIMIT;
@@ -85,7 +86,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
         liquidity_token: Addr::unchecked(""),
-        stable_cap: msg.stable_cap,
+        luna_cap: msg.stable_cap,
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?,
             AssetInfo::Token {
@@ -154,7 +155,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
         ExecuteMsg::ProvideLiquidity { asset } => try_provide_liquidity(deps, env, info, asset),
-        ExecuteMsg::SetStableCap { stable_cap } => set_stable_cap(deps, info, stable_cap),
+        ExecuteMsg::SetLunaCap { luna_cap } => set_luna_cap(deps, info, luna_cap),
         ExecuteMsg::SetAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
             let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
@@ -236,11 +237,11 @@ pub fn handle_flashloan(
 
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value, stables_available, _) = compute_total_value(&env, deps.as_ref(), &pool_info)?;
+    let (total_value, luna_available, _) = compute_total_value(&env, deps.as_ref(), &pool_info)?;
     let requested_asset = payload.requested_asset;
 
     // Max tax buffer will be 2 transfers of the borrowed assets
-    // Anchor -> Vault -> Caller
+    // Passive Strategy -> Vault -> Caller
     let tax_buffer = Uint128::from(2u32) * requested_asset.compute_tax(&deps.querier)?
         + Uint128::from(ROUNDING_ERR_COMPENSATION);
 
@@ -250,11 +251,12 @@ pub fn handle_flashloan(
     // Init response
     let mut response = Response::new().add_attribute("Action", "Flashloan");
 
-    // Withdraw funds from Anchor if needed
+    //TODO
+    // Withdraw funds from Passive Strategy if needed
     // FEE_BUFFER as buffer for fees and taxes
-    if (requested_asset.amount + tax_buffer) > stables_available {
+/*    if (requested_asset.amount + tax_buffer) > luna_available {
         // Attempt to remove some money from anchor
-        let to_withdraw = (requested_asset.amount + tax_buffer) - stables_available;
+        let to_withdraw = (requested_asset.amount + tax_buffer) - luna_available;
         let aust_exchange_rate = query_aust_exchange_rate(
             env.clone(),
             deps.as_ref(),
@@ -266,12 +268,13 @@ pub fn handle_flashloan(
             state.anchor_money_market_address,
             to_withdraw * aust_exchange_rate.inv().unwrap(),
         )?;
+
         // Add msg to response and update withdrawn value
         response = response
             .add_message(withdraw_msg)
             .add_attribute("Anchor withdrawal", to_withdraw.to_string())
             .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
-    }
+    }*/
 
     // If caller not whitelisted, calculate flashloan fee
 
@@ -329,19 +332,20 @@ pub fn try_provide_liquidity(
     // Received deposit to vault
     let deposit: Uint128 = asset.amount;
 
+    ///TODO double check this logic
     // Get total value in Vault
-    let (total_deposits_in_ust, stables_in_contract, _) =
+    let (total_deposits_in_luna, luna_in_contract, _) =
         compute_total_value(&env, deps.as_ref(), &info)?;
     // Get total supply of LP tokens and calculate share
     let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
     let share = if total_share == Uint128::zero()
-        || total_deposits_in_ust.checked_sub(deposit)? == Uint128::zero()
+        || total_deposits_in_luna.checked_sub(deposit)? == Uint128::zero()
     {
         // Initial share = collateral amount
         deposit
     } else {
-        deposit.multiply_ratio(total_share, total_deposits_in_ust.checked_sub(deposit)?)
+        deposit.multiply_ratio(total_share, total_deposits_in_luna.checked_sub(deposit)?)
     };
 
     // mint LP token to sender
@@ -356,9 +360,10 @@ pub fn try_provide_liquidity(
 
     let response = Response::new().add_attributes(attrs).add_message(msg);
 
-    // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
-    if stables_in_contract > info.stable_cap * Decimal::percent(150) {
-        let deposit_amount = stables_in_contract - info.stable_cap;
+    ///TODO here's where the passive yield strategy would come into play
+    /*// If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
+    if luna_in_contract > info.luna_cap * Decimal::percent(150) {
+        let deposit_amount = luna_in_contract - info.luna_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
         let deposit_msg = anchor_deposit_msg(
             deps.as_ref(),
@@ -366,15 +371,13 @@ pub fn try_provide_liquidity(
             anchor_deposit,
         )?;
         return Ok(response.add_message(deposit_msg));
-    };
+    };*/
 
     Ok(response)
 }
 
 /// Attempt to withdraw deposits. Fees are calculated and deducted in lp tokens.
-/// This allowes the war-chest to accumulate a stake in the vault.
-/// The refund is taken out of Anchor if possible.
-/// Luna holdings are not eligible for withdrawal.
+/// This allows the treasury to accumulate a stake in the vault.
 pub fn try_withdraw_liquidity(
     deps: DepsMut,
     env: Env,
@@ -397,7 +400,7 @@ pub fn try_withdraw_liquidity(
     // Calculate share of pool and requested pool value
     let lp_addr = info.liquidity_token.clone();
     let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
-    let (total_value, _, uaust_value_in_contract) =
+    let (total_value, _, luna_value_in_contract) =
         compute_total_value(&env, deps.as_ref(), &info)?;
     // Get treasury fee in LP tokens
     let treasury_fee = get_treasury_fee(deps.as_ref(), amount)?;
@@ -408,13 +411,16 @@ pub fn try_withdraw_liquidity(
 
     // Init response
     let mut response = Response::new();
+
+    //TODO logic to repay with passive yield strategy
+/*
     // Available aUST
     let max_aust_amount = query_token_balance(
         &deps.querier,
         state.bluna_address.clone(),
         env.contract.address.clone(),
     )?;
-    let mut withdrawn_ust = Asset {
+    let mut withdrawn_luna = Asset {
         info: AssetInfo::NativeToken {
             denom: denom.clone(),
         },
@@ -429,7 +435,7 @@ pub fn try_withdraw_liquidity(
             state.anchor_money_market_address.to_string(),
         )?;
 
-        if uaust_value_in_contract < refund_amount {
+        if luna_value_in_contract < refund_amount {
             // Withdraw all aUST left
             let withdraw_msg = anchor_withdraw_msg(
                 state.bluna_address.clone(),
@@ -438,7 +444,7 @@ pub fn try_withdraw_liquidity(
             )?;
             // Add msg to response and update withdrawn value
             response = response.add_message(withdraw_msg);
-            withdrawn_ust.amount = uaust_value_in_contract;
+            withdrawn_luna.amount = luna_value_in_contract;
         } else {
             // Repay user share of aUST
             let withdraw_amount = refund_amount * aust_exchange_rate.inv().unwrap();
@@ -450,18 +456,18 @@ pub fn try_withdraw_liquidity(
             )?;
             // Add msg to response and update withdrawn value
             response = response.add_message(withdraw_msg);
-            withdrawn_ust.amount = refund_amount;
+            withdrawn_luna.amount = refund_amount;
         };
         response = response
             .add_attribute("Max anchor withdrawal", max_aust_amount.to_string())
             .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
 
         // Compute tax on Anchor withdraw tx
-        let withdrawtx_tax = withdrawn_ust.compute_tax(&deps.querier)?;
+        let withdrawtx_tax = withdrawn_luna.compute_tax(&deps.querier)?;
         refund_amount -= withdrawtx_tax;
         attrs.push(("After Anchor withdraw:", refund_amount.to_string()));
     };
-
+*/
     // LP token treasury Asset
     let lp_token_treasury_fee = Asset {
         info: AssetInfo::Token {
@@ -476,23 +482,23 @@ pub fn try_withdraw_liquidity(
         lp_token_treasury_fee,
         fee_config.treasury_addr,
     )?;
-    attrs.push(("War chest fee:", treasury_fee.to_string()));
+    attrs.push(("Treasury fee:", treasury_fee.to_string()));
 
     // Construct refund message
     let refund_asset = Asset {
         info: AssetInfo::NativeToken { denom },
         amount: refund_amount,
     };
-    let tax_assed = refund_asset.deduct_tax(&deps.querier)?;
+    let tax_asset = refund_asset.deduct_tax(&deps.querier)?;
 
     let refund_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: sender,
-        amount: vec![tax_assed],
+        amount: vec![tax_asset],
     });
     // LP burn msg
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: info.liquidity_token.to_string(),
-        // Burn exludes fee
+        // Burn excludes fee
         msg: to_binary(&Cw20ExecuteMsg::Burn {
             amount: (amount - treasury_fee),
         })?,
@@ -507,6 +513,7 @@ pub fn try_withdraw_liquidity(
         .add_attributes(attrs))
 }
 
+///TODO potentially improve this function by passing the Asset, so that this component could be reused for other vaults
 /// Sends the commission fee which is a function of the profit made by the contract, forwarded by the profit-check contract
 fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultResult {
     let fees = FEE.load(deps.storage)?;
@@ -516,7 +523,7 @@ fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultRes
     // Construct commission msg
     let refund_asset = Asset {
         info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
+            denom: LUNA_DENOM.to_string(),
         },
         amount: commission_amount,
     };
@@ -558,7 +565,9 @@ pub fn after_trade(
     loan_fee: Uint128,
 ) -> VaultResult {
     // Deposit funds into anchor if applicable.
-    let response = try_anchor_deposit(deps.branch(), env.clone())?;
+    ///TODO this is where the potential passive income strategy could come into play
+    //let response = try_anchor_deposit(deps.branch(), env.clone())?;
+    let response = Response::default();
 
     let mut conf = PROFIT.load(deps.storage)?;
 
@@ -605,18 +614,18 @@ pub fn encapsulate_payload(
 
     Ok(total_response
         // Add response that:
-        // 1. Withdraws funds from Anchor if needed
+        // 1. Withdraws funds from Passive Strategy if needed
         // 2. Sends funds to the borrower
         // 3. Calls the borrow contract through the provided callback msg
         .add_submessages(response.messages)
         // After borrower actions, deposit the received funds back into
-        // Anchor if applicable
+        // Passive Strategy if applicable
         // Call profit-check to cancel the borrow if
         // no profit is made.
         .add_message(after_trade))
 }
 
-/// handler function invoked when the stablecoin-vault contract receives
+/// handler function invoked when the luna-vault contract receives
 /// a transaction. In this case it is triggered when the LP tokens are deposited
 /// into the contract
 pub fn receive_cw20(
@@ -637,32 +646,34 @@ pub fn receive_cw20(
     }
 }
 
-/// compute total value of deposits in UST and return a tuple with those values.
-/// (total, stable, aust)
+///TODO return values in UST or LUNA?
+/// compute total value of deposits in LUNA and return a tuple with those values.
+/// (total, luna, bluna)
 pub fn compute_total_value(
     env: &Env,
     deps: Deps,
     info: &PoolInfoRaw,
 ) -> StdResult<(Uint128, Uint128, Uint128)> {
     let state = STATE.load(deps.storage)?;
-    let stable_info = info.asset_infos[0].to_normal(deps.api)?;
-    let stable_denom = match stable_info {
+    let luna_info = info.asset_infos[0].to_normal(deps.api)?;
+    let luna_denom = match luna_info {
         AssetInfo::Token { .. } => String::default(),
         AssetInfo::NativeToken { denom } => denom,
     };
-    let stable_amount = query_balance(&deps.querier, info.contract_addr.clone(), stable_denom)?;
+    let luna_amount = query_balance(&deps.querier, info.contract_addr.clone(), luna_denom)?;
 
-    let aust_info = info.asset_infos[1].to_normal(deps.api)?;
+    //TODO ??? aust value -> bluna, ust parked somewhere?
+    /*let aust_info = info.asset_infos[1].to_normal(deps.api)?;
     let aust_amount = aust_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
     let aust_exchange_rate = query_aust_exchange_rate(
         env.clone(),
         deps,
         state.anchor_money_market_address.to_string(),
-    )?;
-    let aust_value_in_ust = aust_exchange_rate * aust_amount;
+    )?;*/
+    let bluna_value_in_ust = Uint128::zero();
 
-    let total_deposits_in_ust = stable_amount + aust_value_in_ust;
-    Ok((total_deposits_in_ust, stable_amount, aust_value_in_ust))
+    let total_deposits_in_luna = luna_amount + bluna_value_in_ust;
+    Ok((total_deposits_in_luna, luna_amount, bluna_value_in_ust))
 }
 
 pub fn get_treasury_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
@@ -671,21 +682,24 @@ pub fn get_treasury_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     Ok(fee)
 }
 
+
 pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let treasury_fee = get_treasury_fee(deps, amount)?;
-    let anchor_withdraw_fee = compute_tax(
+    //TODO there's no anchor fee. Maybe fee from Passive Strategy?
+    /*let anchor_withdraw_fee = compute_tax(
         deps,
-        &Coin::new((amount - treasury_fee).u128(), String::from("uusd")),
-    )?;
+        &Coin::new((amount - treasury_fee).u128(), String::from(LUNA_DENOM)),
+    )?;*/
+    let passive_strategy_fee = Uint128::zero();
     let stable_transfer_fee = compute_tax(
         deps,
         &Coin::new(
-            (amount - treasury_fee - anchor_withdraw_fee).u128(),
-            String::from("uusd"),
+            (amount - treasury_fee - passive_strategy_fee).u128(),
+            String::from(LUNA_DENOM),
         ),
     )?;
-    // Two transfers (anchor -> vault -> user) so ~2x tax.
-    Ok(treasury_fee + anchor_withdraw_fee + stable_transfer_fee)
+    // Two transfers (passive_strategy -> vault -> user) so ~2x tax.
+    Ok(treasury_fee + passive_strategy_fee + stable_transfer_fee)
 }
 
 //----------------------------------------------------------------------------------------
@@ -700,8 +714,8 @@ fn try_anchor_deposit(deps: DepsMut, env: Env) -> VaultResult {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
 
     // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
-    if stables_in_contract > info.stable_cap * Decimal::percent(150) {
-        let deposit_amount = stables_in_contract - info.stable_cap;
+    if stables_in_contract > info.luna_cap * Decimal::percent(150) {
+        let deposit_amount = stables_in_contract - info.luna_cap;
         let anchor_deposit = Coin::new(deposit_amount.u128(), stable_denom);
         let deposit_msg = anchor_deposit_msg(
             deps.as_ref(),
@@ -754,6 +768,7 @@ pub fn update_state(
     let mut state = STATE.load(deps.storage)?;
     let api = deps.api;
 
+    //TODO do we need anchor_money_market_address ?
     if let Some(anchor_money_market_address) = anchor_money_market_address {
         state.anchor_money_market_address = api.addr_validate(&anchor_money_market_address)?;
     }
@@ -773,17 +788,17 @@ pub fn update_state(
     Ok(Response::new().add_attribute("Update:", "Successful"))
 }
 
-pub fn set_stable_cap(deps: DepsMut, msg_info: MessageInfo, stable_cap: Uint128) -> VaultResult {
+pub fn set_luna_cap(deps: DepsMut, msg_info: MessageInfo, luna_cap: Uint128) -> VaultResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let previous_cap = info.stable_cap;
-    info.stable_cap = stable_cap;
+    let previous_cap = info.luna_cap;
+    info.luna_cap = luna_cap;
     POOL_INFO.save(deps.storage, &info)?;
     Ok(Response::new()
-        .add_attribute("new stable cap", stable_cap.to_string())
-        .add_attribute("previous stable cap", previous_cap.to_string()))
+        .add_attribute("new luna cap", luna_cap.to_string())
+        .add_attribute("previous luna cap", previous_cap.to_string()))
 }
 
 pub fn add_to_whitelist(
@@ -836,10 +851,10 @@ pub fn remove_from_whitelist(
     }
 
     // Remove contract from whitelist.
-    let canonical_addr = deps.api.addr_validate(&contract_addr)?;
+    let contract_validated_addr = deps.api.addr_validate(&contract_addr)?;
     state
         .whitelisted_contracts
-        .retain(|addr| *addr != canonical_addr);
+        .retain(|addr| *addr != contract_validated_addr);
     STATE.save(deps.storage, &state)?;
 
     // Respond and note the change
@@ -905,6 +920,7 @@ pub fn query_fees(deps: Deps) -> StdResult<FeeResponse> {
     })
 }
 
+//TODO ???
 // amount in UST. Equal to the value of the offered LP tokens
 pub fn estimate_withdraw_fee(
     deps: Deps,
@@ -934,11 +950,11 @@ pub fn try_query_pool_state(env: Env, deps: Deps) -> StdResult<PoolResponse> {
     let assets: [Asset; 2] = info.query_pools(deps, info.contract_addr.clone())?;
     let total_share: Uint128 = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
-    let (total_value_in_ust, _, _) = compute_total_value(&env, deps, &info)?;
+    let (total_value_in_luna, _, _) = compute_total_value(&env, deps, &info)?;
 
     Ok(PoolResponse {
         assets,
-        total_value_in_ust,
+        total_value_in_luna,
         total_share,
         liquidity_token: info.liquidity_token.into(),
     })
@@ -951,8 +967,8 @@ pub fn total_value(deps: Deps, env: &Env) -> StdResult<(Uint128, Uint128, Uint12
 
 pub fn query_total_value(env: Env, deps: Deps) -> StdResult<ValueResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_ust_value, _, _) = compute_total_value(&env, deps, &info)?;
-    Ok(ValueResponse { total_ust_value })
+    let (total_luna_value, _, _) = compute_total_value(&env, deps, &info)?;
+    Ok(ValueResponse { total_luna_value })
 }
 
 pub fn try_query_last_profit(deps: Deps) -> StdResult<LastProfitResponse> {
