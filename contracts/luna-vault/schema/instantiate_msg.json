@@ -5,10 +5,11 @@
   "required": [
     "anchor_money_market_address",
     "asset_info",
-    "aust_address",
+    "bluna_address",
     "commission_fee",
     "flash_loan_fee",
-    "stable_cap",
+    "luna_cap",
+    "memory_addr",
     "token_code_id",
     "treasury_addr",
     "treasury_fee"
@@ -20,7 +21,7 @@
     "asset_info": {
       "$ref": "#/definitions/AssetInfo"
     },
-    "aust_address": {
+    "bluna_address": {
       "type": "string"
     },
     "commission_fee": {
@@ -29,8 +30,11 @@
     "flash_loan_fee": {
       "$ref": "#/definitions/Decimal"
     },
-    "stable_cap": {
+    "luna_cap": {
       "$ref": "#/definitions/Uint128"
+    },
+    "memory_addr": {
+      "type": "string"
     },
     "token_code_id": {
       "type": "integer",

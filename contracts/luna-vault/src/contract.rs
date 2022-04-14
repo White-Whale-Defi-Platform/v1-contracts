@@ -86,7 +86,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
         liquidity_token: Addr::unchecked(""),
-        luna_cap: msg.stable_cap,
+        luna_cap: msg.luna_cap,
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?,
             AssetInfo::Token {

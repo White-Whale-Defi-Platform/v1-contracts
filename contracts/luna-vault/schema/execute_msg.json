@@ -37,19 +37,19 @@
       "additionalProperties": false
     },
     {
-      "description": "Set minimum amount of stables held liquid (not deposited into anchor)",
+      "description": "Set minimum amount of luna held liquid (not deposited somewhere else)",
       "type": "object",
       "required": [
-        "set_stable_cap"
+        "set_luna_cap"
       ],
       "properties": {
-        "set_stable_cap": {
+        "set_luna_cap": {
           "type": "object",
           "required": [
-            "stable_cap"
+            "luna_cap"
           ],
           "properties": {
-            "stable_cap": {
+            "luna_cap": {
               "$ref": "#/definitions/Uint128"
             }
           }
@@ -187,7 +187,13 @@
                 "null"
               ]
             },
-            "aust_address": {
+            "bluna_address": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "memory_address": {
               "type": [
                 "string",
                 "null"

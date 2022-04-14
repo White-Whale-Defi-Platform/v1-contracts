@@ -5,7 +5,8 @@
   "required": [
     "allow_non_whitelisted",
     "anchor_money_market_address",
-    "aust_address",
+    "bluna_address",
+    "memory_address",
     "whitelisted_contracts"
   ],
   "properties": {
@@ -15,7 +16,10 @@
     "anchor_money_market_address": {
       "$ref": "#/definitions/Addr"
     },
-    "aust_address": {
+    "bluna_address": {
+      "$ref": "#/definitions/Addr"
+    },
+    "memory_address": {
       "$ref": "#/definitions/Addr"
     },
     "whitelisted_contracts": {

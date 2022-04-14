@@ -6,7 +6,7 @@
     "assets",
     "liquidity_token",
     "total_share",
-    "total_value_in_ust"
+    "total_value_in_luna"
   ],
   "properties": {
     "assets": {
@@ -23,7 +23,7 @@
     "total_share": {
       "$ref": "#/definitions/Uint128"
     },
-    "total_value_in_ust": {
+    "total_value_in_luna": {
       "$ref": "#/definitions/Uint128"
     }
   },

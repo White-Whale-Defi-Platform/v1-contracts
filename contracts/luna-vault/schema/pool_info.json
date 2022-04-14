@@ -6,7 +6,7 @@
     "asset_infos",
     "contract_addr",
     "liquidity_token",
-    "stable_cap"
+    "luna_cap"
   ],
   "properties": {
     "asset_infos": {
@@ -23,7 +23,7 @@
     "liquidity_token": {
       "$ref": "#/definitions/Addr"
     },
-    "stable_cap": {
+    "luna_cap": {
       "$ref": "#/definitions/Uint128"
     }
   },

@@ -20,7 +20,7 @@ pub struct InstantiateMsg {
     pub treasury_fee: Decimal,
     pub flash_loan_fee: Decimal,
     pub commission_fee: Decimal,
-    pub stable_cap: Uint128,
+    pub luna_cap: Uint128,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
 }
