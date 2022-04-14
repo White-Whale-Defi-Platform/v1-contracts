@@ -47,6 +47,7 @@ terra-cosmwasm = { version = "2.2.0"}
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16.7" }
-cw20-base = { version = "0.8", features = ["library"] } 
-cw-multi-test = { version = "0.8"}
+cw20-base = { version = "0.8", features = ["library"] }
+cw-multi-test = { version = "0.13.2"}
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="e0dcab33c0a414c6cfb2c24b78ddc606f574325f", package = "terra-multi-test"}
 stablecoin-vault= {version="0.1.0", path ="../stablecoin-vault"}
