@@ -5,6 +5,7 @@ members = [
     "contracts/community-fund",
     "contracts/peg-arb",
     "contracts/stablecoin-vault",
+    "contracts/luna-vault",
     "contracts/emissions",
     "contracts/vesting",
     "contracts/tokenomics/airdrop",
