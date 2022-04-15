@@ -14,10 +14,10 @@ use white_whale::memory::LIST_SIZE_LIMIT;
 
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::{check_fee, compute_total_value, get_treasury_fee, slashing};
+use crate::helpers::{check_fee, compute_total_value, get_treasury_fee, slashing, validate_rate};
 use crate::math::decimal_division;
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE, get_finished_amount, get_unbond_batches, PARAMETERS, POOL_INFO, PROFIT, read_unbond_history, remove_unbond_wait_list, STATE, State, store_unbond_history, store_unbond_wait_list, UnbondHistory};
+use crate::state::{ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE, get_finished_amount, get_unbond_batches, PARAMETERS, Parameters, POOL_INFO, PROFIT, read_unbond_history, remove_unbond_wait_list, STATE, State, store_unbond_history, store_unbond_wait_list, UnbondHistory};
 
 /// handler function invoked when the luna-vault contract receives
 /// a transaction. In this case it is triggered when the LP tokens are deposited
@@ -547,7 +547,15 @@ pub fn update_state(
     info: MessageInfo,
     bluna_address: Option<String>,
     memory_address: Option<String>,
+    whitelisted_contracts: Option<Vec<String>>,
     allow_non_whitelisted: Option<bool>,
+    exchange_rate: Option<Decimal>,
+    total_bond_amount: Option<Uint128>,
+    last_index_modification: Option<u64>,
+    prev_vault_balance: Option<Uint128>,
+    actual_unbonded_amount: Option<Uint128>,
+    last_unbonded_time: Option<u64>,
+    last_processed_batch: Option<u64>,
 ) -> VaultResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -561,11 +569,72 @@ pub fn update_state(
     if let Some(memory_address) = memory_address {
         state.memory_address = api.addr_validate(&memory_address)?;
     }
-
+    if let Some(whitelisted_contracts) = whitelisted_contracts {
+        let mut contracts = vec![];
+        for contract_addr in whitelisted_contracts {
+            contracts.push(deps.api.addr_validate(&contract_addr)?);
+        }
+        state.whitelisted_contracts = contracts;
+    }
     if let Some(allow_non_whitelisted) = allow_non_whitelisted {
         state.allow_non_whitelisted = allow_non_whitelisted;
+    }
+    if let Some(exchange_rate) = exchange_rate {
+        state.exchange_rate = validate_rate(exchange_rate.unwrap_or(state.exchange_rate))?;
+    }
+    if let Some(total_bond_amount) = total_bond_amount {
+        state.total_bond_amount = total_bond_amount.unwrap_or(state.total_bond_amount);
+    }
+    if let Some(last_index_modification) = last_index_modification {
+        state.last_index_modification = last_index_modification.unwrap_or(state.last_index_modification);
+    }
+    if let Some(prev_vault_balance) = prev_vault_balance {
+        state.prev_vault_balance = prev_vault_balance.unwrap_or(state.prev_vault_balance);
+    }
+    if let Some(actual_unbonded_amount) = actual_unbonded_amount {
+        state.actual_unbonded_amount = actual_unbonded_amount.unwrap_or(state.actual_unbonded_amount);
+    }
+    if let Some(last_unbonded_time) = last_unbonded_time {
+        state.last_unbonded_time = last_unbonded_time.unwrap_or(state.last_unbonded_time);
+    }
+    if let Some(last_processed_batch) = last_processed_batch {
+        state.last_processed_batch = last_processed_batch.unwrap_or(state.last_processed_batch);
     }
 
     STATE.save(deps.storage, &state)?;
     Ok(Response::new().add_attribute("Update:", "Successful"))
+}
+
+/// Update general parameters
+/// Only creator/owner is allowed to execute
+#[allow(clippy::too_many_arguments)]
+pub fn update_params(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    epoch_period: Option<u64>,
+    unbonding_period: Option<u64>,
+    peg_recovery_fee: Option<Decimal>,
+    er_threshold: Option<Decimal>,
+) -> StdResult<Response> {
+    // only owner can send this message.
+    let config = CONFIG.load(deps.storage)?;
+
+    if info.sender != config.owner {
+        return Err(StdError::generic_err("unauthorized"));
+    }
+
+    let params: Parameters = PARAMETERS.load(deps.storage)?;
+
+    let new_params = Parameters {
+        epoch_period: epoch_period.unwrap_or(params.epoch_period),
+        underlying_coin_denom: params.underlying_coin_denom,
+        unbonding_period: unbonding_period.unwrap_or(params.unbonding_period),
+        peg_recovery_fee: validate_rate(peg_recovery_fee.unwrap_or(params.peg_recovery_fee))?,
+        er_threshold: validate_rate(er_threshold.unwrap_or(params.er_threshold))?,
+    };
+
+    PARAMETERS.save(deps.storage, &new_params)?;
+
+    Ok(Response::new().add_attributes(vec![attr("action", "update_params")]))
 }

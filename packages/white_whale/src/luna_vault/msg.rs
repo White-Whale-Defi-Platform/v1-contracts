@@ -57,7 +57,23 @@ pub enum ExecuteMsg {
     UpdateState {
         bluna_address: Option<String>,
         memory_address: Option<String>,
+        whitelisted_contracts: Option<Vec<String>>,
         allow_non_whitelisted: Option<bool>,
+
+        exchange_rate: Option<Decimal>,
+        total_bond_amount: Option<Uint128>,
+        last_index_modification: Option<u64>,
+        prev_vault_balance: Option<Uint128>,
+        actual_unbonded_amount: Option<Uint128>,
+        last_unbonded_time: Option<u64>,
+        last_processed_batch: Option<u64>,
+    },
+    /// Update the parameters that are needed for the contract
+    UpdateParams {
+        epoch_period: Option<u64>,
+        unbonding_period: Option<u64>,
+        peg_recovery_fee: Option<Decimal>,
+        er_threshold: Option<Decimal>,
     },
     /// Execute a flashloan
     FlashLoan { payload: FlashLoanPayload },
