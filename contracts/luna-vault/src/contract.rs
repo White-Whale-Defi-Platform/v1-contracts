@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
-    DepsMut, Env, Fraction, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult, SubMsg,
+    Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, entry_point, Env,
+    Fraction, from_binary, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, to_binary,
     Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -8,6 +8,7 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
 use protobuf::Message;
 use semver::Version;
 use terraswap::asset::{Asset, AssetInfo};
+use terraswap::asset::AssetInfo::Token;
 use terraswap::pair::Cw20HookMsg;
 use terraswap::querier::{query_balance, query_supply, query_token_balance};
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
@@ -16,18 +17,19 @@ use white_whale::anchor::{anchor_deposit_msg, anchor_withdraw_msg};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
-use white_whale::memory::LIST_SIZE_LIMIT;
-use white_whale::query::anchor::query_aust_exchange_rate;
-use white_whale::tax::{compute_tax, into_msg_without_tax};
 use white_whale::luna_vault::msg::*;
 use white_whale::luna_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
+use white_whale::memory::LIST_SIZE_LIMIT;
+use white_whale::query::anchor::query_aust_exchange_rate;
+use white_whale::tax::{compute_tax, into_msg_without_tax};
 
 use crate::error::LunaVaultError;
+use crate::helpers::validate_rate;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::response::MsgInstantiateContractResponse;
-use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
+use crate::state::{ADMIN, CURRENT_BATCH, CurrentBatch, DEPOSIT_INFO, FEE, Parameters, PARAMETERS, POOL_INFO, PROFIT, ProfitCheck, State, STATE};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale Luna Vault LP Token";
@@ -50,15 +52,29 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         memory_address: deps.api.addr_validate(&msg.memory_addr)?,
         whitelisted_contracts: vec![],
         allow_non_whitelisted: false,
+
+        exchange_rate: Decimal::one(),
+        total_bond_amount: Uint128::zero(),
+        last_index_modification: env.block.time.seconds(),
+        last_unbonded_time: env.block.time.seconds(),
+        last_processed_batch: 0u64,
+        ..Default::default()
     };
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
 
-    // Check if the provided asset is a native token
-    if !msg.asset_info.is_native_token() {
-        return Err(LunaVaultError::NotNativeToken {});
-    }
+    // Check if the provided asset is the luna token
+    let underlying_coin_denom = match msg.asset_info {
+        AssetInfo::Token { .. } => return Err(LunaVaultError::NotNativeToken {}),
+        AssetInfo::NativeToken { denom } => {
+            if denom != LUNA_DENOM {
+                return Err(LunaVaultError::NotLunaToken {});
+            }
+            denom
+        }
+    };
+
     DEPOSIT_INFO.save(
         deps.storage,
         &DepositInfo {
@@ -82,6 +98,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     FEE.save(deps.storage, &fee_config)?;
 
     //TODO ???
+    //TODO add cluna to the asset info pool?
     // Setup and save the relevant pools info in state. The saved pool will be the one used by the vault.
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
@@ -92,7 +109,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
             AssetInfo::Token {
                 contract_addr: msg.bluna_address,
             }
-            .to_raw(deps.api)?,
+                .to_raw(deps.api)?,
         ],
     };
     POOL_INFO.save(deps.storage, pool_info)?;
@@ -102,6 +119,23 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         last_profit: Uint128::zero(),
     };
     PROFIT.save(deps.storage, &profit)?;
+
+    // Setup parameters
+    let params = Parameters {
+        epoch_period: msg.epoch_period,
+        underlying_coin_denom,
+        unbonding_period: msg.unbonding_period,
+        peg_recovery_fee: validate_rate(msg.peg_recovery_fee)?,
+        er_threshold: validate_rate(msg.er_threshold)?,
+    };
+    PARAMETERS.save(deps.storage, &params)?;
+
+    // Setup current batch
+    let batch = CurrentBatch {
+        id: 1,
+        requested_with_fee: Default::default(),
+    };
+    CURRENT_BATCH.save(deps.storage, &batch)?;
 
     // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
@@ -132,7 +166,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
             funds: vec![],
             label: "White Whale Luna Vault LP".to_string(),
         }
-        .into(),
+            .into(),
         gas_limit: None,
         id: u64::from(INSTANTIATE_REPLY_ID),
         reply_on: ReplyOn::Success,
@@ -254,27 +288,27 @@ pub fn handle_flashloan(
     //TODO
     // Withdraw funds from Passive Strategy if needed
     // FEE_BUFFER as buffer for fees and taxes
-/*    if (requested_asset.amount + tax_buffer) > luna_available {
-        // Attempt to remove some money from anchor
-        let to_withdraw = (requested_asset.amount + tax_buffer) - luna_available;
-        let aust_exchange_rate = query_aust_exchange_rate(
-            env.clone(),
-            deps.as_ref(),
-            state.anchor_money_market_address.to_string(),
-        )?;
+    /*    if (requested_asset.amount + tax_buffer) > luna_available {
+            // Attempt to remove some money from anchor
+            let to_withdraw = (requested_asset.amount + tax_buffer) - luna_available;
+            let aust_exchange_rate = query_aust_exchange_rate(
+                env.clone(),
+                deps.as_ref(),
+                state.anchor_money_market_address.to_string(),
+            )?;
 
-        let withdraw_msg = anchor_withdraw_msg(
-            state.bluna_address,
-            state.anchor_money_market_address,
-            to_withdraw * aust_exchange_rate.inv().unwrap(),
-        )?;
+            let withdraw_msg = anchor_withdraw_msg(
+                state.bluna_address,
+                state.anchor_money_market_address,
+                to_withdraw * aust_exchange_rate.inv().unwrap(),
+            )?;
 
-        // Add msg to response and update withdrawn value
-        response = response
-            .add_message(withdraw_msg)
-            .add_attribute("Anchor withdrawal", to_withdraw.to_string())
-            .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
-    }*/
+            // Add msg to response and update withdrawn value
+            response = response
+                .add_message(withdraw_msg)
+                .add_attribute("Anchor withdrawal", to_withdraw.to_string())
+                .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
+        }*/
 
     // If caller not whitelisted, calculate flashloan fee
 
@@ -413,61 +447,61 @@ pub fn try_withdraw_liquidity(
     let mut response = Response::new();
 
     //TODO logic to repay with passive yield strategy
-/*
-    // Available aUST
-    let max_aust_amount = query_token_balance(
-        &deps.querier,
-        state.bluna_address.clone(),
-        env.contract.address.clone(),
-    )?;
-    let mut withdrawn_luna = Asset {
-        info: AssetInfo::NativeToken {
-            denom: denom.clone(),
-        },
-        amount: Uint128::zero(),
-    };
-
-    // If we have aUST, try repay with that
-    if max_aust_amount > Uint128::zero() {
-        let aust_exchange_rate = query_aust_exchange_rate(
-            env,
-            deps.as_ref(),
-            state.anchor_money_market_address.to_string(),
+    /*
+        // Available aUST
+        let max_aust_amount = query_token_balance(
+            &deps.querier,
+            state.bluna_address.clone(),
+            env.contract.address.clone(),
         )?;
-
-        if luna_value_in_contract < refund_amount {
-            // Withdraw all aUST left
-            let withdraw_msg = anchor_withdraw_msg(
-                state.bluna_address.clone(),
-                state.anchor_money_market_address,
-                max_aust_amount,
-            )?;
-            // Add msg to response and update withdrawn value
-            response = response.add_message(withdraw_msg);
-            withdrawn_luna.amount = luna_value_in_contract;
-        } else {
-            // Repay user share of aUST
-            let withdraw_amount = refund_amount * aust_exchange_rate.inv().unwrap();
-
-            let withdraw_msg = anchor_withdraw_msg(
-                state.bluna_address,
-                state.anchor_money_market_address,
-                withdraw_amount,
-            )?;
-            // Add msg to response and update withdrawn value
-            response = response.add_message(withdraw_msg);
-            withdrawn_luna.amount = refund_amount;
+        let mut withdrawn_luna = Asset {
+            info: AssetInfo::NativeToken {
+                denom: denom.clone(),
+            },
+            amount: Uint128::zero(),
         };
-        response = response
-            .add_attribute("Max anchor withdrawal", max_aust_amount.to_string())
-            .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
 
-        // Compute tax on Anchor withdraw tx
-        let withdrawtx_tax = withdrawn_luna.compute_tax(&deps.querier)?;
-        refund_amount -= withdrawtx_tax;
-        attrs.push(("After Anchor withdraw:", refund_amount.to_string()));
-    };
-*/
+        // If we have aUST, try repay with that
+        if max_aust_amount > Uint128::zero() {
+            let aust_exchange_rate = query_aust_exchange_rate(
+                env,
+                deps.as_ref(),
+                state.anchor_money_market_address.to_string(),
+            )?;
+
+            if luna_value_in_contract < refund_amount {
+                // Withdraw all aUST left
+                let withdraw_msg = anchor_withdraw_msg(
+                    state.bluna_address.clone(),
+                    state.anchor_money_market_address,
+                    max_aust_amount,
+                )?;
+                // Add msg to response and update withdrawn value
+                response = response.add_message(withdraw_msg);
+                withdrawn_luna.amount = luna_value_in_contract;
+            } else {
+                // Repay user share of aUST
+                let withdraw_amount = refund_amount * aust_exchange_rate.inv().unwrap();
+
+                let withdraw_msg = anchor_withdraw_msg(
+                    state.bluna_address,
+                    state.anchor_money_market_address,
+                    withdraw_amount,
+                )?;
+                // Add msg to response and update withdrawn value
+                response = response.add_message(withdraw_msg);
+                withdrawn_luna.amount = refund_amount;
+            };
+            response = response
+                .add_attribute("Max anchor withdrawal", max_aust_amount.to_string())
+                .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
+
+            // Compute tax on Anchor withdraw tx
+            let withdrawtx_tax = withdrawn_luna.compute_tax(&deps.querier)?;
+            refund_amount -= withdrawtx_tax;
+            attrs.push(("After Anchor withdraw:", refund_amount.to_string()));
+        };
+    */
     // LP token treasury Asset
     let lp_token_treasury_fee = Asset {
         info: AssetInfo::Token {

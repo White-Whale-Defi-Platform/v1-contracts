@@ -23,6 +23,10 @@ pub struct InstantiateMsg {
     pub luna_cap: Uint128,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
+    pub epoch_period: u64,
+    pub unbonding_period: u64,
+    pub peg_recovery_fee: Decimal,
+    pub er_threshold: Decimal,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]

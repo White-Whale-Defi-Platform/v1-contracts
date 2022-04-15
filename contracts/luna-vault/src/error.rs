@@ -32,6 +32,9 @@ pub enum LunaVaultError {
     #[error("The provided asset is not a native token.")]
     NotNativeToken {},
 
+    #[error("The provided asset is not the luna token.")]
+    NotLunaToken {},
+
     #[error("Not enough funds to perform trade")]
     Broke {},
 
