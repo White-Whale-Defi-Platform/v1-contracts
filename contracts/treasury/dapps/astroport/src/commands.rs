@@ -18,7 +18,7 @@ use crate::contract::AstroportResult;
 use crate::error::AstroportError;
 use crate::utils::has_sufficient_balance;
 
-/// Constructs and forwards the terraswap provide_liquidity message
+/// Constructs and forwards the astroport provide_liquidity message
 pub fn provide_liquidity(
     deps: Deps,
     msg_info: MessageInfo,

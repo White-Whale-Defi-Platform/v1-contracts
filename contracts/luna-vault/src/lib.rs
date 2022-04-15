@@ -9,3 +9,4 @@ pub mod state;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod tests;
 mod helpers;
+mod commands;

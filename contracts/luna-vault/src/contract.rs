@@ -24,6 +24,7 @@ use white_whale::luna_vault::msg::{
 use white_whale::memory::LIST_SIZE_LIMIT;
 use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::tax::{compute_tax, into_msg_without_tax};
+use crate::commands;
 
 use crate::error::LunaVaultError;
 use crate::helpers::validate_rate;
@@ -188,7 +189,7 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
         ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
-        ExecuteMsg::ProvideLiquidity { asset } => try_provide_liquidity(deps, env, info, asset),
+        ExecuteMsg::ProvideLiquidity { asset } => commands::provide_liquidity(deps, env, info, asset),
         ExecuteMsg::SetLunaCap { luna_cap } => set_luna_cap(deps, info, luna_cap),
         ExecuteMsg::SetAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
@@ -336,78 +337,6 @@ pub fn handle_flashloan(
 
     // Call encapsulate function
     encapsulate_payload(deps.as_ref(), env, response, loan_fee)
-}
-
-// This function should be called alongside a deposit of UST into the contract.
-pub fn try_provide_liquidity(
-    deps: DepsMut,
-    env: Env,
-    msg_info: MessageInfo,
-    asset: Asset,
-) -> VaultResult {
-    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
-    let profit = PROFIT.load(deps.storage)?;
-    let state = STATE.load(deps.storage)?;
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let denom = deposit_info.clone().get_denom()?;
-
-    if profit.last_balance != Uint128::zero() {
-        return Err(LunaVaultError::DepositDuringLoan {});
-    }
-
-    // Init vector for logging
-    let mut attrs = vec![];
-    // Check if deposit matches claimed deposit.
-    deposit_info.assert(&asset.info)?;
-    asset.assert_sent_native_token_balance(&msg_info)?;
-    attrs.push(("Action:", String::from("Deposit to vault")));
-    attrs.push(("Received funds:", asset.to_string()));
-
-    // Received deposit to vault
-    let deposit: Uint128 = asset.amount;
-
-    ///TODO double check this logic
-    // Get total value in Vault
-    let (total_deposits_in_luna, luna_in_contract, _) =
-        compute_total_value(&env, deps.as_ref(), &info)?;
-    // Get total supply of LP tokens and calculate share
-    let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
-
-    let share = if total_share == Uint128::zero()
-        || total_deposits_in_luna.checked_sub(deposit)? == Uint128::zero()
-    {
-        // Initial share = collateral amount
-        deposit
-    } else {
-        deposit.multiply_ratio(total_share, total_deposits_in_luna.checked_sub(deposit)?)
-    };
-
-    // mint LP token to sender
-    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: info.liquidity_token.to_string(),
-        msg: to_binary(&Cw20ExecuteMsg::Mint {
-            recipient: msg_info.sender.to_string(),
-            amount: share,
-        })?,
-        funds: vec![],
-    });
-
-    let response = Response::new().add_attributes(attrs).add_message(msg);
-
-    ///TODO here's where the passive yield strategy would come into play
-    /*// If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
-    if luna_in_contract > info.luna_cap * Decimal::percent(150) {
-        let deposit_amount = luna_in_contract - info.luna_cap;
-        let anchor_deposit = Coin::new(deposit_amount.u128(), denom);
-        let deposit_msg = anchor_deposit_msg(
-            deps.as_ref(),
-            state.anchor_money_market_address,
-            anchor_deposit,
-        )?;
-        return Ok(response.add_message(deposit_msg));
-    };*/
-
-    Ok(response)
 }
 
 /// Attempt to withdraw deposits. Fees are calculated and deducted in lp tokens.

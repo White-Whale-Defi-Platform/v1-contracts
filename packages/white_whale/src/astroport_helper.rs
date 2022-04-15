@@ -180,3 +180,7 @@ pub fn create_astroport_msg(
         to: None,
     }
 }
+
+pub fn create_astroport_lp_msg() -> ExecuteMsg {
+
+}
