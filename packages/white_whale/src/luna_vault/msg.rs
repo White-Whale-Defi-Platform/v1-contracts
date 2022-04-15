@@ -53,7 +53,7 @@ pub enum ExecuteMsg {
     AddToWhitelist { contract_addr: String },
     /// Remove provided contract from the whitelisted contracts
     RemoveFromWhitelist { contract_addr: String },
-    /// Update the interal State struct
+    /// Update the internal State struct
     UpdateState {
         bluna_address: Option<String>,
         memory_address: Option<String>,

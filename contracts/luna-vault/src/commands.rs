@@ -541,6 +541,8 @@ pub fn remove_from_whitelist(
     Ok(Response::new().add_attribute("Removed contract from whitelist: ", contract_addr))
 }
 
+///TODO revise as there are variables in there that are modified when bonding/unbonding
+/// Also look at the ExecuteMsg::UpdateGlobalIndex, investigate how is it triggered and what is it for
 /// Updates the contract state
 pub fn update_state(
     deps: DepsMut,
