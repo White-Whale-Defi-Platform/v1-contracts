@@ -4,9 +4,10 @@ pub mod pool_info;
 pub mod querier;
 pub mod response;
 pub mod state;
+mod helpers;
+mod commands;
+mod math;
 
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
 pub mod tests;
-mod helpers;
-mod commands;

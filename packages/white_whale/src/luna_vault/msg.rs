@@ -13,6 +13,8 @@ use terraswap::asset::{Asset, AssetInfo};
 pub struct InstantiateMsg {
     pub anchor_money_market_address: String,
     pub bluna_address: String,
+    pub cluna_address: String,
+    pub astro_lp_address: String,
     pub treasury_addr: String,
     pub memory_addr: String,
     pub asset_info: AssetInfo,
@@ -115,7 +117,7 @@ pub enum VaultQueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct PoolResponse {
-    pub assets: [Asset; 2],
+    pub assets: [Asset; 4],
     pub total_value_in_luna: Uint128,
     pub total_share: Uint128,
     pub liquidity_token: String,

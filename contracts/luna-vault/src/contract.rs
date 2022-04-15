@@ -1,10 +1,6 @@
-use cosmwasm_std::{
-    Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, entry_point, Env,
-    Fraction, from_binary, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, to_binary,
-    Uint128, WasmMsg,
-};
+use cosmwasm_std::{Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, entry_point, Env, Fraction, from_binary, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, to_binary, Uint128, WasmMsg, WasmQuery};
 use cw2::{get_contract_version, set_contract_version};
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
+use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg, MinterResponse, TokenInfoResponse};
 use protobuf::Message;
 use semver::Version;
 use terraswap::asset::{Asset, AssetInfo};
@@ -22,12 +18,11 @@ use white_whale::luna_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, ValueResponse, VaultQueryMsg as QueryMsg,
 };
 use white_whale::memory::LIST_SIZE_LIMIT;
-use white_whale::query::anchor::query_aust_exchange_rate;
 use white_whale::tax::{compute_tax, into_msg_without_tax};
-use crate::commands;
 
+use crate::commands;
 use crate::error::LunaVaultError;
-use crate::helpers::validate_rate;
+use crate::helpers::{compute_total_value, validate_rate};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{ADMIN, CURRENT_BATCH, CurrentBatch, DEPOSIT_INFO, FEE, Parameters, PARAMETERS, POOL_INFO, PROFIT, ProfitCheck, State, STATE};
@@ -98,19 +93,15 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
 
     FEE.save(deps.storage, &fee_config)?;
 
-    //TODO ???
-    //TODO add cluna to the asset info pool?
-    // Setup and save the relevant pools info in state. The saved pool will be the one used by the vault.
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
         liquidity_token: Addr::unchecked(""),
         luna_cap: msg.luna_cap,
         asset_infos: [
-            msg.asset_info.to_raw(deps.api)?,
-            AssetInfo::Token {
-                contract_addr: msg.bluna_address,
-            }
-                .to_raw(deps.api)?,
+            msg.asset_info.to_raw(deps.api)?, // 0 - luna
+            AssetInfo::Token { contract_addr: msg.astro_lp_address }.to_raw(deps.api)?,  // 1 - astro lp
+            AssetInfo::Token { contract_addr: msg.bluna_address }.to_raw(deps.api)?, // 2 - bluna
+            AssetInfo::Token { contract_addr: msg.cluna_address }.to_raw(deps.api)? // 3 - cluna
         ],
     };
     POOL_INFO.save(deps.storage, pool_info)?;
@@ -272,7 +263,7 @@ pub fn handle_flashloan(
 
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value, luna_available, _) = compute_total_value(&env, deps.as_ref(), &pool_info)?;
+    let (total_value, luna_available, _, _, _) = compute_total_value(&env, deps.as_ref(), &pool_info)?;
     let requested_asset = payload.requested_asset;
 
     // Max tax buffer will be 2 transfers of the borrowed assets
@@ -363,7 +354,7 @@ pub fn try_withdraw_liquidity(
     // Calculate share of pool and requested pool value
     let lp_addr = info.liquidity_token.clone();
     let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
-    let (total_value, _, luna_value_in_contract) =
+    let (total_value, luna_value_in_contract, _, _, _) =
         compute_total_value(&env, deps.as_ref(), &info)?;
     // Get treasury fee in LP tokens
     let treasury_fee = get_treasury_fee(deps.as_ref(), amount)?;
@@ -609,35 +600,6 @@ pub fn receive_cw20(
     }
 }
 
-///TODO return values in UST or LUNA?
-/// compute total value of deposits in LUNA and return a tuple with those values.
-/// (total, luna, bluna)
-pub fn compute_total_value(
-    env: &Env,
-    deps: Deps,
-    info: &PoolInfoRaw,
-) -> StdResult<(Uint128, Uint128, Uint128)> {
-    let state = STATE.load(deps.storage)?;
-    let luna_info = info.asset_infos[0].to_normal(deps.api)?;
-    let luna_denom = match luna_info {
-        AssetInfo::Token { .. } => String::default(),
-        AssetInfo::NativeToken { denom } => denom,
-    };
-    let luna_amount = query_balance(&deps.querier, info.contract_addr.clone(), luna_denom)?;
-
-    //TODO ??? aust value -> bluna, ust parked somewhere?
-    /*let aust_info = info.asset_infos[1].to_normal(deps.api)?;
-    let aust_amount = aust_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
-    let aust_exchange_rate = query_aust_exchange_rate(
-        env.clone(),
-        deps,
-        state.anchor_money_market_address.to_string(),
-    )?;*/
-    let bluna_value_in_ust = Uint128::zero();
-
-    let total_deposits_in_luna = luna_amount + bluna_value_in_ust;
-    Ok((total_deposits_in_luna, luna_amount, bluna_value_in_ust))
-}
 
 pub fn get_treasury_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let fee_config = FEE.load(deps.storage)?;
@@ -910,10 +872,10 @@ pub fn try_query_state(deps: Deps) -> StdResult<State> {
 
 pub fn try_query_pool_state(env: Env, deps: Deps) -> StdResult<PoolResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let assets: [Asset; 2] = info.query_pools(deps, info.contract_addr.clone())?;
+    let assets: [Asset; 4] = info.query_pools(deps, info.contract_addr.clone())?;
     let total_share: Uint128 = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
-    let (total_value_in_luna, _, _) = compute_total_value(&env, deps, &info)?;
+    let (total_value_in_luna, _, _, _, _) = compute_total_value(&env, deps, &info)?;
 
     Ok(PoolResponse {
         assets,
@@ -923,14 +885,14 @@ pub fn try_query_pool_state(env: Env, deps: Deps) -> StdResult<PoolResponse> {
     })
 }
 
-pub fn total_value(deps: Deps, env: &Env) -> StdResult<(Uint128, Uint128, Uint128)> {
+pub fn total_value(deps: Deps, env: &Env) -> StdResult<(Uint128, Uint128, Uint128, Uint128, Uint128)> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     compute_total_value(env, deps, &info)
 }
 
 pub fn query_total_value(env: Env, deps: Deps) -> StdResult<ValueResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_luna_value, _, _) = compute_total_value(&env, deps, &info)?;
+    let (total_luna_value, _, _, _, _) = compute_total_value(&env, deps, &info)?;
     Ok(ValueResponse { total_luna_value })
 }
 
@@ -947,3 +909,4 @@ pub fn try_query_last_balance(deps: Deps) -> StdResult<LastBalanceResponse> {
         last_balance: conf.last_balance,
     })
 }
+
