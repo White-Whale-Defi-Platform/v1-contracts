@@ -1,6 +1,6 @@
 use std::borrow::BorrowMut;
 
-use cosmwasm_std::{attr, BankMsg, Coin, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError, StdResult, Storage, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::{Api, attr, BankMsg, Coin, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError, StdResult, Storage, to_binary, Uint128, WasmMsg};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_supply;
@@ -8,14 +8,16 @@ use terraswap::querier::query_supply;
 use signed_integer::SignedInt;
 use white_whale::anchor::anchor_deposit_msg;
 use white_whale::astroport_helper::{create_astroport_lp_msg, create_astroport_msg};
+use white_whale::fee::Fee;
 use white_whale::luna_vault::msg::Cw20HookMsg;
+use white_whale::memory::LIST_SIZE_LIMIT;
 
-use crate::contract::{get_treasury_fee, VaultResult};
+use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::{compute_total_value, slashing};
+use crate::helpers::{check_fee, compute_total_value, get_treasury_fee, slashing};
 use crate::math::decimal_division;
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{CURRENT_BATCH, DEPOSIT_INFO, FEE, get_finished_amount, get_unbond_batches, PARAMETERS, POOL_INFO, PROFIT, read_unbond_history, remove_unbond_wait_list, STATE, State, store_unbond_history, store_unbond_wait_list, UnbondHistory};
+use crate::state::{ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE, get_finished_amount, get_unbond_batches, PARAMETERS, POOL_INFO, PROFIT, read_unbond_history, remove_unbond_wait_list, STATE, State, store_unbond_history, store_unbond_wait_list, UnbondHistory};
 
 /// handler function invoked when the luna-vault contract receives
 /// a transaction. In this case it is triggered when the LP tokens are deposited
@@ -425,4 +427,145 @@ fn _process_withdraw_rate(
     STATE.save(storage, &state)?;
 
     Ok(())
+}
+
+/// Sets the liquid luna cap on the vault.
+pub fn set_luna_cap(deps: DepsMut, msg_info: MessageInfo, luna_cap: Uint128) -> VaultResult {
+    // Only the admin should be able to call this
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let previous_cap = info.luna_cap;
+    info.luna_cap = luna_cap;
+    POOL_INFO.save(deps.storage, &info)?;
+    Ok(Response::new()
+        .add_attribute("new luna cap", luna_cap.to_string())
+        .add_attribute("previous luna cap", previous_cap.to_string()))
+}
+
+/// Sets a new admin
+pub fn set_admin(deps: DepsMut, info: MessageInfo, admin: String) -> VaultResult {
+    let admin_addr = deps.api.addr_validate(&admin)?;
+    let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
+    ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
+    Ok(Response::default()
+        .add_attribute("previous admin", previous_admin)
+        .add_attribute("admin", admin))
+}
+
+/// Sets new fees for vault, flashloan and treasury
+pub fn set_fee(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    flash_loan_fee: Option<Fee>,
+    treasury_fee: Option<Fee>,
+    commission_fee: Option<Fee>,
+) -> VaultResult {
+    // Only the admin should be able to call this
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+    let mut fee_config = FEE.load(deps.storage)?;
+
+    if let Some(fee) = flash_loan_fee {
+        fee_config.flash_loan_fee = check_fee(fee)?;
+    }
+    if let Some(fee) = treasury_fee {
+        fee_config.treasury_fee = check_fee(fee)?;
+    }
+    if let Some(fee) = commission_fee {
+        fee_config.commission_fee = check_fee(fee)?;
+    }
+
+    FEE.save(deps.storage, &fee_config)?;
+    Ok(Response::default())
+}
+
+/// Adds a contract to the whitelist
+pub fn add_to_whitelist(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    contract_addr: String,
+) -> VaultResult {
+    // Only the admin should be able to call this
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    // Check if contract is already in whitelist
+    if state
+        .whitelisted_contracts
+        .contains(&deps.api.addr_validate(&contract_addr)?)
+    {
+        return Err(LunaVaultError::AlreadyWhitelisted {});
+    }
+
+    // This is a limit to prevent potentially running out of gas when doing lookups on the whitelist
+    if state.whitelisted_contracts.len() >= LIST_SIZE_LIMIT {
+        return Err(LunaVaultError::WhitelistLimitReached {});
+    }
+
+    // Add contract to whitelist.
+    state
+        .whitelisted_contracts
+        .push(deps.api.addr_validate(&contract_addr)?);
+    STATE.save(deps.storage, &state)?;
+
+    // Respond and note the change
+    Ok(Response::new().add_attribute("Added contract to whitelist: ", contract_addr))
+}
+
+/// Removes a contract from the whitelist
+pub fn remove_from_whitelist(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    contract_addr: String,
+) -> VaultResult {
+    // Only the admin should be able to call this
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    // Check if contract is in whitelist
+    if !state
+        .whitelisted_contracts
+        .contains(&deps.api.addr_validate(&contract_addr)?)
+    {
+        return Err(LunaVaultError::NotWhitelisted {});
+    }
+
+    // Remove contract from whitelist.
+    let contract_validated_addr = deps.api.addr_validate(&contract_addr)?;
+    state
+        .whitelisted_contracts
+        .retain(|addr| *addr != contract_validated_addr);
+    STATE.save(deps.storage, &state)?;
+
+    // Respond and note the change
+    Ok(Response::new().add_attribute("Removed contract from whitelist: ", contract_addr))
+}
+
+/// Updates the contract state
+pub fn update_state(
+    deps: DepsMut,
+    info: MessageInfo,
+    bluna_address: Option<String>,
+    memory_address: Option<String>,
+    allow_non_whitelisted: Option<bool>,
+) -> VaultResult {
+    // Only the admin should be able to call this
+    ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+    let api = deps.api;
+
+    if let Some(bluna_address) = bluna_address {
+        state.bluna_address = api.addr_validate(&bluna_address)?;
+    }
+    if let Some(memory_address) = memory_address {
+        state.memory_address = api.addr_validate(&memory_address)?;
+    }
+
+    if let Some(allow_non_whitelisted) = allow_non_whitelisted {
+        state.allow_non_whitelisted = allow_non_whitelisted;
+    }
+
+    STATE.save(deps.storage, &state)?;
+    Ok(Response::new().add_attribute("Update:", "Successful"))
 }

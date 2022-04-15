@@ -8,6 +8,8 @@ mod helpers;
 mod commands;
 mod math;
 mod deserializer;
+mod queries;
+mod flashloan;
 
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]

@@ -1,11 +1,15 @@
-use cosmwasm_std::{Decimal, Deps, DepsMut, Env, StdError, StdResult, Uint128};
+use cosmwasm_std::{Coin, Decimal, Deps, DepsMut, Env, StdError, StdResult, Uint128};
 use terraswap::asset::AssetInfo;
 use terraswap::querier::{query_balance, query_supply};
+use white_whale::denom::LUNA_DENOM;
+use white_whale::fee::Fee;
 
 use white_whale::query::astroport::query_astro_lp_exchange_rate;
+use white_whale::tax::compute_tax;
+use crate::error::LunaVaultError;
 
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{CURRENT_BATCH, Parameters, POOL_INFO, State, STATE};
+use crate::state::{CURRENT_BATCH, FEE, Parameters, POOL_INFO, State, STATE};
 
 pub fn validate_rate(rate: Decimal) -> StdResult<Decimal> {
     if rate > Decimal::one() {
@@ -80,4 +84,33 @@ pub fn slashing(
 
         Ok(())
     }
+}
+
+pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+    let treasury_fee = get_treasury_fee(deps, amount)?;
+    //TODO fee from Passive Strategy, i.e. Astroport LP?
+    let astroport_lp_fee = Uint128::zero();
+    let luna_transfer_fee = compute_tax(
+        deps,
+        &Coin::new(
+            (amount - treasury_fee - astroport_lp_fee).u128(),
+            String::from(LUNA_DENOM),
+        ),
+    )?;
+    // Two transfers (passive_strategy (astroport lp) -> vault -> user) so ~2x tax.
+    Ok(treasury_fee + astroport_lp_fee + luna_transfer_fee)
+}
+
+pub fn get_treasury_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+    let fee_config = FEE.load(deps.storage)?;
+    let fee = fee_config.treasury_fee.compute(amount);
+    Ok(fee)
+}
+
+/// Checks that the given [Fee] is valid, i.e. it's lower than 100%
+pub fn check_fee(fee: Fee) -> Result<Fee, LunaVaultError> {
+    if fee.share >= Decimal::percent(100) {
+        return Err(LunaVaultError::InvalidFee {});
+    }
+    Ok(fee)
 }

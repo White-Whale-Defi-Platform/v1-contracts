@@ -1,12 +1,14 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{to_binary, ReplyOn, Response, SubMsg, Uint128};
+use cosmwasm_std::{ReplyOn, Response, SubMsg, to_binary, Uint128};
 use cw20::Cw20ReceiveMsg;
 use terraswap::pair::Cw20HookMsg;
 
 use white_whale::ust_vault::msg::CallbackMsg;
 
-use crate::contract::{encapsulate_payload, get_treasury_fee, receive_cw20};
+use crate::contract::receive_cw20;
 use crate::error::LunaVaultError;
+use crate::flashloan::encapsulate_payload;
+use crate::helpers::get_treasury_fee;
 use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::{mock_instantiate, TREASURY_FEE};
 use crate::tests::mock_querier::mock_dependencies;
