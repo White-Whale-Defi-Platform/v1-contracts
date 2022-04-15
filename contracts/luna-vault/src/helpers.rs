@@ -1,11 +1,11 @@
 use cosmwasm_std::{Decimal, Deps, DepsMut, Env, StdError, StdResult, Uint128};
 use terraswap::asset::AssetInfo;
-use terraswap::querier::query_balance;
+use terraswap::querier::{query_balance, query_supply};
 
 use white_whale::query::astroport::query_astro_lp_exchange_rate;
 
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{CURRENT_BATCH, Parameters, State, STATE};
+use crate::state::{CURRENT_BATCH, Parameters, POOL_INFO, State, STATE};
 
 pub fn validate_rate(rate: Decimal) -> StdResult<Decimal> {
     if rate > Decimal::one() {
@@ -21,7 +21,7 @@ pub fn validate_rate(rate: Decimal) -> StdResult<Decimal> {
 /// compute total vault value of deposits in LUNA and return a tuple with those values.
 /// (total, luna, astro lp, bluna, cluna)
 pub fn compute_total_value(
-    env: &Env,
+    _env: &Env,
     deps: Deps,
     info: &PoolInfoRaw,
 ) -> StdResult<(Uint128, Uint128, Uint128, Uint128, Uint128)> {
@@ -70,7 +70,8 @@ pub fn slashing(
         // Slashing happens if the expected amount is less than stored amount
         if state.total_bond_amount > actual_total_bonded {
             // Need total issued for updating the exchange rate
-            let total_issued = query_total_issued(deps.as_ref())?;
+            let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+            let total_issued = query_supply(&deps.querier, info.liquidity_token.clone())?;
             let current_requested_fee = CURRENT_BATCH.load(deps.storage)?.requested_with_fee;
             state.total_bond_amount = actual_total_bonded;
             state.update_exchange_rate(total_issued, current_requested_fee);

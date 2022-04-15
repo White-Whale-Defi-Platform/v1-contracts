@@ -11,7 +11,6 @@ use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 pub struct InstantiateMsg {
-    pub anchor_money_market_address: String,
     pub bluna_address: String,
     pub cluna_address: String,
     pub astro_lp_address: String,
@@ -38,6 +37,8 @@ pub enum ExecuteMsg {
     Receive(Cw20ReceiveMsg),
     /// Provide liquidity to the vault
     ProvideLiquidity { asset: Asset },
+    /// Send back unbonded luna to the user
+    WithdrawUnbonded {},
     /// Set minimum amount of luna held liquid (not deposited somewhere else)
     SetLunaCap { luna_cap: Uint128 },
     /// Sets the withdraw fee and flash loan fee
@@ -54,7 +55,6 @@ pub enum ExecuteMsg {
     RemoveFromWhitelist { contract_addr: String },
     /// Update the interal State struct
     UpdateState {
-        anchor_money_market_address: Option<String>,
         bluna_address: Option<String>,
         memory_address: Option<String>,
         allow_non_whitelisted: Option<bool>,
@@ -113,6 +113,12 @@ pub enum VaultQueryMsg {
     VaultValue {},
     LastBalance {},
     LastProfit {},
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum Cw20HookMsg {
+    Unbond {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

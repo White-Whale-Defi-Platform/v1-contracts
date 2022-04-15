@@ -35,6 +35,12 @@ pub enum LunaVaultError {
     #[error("The provided asset is not the luna token.")]
     NotLunaToken {},
 
+    #[error("No withdrawable {0} assets are available yet.")]
+    NoWithdrawableAssetsAvailable(String),
+
+    #[error("Burn amount must be greater than 1 micro unit.")]
+    TooSmallBurn {},
+
     #[error("Not enough funds to perform trade")]
     Broke {},
 

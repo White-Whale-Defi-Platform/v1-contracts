@@ -7,6 +7,7 @@ pub mod state;
 mod helpers;
 mod commands;
 mod math;
+mod deserializer;
 
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]

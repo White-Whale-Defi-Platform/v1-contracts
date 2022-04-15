@@ -32,7 +32,7 @@ pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale Luna Vault LP Token";
 pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVLuna";
 const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
 
-type VaultResult = Result<Response, LunaVaultError>;
+pub(crate) type VaultResult = Result<Response, LunaVaultError>;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:ww-luna-vault";
@@ -43,7 +43,6 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     // Use CW2 to set the contract version, this is needed for migrations
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let state = State {
-        anchor_money_market_address: deps.api.addr_validate(&msg.anchor_money_market_address)?,
         bluna_address: deps.api.addr_validate(&msg.bluna_address)?,
         memory_address: deps.api.addr_validate(&msg.memory_addr)?,
         whitelisted_contracts: vec![],
@@ -53,15 +52,16 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         total_bond_amount: Uint128::zero(),
         last_index_modification: env.block.time.seconds(),
         last_unbonded_time: env.block.time.seconds(),
+        prev_vault_balance: Uint128::zero(),
+        actual_unbonded_amount: Uint128::zero(),
         last_processed_batch: 0u64,
-        ..Default::default()
     };
 
     // Store the initial config
     STATE.save(deps.storage, &state)?;
 
     // Check if the provided asset is the luna token
-    let underlying_coin_denom = match msg.asset_info {
+    let underlying_coin_denom = match msg.asset_info.clone() {
         AssetInfo::Token { .. } => return Err(LunaVaultError::NotNativeToken {}),
         AssetInfo::NativeToken { denom } => {
             if denom != LUNA_DENOM {
@@ -179,8 +179,9 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
     match msg {
-        ExecuteMsg::Receive(msg) => receive_cw20(deps, env, info, msg),
+        ExecuteMsg::Receive(msg) => commands::receive_cw20(deps, env, info, msg),
         ExecuteMsg::ProvideLiquidity { asset } => commands::provide_liquidity(deps, env, info, asset),
+        ExecuteMsg::WithdrawUnbonded {} => commands::execute_withdraw_unbonded(deps, env, info),
         ExecuteMsg::SetLunaCap { luna_cap } => set_luna_cap(deps, info, luna_cap),
         ExecuteMsg::SetAdmin { admin } => {
             let admin_addr = deps.api.addr_validate(&admin)?;
@@ -201,14 +202,12 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
         }
         ExecuteMsg::FlashLoan { payload } => handle_flashloan(deps, env, info, payload),
         ExecuteMsg::UpdateState {
-            anchor_money_market_address,
             bluna_address,
             memory_address,
             allow_non_whitelisted,
         } => update_state(
             deps,
             info,
-            anchor_money_market_address,
             bluna_address,
             memory_address,
             allow_non_whitelisted,
@@ -330,143 +329,6 @@ pub fn handle_flashloan(
     encapsulate_payload(deps.as_ref(), env, response, loan_fee)
 }
 
-/// Attempt to withdraw deposits. Fees are calculated and deducted in lp tokens.
-/// This allows the treasury to accumulate a stake in the vault.
-pub fn try_withdraw_liquidity(
-    deps: DepsMut,
-    env: Env,
-    sender: String,
-    amount: Uint128,
-) -> VaultResult {
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let profit = PROFIT.load(deps.storage)?;
-    let state = STATE.load(deps.storage)?;
-    let denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
-    let fee_config = FEE.load(deps.storage)?;
-
-    if profit.last_balance != Uint128::zero() {
-        return Err(LunaVaultError::DepositDuringLoan {});
-    }
-
-    // Logging var
-    let mut attrs = vec![];
-
-    // Calculate share of pool and requested pool value
-    let lp_addr = info.liquidity_token.clone();
-    let total_share: Uint128 = query_supply(&deps.querier, lp_addr)?;
-    let (total_value, luna_value_in_contract, _, _, _) =
-        compute_total_value(&env, deps.as_ref(), &info)?;
-    // Get treasury fee in LP tokens
-    let treasury_fee = get_treasury_fee(deps.as_ref(), amount)?;
-    // Share with fee deducted.
-    let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
-    let mut refund_amount: Uint128 = total_value * share_ratio;
-    attrs.push(("Post-fee received:", refund_amount.to_string()));
-
-    // Init response
-    let mut response = Response::new();
-
-    //TODO logic to repay with passive yield strategy
-    /*
-        // Available aUST
-        let max_aust_amount = query_token_balance(
-            &deps.querier,
-            state.bluna_address.clone(),
-            env.contract.address.clone(),
-        )?;
-        let mut withdrawn_luna = Asset {
-            info: AssetInfo::NativeToken {
-                denom: denom.clone(),
-            },
-            amount: Uint128::zero(),
-        };
-
-        // If we have aUST, try repay with that
-        if max_aust_amount > Uint128::zero() {
-            let aust_exchange_rate = query_aust_exchange_rate(
-                env,
-                deps.as_ref(),
-                state.anchor_money_market_address.to_string(),
-            )?;
-
-            if luna_value_in_contract < refund_amount {
-                // Withdraw all aUST left
-                let withdraw_msg = anchor_withdraw_msg(
-                    state.bluna_address.clone(),
-                    state.anchor_money_market_address,
-                    max_aust_amount,
-                )?;
-                // Add msg to response and update withdrawn value
-                response = response.add_message(withdraw_msg);
-                withdrawn_luna.amount = luna_value_in_contract;
-            } else {
-                // Repay user share of aUST
-                let withdraw_amount = refund_amount * aust_exchange_rate.inv().unwrap();
-
-                let withdraw_msg = anchor_withdraw_msg(
-                    state.bluna_address,
-                    state.anchor_money_market_address,
-                    withdraw_amount,
-                )?;
-                // Add msg to response and update withdrawn value
-                response = response.add_message(withdraw_msg);
-                withdrawn_luna.amount = refund_amount;
-            };
-            response = response
-                .add_attribute("Max anchor withdrawal", max_aust_amount.to_string())
-                .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
-
-            // Compute tax on Anchor withdraw tx
-            let withdrawtx_tax = withdrawn_luna.compute_tax(&deps.querier)?;
-            refund_amount -= withdrawtx_tax;
-            attrs.push(("After Anchor withdraw:", refund_amount.to_string()));
-        };
-    */
-    // LP token treasury Asset
-    let lp_token_treasury_fee = Asset {
-        info: AssetInfo::Token {
-            contract_addr: info.liquidity_token.to_string(),
-        },
-        amount: treasury_fee,
-    };
-
-    // Construct treasury fee msg.
-    let treasury_fee_msg = fee_config.treasury_fee.msg(
-        deps.as_ref(),
-        lp_token_treasury_fee,
-        fee_config.treasury_addr,
-    )?;
-    attrs.push(("Treasury fee:", treasury_fee.to_string()));
-
-    // Construct refund message
-    let refund_asset = Asset {
-        info: AssetInfo::NativeToken { denom },
-        amount: refund_amount,
-    };
-    let tax_asset = refund_asset.deduct_tax(&deps.querier)?;
-
-    let refund_msg = CosmosMsg::Bank(BankMsg::Send {
-        to_address: sender,
-        amount: vec![tax_asset],
-    });
-    // LP burn msg
-    let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: info.liquidity_token.to_string(),
-        // Burn excludes fee
-        msg: to_binary(&Cw20ExecuteMsg::Burn {
-            amount: (amount - treasury_fee),
-        })?,
-        funds: vec![],
-    });
-
-    Ok(response
-        .add_message(refund_msg)
-        .add_message(burn_msg)
-        .add_message(treasury_fee_msg)
-        .add_attribute("action:", "withdraw_liquidity")
-        .add_attributes(attrs))
-}
-
 ///TODO potentially improve this function by passing the Asset, so that this component could be reused for other vaults
 /// Sends the commission fee which is a function of the profit made by the contract, forwarded by the profit-check contract
 fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultResult {
@@ -513,7 +375,7 @@ pub fn before_trade(deps: DepsMut, env: Env) -> StdResult<Vec<(&str, String)>> {
 
 // Checks if balance increased after the trade
 pub fn after_trade(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
     info: MessageInfo,
     loan_fee: Uint128,
@@ -579,28 +441,6 @@ pub fn encapsulate_payload(
         .add_message(after_trade))
 }
 
-/// handler function invoked when the luna-vault contract receives
-/// a transaction. In this case it is triggered when the LP tokens are deposited
-/// into the contract
-pub fn receive_cw20(
-    deps: DepsMut,
-    env: Env,
-    msg_info: MessageInfo,
-    cw20_msg: Cw20ReceiveMsg,
-) -> VaultResult {
-    match from_binary(&cw20_msg.msg)? {
-        Cw20HookMsg::Swap { .. } => Err(LunaVaultError::NoSwapAvailable {}),
-        Cw20HookMsg::WithdrawLiquidity {} => {
-            let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-            if deps.api.addr_validate(&msg_info.sender.to_string())? != info.liquidity_token {
-                return Err(LunaVaultError::Unauthorized {});
-            }
-            try_withdraw_liquidity(deps, env, cw20_msg.sender, cw20_msg.amount)
-        }
-    }
-}
-
-
 pub fn get_treasury_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     let fee_config = FEE.load(deps.storage)?;
     let fee = fee_config.treasury_fee.compute(amount);
@@ -631,28 +471,6 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
 //  CALLBACK FUNCTION HANDLERS
 //----------------------------------------------------------------------------------------
 
-fn try_anchor_deposit(deps: DepsMut, env: Env) -> VaultResult {
-    let state = STATE.load(deps.storage)?;
-    let stable_denom = DEPOSIT_INFO.load(deps.storage)?.get_denom()?;
-    let stables_in_contract =
-        query_balance(&deps.querier, env.contract.address, stable_denom.clone())?;
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-
-    // If contract holds more then ANCHOR_DEPOSIT_THRESHOLD [UST] then try deposit to anchor and leave UST_CAP [UST] in contract.
-    if stables_in_contract > info.luna_cap * Decimal::percent(150) {
-        let deposit_amount = stables_in_contract - info.luna_cap;
-        let anchor_deposit = Coin::new(deposit_amount.u128(), stable_denom);
-        let deposit_msg = anchor_deposit_msg(
-            deps.as_ref(),
-            state.anchor_money_market_address,
-            anchor_deposit,
-        )?;
-
-        return Ok(Response::new().add_message(deposit_msg));
-    };
-    Ok(Response::default())
-}
-
 /// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
@@ -682,7 +500,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 pub fn update_state(
     deps: DepsMut,
     info: MessageInfo,
-    anchor_money_market_address: Option<String>,
     bluna_address: Option<String>,
     memory_address: Option<String>,
     allow_non_whitelisted: Option<bool>,
@@ -692,11 +509,6 @@ pub fn update_state(
 
     let mut state = STATE.load(deps.storage)?;
     let api = deps.api;
-
-    //TODO do we need anchor_money_market_address ?
-    if let Some(anchor_money_market_address) = anchor_money_market_address {
-        state.anchor_money_market_address = api.addr_validate(&anchor_money_market_address)?;
-    }
 
     if let Some(bluna_address) = bluna_address {
         state.bluna_address = api.addr_validate(&bluna_address)?;

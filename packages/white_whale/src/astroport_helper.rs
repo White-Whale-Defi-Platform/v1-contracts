@@ -182,5 +182,5 @@ pub fn create_astroport_msg(
 }
 
 pub fn create_astroport_lp_msg() -> ExecuteMsg {
-
+    ExecuteMsg::UpdateConfig { amp: None }
 }
