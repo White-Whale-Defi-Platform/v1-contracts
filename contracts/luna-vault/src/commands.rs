@@ -582,25 +582,25 @@ pub fn update_state(
         state.allow_non_whitelisted = allow_non_whitelisted;
     }
     if let Some(exchange_rate) = exchange_rate {
-        state.exchange_rate = validate_rate(exchange_rate.unwrap_or(state.exchange_rate))?;
+        state.exchange_rate = validate_rate(exchange_rate)?;
     }
     if let Some(total_bond_amount) = total_bond_amount {
-        state.total_bond_amount = total_bond_amount.unwrap_or(state.total_bond_amount);
+        state.total_bond_amount = total_bond_amount;
     }
     if let Some(last_index_modification) = last_index_modification {
-        state.last_index_modification = last_index_modification.unwrap_or(state.last_index_modification);
+        state.last_index_modification = last_index_modification;
     }
     if let Some(prev_vault_balance) = prev_vault_balance {
-        state.prev_vault_balance = prev_vault_balance.unwrap_or(state.prev_vault_balance);
+        state.prev_vault_balance = prev_vault_balance;
     }
     if let Some(actual_unbonded_amount) = actual_unbonded_amount {
-        state.actual_unbonded_amount = actual_unbonded_amount.unwrap_or(state.actual_unbonded_amount);
+        state.actual_unbonded_amount = actual_unbonded_amount;
     }
     if let Some(last_unbonded_time) = last_unbonded_time {
-        state.last_unbonded_time = last_unbonded_time.unwrap_or(state.last_unbonded_time);
+        state.last_unbonded_time = last_unbonded_time;
     }
     if let Some(last_processed_batch) = last_processed_batch {
-        state.last_processed_batch = last_processed_batch.unwrap_or(state.last_processed_batch);
+        state.last_processed_batch = last_processed_batch;
     }
 
     STATE.save(deps.storage, &state)?;
@@ -613,18 +613,14 @@ pub fn update_state(
 pub fn update_params(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    msg_info: MessageInfo,
     epoch_period: Option<u64>,
     unbonding_period: Option<u64>,
     peg_recovery_fee: Option<Decimal>,
     er_threshold: Option<Decimal>,
-) -> StdResult<Response> {
+) -> VaultResult {
     // only owner can send this message.
-    let config = CONFIG.load(deps.storage)?;
-
-    if info.sender != config.owner {
-        return Err(StdError::generic_err("unauthorized"));
-    }
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
     let params: Parameters = PARAMETERS.load(deps.storage)?;
 
