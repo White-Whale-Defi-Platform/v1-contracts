@@ -15,6 +15,7 @@ use crate::pool_info::PoolInfoRaw;
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
     pub bluna_address: Addr,
+    pub astro_lp_address: Addr,
     pub memory_address: Addr,
     pub whitelisted_contracts: Vec<Addr>,
     pub allow_non_whitelisted: bool,
@@ -61,7 +62,7 @@ pub struct Parameters {
     // as a duration in seconds
     pub peg_recovery_fee: Decimal,
     // must be in [0, 1].
-    pub er_threshold: Decimal,     // exchange rate threshold. Must be in [0, 1].
+    pub er_threshold: Decimal, // exchange rate threshold. Must be in [0, 1].
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

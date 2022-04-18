@@ -59,4 +59,4 @@ cw20-base = { version = "0.8", features = ["library"] }
 astroport-factory = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_factory" }
 astroport-pair = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_pair" }
 astroport-token = { version = "1.0.0", path = "../../../mocks/mock_astroport/astroport_token" }
-astroport = {git = "https://github.com/astroport-fi/astroport-core.git", version = "1.0.0"}
+astroport = {git = "https://github.com/astroport-fi/astroport-core.git", version = "2.0.0"}

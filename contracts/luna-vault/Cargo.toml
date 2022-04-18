@@ -21,6 +21,7 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
+astroport = { git = "https://github.com/astroport-fi/astroport-core.git", version = "2.0.0" }
 cw2 = { version = "0.8" }
 cw20 = { version = "0.8" }
 cosmwasm-bignumber = "2.2"
