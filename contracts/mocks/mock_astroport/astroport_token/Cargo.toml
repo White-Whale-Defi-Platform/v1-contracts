@@ -18,7 +18,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-astroport = {git = "https://github.com/astroport-fi/astroport-core.git", version = "1.0.0"}
+astroport = {git = "https://github.com/astroport-fi/astroport-core.git", version = "2.0.0"}
 cw2 = "0.8"
 cw20 = "0.8"
 cw20-base = { version = "0.8", features = ["library"] }
