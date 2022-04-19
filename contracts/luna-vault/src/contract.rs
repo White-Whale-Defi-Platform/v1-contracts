@@ -295,5 +295,18 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         }
         QueryMsg::LastBalance {} => to_binary(&queries::query_last_balance(deps)?),
         QueryMsg::LastProfit {} => to_binary(&queries::query_last_profit(deps)?),
+        QueryMsg::CurrentBatch {} => to_binary(&queries::query_current_batch(deps)?),
+        QueryMsg::WithdrawableUnbonded { address } => {
+            to_binary(&queries::query_withdrawable_unbonded(deps, address, env)?)
+        },
+        QueryMsg::Parameters {} => to_binary(&queries::query_params(deps)?),
+        QueryMsg::UnbondRequests {
+            address,
+            start_from,
+            limit,
+        } => to_binary(&queries::query_unbond_requests(deps, address, start_from, limit)?),
+        QueryMsg::AllHistory { start_from, limit } => {
+            to_binary(&queries::query_unbond_requests_limitation(deps, start_from, limit)?)
+        }
     }
 }

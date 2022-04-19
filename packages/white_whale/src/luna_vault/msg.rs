@@ -129,6 +129,20 @@ pub enum VaultQueryMsg {
     VaultValue {},
     LastBalance {},
     LastProfit {},
+    CurrentBatch {},
+    WithdrawableUnbonded {
+        address: String,
+    },
+    Parameters {},
+    UnbondRequests {
+        address: String,
+        start_from: Option<u64>,
+        limit: Option<u32>,
+    },
+    AllHistory {
+        start_from: Option<u64>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -184,4 +198,38 @@ pub struct LastBalanceResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LastProfitResponse {
     pub last_profit: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct WithdrawableUnbondedResponse {
+    pub withdrawable: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CurrentBatchResponse {
+    pub id: u64,
+    pub requested_with_fee: Uint128,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct UnbondRequestsResponse {
+    pub address: String,
+    pub requests: UnbondRequestResponse,
+}
+
+pub type UnbondRequestResponse = Vec<(u64, Uint128)>;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AllHistoryResponse {
+    pub history: Vec<UnbondHistoryResponse>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct UnbondHistoryResponse {
+    pub batch_id: u64,
+    pub time: u64,
+    pub amount: Uint128,
+    pub applied_exchange_rate: Decimal,
+    pub withdraw_rate: Decimal,
+    pub released: bool,
 }

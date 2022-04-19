@@ -225,3 +225,64 @@ pub fn all_unbond_history(
         .collect();
     res
 }
+
+/// Return the finished amount for all batches that has been before the given block time.
+pub fn query_get_finished_amount(
+    storage: &dyn Storage,
+    sender_addr: &Addr,
+    block_time: u64,
+    limit: Option<u32>,
+) -> StdResult<Uint128> {
+    let withdrawable_amount = UNBOND_WAITLIST
+        .prefix(sender_addr)
+        .range(storage, None, None, Order::Ascending)
+        .take(
+            limit
+                .unwrap_or(DEFAULT_UNBOND_WAITLIST_READ_LIMIT)
+                .min(MAX_LIMIT) as usize,
+        )
+        .fold(Uint128::zero(), |acc, item| {
+            let (k, v) = item.unwrap();
+            let batch_id = deserialize_key::<u64>(k).unwrap();
+            if let Ok(h) = read_unbond_history(storage, batch_id) {
+                if h.time < block_time {
+                    acc + v * h.withdraw_rate
+                } else {
+                    acc
+                }
+            } else {
+                acc
+            }
+        });
+    Ok(withdrawable_amount)
+}
+
+pub fn get_unbond_requests(
+    storage: &dyn Storage,
+    sender_addr: &Addr,
+    start: Option<u64>,
+    limit: Option<u32>,
+) -> StdResult<UnbondRequest> {
+    let start = U64Key::from(start.unwrap_or_default());
+
+    let sender_requests: Vec<_> = UNBOND_WAITLIST
+        .prefix(sender_addr)
+        .range(
+            storage,
+            Some(Bound::Exclusive(start.into())),
+            None,
+            Order::Ascending,
+        )
+        .take(
+            limit
+                .unwrap_or(DEFAULT_UNBOND_WAITLIST_READ_LIMIT)
+                .min(MAX_LIMIT) as usize,
+        )
+        .map(|item| {
+            let (k, v) = item.unwrap();
+            let batch_id = deserialize_key::<u64>(k).unwrap();
+            (batch_id, v)
+        })
+        .collect();
+    Ok(sender_requests)
+}
