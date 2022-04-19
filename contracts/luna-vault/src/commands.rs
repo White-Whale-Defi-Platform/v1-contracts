@@ -121,7 +121,7 @@ pub fn provide_liquidity(
     };
 }
 
-// Deposits Luna into the passive strategy (Astroport) -> luna-bluna LP
+/// Deposits Luna into the passive strategy (Astroport) -> luna-bluna LP
 fn _deposit_passive_strategy(response: Response) -> VaultResult {
     //let deposit_msg = create_astroport_lp_msg();
     //Ok(response.add_message(deposit_msg))
@@ -158,6 +158,7 @@ fn unbond(
 
     // Get treasury fee in LP tokens
     let treasury_fee = get_treasury_fee(deps.as_ref(), amount)?;
+    attrs.push(("treasury_fee", treasury_fee.to_string()));
 
     // Collect all the requests within a epoch period
     // Apply peg recovery fee
@@ -172,7 +173,7 @@ fn unbond(
     };
     // substract the treasury fee
     amount_with_fee = amount_with_fee.checked_sub(treasury_fee)?;
-    attrs.push(("Post-fee unbonded_amount:", amount_with_fee.to_string()));
+    attrs.push(("post_fee_unbonded_amount", amount_with_fee.to_string()));
 
     current_batch.requested_with_fee += amount_with_fee;
 
@@ -249,7 +250,6 @@ fn unbond(
         lp_token_treasury_fee,
         fee_config.treasury_addr,
     )?;
-    attrs.push(("Treasury fee:", treasury_fee.to_string()));
 
     // Send Burn message to vluna contract
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -262,11 +262,12 @@ fn unbond(
     Ok(Response::new()
         .add_message(burn_msg)
         .add_message(treasury_fee_msg)
-        .add_attribute("action:", "unbound")
+        .add_attribute("action", "unbound")
         .add_attributes(attrs))
 }
 
-pub fn execute_withdraw_unbonded(
+/// Withdraws unbonded luna after unbond has been called and the time lock period expired
+pub fn withdraw_unbonded(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -310,7 +311,7 @@ pub fn execute_withdraw_unbonded(
 
     Ok(Response::new()
         .add_attributes(vec![
-            attr("action", "execute_withdraw_unbonded"),
+            attr("action", "withdraw_unbonded"),
             attr("from", env.contract.address),
             attr("amount", withdraw_amount),
         ])

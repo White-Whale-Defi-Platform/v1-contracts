@@ -181,7 +181,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
     match msg {
         ExecuteMsg::Receive(msg) => commands::receive_cw20(deps, env, info, msg),
         ExecuteMsg::ProvideLiquidity { asset } => commands::provide_liquidity(deps, env, info, asset),
-        ExecuteMsg::WithdrawUnbonded {} => commands::execute_withdraw_unbonded(deps, env, info),
+        ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded(deps, env, info),
         ExecuteMsg::SetLunaCap { luna_cap } => commands::set_luna_cap(deps, info, luna_cap),
         ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
         ExecuteMsg::SetFee {
