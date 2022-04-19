@@ -1,6 +1,10 @@
 use std::borrow::BorrowMut;
 
-use cosmwasm_std::{Api, attr, BankMsg, Coin, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError, StdResult, Storage, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::{
+    attr, coins, from_binary, to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, Decimal, Deps,
+    DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128,
+    WasmMsg,
+};
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_supply;
@@ -17,7 +21,11 @@ use crate::error::LunaVaultError;
 use crate::helpers::{check_fee, compute_total_value, get_treasury_fee, slashing, validate_rate};
 use crate::math::decimal_division;
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE, get_finished_amount, get_unbond_batches, PARAMETERS, Parameters, POOL_INFO, PROFIT, read_unbond_history, remove_unbond_wait_list, STATE, State, store_unbond_history, store_unbond_wait_list, UnbondHistory};
+use crate::state::{
+    get_finished_amount, get_unbond_batches, read_unbond_history, remove_unbond_wait_list,
+    store_unbond_history, store_unbond_wait_list, Parameters, State, UnbondHistory, ADMIN,
+    CURRENT_BATCH, DEPOSIT_INFO, FEE, PARAMETERS, POOL_INFO, PROFIT, STATE,
+};
 
 /// handler function invoked when the luna-vault contract receives
 /// a transaction. In this case it is triggered when the LP tokens are deposited
@@ -39,7 +47,6 @@ pub fn receive_cw20(
         }
     }
 }
-
 
 // Deposits Luna into the contract.
 pub fn provide_liquidity(
@@ -114,17 +121,77 @@ pub fn provide_liquidity(
     let response = Response::new().add_attributes(attrs).add_message(msg);
     // If contract holds more than ASTROPORT_DEPOSIT_THRESHOLD [LUNA] then try deposit to Astroport and leave LUNA_CAP [LUNA] in contract.
     let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
-    return if luna_in_contract > info.luna_cap {
-        _deposit_passive_strategy(response)
+    if luna_in_contract > info.luna_cap {
+        deposit_passive_strategy(
+            &deps.as_ref(),
+            luna_in_contract - info.luna_cap,
+            state.bluna_address,
+            &state.astro_lp_address,
+            response,
+        )
     } else {
         Ok(response)
-    };
+    }
 }
 
-/// Deposits Luna into the passive strategy (Astroport) -> luna-bluna LP
-fn _deposit_passive_strategy(response: Response) -> VaultResult {
-    //let deposit_msg = create_astroport_lp_msg();
-    //Ok(response.add_message(deposit_msg))
+// Deposits Luna into the passive strategy (Astroport) -> luna-bluna LP
+fn deposit_passive_strategy(
+    deps: &Deps,
+    deposit_amount: Uint128,
+    bluna_address: Addr,
+    astro_lp_address: &Addr,
+    response: Response,
+) -> VaultResult {
+    // split luna into half so half goes to purchase bLuna, remaining half is used as liquidity
+    let luna_asset = astroport::asset::Asset {
+        amount: deposit_amount.checked_div(Uint128::from(2_u8))?,
+        info: astroport::asset::AssetInfo::NativeToken {
+            denom: "uluna".to_string(),
+        },
+    };
+
+    // simulate the luna deposit so we know the bluna return amount when we later provide liquidity
+    let bluna_return: astroport::pair::SimulationResponse = deps.querier.query_wasm_smart(
+        astro_lp_address,
+        &astroport::pair::QueryMsg::Simulation {
+            offer_asset: luna_asset.clone(),
+        },
+    )?;
+
+    let bluna_asset = astroport::asset::Asset {
+        amount: bluna_return.return_amount,
+        info: astroport::asset::AssetInfo::Token {
+            contract_addr: bluna_address,
+        },
+    };
+
+    let bluna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: astro_lp_address.to_string(),
+        msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
+            offer_asset: luna_asset.clone(),
+            belief_price: None,
+            max_spread: None,
+            to: None,
+        })?,
+        funds: vec![],
+    });
+
+    let deposit_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: astro_lp_address.to_string(),
+        msg: to_binary(&astroport::pair::ExecuteMsg::ProvideLiquidity {
+            assets: [luna_asset, bluna_asset],
+            slippage_tolerance: None,
+            auto_stake: None,
+            receiver: None,
+        })?,
+        funds: vec![],
+    });
+
+    let response = response.add_messages(vec![
+        bluna_purchase_msg, // 1. purchase bluna
+        deposit_msg,        // 2. deposit bLuna/Luna to the LP as liquidity
+    ]);
+
     Ok(response)
 }
 
@@ -255,14 +322,16 @@ fn unbond(
     let burn_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: info.liquidity_token.to_string(),
         // Burn excludes treasury fee
-        msg: to_binary(&Cw20ExecuteMsg::Burn { amount: amount - treasury_fee })?,
+        msg: to_binary(&Cw20ExecuteMsg::Burn {
+            amount: amount - treasury_fee,
+        })?,
         funds: vec![],
     });
 
     Ok(Response::new()
         .add_message(burn_msg)
         .add_message(treasury_fee_msg)
-        .add_attribute("action", "unbound")
+        .add_attribute("action:", "unbound")
         .add_attributes(attrs))
 }
 

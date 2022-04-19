@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use cosmwasm_std::{OverflowError, StdError};
+use cosmwasm_std::{DivideByZeroError, OverflowError, StdError};
 use cw_controllers::AdminError;
 
 #[derive(Error, Debug, PartialEq)]
@@ -16,6 +16,9 @@ pub enum LunaVaultError {
 
     #[error("Semver parsing error: {0}")]
     SemVer(String),
+
+    #[error("{0}")]
+    DivideByZeroError(#[from] DivideByZeroError),
 
     #[error("Unauthorized")]
     Unauthorized {},
