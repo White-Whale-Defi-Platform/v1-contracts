@@ -6,54 +6,27 @@ use terraswap::asset::AssetInfo;
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 
 use white_whale::fee::*;
-use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
-use white_whale::ust_vault::msg::*;
+use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
+use white_whale::luna_vault::msg::*;
 
 use crate::contract::{execute, instantiate, query};
 use crate::error::LunaVaultError;
 use crate::state::{State, FEE, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
-
+use crate::tests::common_integration::{instantiate_msg as vault_msg};
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub(crate) const TREASURY_FEE: u64 = 10u64;
 
 pub fn instantiate_msg() -> InstantiateMsg {
-    InstantiateMsg {
-        anchor_money_market_address: "test_mm".to_string(),
-        bluna_address: "test_aust".to_string(),
-        treasury_addr: "treasury".to_string(),
-        asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
-        token_code_id: 0u64,
-        treasury_fee: Decimal::percent(TREASURY_FEE),
-        flash_loan_fee: Decimal::permille(5u64),
-        commission_fee: Decimal::permille(8u64),
-        stable_cap: Uint128::from(100_000_000u64),
-        vault_lp_token_name: None,
-        vault_lp_token_symbol: None,
-    }
+    // TODO: Update, maybe this should be a blank message ??
+    return InstantiateMsg::from(vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string()))
 }
 
 /**
  * Mocks instantiation.
  */
 pub fn mock_instantiate(deps: DepsMut) {
-    let msg = InstantiateMsg {
-        anchor_money_market_address: "test_mm".to_string(),
-        bluna_address: "test_aust".to_string(),
-        treasury_addr: "treasury".to_string(),
-        asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
-        token_code_id: 0u64,
-        treasury_fee: Decimal::percent(10u64),
-        flash_loan_fee: Decimal::permille(5u64),
-        commission_fee: Decimal::permille(8u64),
-        stable_cap: Uint128::from(100_000_000u64),
-        vault_lp_token_name: None,
-        vault_lp_token_symbol: None,
-    };
+    let msg = InstantiateMsg::from(vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string()));
 
     let info = mock_info(TEST_CREATOR, &[]);
     let _res = instantiate(deps, mock_env(), info, msg).expect("Contract failed init");
@@ -76,10 +49,18 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            anchor_money_market_address: deps.api.addr_validate("test_mm").unwrap(),
             bluna_address: deps.api.addr_validate("test_aust").unwrap(),
+            astro_lp_address: deps.api.addr_validate(&"astro".to_string()).unwrap(),
+            memory_address: deps.api.addr_validate(&"memory".to_string()).unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false,
+            exchange_rate: Default::default(),
+            total_bond_amount: Default::default(),
+            last_index_modification: 0,
+            prev_vault_balance: Default::default(),
+            actual_unbonded_amount: Default::default(),
+            last_unbonded_time: 0,
+            last_processed_batch: 0
         }
     );
 
@@ -98,21 +79,7 @@ fn successful_initialization() {
 fn unsuccessful_initialization_invalid_fees() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {
-        anchor_money_market_address: "test_mm".to_string(),
-        bluna_address: "test_aust".to_string(),
-        treasury_addr: "treasury".to_string(),
-        asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
-        token_code_id: 0u64,
-        treasury_fee: Decimal::percent(100), //invalid fee
-        flash_loan_fee: Decimal::permille(5u64),
-        commission_fee: Decimal::permille(8u64),
-        stable_cap: Uint128::from(100_000_000u64),
-        vault_lp_token_name: None,
-        vault_lp_token_symbol: None,
-    };
+    let msg = InstantiateMsg::from(vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string()));
 
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -126,22 +93,7 @@ fn unsuccessful_initialization_invalid_fees() {
 fn unsuccessful_initialization_invalid_asset() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = InstantiateMsg {
-        anchor_money_market_address: "test_mm".to_string(),
-        bluna_address: "test_aust".to_string(),
-        treasury_addr: "treasury".to_string(),
-        asset_info: AssetInfo::Token {
-            //invalid asset
-            contract_addr: "token address".to_string(),
-        },
-        token_code_id: 0u64,
-        treasury_fee: Decimal::percent(10u64),
-        flash_loan_fee: Decimal::permille(5u64),
-        commission_fee: Decimal::permille(8u64),
-        stable_cap: Uint128::from(100_000_000u64),
-        vault_lp_token_name: None,
-        vault_lp_token_symbol: None,
-    };
+    let msg = InstantiateMsg::from(vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string()));
 
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
@@ -274,21 +226,7 @@ fn test_init_with_non_default_vault_lp_token() {
     let custom_token_symbol = String::from("MyLP");
 
     // Define a custom Init Msg with the custom token info provided
-    let msg = InstantiateMsg {
-        anchor_money_market_address: "test_mm".to_string(),
-        bluna_address: "test_aust".to_string(),
-        treasury_addr: "treasury".to_string(),
-        asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
-        },
-        token_code_id: 10u64,
-        treasury_fee: Decimal::percent(10u64),
-        flash_loan_fee: Decimal::permille(5u64),
-        commission_fee: Decimal::permille(8u64),
-        stable_cap: Uint128::from(1000_000_000u64),
-        vault_lp_token_name: Some(custom_token_name.clone()),
-        vault_lp_token_symbol: Some(custom_token_symbol.clone()),
-    };
+    let msg = InstantiateMsg::from(vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string()));
 
     // Prepare mock env
     let env = mock_env();

@@ -1,8 +1,8 @@
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Api, MessageInfo};
 
-use white_whale::ust_vault::msg::ExecuteMsg;
-
+use white_whale::luna_vault::msg::ExecuteMsg;
+use crate::tests::common_integration::{instantiate_msg};
 use crate::contract::execute;
 use crate::error::LunaVaultError;
 use crate::state::STATE;
@@ -15,11 +15,7 @@ fn unsuccessful_set_state_unauthorized() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
-    let msg = ExecuteMsg::UpdateState {
-        anchor_money_market_address: None,
-        aust_address: None,
-        allow_non_whitelisted: None,
-    };
+    let msg = instantiate_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string());
     let info = MessageInfo {
         sender: deps.api.addr_validate("unauthorized").unwrap(),
         funds: vec![],
