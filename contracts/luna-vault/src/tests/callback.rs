@@ -2,7 +2,7 @@ use cosmwasm_std::testing::{mock_env, mock_info, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{coin, Uint128};
 use white_whale::denom::UST_DENOM;
 
-use white_whale::ust_vault::msg::{CallbackMsg, ExecuteMsg};
+use white_whale::luna_vault::msg::{CallbackMsg, ExecuteMsg};
 
 use crate::contract::execute;
 use crate::error::LunaVaultError;

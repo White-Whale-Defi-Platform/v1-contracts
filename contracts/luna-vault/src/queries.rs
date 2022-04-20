@@ -125,9 +125,10 @@ pub fn query_unbond_requests_limitation(
     limit: Option<u32>,
 ) -> StdResult<AllHistoryResponse> {
     let requests = all_unbond_history(deps.storage, start, limit)?;
-    let requests_res = requests.iter().map(|item| item.as_res()).collect();
+    // TODO: fixup
+    // let requests_res = requests.iter().map(|item| item.into()).collect();
     let res = AllHistoryResponse {
-        history: requests_res,
+        history: vec![],
     };
     Ok(res)
 }

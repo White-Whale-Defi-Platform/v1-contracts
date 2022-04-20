@@ -2,7 +2,7 @@ use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{Api, MessageInfo};
 
 use white_whale::memory::LIST_SIZE_LIMIT;
-use white_whale::ust_vault::msg::ExecuteMsg;
+use white_whale::luna_vault::msg::ExecuteMsg;
 
 use crate::contract::execute;
 use crate::error::LunaVaultError;
