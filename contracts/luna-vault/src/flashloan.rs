@@ -1,4 +1,5 @@
 use core::result::Result::Err;
+use std::os::macos::raw::stat;
 use cosmwasm_std::{CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use white_whale::denom::LUNA_DENOM;
@@ -79,6 +80,10 @@ pub fn handle_flashloan(
                 .add_attribute("Anchor withdrawal", to_withdraw.to_string())
                 .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
         }*/
+    // pool_info.luna_cap ? instead of tax_cap
+    if (requested_asset.amount + tax_buffer) > luna_available{
+
+    }
 
     // If caller not whitelisted, calculate flashloan fee
 

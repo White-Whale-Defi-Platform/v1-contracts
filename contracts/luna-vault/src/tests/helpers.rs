@@ -5,7 +5,7 @@ use terraswap::pair::Cw20HookMsg;
 
 use white_whale::ust_vault::msg::CallbackMsg;
 
-use crate::contract::receive_cw20;
+use crate::commands::receive_cw20;
 use crate::error::LunaVaultError;
 use crate::flashloan::encapsulate_payload;
 use crate::helpers::get_treasury_fee;

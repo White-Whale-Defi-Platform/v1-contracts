@@ -1,7 +1,7 @@
 use std::borrow::BorrowMut;
 
 use cosmwasm_std::{
-    attr, coins, from_binary, to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, Decimal, Deps,
+    attr, coins, from_binary, to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
     DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128,
     WasmMsg,
 };
@@ -191,6 +191,62 @@ fn deposit_passive_strategy(
     let response = response.add_messages(vec![
         bluna_purchase_msg, // 1. purchase bluna
         deposit_msg,        // 2. deposit bLuna/Luna to the LP as liquidity
+    ]);
+
+    Ok(response)
+}
+
+// Withdraws Luna from the passive strategy (Astroport): luna-bluna LP -> Luna + bLuna
+fn withdraw_passive_strategy(
+    deps: &Deps,
+    withdraw_amount: Uint128,
+    bluna_address: Addr,
+    astro_lp_token_address: &Addr,
+    astro_lp_address: &Addr,
+    response: Response,
+) -> VaultResult {
+
+    // Msg that gets called on the pair address.
+    let withdraw_msg: Binary = to_binary(&Cw20HookMsg::WithdrawLiquidity {})?;
+
+    // cw20 send message that transfers the LP tokens to the pair address
+    let cw20_msg = Cw20ExecuteMsg::Send {
+        contract: astro_lp_address.into_string(),
+        amount: withdraw_amount,
+        msg: withdraw_msg,
+    };
+
+    // Call on LP token.
+    let withdraw_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: String::from(astro_lp_token_address),
+        msg: to_binary(&cw20_msg)?,
+        funds: vec![],
+    });
+
+
+
+    // Leaving this here for now but commented, this logic allows us to offer luna or bLuna if caller is willing to assume fees
+    // let bluna_asset = astroport::asset::Asset {
+    //     amount: bluna_return.return_amount,
+    //     info: astroport::asset::AssetInfo::Token {
+    //         contract_addr: bluna_address,
+    //     },
+    // };
+    //
+    // let bluna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    //     contract_addr: astro_lp_address.to_string(),
+    //     msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
+    //         offer_asset: luna_asset.clone(),
+    //         belief_price: None,
+    //         max_spread: None,
+    //         to: None,
+    //     })?,
+    //     funds: vec![],
+    // });
+
+    let response = response.add_messages(vec![
+        withdraw_msg, // 1. withdraw bluna and Luna from LP.
+        // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
     ]);
 
     Ok(response)
