@@ -85,21 +85,41 @@ fn unsuccessful_initialization_invalid_fees() {
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
     match res {
         Err(LunaVaultError::InvalidFee {}) => (),
-        _ => panic!("Must return StableVaultError::InvalidFee"),
+        _ => panic!("Must return LunaVaultError::InvalidFee"),
     }
 }
 
 #[test]
 fn unsuccessful_initialization_invalid_asset() {
     let mut deps = mock_dependencies(&[]);
-
-    let msg = InstantiateMsg::from(vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string()));
+    let bluna_address = "bluna".to_string();
+    let msg = InstantiateMsg {
+        bluna_address: bluna_address.clone(),
+        cluna_address: bluna_address.clone(),
+        astro_lp_address: bluna_address.clone(),
+        treasury_addr: "war_chest".to_string(),
+        memory_addr: "memory".to_string(),
+        asset_info: AssetInfo::NativeToken {
+            denom: "uusd".to_string(),
+        },
+        token_code_id: 3,
+        treasury_fee: Decimal::percent(10u64),
+        flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
+        luna_cap: Uint128::from(100_000_000_000_000u64),
+        vault_lp_token_name: None,
+        vault_lp_token_symbol: None,
+        epoch_period: 0,
+        unbonding_period: 0,
+        peg_recovery_fee: Default::default(),
+        er_threshold: Default::default()
+    };
 
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg);
     match res {
-        Err(LunaVaultError::NotNativeToken {}) => (),
-        _ => panic!("Must return StableVaultError::NotNativeToken"),
+        Err(LunaVaultError::NotLunaToken {}) => (),
+        _ => panic!("Must return LunaVaultError::NotLunaToken"),
     }
 }
 
@@ -258,7 +278,7 @@ fn test_init_with_non_default_vault_lp_token() {
                 })
                 .unwrap(),
                 funds: vec![],
-                label: "White Whale Stablecoin Vault LP".to_string(),
+                label: "White Whale Luna Vault LP".to_string(),
             }
             .into(),
             gas_limit: None,

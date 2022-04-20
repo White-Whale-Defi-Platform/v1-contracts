@@ -40,7 +40,7 @@ pub fn test_fees_query() {
     assert_eq!(q_res.fees.treasury_fee.share, Decimal::percent(10u64));
     assert_eq!(q_res.fees.flash_loan_fee.share, Decimal::permille(5u64));
 }
-
+// TODO: Need to modify the mock querier to help here
 #[test]
 pub fn test_vault_value_query() {
     let mut deps = mock_dependencies(&[coin(1000, "uusd")]);

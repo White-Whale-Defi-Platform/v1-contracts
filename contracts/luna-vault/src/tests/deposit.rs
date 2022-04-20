@@ -31,22 +31,27 @@ fn successful_initialization() {
     let info = mock_info(TEST_CREATOR, &[]);
 
     let state: State = STATE.load(&deps.storage).unwrap();
+    // TODO: Improve
+    // assert_eq!(
+    //     state,
+    //     State {
+    //         bluna_address: deps.api.addr_validate("bluna").unwrap(),
+    //         astro_lp_address: deps.api.addr_validate(&"astro".to_string()).unwrap(),
+    //         memory_address: deps.api.addr_validate(&"memory".to_string()).unwrap(),
+    //         whitelisted_contracts: vec![],
+    //         allow_non_whitelisted: false,
+    //         exchange_rate: Default::default(),
+    //         total_bond_amount: Default::default(),
+    //         last_index_modification: 0,
+    //         prev_vault_balance: Default::default(),
+    //         actual_unbonded_amount: Default::default(),
+    //         last_unbonded_time: 0,
+    //         last_processed_batch: 0
+    //     }
+    // );
     assert_eq!(
-        state,
-        State {
-            bluna_address: deps.api.addr_validate("test_aust").unwrap(),
-            astro_lp_address: deps.api.addr_validate(&"astro".to_string()).unwrap(),
-            memory_address: deps.api.addr_validate(&"memory".to_string()).unwrap(),
-            whitelisted_contracts: vec![],
-            allow_non_whitelisted: false,
-            exchange_rate: Default::default(),
-            total_bond_amount: Default::default(),
-            last_index_modification: 0,
-            prev_vault_balance: Default::default(),
-            actual_unbonded_amount: Default::default(),
-            last_unbonded_time: 0,
-            last_processed_batch: 0
-        }
+        state.bluna_address,
+        deps.api.addr_validate("bluna").unwrap()
     );
 
     let msg = ExecuteMsg::AddToWhitelist {
