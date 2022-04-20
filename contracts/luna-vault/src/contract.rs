@@ -215,6 +215,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             commands::remove_from_whitelist(deps, info, contract_addr)
         }
         ExecuteMsg::FlashLoan { payload } => flashloan::handle_flashloan(deps, env, info, payload),
+        ExecuteMsg::SwapRewards {} => commands::swap_rewards(deps, env, info),
         ExecuteMsg::UpdateState {
             bluna_address,
             memory_address,

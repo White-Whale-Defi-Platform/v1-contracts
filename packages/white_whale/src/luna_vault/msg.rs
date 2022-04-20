@@ -77,6 +77,8 @@ pub enum ExecuteMsg {
     },
     /// Execute a flashloan
     FlashLoan { payload: FlashLoanPayload },
+    /// Swaps the passive strategy token rewards for luna
+    SwapRewards { },
     /// Internal callback message
     Callback(CallbackMsg),
 }

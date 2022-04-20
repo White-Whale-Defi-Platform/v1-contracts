@@ -12,6 +12,7 @@ use terraswap::querier::query_supply;
 use signed_integer::SignedInt;
 use white_whale::anchor::anchor_deposit_msg;
 use white_whale::astroport_helper::{create_astroport_lp_msg, create_astroport_msg};
+use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::luna_vault::msg::Cw20HookMsg;
 use white_whale::memory::LIST_SIZE_LIMIT;
@@ -146,7 +147,7 @@ fn deposit_passive_strategy(
     let luna_asset = astroport::asset::Asset {
         amount: deposit_amount.checked_div(Uint128::from(2_u8))?,
         info: astroport::asset::AssetInfo::NativeToken {
-            denom: "uluna".to_string(),
+            denom: LUNA_DENOM.to_string(),
         },
     };
 
@@ -331,7 +332,7 @@ fn unbond(
     Ok(Response::new()
         .add_message(burn_msg)
         .add_message(treasury_fee_msg)
-        .add_attribute("action:", "unbound")
+        .add_attribute("action", "unbound")
         .add_attributes(attrs))
 }
 
@@ -705,4 +706,17 @@ pub fn update_params(
     PARAMETERS.save(deps.storage, &new_params)?;
 
     Ok(Response::new().add_attributes(vec![attr("action", "update_params")]))
+}
+
+pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResult {
+    let mut state = STATE.load(deps.storage)?;
+    // Check if sender is in whitelist, i.e. bot or bot proxy
+    if !state
+        .whitelisted_contracts
+        .contains(&msg_info.sender)
+    {
+        return Err(LunaVaultError::NotWhitelisted {});
+    }
+
+    Ok(Response::new().add_attributes(vec![attr("action", "swap_rewards")]))
 }
