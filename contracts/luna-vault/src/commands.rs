@@ -136,7 +136,7 @@ pub fn provide_liquidity(
 }
 
 // Deposits Luna into the passive strategy (Astroport) -> luna-bluna LP
-fn deposit_passive_strategy(
+pub(crate) fn deposit_passive_strategy(
     deps: &Deps,
     deposit_amount: Uint128,
     bluna_address: Addr,
@@ -207,7 +207,7 @@ pub(crate) fn withdraw_passive_strategy(
 ) -> VaultResult {
 
     // Msg that gets called on the pair address.
-    let withdraw_msg: Binary = to_binary(&Cw20HookMsg::WithdrawLiquidity {})?;
+    let withdraw_msg: Binary = to_binary(&astroport::pair::Cw20HookMsg::WithdrawLiquidity {})?;
 
     // cw20 send message that transfers the LP tokens to the pair address
     let cw20_msg = Cw20ExecuteMsg::Send {

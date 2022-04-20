@@ -11,7 +11,7 @@ use crate::error::LunaVaultError;
 use crate::helpers::compute_total_value;
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
-use crate::commands::{withdraw_passive_strategy};
+use crate::commands::{deposit_passive_strategy, withdraw_passive_strategy};
 const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
 
 pub fn handle_flashloan(
@@ -84,12 +84,7 @@ pub fn handle_flashloan(
     if (requested_asset.amount + tax_buffer) > luna_available{
         // If we need too, withdraw from the various passive strategies, initially defined as the bLuna-Luna LP. This method will return both assets and assumes no desired assets as-is
         // TODO: Add a flag to this method so that a user can specify if they want luna or bluna, we can expand this later with an enum to offer a quick way to get any variant of luna via swapp ;-)
-        let withdraw_msg = withdraw_passive_strategy(&deps.as_ref(), requested_asset.amount, state.bluna_address, &state.astro_lp_address, &state.astro_lp_address, response)?;
-
-        // Add msg to response and update withdrawn value
-        response = response
-            .add_message(withdraw_msg)
-            .add_attribute("Luna Vault Passive Strategy withdrawal", to_withdraw.to_string())
+        let _ = withdraw_passive_strategy(&deps.as_ref(), requested_asset.amount, state.bluna_address, &state.astro_lp_address, &state.astro_lp_address, response)?;
     }
 
     // If caller not whitelisted, calculate flashloan fee
@@ -99,6 +94,7 @@ pub fn handle_flashloan(
     // } else {
     //     fees.flash_loan_fee.compute(requested_asset.amount)
     // };
+    let loan_fee = fees.flash_loan_fee.compute(requested_asset.amount);
 
     // NOTE: Forget the whitelist and just charge everyone, why should anyone get free flashloans ?
     fees.flash_loan_fee.compute(requested_asset.amount);
@@ -153,10 +149,18 @@ pub fn after_trade(
     msg_info: MessageInfo,
     loan_fee: Uint128,
 ) -> VaultResult {
-    // Deposit funds into anchor if applicable.
-    ///TODO this is where the potential passive income strategy could come into play
-    //let response = try_anchor_deposit(deps.branch(), env.clone())?;
+    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
+    let mut state = STATE.load(deps.storage)?;
+    // Deposit funds into a passive strategy again if applicable.
     let response = Response::default();
+    deposit_passive_strategy(
+        &deps.as_ref(),
+        luna_in_contract - info.luna_cap,
+        state.bluna_address,
+        &state.astro_lp_address,
+        response,
+    );
 
     let mut conf = PROFIT.load(deps.storage)?;
 

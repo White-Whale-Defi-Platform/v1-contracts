@@ -4,19 +4,22 @@ use cosmwasm_std::{Decimal, Empty, Uint128};
 use terra_mocks::TerraMockQuerier;
 use terra_multi_test::{App, BankKeeper, Contract, ContractWrapper};
 use terraswap::asset::AssetInfo;
-use white_whale::ust_vault::msg::InstantiateMsg as VaultInstantiateMsg;
+use white_whale::luna_vault::msg::InstantiateMsg as VaultInstantiateMsg;
+
 
 // Custom Vault Instant msg func which takes code ID
 pub fn instantiate_msg(
     token_code_id: u64,
     war_chest: String,
     anchor_addr: String,
-    aust_address: String,
+    bluna_address: String,
 ) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
-        anchor_money_market_address: anchor_addr,
-        bluna_address: aust_address,
+        bluna_address: bluna_address.clone(),
+        cluna_address: bluna_address.clone(),
+        astro_lp_address: bluna_address.clone(),
         treasury_addr: war_chest,
+        memory_addr: "memory".to_string(),
         asset_info: AssetInfo::NativeToken {
             denom: "uusd".to_string(),
         },
@@ -24,11 +27,16 @@ pub fn instantiate_msg(
         treasury_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
         commission_fee: Decimal::permille(8u64),
-        stable_cap: Uint128::from(100_000_000_000_000u64),
+        luna_cap: Uint128::from(100_000_000_000_000u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
+        epoch_period: 0,
+        unbonding_period: 0,
+        peg_recovery_fee: Default::default(),
+        er_threshold: Default::default()
     }
 }
+
 
 pub fn contract_cw20_token() -> Box<dyn Contract<Empty>> {
     // Instantiate WHALE Token Contract

@@ -8,8 +8,7 @@ use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as Anch
 use crate::tests::tswap_mock::{contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg};
 use white_whale::denom::UST_DENOM;
 use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
-use white_whale::ust_vault::msg::FlashLoanPayload;
-use white_whale::ust_vault::msg::*;
+use white_whale::luna_vault::msg::*;
 
 use crate::contract::{execute, DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
 use crate::error::LunaVaultError;
