@@ -197,7 +197,7 @@ fn deposit_passive_strategy(
 }
 
 // Withdraws Luna from the passive strategy (Astroport): luna-bluna LP -> Luna + bLuna
-fn withdraw_passive_strategy(
+pub(crate) fn withdraw_passive_strategy(
     deps: &Deps,
     withdraw_amount: Uint128,
     bluna_address: Addr,
@@ -223,6 +223,7 @@ fn withdraw_passive_strategy(
         funds: vec![],
     });
 
+    response.add_attribute("passive_strategy_withdraw_method", String::from("bLuna-Luna LP"));
 
 
     // Leaving this here for now but commented, this logic allows us to offer luna or bLuna if caller is willing to assume fees
