@@ -2,8 +2,8 @@ use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{coin, from_binary};
 use cosmwasm_std::{Decimal, Uint128};
 
-use white_whale::ust_vault::msg::VaultQueryMsg as QueryMsg;
-use white_whale::ust_vault::msg::*;
+use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
+use white_whale::luna_vault::msg::*;
 
 use crate::contract::query;
 use crate::tests::instantiate::mock_instantiate;
@@ -49,7 +49,7 @@ pub fn test_vault_value_query() {
 
     let q_res: ValueResponse =
         from_binary(&query(deps.as_ref(), env, QueryMsg::VaultValue {}).unwrap()).unwrap();
-    assert_eq!(q_res.total_ust_value, Uint128::new(1000))
+    assert_eq!(q_res.total_luna_value, Uint128::new(1000))
 }
 
 #[test]

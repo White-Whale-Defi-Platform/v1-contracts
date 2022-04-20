@@ -10,12 +10,29 @@ use crate::tests::common::TEST_CREATOR;
 use crate::tests::instantiate::mock_instantiate;
 use crate::tests::mock_querier::mock_dependencies;
 
+
+fn state_msg() -> ExecuteMsg {
+    return ExecuteMsg::UpdateState {
+        bluna_address: None,
+        memory_address: None,
+        whitelisted_contracts: None,
+        allow_non_whitelisted: None,
+        exchange_rate: None,
+        total_bond_amount: None,
+        last_index_modification: None,
+        prev_vault_balance: None,
+        actual_unbonded_amount: None,
+        last_unbonded_time: None,
+        last_processed_batch: None
+    }
+}
+
 #[test]
 fn unsuccessful_set_state_unauthorized() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
-    let msg = instantiate_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string());
+    let msg = state_msg();
     let info = MessageInfo {
         sender: deps.api.addr_validate("unauthorized").unwrap(),
         funds: vec![],
@@ -36,9 +53,17 @@ fn successful_set_state() {
     let original_state = STATE.load(deps.as_mut().storage).unwrap();
 
     let msg = ExecuteMsg::UpdateState {
-        anchor_money_market_address: Some(String::from("new_anchor_money_market_address")),
-        aust_address: Some(String::from("new_aust_address")),
+        bluna_address: Some("newbluna".to_string()),
+        memory_address: None,
+        whitelisted_contracts: None,
         allow_non_whitelisted: Some(true),
+        exchange_rate: None,
+        total_bond_amount: None,
+        last_index_modification: None,
+        prev_vault_balance: None,
+        actual_unbonded_amount: None,
+        last_unbonded_time: None,
+        last_processed_batch: None
     };
     let info = MessageInfo {
         sender: deps.api.addr_validate(TEST_CREATOR).unwrap(),
@@ -51,14 +76,10 @@ fn successful_set_state() {
     let new_state = STATE.load(deps.as_mut().storage).unwrap();
     assert_ne!(original_state, new_state.clone());
     assert_eq!(
-        new_state.anchor_money_market_address,
-        deps.api
-            .addr_validate("new_anchor_money_market_address")
-            .unwrap()
-    );
-    assert_eq!(
         new_state.bluna_address,
-        deps.api.addr_validate("new_aust_address").unwrap()
+        deps.api
+            .addr_validate("newbluna")
+            .unwrap()
     );
     assert_eq!(new_state.allow_non_whitelisted, true);
 }

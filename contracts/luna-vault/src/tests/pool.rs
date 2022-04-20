@@ -1,7 +1,7 @@
 use cosmwasm_std::testing::mock_env;
 use cosmwasm_std::{Api, MessageInfo, Uint128};
 
-use white_whale::ust_vault::msg::ExecuteMsg;
+use white_whale::luna_vault::msg::ExecuteMsg;
 
 use crate::contract::execute;
 use crate::error::LunaVaultError;
@@ -15,8 +15,8 @@ fn unsuccessful_set_stable_cap_unauthorized() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
-    let msg = ExecuteMsg::SetStableCap {
-        stable_cap: Uint128::from(100u128),
+    let msg = ExecuteMsg::SetLunaCap {
+        luna_cap: Uint128::from(100u128),
     };
     let info = MessageInfo {
         sender: deps.api.addr_validate("unauthorized").unwrap(),
@@ -36,10 +36,10 @@ fn successful_set_stable_cap() {
     mock_instantiate(deps.as_mut());
 
     let pool_info = POOL_INFO.load(deps.as_mut().storage).unwrap();
-    let original_cap = pool_info.stable_cap;
+    let original_cap = pool_info.luna_cap;
 
-    let msg = ExecuteMsg::SetStableCap {
-        stable_cap: Uint128::from(100u128),
+    let msg = ExecuteMsg::SetLunaCap {
+        luna_cap: Uint128::from(100u128),
     };
     let info = MessageInfo {
         sender: deps.api.addr_validate(TEST_CREATOR).unwrap(),
@@ -50,6 +50,6 @@ fn successful_set_stable_cap() {
     assert_eq!(0, res.messages.len());
 
     let pool_info = POOL_INFO.load(deps.as_mut().storage).unwrap();
-    assert_eq!(pool_info.stable_cap, Uint128::from(100u128));
-    assert_ne!(pool_info.stable_cap, original_cap);
+    assert_eq!(pool_info.luna_cap, Uint128::from(100u128));
+    assert_ne!(pool_info.luna_cap, original_cap);
 }

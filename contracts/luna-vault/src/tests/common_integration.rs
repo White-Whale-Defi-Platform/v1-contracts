@@ -21,7 +21,7 @@ pub fn instantiate_msg(
         treasury_addr: war_chest,
         memory_addr: "memory".to_string(),
         asset_info: AssetInfo::NativeToken {
-            denom: "uusd".to_string(),
+            denom: "uluna".to_string(),
         },
         token_code_id,
         treasury_fee: Decimal::percent(10u64),

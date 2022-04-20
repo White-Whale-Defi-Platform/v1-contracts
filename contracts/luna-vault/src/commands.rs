@@ -211,7 +211,7 @@ pub(crate) fn withdraw_passive_strategy(
 
     // cw20 send message that transfers the LP tokens to the pair address
     let cw20_msg = Cw20ExecuteMsg::Send {
-        contract: astro_lp_address.into_string(),
+        contract: astro_lp_address.clone().into_string(),
         amount: withdraw_amount,
         msg: withdraw_msg,
     };
@@ -223,7 +223,6 @@ pub(crate) fn withdraw_passive_strategy(
         funds: vec![],
     });
 
-    response.add_attribute("passive_strategy_withdraw_method", String::from("bLuna-Luna LP"));
 
 
     // Leaving this here for now but commented, this logic allows us to offer luna or bLuna if caller is willing to assume fees

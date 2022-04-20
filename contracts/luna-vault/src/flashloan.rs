@@ -84,7 +84,8 @@ pub fn handle_flashloan(
     if (requested_asset.amount + tax_buffer) > luna_available{
         // If we need too, withdraw from the various passive strategies, initially defined as the bLuna-Luna LP. This method will return both assets and assumes no desired assets as-is
         // TODO: Add a flag to this method so that a user can specify if they want luna or bluna, we can expand this later with an enum to offer a quick way to get any variant of luna via swapp ;-)
-        let _ = withdraw_passive_strategy(&deps.as_ref(), requested_asset.amount, state.bluna_address, &state.astro_lp_address, &state.astro_lp_address, response)?;
+        // TODO: NOTE: Check the clone usage, added it to fixup tests
+        let _ = withdraw_passive_strategy(&deps.as_ref(), requested_asset.amount, state.bluna_address, &state.astro_lp_address, &state.astro_lp_address, response.clone())?;
     }
 
     // If caller not whitelisted, calculate flashloan fee
@@ -153,13 +154,14 @@ pub fn after_trade(
     let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
     let mut state = STATE.load(deps.storage)?;
     // Deposit funds into a passive strategy again if applicable.
-    let response = Response::default();
+    let mut response = Response::default();
+    // TODO: NOTE: Check the clone usage, added it to fixup tests
     deposit_passive_strategy(
         &deps.as_ref(),
         luna_in_contract - info.luna_cap,
         state.bluna_address,
         &state.astro_lp_address,
-        response,
+        response.clone(),
     );
 
     let mut conf = PROFIT.load(deps.storage)?;
