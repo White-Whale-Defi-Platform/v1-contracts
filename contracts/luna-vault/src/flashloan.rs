@@ -1,4 +1,5 @@
 use core::result::Result::Err;
+use std::os::macos::raw::stat;
 use cosmwasm_std::{CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use white_whale::denom::LUNA_DENOM;
@@ -10,7 +11,7 @@ use crate::error::LunaVaultError;
 use crate::helpers::compute_total_value;
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
-
+use crate::commands::{withdraw_passive_strategy};
 const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
 
 pub fn handle_flashloan(
@@ -79,15 +80,28 @@ pub fn handle_flashloan(
                 .add_attribute("Anchor withdrawal", to_withdraw.to_string())
                 .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
         }*/
+    // pool_info.luna_cap ? instead of tax_cap
+    if (requested_asset.amount + tax_buffer) > luna_available{
+        // If we need too, withdraw from the various passive strategies, initially defined as the bLuna-Luna LP. This method will return both assets and assumes no desired assets as-is
+        // TODO: Add a flag to this method so that a user can specify if they want luna or bluna, we can expand this later with an enum to offer a quick way to get any variant of luna via swapp ;-)
+        let withdraw_msg = withdraw_passive_strategy(&deps.as_ref(), requested_asset.amount, state.bluna_address, &state.astro_lp_address, &state.astro_lp_address, response)?;
+
+        // Add msg to response and update withdrawn value
+        response = response
+            .add_message(withdraw_msg)
+            .add_attribute("Luna Vault Passive Strategy withdrawal", to_withdraw.to_string())
+    }
 
     // If caller not whitelisted, calculate flashloan fee
 
-    let loan_fee: Uint128 = if whitelisted {
-        Uint128::zero()
-    } else {
-        fees.flash_loan_fee.compute(requested_asset.amount)
-    };
+    // let loan_fee: Uint128 = if whitelisted {
+    //     Uint128::zero()
+    // } else {
+    //     fees.flash_loan_fee.compute(requested_asset.amount)
+    // };
 
+    // NOTE: Forget the whitelist and just charge everyone, why should anyone get free flashloans ?
+    fees.flash_loan_fee.compute(requested_asset.amount);
     // Construct transfer of funds msg, tax is accounted for by buffer
     let loan_msg = into_msg_without_tax(requested_asset, info.sender.clone())?;
     response = response.add_message(loan_msg);
