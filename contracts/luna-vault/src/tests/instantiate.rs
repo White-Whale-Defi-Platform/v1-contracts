@@ -32,6 +32,34 @@ pub fn mock_instantiate(deps: DepsMut) {
     let _res = instantiate(deps, mock_env(), info, msg).expect("Contract failed init");
 }
 
+pub fn mock_instantiate_no_asset_info(deps: DepsMut){
+    let bluna_address = "bluna".to_string();
+    let msg = InstantiateMsg {
+        bluna_address: bluna_address.clone(),
+        cluna_address: bluna_address.clone(),
+        astro_lp_address: bluna_address.clone(),
+        treasury_addr: "war_chest".to_string(),
+        memory_addr: "memory".to_string(),
+        asset_info: AssetInfo::NativeToken {
+            denom: "".to_string(),
+        },
+        token_code_id: 3,
+        treasury_fee: Decimal::percent(10u64),
+        flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
+        luna_cap: Uint128::from(100_000_000_000_000u64),
+        vault_lp_token_name: None,
+        vault_lp_token_symbol: None,
+        epoch_period: 0,
+        unbonding_period: 0,
+        peg_recovery_fee: Default::default(),
+        er_threshold: Default::default()
+    };
+
+    let info = mock_info(TEST_CREATOR, &[]);
+    let _res = instantiate(deps, mock_env(), info, msg).expect("Contract failed init");
+}
+
 /**
  * Tests successful instantiation of the contract.
  */

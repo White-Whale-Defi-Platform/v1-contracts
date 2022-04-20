@@ -6,7 +6,7 @@ use terraswap::asset::{Asset, AssetInfo};
 
 use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
 use crate::tests::tswap_mock::{contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg};
-use white_whale::denom::UST_DENOM;
+use white_whale::denom::{LUNA_DENOM, UST_DENOM};
 use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::luna_vault::msg::*;
 
@@ -17,13 +17,13 @@ use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 use crate::tests::common_integration::{
     contract_cw20_token, contract_stablecoin_vault, contract_treasury, instantiate_msg, mock_app,
 };
-use crate::tests::instantiate::mock_instantiate;
+use crate::tests::instantiate::{mock_instantiate, mock_instantiate_no_asset_info};
 use crate::tests::mock_querier::mock_dependencies;
 
 #[test]
 fn unsuccessful_flashloan_no_base_token() {
     let mut deps = mock_dependencies(&[]);
-    mock_instantiate(deps.as_mut());
+    mock_instantiate_no_asset_info(deps.as_mut());
 
     let whitelisted_contracts = STATE
         .load(deps.as_mut().storage)
@@ -45,9 +45,10 @@ fn unsuccessful_flashloan_no_base_token() {
     let info = mock_info(TEST_CREATOR, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
+    assert_ne!(res, res);
     match res {
         Err(LunaVaultError::Std(_)) => (),
-        _ => panic!("Must return StdError::generic_err from DepositInfo::assert"),
+        _ => panic!("Must return LunaVaultError::Std from DepositInfo::assert"),
     }
 }
 
@@ -66,7 +67,7 @@ fn unsuccessful_flashloan_not_whitelisted() {
         payload: FlashLoanPayload {
             requested_asset: Asset {
                 info: AssetInfo::NativeToken {
-                    denom: UST_DENOM.to_string(),
+                    denom: LUNA_DENOM.to_string(),
                 },
                 amount: Default::default(),
             },
@@ -78,7 +79,7 @@ fn unsuccessful_flashloan_not_whitelisted() {
     let res = execute(deps.as_mut(), mock_env(), info, msg);
     match res {
         Err(LunaVaultError::NotWhitelisted {}) => (),
-        _ => panic!("Must return StableVaultError::NotWhitelisted"),
+        _ => panic!("Must return LunaVaultError::NotWhitelisted"),
     }
 }
 
@@ -455,7 +456,7 @@ fn successful_flashloan_without_withdrawing_aust() {
         payload: FlashLoanPayload {
             requested_asset: Asset {
                 info: AssetInfo::NativeToken {
-                    denom: UST_DENOM.to_string(),
+                    denom: LUNA_DENOM.to_string(),
                 },
                 amount: Uint128::new(1_000),
             },
