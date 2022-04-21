@@ -6,7 +6,6 @@ use cosmwasm_std::{coins, CosmosMsg, Decimal, Uint128};
 use terra_cosmwasm::TerraRoute;
 use terraswap::asset::{Asset, AssetInfo};
 use white_whale::peg_arb::msg::*;
-use cosmwasm_std::DepsMut;
 
 use crate::contract::{execute, instantiate};
 use crate::error::StableArbError;
