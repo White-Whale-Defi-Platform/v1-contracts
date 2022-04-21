@@ -17,6 +17,9 @@ pub enum StableArbError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("Unsupported Asset Type")]
+    UnsupportedAsset {},
+
     #[error("Call is not a callback!")]
     NotCallback {},
 
