@@ -151,14 +151,14 @@ pub fn after_trade(
 ) -> VaultResult {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
-    let mut state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     // Deposit funds into a passive strategy again if applicable.
     let mut response = Response::default();
     // TODO: NOTE: Check the clone usage, added it to fixup tests
     deposit_passive_strategy(
         &deps.as_ref(),
         luna_in_contract - info.luna_cap,
-        state.bluna_address,
+        state.bluna_address.clone(),
         &state.astro_lp_address,
         response.clone(),
     )?;
