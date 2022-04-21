@@ -4,7 +4,7 @@ use terraswap::querier::query_supply;
 use white_whale::luna_vault::msg::{AllHistoryResponse, CurrentBatchResponse, EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse, LastProfitResponse, PoolResponse, UnbondRequestsResponse, ValueResponse, WithdrawableUnbondedResponse};
 use crate::helpers::{compute_total_value, get_withdraw_fee};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::state::{all_unbond_history, CURRENT_BATCH, DEPOSIT_INFO, FEE, get_unbond_requests, PARAMETERS, Parameters, POOL_INFO, PROFIT, query_get_finished_amount, STATE, State, UNBOND_WAITLIST};
+use crate::state::{all_unbond_history, CURRENT_BATCH, DEPOSIT_INFO, FEE, get_unbond_requests, get_withdrawable_amount, POOL_INFO, PROFIT, STATE, State};
 
 /// Queries the PoolInfo configuration
 pub fn query_pool_info(deps: Deps) -> StdResult<PoolInfo> {
@@ -83,11 +83,12 @@ pub fn query_withdrawable_unbonded(
     address: String,
     env: Env,
 ) -> StdResult<WithdrawableUnbondedResponse> {
-    let params = PARAMETERS.load(deps.storage)?;
-    let historical_time = env.block.time.seconds() - params.unbonding_period;
+    let state = STATE.load(deps.storage)?;
+
+    let historical_time = env.block.time.seconds() - state.unbonding_period;
     let addr = deps.api.addr_validate(&address)?;
-    // query the finished amount with the default limit (None), to obtain the same value as the result of the actual unbond operation
-    let all_requests = query_get_finished_amount(deps.storage, &addr, historical_time, None)?;
+    // query the withdrawable amount
+    let all_requests = get_withdrawable_amount(deps.storage, &addr, historical_time)?;
 
     let withdrawable = WithdrawableUnbondedResponse {
         withdrawable: all_requests,
@@ -99,12 +100,7 @@ pub fn query_current_batch(deps: Deps) -> StdResult<CurrentBatchResponse> {
     let current_batch = CURRENT_BATCH.load(deps.storage)?;
     Ok(CurrentBatchResponse {
         id: current_batch.id,
-        requested_with_fee: current_batch.requested_with_fee,
     })
-}
-
-pub fn query_params(deps: Deps) -> StdResult<Parameters> {
-    PARAMETERS.load(deps.storage)
 }
 
 pub fn query_unbond_requests(
@@ -124,7 +120,7 @@ pub fn query_unbond_requests_limitation(
     start: Option<u64>,
     limit: Option<u32>,
 ) -> StdResult<AllHistoryResponse> {
-    let requests = all_unbond_history(deps.storage, start, limit)?;
+    let _requests = all_unbond_history(deps.storage, start, limit)?;
     // TODO: fixup
     // let requests_res = requests.iter().map(|item| item.into()).collect();
     let res = AllHistoryResponse {

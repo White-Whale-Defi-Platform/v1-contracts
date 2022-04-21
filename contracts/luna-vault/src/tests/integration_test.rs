@@ -100,7 +100,7 @@ fn stablecoin_vault_fees_are_allocated() {
         .unwrap();
 
     // set up cw20 helpers
-    let cash = Cw20Contract(whale_token_instance.clone());
+    let cash = Cw20Contract(whale_token_instance);
 
     // get owner balance
     let owner_balance = cash.balance(&router, owner.clone()).unwrap();
@@ -241,11 +241,11 @@ fn stablecoin_vault_fees_are_allocated() {
         .unwrap();
     println!("{:?}", res.events);
 
-    let lp = Cw20Contract(Addr::unchecked("Contract #6").clone());
+    let lp = Cw20Contract(Addr::unchecked("Contract #6"));
 
     // Verify treasury has received some fees (WIP)
     // ensure our balances
-    let war_chest_bal = lp.balance(&router, treasury_addr.clone()).unwrap();
+    let war_chest_bal = lp.balance(&router, treasury_addr).unwrap();
     assert_eq!(
         war_chest_bal,
         withdraw_amount.checked_div(Uint128::new(10)).unwrap()
@@ -336,7 +336,7 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         .unwrap();
 
     // set up cw20 helpers
-    let cash = Cw20Contract(whale_token_instance.clone());
+    let cash = Cw20Contract(whale_token_instance);
 
     // get owner balance
     let owner_balance = cash.balance(&router, owner.clone()).unwrap();
@@ -477,11 +477,11 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         .unwrap();
     println!("{:?}", res.events);
 
-    let lp = Cw20Contract(Addr::unchecked("Contract #6").clone());
+    let lp = Cw20Contract(Addr::unchecked("Contract #6"));
 
     // Verify treasury has received some fees (WIP)
     // ensure our balances
-    let war_chest_bal = lp.balance(&router, treasury_addr.clone()).unwrap();
+    let war_chest_bal = lp.balance(&router, treasury_addr).unwrap();
     assert_eq!(
         war_chest_bal,
         withdraw_amount.checked_div(Uint128::new(10000)).unwrap()

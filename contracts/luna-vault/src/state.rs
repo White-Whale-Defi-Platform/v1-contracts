@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Decimal, Order, StdError, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Bound, Item, Map, U64Key};
 use schemars::JsonSchema;
@@ -19,25 +19,8 @@ pub struct State {
     pub memory_address: Addr,
     pub whitelisted_contracts: Vec<Addr>,
     pub allow_non_whitelisted: bool,
-
-    pub exchange_rate: Decimal,
-    pub total_bond_amount: Uint128,
-    pub last_index_modification: u64,
-    pub prev_vault_balance: Uint128,
-    pub actual_unbonded_amount: Uint128,
-    pub last_unbonded_time: u64,
-    pub last_processed_batch: u64,
-}
-
-impl State {
-    pub fn update_exchange_rate(&mut self, total_issued: Uint128, requested_with_fee: Uint128) {
-        let actual_supply = total_issued + requested_with_fee;
-        if self.total_bond_amount.is_zero() || actual_supply.is_zero() {
-            self.exchange_rate = Decimal::one()
-        } else {
-            self.exchange_rate = Decimal::from_ratio(self.total_bond_amount, actual_supply);
-        }
-    }
+    // as a duration in seconds
+    pub unbonding_period: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -49,24 +32,14 @@ pub struct ProfitCheck {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurrentBatch {
     pub id: u64,
-    pub requested_with_fee: Uint128,
 }
 
-// The Parameters contain necessary information for unbonding vluna
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Parameters {
-    pub underlying_coin_denom: String,
-    // as a duration in seconds
-    pub unbonding_period: u64,
-}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UnbondHistory {
     pub batch_id: u64,
     pub time: u64,
     pub amount: Uint128,
-    pub applied_exchange_rate: Decimal,
-    pub withdraw_rate: Decimal,
     pub released: bool,
 }
 
@@ -78,7 +51,6 @@ pub const STATE: Item<State> = Item::new("\u{0}{5}state");
 pub const POOL_INFO: Item<PoolInfoRaw> = Item::new("\u{0}{4}pool");
 pub const DEPOSIT_INFO: Item<DepositInfo> = Item::new("\u{0}{7}deposit");
 pub const FEE: Item<VaultFee> = Item::new("\u{0}{3}fee");
-pub const PARAMETERS: Item<Parameters> = Item::new("\u{0}{b}parameters");
 pub const UNBOND_WAITLIST: Map<(&Addr, U64Key), Uint128> = Map::new("unbond_waitlist");
 pub const UNBOND_HISTORY: Map<U64Key, UnbondHistory> = Map::new("unbond_history");
 pub const CURRENT_BATCH: Item<CurrentBatch> = Item::new("current_batch");
@@ -119,10 +91,9 @@ pub fn get_unbond_history(storage: &dyn Storage, batch_id: u64) -> StdResult<Unb
 
 /// Prepares next unbond batch
 pub fn prepare_next_unbond_batch(storage: &mut dyn Storage) -> StdResult<()> {
-    let mut current_batch = CURRENT_BATCH.load(deps.storage)?;
+    let mut current_batch = CURRENT_BATCH.load(storage)?;
     current_batch.id += 1;
-    current_batch.requested_with_fee = Uint128::zero();
-    CURRENT_BATCH.save(deps.storage, &current_batch)?;
+    CURRENT_BATCH.save(storage, &current_batch)?;
     Ok(())
 }
 
@@ -244,7 +215,7 @@ pub fn remove_unbond_wait_list(
 const MAX_LIMIT: u32 = 100;
 const DEFAULT_LIMIT: u32 = 10;
 
-/// Return all unbond_history from UnbondHistory map
+/// Returns all unbond_history from UnbondHistory map
 #[allow(clippy::needless_lifetimes)]
 pub fn all_unbond_history(
     storage: &dyn Storage,
@@ -269,37 +240,7 @@ pub fn all_unbond_history(
     res
 }
 
-/// Return the finished amount for all batches that has been before the given block time.
-pub fn query_get_finished_amount(
-    storage: &dyn Storage,
-    sender_addr: &Addr,
-    block_time: u64,
-    limit: Option<u32>,
-) -> StdResult<Uint128> {
-    let withdrawable_amount = UNBOND_WAITLIST
-        .prefix(sender_addr)
-        .range(storage, None, None, Order::Ascending)
-        .take(
-            limit
-                .unwrap_or(DEFAULT_UNBOND_WAITLIST_READ_LIMIT)
-                .min(MAX_LIMIT) as usize,
-        )
-        .fold(Uint128::zero(), |acc, item| {
-            let (k, v) = item.unwrap();
-            let batch_id = deserialize_key::<u64>(k).unwrap();
-            if let Ok(h) = get_unbond_history(storage, batch_id) {
-                if h.time < block_time {
-                    acc + v * h.withdraw_rate
-                } else {
-                    acc
-                }
-            } else {
-                acc
-            }
-        });
-    Ok(withdrawable_amount)
-}
-
+/// Returns unbond requests for a given address.
 pub fn get_unbond_requests(
     storage: &dyn Storage,
     sender_addr: &Addr,

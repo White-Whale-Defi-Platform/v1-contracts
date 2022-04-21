@@ -1,17 +1,17 @@
-use std::borrow::BorrowMut;
+
 
 use cosmwasm_std::{
-    Addr, Api, attr, BankMsg, Binary, Coin, coins, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    from_binary, MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, to_binary, Uint128,
+    Addr, attr, BankMsg, Binary, coins, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    from_binary, MessageInfo, Response, to_binary, Uint128,
     WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_supply;
 
-use signed_integer::SignedInt;
-use white_whale::anchor::anchor_deposit_msg;
-use white_whale::astroport_helper::{create_astroport_lp_msg, create_astroport_msg};
+
+
+
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::luna_vault::msg::Cw20HookMsg;
@@ -19,10 +19,10 @@ use white_whale::memory::LIST_SIZE_LIMIT;
 
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::{check_fee, compute_total_value, get_treasury_fee, slashing};
-use crate::math::decimal_division;
+use crate::helpers::{check_fee, compute_total_value, get_treasury_fee};
+
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{ADMIN, CURRENT_BATCH, DEPOSIT_INFO, deprecate_unbond_batches, FEE, get_deprecated_unbond_batch_ids, get_unbond_history, get_withdrawable_amount, get_withdrawable_unbond_batch_ids, Parameters, PARAMETERS, POOL_INFO, prepare_next_unbond_batch, PROFIT, remove_unbond_wait_list, State, STATE, store_unbond_history, store_unbond_wait_list, UnbondHistory};
+use crate::state::{ADMIN, CURRENT_BATCH, DEPOSIT_INFO, deprecate_unbond_batches, FEE, get_deprecated_unbond_batch_ids, get_withdrawable_amount, get_withdrawable_unbond_batch_ids, POOL_INFO, prepare_next_unbond_batch, PROFIT, remove_unbond_wait_list, STATE, store_unbond_history, store_unbond_wait_list, UnbondHistory};
 
 /// handler function invoked when the luna-vault contract receives
 /// a transaction. In this case it is triggered when the LP tokens are deposited
@@ -47,7 +47,7 @@ pub fn receive_cw20(
 
 // Deposits Luna into the contract.
 pub fn provide_liquidity(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
     msg_info: MessageInfo,
     asset: Asset,
@@ -175,9 +175,9 @@ pub(crate) fn deposit_passive_strategy(
 
 // Withdraws Luna from the passive strategy (Astroport): luna-bluna LP -> Luna + bLuna
 pub(crate) fn withdraw_passive_strategy(
-    deps: &Deps,
+    _deps: &Deps,
     withdraw_amount: Uint128,
-    bluna_address: Addr,
+    _bluna_address: Addr,
     astro_lp_token_address: &Addr,
     astro_lp_address: &Addr,
     response: Response,
@@ -231,7 +231,7 @@ pub(crate) fn withdraw_passive_strategy(
 /// This message must be called by receive_cw20
 /// This message will trigger the withdrawal waiting time and burn vluna token
 fn unbond(
-    mut deps: DepsMut,
+    deps: DepsMut,
     env: Env,
     amount: Uint128,
     sender: String, // human who sent the vluna to us
@@ -252,16 +252,15 @@ fn unbond(
 
     // Calculate share of pool and requested pool value
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let mut total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
+    let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
     let (total_value_in_luna, _, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
     // Share with fee deducted.
     let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
-    let mut refund_amount: Uint128 = total_value_in_luna * share_ratio;
+    let refund_amount: Uint128 = total_value_in_luna * share_ratio;
     attrs.push(("post_fee_unbonded_amount", refund_amount.to_string()));
 
     //todo prob remove requested_with_fee from current_batch
-    let mut current_batch = CURRENT_BATCH.load(deps.storage)?;
-    current_batch.requested_with_fee += refund_amount;
+    let current_batch = CURRENT_BATCH.load(deps.storage)?;
 
     // Add unbond to the wait list
     let sender_addr = deps.api.addr_validate(&sender)?;
@@ -275,15 +274,13 @@ fn unbond(
     let unbond_history = UnbondHistory {
         batch_id: current_batch.id,
         time: env.block.time.seconds(),
-        amount: current_batch.requested_with_fee,
-        applied_exchange_rate: Decimal::one(),
-        withdraw_rate: Decimal::one(),
+        amount: refund_amount,
         released: false,
     };
     store_unbond_history(deps.storage, current_batch.id, unbond_history)?;
 
     // Prepare for next unbond batch
-    prepare_next_unbond_batch(deps.storage);
+    prepare_next_unbond_batch(deps.storage)?;
 
     // LP token treasury Asset
     let lp_token_treasury_fee = Asset {
@@ -324,15 +321,11 @@ pub fn withdraw_unbonded(
     env: Env,
     msg_info: MessageInfo,
 ) -> VaultResult {
-    // read params
-    let params = PARAMETERS.load(deps.storage)?;
-    //todo maybe there's another way to take the coin denom from, remove this from params?
-    let coin_denom = params.underlying_coin_denom;
-
-    let withdrawable_time = env.block.time.seconds() - params.unbonding_period;
+    let state = STATE.load(deps.storage)?;
+    let withdrawable_time = env.block.time.seconds() - state.unbonding_period;
     let withdraw_amount = get_withdrawable_amount(deps.storage, &msg_info.sender, withdrawable_time)?;
     if withdraw_amount.is_zero() {
-        return Err(LunaVaultError::NoWithdrawableAssetsAvailable(coin_denom));
+        return Err(LunaVaultError::NoWithdrawableAssetsAvailable(LUNA_DENOM.to_string()));
     }
 
     // remove batches to be withdrawn for the user
@@ -344,7 +337,7 @@ pub fn withdraw_unbonded(
     // Send the money to the user
     let withdraw_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: msg_info.sender.to_string(),
-        amount: coins(withdraw_amount.u128(), &*coin_denom),
+        amount: coins(withdraw_amount.u128(), &*LUNA_DENOM.to_string()),
     });
 
     Ok(Response::new()
@@ -468,23 +461,16 @@ pub fn remove_from_whitelist(
     Ok(Response::new().add_attribute("Removed contract from whitelist: ", contract_addr))
 }
 
-///TODO revise as there are variables in there that are modified when bonding/unbonding
-/// Also look at the ExecuteMsg::UpdateGlobalIndex, investigate how is it triggered and what is it for
 /// Updates the contract state
 pub fn update_state(
     deps: DepsMut,
     info: MessageInfo,
     bluna_address: Option<String>,
+    astro_lp_address: Option<String>,
     memory_address: Option<String>,
     whitelisted_contracts: Option<Vec<String>>,
     allow_non_whitelisted: Option<bool>,
-    exchange_rate: Option<Decimal>,
-    total_bond_amount: Option<Uint128>,
-    last_index_modification: Option<u64>,
-    prev_vault_balance: Option<Uint128>,
-    actual_unbonded_amount: Option<Uint128>,
-    last_unbonded_time: Option<u64>,
-    last_processed_batch: Option<u64>,
+    unbonding_period: Option<u64>,
 ) -> VaultResult {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -492,75 +478,45 @@ pub fn update_state(
     let mut state = STATE.load(deps.storage)?;
     let api = deps.api;
 
+    let mut attrs = vec![];
+
     if let Some(bluna_address) = bluna_address {
         state.bluna_address = api.addr_validate(&bluna_address)?;
+        attrs.push(("new bluna_address", bluna_address));
+    }
+    if let Some(astro_lp_address) = astro_lp_address {
+        state.astro_lp_address = api.addr_validate(&astro_lp_address)?;
+        attrs.push(("new astro_lp_address", astro_lp_address));
     }
     if let Some(memory_address) = memory_address {
         state.memory_address = api.addr_validate(&memory_address)?;
+        attrs.push(("new memory_address", memory_address));
     }
     if let Some(whitelisted_contracts) = whitelisted_contracts {
         let mut contracts = vec![];
-        for contract_addr in whitelisted_contracts {
+        for contract_addr in whitelisted_contracts.clone() {
             contracts.push(deps.api.addr_validate(&contract_addr)?);
         }
         state.whitelisted_contracts = contracts;
+        attrs.push(("new whitelisted_contracts", format!("{:?}", whitelisted_contracts)));
     }
     if let Some(allow_non_whitelisted) = allow_non_whitelisted {
         state.allow_non_whitelisted = allow_non_whitelisted;
+        attrs.push(("new allow_non_whitelisted", allow_non_whitelisted.to_string()));
     }
-    if let Some(exchange_rate) = exchange_rate {
-        state.exchange_rate = validate_rate(exchange_rate)?;
-    }
-    if let Some(total_bond_amount) = total_bond_amount {
-        state.total_bond_amount = total_bond_amount;
-    }
-    if let Some(last_index_modification) = last_index_modification {
-        state.last_index_modification = last_index_modification;
-    }
-    if let Some(prev_vault_balance) = prev_vault_balance {
-        state.prev_vault_balance = prev_vault_balance;
-    }
-    if let Some(actual_unbonded_amount) = actual_unbonded_amount {
-        state.actual_unbonded_amount = actual_unbonded_amount;
-    }
-    if let Some(last_unbonded_time) = last_unbonded_time {
-        state.last_unbonded_time = last_unbonded_time;
-    }
-    if let Some(last_processed_batch) = last_processed_batch {
-        state.last_processed_batch = last_processed_batch;
+
+    if let Some(unbonding_period) = unbonding_period {
+        state.unbonding_period = unbonding_period;
+        attrs.push(("new unbonding_period", unbonding_period.to_string()));
     }
 
     STATE.save(deps.storage, &state)?;
-    Ok(Response::new().add_attribute("Update:", "Successful"))
+
+    Ok(Response::new().add_attributes(attrs))
 }
 
-/// Update unbonding period parameter
-/// Only creator/owner is allowed to execute
-#[allow(clippy::too_many_arguments)]
-pub fn update_unbonding_period(
-    deps: DepsMut,
-    _env: Env,
-    msg_info: MessageInfo,
-    unbonding_period: u64,
-) -> VaultResult {
-    // only owner can send this message.
-    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-
-    let mut params: Parameters = PARAMETERS.load(deps.storage)?;
-    let previous_unbonding_period = params.unbonding_period;
-    params.unbonding_period = unbonding_period;
-
-    PARAMETERS.save(deps.storage, &params)?;
-
-    Ok(Response::new().add_attributes(vec![
-        attr("action", "update_unbonding_period"),
-        attr("previous unbonding_period", previous_unbonding_period.to_string()),
-        attr("new unbonding_period", unbonding_period.to_string()),
-    ]))
-}
-
-pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResult {
-    let mut state = STATE.load(deps.storage)?;
+pub fn swap_rewards(deps: DepsMut, _env: Env, msg_info: MessageInfo) -> VaultResult {
+    let state = STATE.load(deps.storage)?;
     // Check if sender is in whitelist, i.e. bot or bot proxy
     if !state
         .whitelisted_contracts

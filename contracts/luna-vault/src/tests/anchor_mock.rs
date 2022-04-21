@@ -99,7 +99,7 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
                     let deposit_amount: Uint256 = info
                         .funds
                         .iter()
-                        .find(|c| c.denom == String::from("uusd"))
+                        .find(|c| c.denom == *"uusd")
                         .map(|c| Uint256::from(c.amount))
                         .unwrap_or_else(Uint256::zero);
                     // Get Mint amount

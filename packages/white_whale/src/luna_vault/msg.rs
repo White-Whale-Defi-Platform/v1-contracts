@@ -1,13 +1,15 @@
-use crate::fee::{Fee, VaultFee};
+use std::fmt;
+
 use cosmwasm_std::{
-    to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
+    Addr, Binary, Coin, CosmosMsg, Decimal, StdResult, to_binary, Uint128, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use terra_rust_script_derive::CosmWasmContract;
 use terraswap::asset::{Asset, AssetInfo};
+
+use crate::fee::{Fee, VaultFee};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
 pub struct InstantiateMsg {
@@ -24,10 +26,7 @@ pub struct InstantiateMsg {
     pub luna_cap: Uint128,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
-    pub epoch_period: u64,
     pub unbonding_period: u64,
-    pub peg_recovery_fee: Decimal,
-    pub er_threshold: Decimal,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
@@ -56,26 +55,16 @@ pub enum ExecuteMsg {
     /// Update the internal State struct
     UpdateState {
         bluna_address: Option<String>,
+        astro_lp_address: Option<String>,
         memory_address: Option<String>,
         whitelisted_contracts: Option<Vec<String>>,
         allow_non_whitelisted: Option<bool>,
-
-        exchange_rate: Option<Decimal>,
-        total_bond_amount: Option<Uint128>,
-        last_index_modification: Option<u64>,
-        prev_vault_balance: Option<Uint128>,
-        actual_unbonded_amount: Option<Uint128>,
-        last_unbonded_time: Option<u64>,
-        last_processed_batch: Option<u64>,
-    },
-    /// Update the parameters that are needed for the contract
-    UpdateUnbondingPeriod {
-        unbonding_period: u64,
+        unbonding_period: Option<u64>,
     },
     /// Execute a flashloan
     FlashLoan { payload: FlashLoanPayload },
     /// Swaps the passive strategy token rewards for luna
-    SwapRewards { },
+    SwapRewards {},
     /// Internal callback message
     Callback(CallbackMsg),
 }
@@ -132,7 +121,6 @@ pub enum VaultQueryMsg {
     WithdrawableUnbonded {
         address: String,
     },
-    Parameters {},
     UnbondRequests {
         address: String,
         start_from: Option<u64>,
@@ -157,6 +145,7 @@ pub struct PoolResponse {
     pub total_share: Uint128,
     pub liquidity_token: String,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct DepositResponse {
     pub deposit: Uint128,
@@ -207,7 +196,6 @@ pub struct WithdrawableUnbondedResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurrentBatchResponse {
     pub id: u64,
-    pub requested_with_fee: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

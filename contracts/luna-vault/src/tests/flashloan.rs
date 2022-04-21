@@ -146,7 +146,7 @@ fn unsuccessful_flashloan_broke() {
         .unwrap();
 
     // set up cw20 helpers
-    let cash = Cw20Contract(whale_token_instance.clone());
+    let cash = Cw20Contract(whale_token_instance);
 
     // get owner balance
     let owner_balance = cash.balance(&router, owner.clone()).unwrap();
@@ -241,7 +241,7 @@ fn unsuccessful_flashloan_broke() {
         amount: Uint128::new(1000),
     };
     let _ = router
-        .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
+        .execute_contract(owner.clone(), lp_token, &send_msg, &[])
         .unwrap();
 
     // Ensure addresses are not equal to each other
@@ -268,7 +268,7 @@ fn unsuccessful_flashloan_broke() {
         },
     };
 
-    let res = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
+    let res = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr, &msg, &[]);
 
     match res {
         Err(_) => (), //match StableVaultError::Broke
@@ -339,7 +339,7 @@ fn successful_flashloan_without_withdrawing_aust() {
         .unwrap();
 
     // set up cw20 helpers
-    let cash = Cw20Contract(whale_token_instance.clone());
+    let cash = Cw20Contract(whale_token_instance);
 
     // get owner balance
     let owner_balance = cash.balance(&router, owner.clone()).unwrap();
@@ -434,7 +434,7 @@ fn successful_flashloan_without_withdrawing_aust() {
         amount: Uint128::new(1_000),
     };
     router
-        .execute_contract(owner.clone(), lp_token.clone(), &send_msg, &[])
+        .execute_contract(owner.clone(), lp_token, &send_msg, &[])
         .unwrap();
 
     // Ensure addresses are not equal to each other
@@ -464,5 +464,5 @@ fn successful_flashloan_without_withdrawing_aust() {
         },
     };
 
-    let _ = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
+    let _ = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr, &msg, &[]);
 }
