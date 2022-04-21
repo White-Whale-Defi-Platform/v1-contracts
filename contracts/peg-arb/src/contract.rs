@@ -16,7 +16,9 @@ use white_whale::deposit_info::ArbBaseAsset;
 use white_whale::query::terraswap::simulate_swap as simulate_terraswap_swap;
 use white_whale::tax::deduct_tax;
 use white_whale::ust_vault::msg::ExecuteMsg as VaultMsg;
-use white_whale::ust_vault::msg::FlashLoanPayload;
+use white_whale::luna_vault::msg::ExecuteMsg as LunaVaultMsg;
+
+use white_whale::flashloan::flashloan::{FlashLoanPayload};
 
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
@@ -152,8 +154,29 @@ fn call_flashloan(
         callback: to_binary(&callback_msg)?,
     };
 
+    let supported_assets = vec![String::from("uluna"), String::from("uusd")];
+
+    match &deposit_info.asset_info {
+        // Eventually Can be expanded for CW20s, just remove the Err and replace with LOGIC
+        AssetInfo::Token { .. } => { return Err(StableArbError::Unauthorized {})},
+        AssetInfo::NativeToken { denom } => {
+            if !supported_assets.contains(denom){ return Err(StableArbError::UnsupportedAsset {})}
+
+            if denom == &"uluna".to_string(){
+                // Call Luna Vault, a clone used here to avoid a move error
+
+                return Ok(
+                    Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
+                        contract_addr: state.vault_address.to_string(),
+                        msg: to_binary(&LunaVaultMsg::FlashLoan { payload: payload.clone() })?,
+                        funds: vec![],
+                    })),
+                );
+            }
+        }
+    }
     // Call stablecoin Vault
-    Ok(
+    return Ok(
         Response::new().add_message(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: state.vault_address.to_string(),
             msg: to_binary(&VaultMsg::FlashLoan { payload })?,

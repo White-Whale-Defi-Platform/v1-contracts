@@ -152,17 +152,12 @@ pub fn after_trade(
 ) -> VaultResult {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
+
+
     let mut state = STATE.load(deps.storage)?;
     // Deposit funds into a passive strategy again if applicable.
-    let mut response = Response::default();
-    // TODO: NOTE: Check the clone usage, added it to fixup tests
-    deposit_passive_strategy(
-        &deps.as_ref(),
-        luna_in_contract - info.luna_cap,
-        state.bluna_address,
-        &state.astro_lp_address,
-        response.clone(),
-    );
+    let mut response = Response::new();
+
 
     let mut conf = PROFIT.load(deps.storage)?;
 
@@ -181,12 +176,26 @@ pub fn after_trade(
     PROFIT.save(deps.storage, &conf)?;
 
     let commission_response = send_commissions(deps.as_ref(), msg_info, profit)?;
-
-    Ok(response
+    response = response
         // Send commission of profit to Treasury
         .add_submessages(commission_response.messages)
         .add_attributes(commission_response.attributes)
-        .add_attribute("value after commission: ", balance.to_string()))
+        .add_attribute("value after commission: ", balance.to_string());
+    // TODO: NOTE: Check the clone usage, added it to fixup tests
+
+    if luna_in_contract > info.luna_cap {
+
+        deposit_passive_strategy(
+            &deps.as_ref(),
+            luna_in_contract - info.luna_cap,
+            state.bluna_address,
+            &state.astro_lp_address,
+            response,
+        )
+    }
+    else{
+        Ok(response)
+    }
 }
 
 ///TODO potentially improve this function by passing the Asset, so that this component could be reused for other vaults
