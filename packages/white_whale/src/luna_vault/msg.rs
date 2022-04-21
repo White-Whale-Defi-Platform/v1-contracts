@@ -69,11 +69,8 @@ pub enum ExecuteMsg {
         last_processed_batch: Option<u64>,
     },
     /// Update the parameters that are needed for the contract
-    UpdateParams {
-        epoch_period: Option<u64>,
-        unbonding_period: Option<u64>,
-        peg_recovery_fee: Option<Decimal>,
-        er_threshold: Option<Decimal>,
+    UpdateUnbondingPeriod {
+        unbonding_period: u64,
     },
     /// Execute a flashloan
     FlashLoan { payload: FlashLoanPayload },

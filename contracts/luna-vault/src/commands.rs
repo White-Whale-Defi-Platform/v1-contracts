@@ -1,8 +1,8 @@
 use std::borrow::BorrowMut;
 
 use cosmwasm_std::{
-    attr, coins, from_binary, to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
-    DepsMut, Env, MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, Uint128,
+    Addr, Api, attr, BankMsg, Binary, Coin, coins, CosmosMsg, Decimal, Deps, DepsMut, Env,
+    from_binary, MessageInfo, QuerierWrapper, Response, StdError, StdResult, Storage, to_binary, Uint128,
     WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
@@ -19,14 +19,10 @@ use white_whale::memory::LIST_SIZE_LIMIT;
 
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::{check_fee, compute_total_value, get_treasury_fee, slashing, validate_rate};
+use crate::helpers::{check_fee, compute_total_value, get_treasury_fee, slashing};
 use crate::math::decimal_division;
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{
-    get_finished_amount, get_unbond_batches, read_unbond_history, remove_unbond_wait_list,
-    store_unbond_history, store_unbond_wait_list, Parameters, State, UnbondHistory, ADMIN,
-    CURRENT_BATCH, DEPOSIT_INFO, FEE, PARAMETERS, POOL_INFO, PROFIT, STATE,
-};
+use crate::state::{ADMIN, CURRENT_BATCH, DEPOSIT_INFO, deprecate_unbond_batches, FEE, get_deprecated_unbond_batch_ids, get_unbond_history, get_withdrawable_amount, get_withdrawable_unbond_batch_ids, Parameters, PARAMETERS, POOL_INFO, prepare_next_unbond_batch, PROFIT, remove_unbond_wait_list, State, STATE, store_unbond_history, store_unbond_wait_list, UnbondHistory};
 
 /// handler function invoked when the luna-vault contract receives
 /// a transaction. In this case it is triggered when the LP tokens are deposited
@@ -58,6 +54,7 @@ pub fn provide_liquidity(
 ) -> VaultResult {
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let profit = PROFIT.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
 
     if profit.last_balance != Uint128::zero() {
@@ -69,59 +66,39 @@ pub fn provide_liquidity(
     // Check if deposit matches claimed deposit.
     deposit_info.assert(&asset.info)?;
     asset.assert_sent_native_token_balance(&msg_info)?;
-    attrs.push(("Action:", String::from("Deposit to vault")));
-    attrs.push(("Received funds:", asset.to_string()));
-
-    let params = PARAMETERS.load(deps.storage)?;
-    let threshold = params.er_threshold;
-    let recovery_fee = params.peg_recovery_fee;
-
-    // current batch requested fee is needed for accurate exchange rate computation.
-    let current_batch = CURRENT_BATCH.load(deps.storage)?;
-    let requested_with_fee = current_batch.requested_with_fee;
+    attrs.push(("action", String::from("provide_liquidity")));
+    attrs.push(("received funds", asset.to_string()));
 
     // Received deposit to vault
     let deposit: Uint128 = asset.amount;
 
-    // check slashing
-    let mut state = STATE.load(deps.storage)?;
-    slashing(&mut deps, env.clone(), &mut state, &params)?;
+    // Get total value in Vault
+    let (total_deposits_in_luna, luna_in_contract, _, _, _) =
+        compute_total_value(&env, deps.as_ref(), &info)?;
+    // Get total supply of vLuna tokens and calculate share
+    let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
-    // get the total vluna supply
-    let mut total_supply = query_supply(&deps.querier, info.liquidity_token.clone())?;
-
-    // peg recovery fee should be considered
-    let mint_amount = decimal_division(deposit, state.exchange_rate);
-    let mut mint_amount_with_fee = mint_amount;
-    if state.exchange_rate < threshold {
-        let max_peg_fee = mint_amount * recovery_fee;
-        let required_peg_fee = ((total_supply + mint_amount + current_batch.requested_with_fee)
-            .checked_sub(state.total_bond_amount + deposit))?;
-        let peg_fee = Uint128::min(max_peg_fee, required_peg_fee);
-        mint_amount_with_fee = (mint_amount.checked_sub(peg_fee))?;
-    }
-
-    // total supply should be updated for exchange rate calculation.
-    total_supply += mint_amount_with_fee;
-
-    // exchange rate should be updated for future
-    state.total_bond_amount += deposit;
-    state.update_exchange_rate(total_supply, requested_with_fee);
-    STATE.save(deps.storage, &state)?;
+    let share = if total_share == Uint128::zero()
+        || total_deposits_in_luna.checked_sub(deposit)? == Uint128::zero()
+    {
+        // Initial share = collateral amount
+        deposit
+    } else {
+        deposit.multiply_ratio(total_share, total_deposits_in_luna.checked_sub(deposit)?)
+    };
 
     // mint LP token to sender
     let msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: info.liquidity_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Mint {
             recipient: msg_info.sender.to_string(),
-            amount: mint_amount_with_fee,
+            amount: share,
         })?,
         funds: vec![],
     });
 
     let response = Response::new().add_attributes(attrs).add_message(msg);
     // If contract holds more than ASTROPORT_DEPOSIT_THRESHOLD [LUNA] then try deposit to Astroport and leave LUNA_CAP [LUNA] in contract.
-    let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
     if luna_in_contract > info.luna_cap {
         deposit_passive_strategy(
             &deps.as_ref(),
@@ -224,7 +201,6 @@ pub(crate) fn withdraw_passive_strategy(
     });
 
 
-
     // Leaving this here for now but commented, this logic allows us to offer luna or bLuna if caller is willing to assume fees
     // let bluna_asset = astroport::asset::Asset {
     //     amount: bluna_return.return_amount,
@@ -270,94 +246,44 @@ fn unbond(
     attrs.push(("from", sender.clone()));
     attrs.push(("burnt_amount", amount.to_string()));
 
-    let mut current_batch = CURRENT_BATCH.load(deps.storage)?;
-
-    // Check slashing, update state, and calculate the new exchange rate.
-    let params = PARAMETERS.load(deps.storage)?;
-    let mut state = STATE.load(deps.storage)?;
-    slashing(&mut deps, env.clone(), &mut state, &params)?;
-
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let mut total_supply = query_supply(&deps.querier, info.liquidity_token.clone())?;
-
     // Get treasury fee in LP tokens
     let treasury_fee = get_treasury_fee(deps.as_ref(), amount)?;
     attrs.push(("treasury_fee", treasury_fee.to_string()));
 
-    // Collect all the requests within a epoch period
-    // Apply peg recovery fee
-    let mut amount_with_fee = if state.exchange_rate < params.er_threshold {
-        let max_peg_fee = amount * params.peg_recovery_fee;
-        let required_peg_fee = ((total_supply + current_batch.requested_with_fee)
-            .checked_sub(state.total_bond_amount))?;
-        let peg_fee = Uint128::min(max_peg_fee, required_peg_fee);
-        (amount.checked_sub(peg_fee))?
-    } else {
-        amount
-    };
-    // substract the treasury fee
-    amount_with_fee = amount_with_fee.checked_sub(treasury_fee)?;
-    attrs.push(("post_fee_unbonded_amount", amount_with_fee.to_string()));
+    // Calculate share of pool and requested pool value
+    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+    let mut total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
+    let (total_value_in_luna, _, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
+    // Share with fee deducted.
+    let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
+    let mut refund_amount: Uint128 = total_value_in_luna * share_ratio;
+    attrs.push(("post_fee_unbonded_amount", refund_amount.to_string()));
 
-    current_batch.requested_with_fee += amount_with_fee;
+    //todo prob remove requested_with_fee from current_batch
+    let mut current_batch = CURRENT_BATCH.load(deps.storage)?;
+    current_batch.requested_with_fee += refund_amount;
 
+    // Add unbond to the wait list
     let sender_addr = deps.api.addr_validate(&sender)?;
     store_unbond_wait_list(
         deps.storage,
         current_batch.id,
         &sender_addr,
-        amount_with_fee,
+        refund_amount,
     )?;
 
-    total_supply = (total_supply.checked_sub(amount))
-        .expect("the requested can not be more than the total supply");
+    let unbond_history = UnbondHistory {
+        batch_id: current_batch.id,
+        time: env.block.time.seconds(),
+        amount: current_batch.requested_with_fee,
+        applied_exchange_rate: Decimal::one(),
+        withdraw_rate: Decimal::one(),
+        released: false,
+    };
+    store_unbond_history(deps.storage, current_batch.id, unbond_history)?;
 
-    // Update exchange rate
-    state.update_exchange_rate(total_supply, current_batch.requested_with_fee);
-
-    let passed_time_seconds = env
-        .block
-        .time
-        .minus_seconds(state.last_unbonded_time)
-        .seconds();
-
-    // If the epoch period is passed, the undelegate message would be sent.
-    if passed_time_seconds > params.epoch_period {
-        // Apply the current exchange rate.
-        let undelegation_amount = current_batch.requested_with_fee * state.exchange_rate;
-
-        // the contract must stop if
-        if undelegation_amount == Uint128::new(1) {
-            return Err(LunaVaultError::TooSmallBurn {});
-        }
-
-        state.total_bond_amount = (state.total_bond_amount.checked_sub(undelegation_amount))
-            .expect("Undelegation amount can not be more than stored total bonded amount");
-
-        // Store history for withdraw unbonded
-        let history = UnbondHistory {
-            batch_id: current_batch.id,
-            time: env.block.time.seconds(),
-            amount: current_batch.requested_with_fee,
-            applied_exchange_rate: state.exchange_rate,
-            withdraw_rate: state.exchange_rate,
-            released: false,
-        };
-        store_unbond_history(deps.storage, current_batch.id, history)?;
-
-        // batch info must be updated to new batch
-        current_batch.id += 1;
-        current_batch.requested_with_fee = Uint128::zero();
-
-        // state.last_unbonded_time must be updated to the current block time
-        state.last_unbonded_time = env.block.time.seconds();
-    }
-
-    // Store the new requested_with_fee or id in the current batch
-    CURRENT_BATCH.save(deps.storage, &current_batch)?;
-
-    // Store state's new exchange rate
-    STATE.save(deps.storage, &state)?;
+    // Prepare for next unbond batch
+    prepare_next_unbond_batch(deps.storage);
 
     // LP token treasury Asset
     let lp_token_treasury_fee = Asset {
@@ -388,7 +314,7 @@ fn unbond(
     Ok(Response::new()
         .add_message(burn_msg)
         .add_message(treasury_fee_msg)
-        .add_attribute("action", "unbound")
+        .add_attribute("action", "unbond")
         .add_attributes(attrs))
 }
 
@@ -396,42 +322,28 @@ fn unbond(
 pub fn withdraw_unbonded(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
+    msg_info: MessageInfo,
 ) -> VaultResult {
     // read params
     let params = PARAMETERS.load(deps.storage)?;
+    //todo maybe there's another way to take the coin denom from, remove this from params?
     let coin_denom = params.underlying_coin_denom;
 
-    let historical_time = env.block.time.seconds() - params.unbonding_period;
-
-    // query vault balance for process withdraw rate.
-    let vault_balance = deps
-        .querier
-        .query_balance(&env.contract.address, &*coin_denom)?
-        .amount;
-
-    // calculate withdraw rate for user requests
-    _process_withdraw_rate(deps.storage, historical_time, vault_balance)?;
-
-    let withdraw_amount = get_finished_amount(deps.storage, &info.sender, None)?;
+    let withdrawable_time = env.block.time.seconds() - params.unbonding_period;
+    let withdraw_amount = get_withdrawable_amount(deps.storage, &msg_info.sender, withdrawable_time)?;
     if withdraw_amount.is_zero() {
         return Err(LunaVaultError::NoWithdrawableAssetsAvailable(coin_denom));
     }
 
-    // remove the previous batches for the user
-    let deprecated_batches = get_unbond_batches(deps.storage, &info.sender, None)?;
-    remove_unbond_wait_list(deps.storage, deprecated_batches, &info.sender)?;
-
-    // Update previous balance used for calculation in next Luna batch release
-    let prev_balance = (vault_balance.checked_sub(withdraw_amount))?;
-    STATE.update(deps.storage, |mut last_state| -> StdResult<State> {
-        last_state.prev_vault_balance = prev_balance;
-        Ok(last_state)
-    })?;
+    // remove batches to be withdrawn for the user
+    let withdrawable_batch_ids = get_withdrawable_unbond_batch_ids(deps.storage, &msg_info.sender, withdrawable_time)?;
+    deprecate_unbond_batches(deps.storage, withdrawable_batch_ids)?;
+    let deprecated_batch_ids = get_deprecated_unbond_batch_ids(deps.storage, &msg_info.sender)?;
+    remove_unbond_wait_list(deps.storage, deprecated_batch_ids, &msg_info.sender)?;
 
     // Send the money to the user
     let withdraw_msg = CosmosMsg::Bank(BankMsg::Send {
-        to_address: info.sender.to_string(),
+        to_address: msg_info.sender.to_string(),
         amount: coins(withdraw_amount.u128(), &*coin_denom),
     });
 
@@ -442,118 +354,6 @@ pub fn withdraw_unbonded(
             attr("amount", withdraw_amount),
         ])
         .add_message(withdraw_msg))
-}
-
-/// This is designed for an accurate unbonded amount calculation.
-/// Execute while processing withdraw_unbonded
-fn _process_withdraw_rate(
-    storage: &mut dyn Storage,
-    historical_time: u64,
-    vault_balance: Uint128,
-) -> StdResult<()> {
-    // balance change of the vault contract must be checked.
-    let mut total_unbonded_amount = Uint128::zero();
-
-    let mut state = STATE.load(storage)?;
-
-    let balance_change = SignedInt::from_subtraction(vault_balance, state.prev_vault_balance);
-    state.actual_unbonded_amount += balance_change.0;
-
-    let last_processed_batch = state.last_processed_batch;
-    let mut batch_count: u64 = 0;
-
-    // Iterate over unbonded histories that have been processed
-    // to calculate newly added unbonded amount
-    let mut i = last_processed_batch + 1;
-    loop {
-        let history: UnbondHistory;
-        match read_unbond_history(storage, i) {
-            Ok(h) => {
-                if h.time > historical_time {
-                    break;
-                }
-                if !h.released {
-                    history = h.clone();
-                } else {
-                    break;
-                }
-            }
-            Err(_) => break,
-        }
-        let burnt_amount = history.amount;
-        let historical_rate = history.withdraw_rate;
-        let unbonded_amount = burnt_amount * historical_rate;
-        total_unbonded_amount += unbonded_amount;
-        batch_count += 1;
-        i += 1;
-    }
-
-    if batch_count >= 1 {
-        // Use signed integer in case of some rogue transfers.
-        let slashed_amount =
-            SignedInt::from_subtraction(total_unbonded_amount, state.actual_unbonded_amount);
-
-        // Iterate again to calculate the withdraw rate for each unprocessed history
-        let mut iterator = last_processed_batch + 1;
-        loop {
-            let history: UnbondHistory;
-            match read_unbond_history(storage, iterator) {
-                Ok(h) => {
-                    if h.time > historical_time {
-                        break;
-                    }
-                    if !h.released {
-                        history = h
-                    } else {
-                        break;
-                    }
-                }
-                Err(_) => {
-                    break;
-                }
-            }
-            let burnt_amount_of_batch = history.amount;
-            let historical_rate_of_batch = history.withdraw_rate;
-            let unbonded_amount_of_batch = burnt_amount_of_batch * historical_rate_of_batch;
-
-            // the slashed amount for each batch must be proportional to the unbonded amount of batch
-            let batch_slashing_weight =
-                Decimal::from_ratio(unbonded_amount_of_batch, total_unbonded_amount);
-
-            let mut slashed_amount_of_batch = batch_slashing_weight * slashed_amount.0;
-            let actual_unbonded_amount_of_batch: Uint128;
-
-            // If slashed amount is negative, there should be summation instead of subtraction.
-            if slashed_amount.1 {
-                slashed_amount_of_batch = (slashed_amount_of_batch.checked_sub(Uint128::new(1)))?;
-                actual_unbonded_amount_of_batch =
-                    unbonded_amount_of_batch + slashed_amount_of_batch;
-            } else {
-                if slashed_amount.0.u128() != 0u128 {
-                    slashed_amount_of_batch += Uint128::new(1);
-                }
-                actual_unbonded_amount_of_batch =
-                    SignedInt::from_subtraction(unbonded_amount_of_batch, slashed_amount_of_batch)
-                        .0;
-            }
-            // Calculate the new withdraw rate
-            let new_withdraw_rate =
-                Decimal::from_ratio(actual_unbonded_amount_of_batch, burnt_amount_of_batch);
-
-            let mut history_for_i = history;
-            // store the history and mark it as released
-            history_for_i.withdraw_rate = new_withdraw_rate;
-            history_for_i.released = true;
-            store_unbond_history(storage, iterator, history_for_i)?;
-            state.last_processed_batch = iterator;
-            iterator += 1;
-        }
-    }
-    // Store state.actual_unbonded_amount for future new batches release
-    state.actual_unbonded_amount = Uint128::zero();
-    STATE.save(storage, &state)?;
-
-    Ok(())
 }
 
 /// Sets the liquid luna cap on the vault.
@@ -734,34 +534,29 @@ pub fn update_state(
     Ok(Response::new().add_attribute("Update:", "Successful"))
 }
 
-/// Update general parameters
+/// Update unbonding period parameter
 /// Only creator/owner is allowed to execute
 #[allow(clippy::too_many_arguments)]
-pub fn update_params(
+pub fn update_unbonding_period(
     deps: DepsMut,
     _env: Env,
     msg_info: MessageInfo,
-    epoch_period: Option<u64>,
-    unbonding_period: Option<u64>,
-    peg_recovery_fee: Option<Decimal>,
-    er_threshold: Option<Decimal>,
+    unbonding_period: u64,
 ) -> VaultResult {
     // only owner can send this message.
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
-    let params: Parameters = PARAMETERS.load(deps.storage)?;
+    let mut params: Parameters = PARAMETERS.load(deps.storage)?;
+    let previous_unbonding_period = params.unbonding_period;
+    params.unbonding_period = unbonding_period;
 
-    let new_params = Parameters {
-        epoch_period: epoch_period.unwrap_or(params.epoch_period),
-        underlying_coin_denom: params.underlying_coin_denom,
-        unbonding_period: unbonding_period.unwrap_or(params.unbonding_period),
-        peg_recovery_fee: validate_rate(peg_recovery_fee.unwrap_or(params.peg_recovery_fee))?,
-        er_threshold: validate_rate(er_threshold.unwrap_or(params.er_threshold))?,
-    };
+    PARAMETERS.save(deps.storage, &params)?;
 
-    PARAMETERS.save(deps.storage, &new_params)?;
-
-    Ok(Response::new().add_attributes(vec![attr("action", "update_params")]))
+    Ok(Response::new().add_attributes(vec![
+        attr("action", "update_unbonding_period"),
+        attr("previous unbonding_period", previous_unbonding_period.to_string()),
+        attr("new unbonding_period", unbonding_period.to_string()),
+    ]))
 }
 
 pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResult {

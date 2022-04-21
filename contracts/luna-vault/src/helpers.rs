@@ -11,17 +11,6 @@ use crate::error::LunaVaultError;
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{CURRENT_BATCH, FEE, Parameters, POOL_INFO, State, STATE};
 
-pub fn validate_rate(rate: Decimal) -> StdResult<Decimal> {
-    if rate > Decimal::one() {
-        return Err(StdError::generic_err(format!(
-            "Rate can not be bigger than one (given value: {})",
-            rate
-        )));
-    }
-
-    Ok(rate)
-}
-
 /// compute total vault value of deposits in LUNA and return a tuple with those values.
 /// (total, luna, astro lp, bluna, cluna)
 pub fn compute_total_value(

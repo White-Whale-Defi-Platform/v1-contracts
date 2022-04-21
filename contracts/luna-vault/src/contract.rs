@@ -1,14 +1,14 @@
 use cosmwasm_std::{
-    entry_point, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
-    DepsMut, Env, Fraction, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdError,
-    StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
+    Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps, DepsMut, entry_point, Env,
+    Fraction, from_binary, MessageInfo, QueryRequest, Reply, ReplyOn, Response, StdError, StdResult,
+    SubMsg, to_binary, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::{Cw20ExecuteMsg, Cw20QueryMsg, Cw20ReceiveMsg, MinterResponse, TokenInfoResponse};
 use protobuf::Message;
 use semver::Version;
-use terraswap::asset::AssetInfo::Token;
 use terraswap::asset::{Asset, AssetInfo};
+use terraswap::asset::AssetInfo::Token;
 use terraswap::pair::Cw20HookMsg;
 use terraswap::querier::{query_balance, query_supply, query_token_balance};
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
@@ -24,16 +24,16 @@ use white_whale::luna_vault::msg::{
 use white_whale::memory::LIST_SIZE_LIMIT;
 use white_whale::tax::{compute_tax, into_msg_without_tax};
 
+use crate::{commands, flashloan, helpers, queries};
 use crate::commands::set_fee;
 use crate::error::LunaVaultError;
-use crate::helpers::{compute_total_value, validate_rate};
+use crate::helpers::compute_total_value;
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{
-    CurrentBatch, Parameters, ProfitCheck, State, ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE,
-    PARAMETERS, POOL_INFO, PROFIT, STATE,
+    ADMIN, CURRENT_BATCH, CurrentBatch, DEPOSIT_INFO, FEE, Parameters, PARAMETERS, POOL_INFO,
+    PROFIT, ProfitCheck, State, STATE,
 };
-use crate::{commands, flashloan, helpers, queries};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale Luna Vault LP Token";
@@ -110,15 +110,15 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
             AssetInfo::Token {
                 contract_addr: msg.astro_lp_address,
             }
-            .to_raw(deps.api)?, // 1 - astro lp
+                .to_raw(deps.api)?, // 1 - astro lp
             AssetInfo::Token {
                 contract_addr: msg.bluna_address,
             }
-            .to_raw(deps.api)?, // 2 - bluna
+                .to_raw(deps.api)?, // 2 - bluna
             AssetInfo::Token {
                 contract_addr: msg.cluna_address,
             }
-            .to_raw(deps.api)?, // 3 - cluna
+                .to_raw(deps.api)?, // 3 - cluna
         ],
     };
     POOL_INFO.save(deps.storage, pool_info)?;
@@ -131,11 +131,8 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
 
     // Setup parameters
     let params = Parameters {
-        epoch_period: msg.epoch_period,
         underlying_coin_denom,
         unbonding_period: msg.unbonding_period,
-        peg_recovery_fee: validate_rate(msg.peg_recovery_fee)?,
-        er_threshold: validate_rate(msg.er_threshold)?,
     };
     PARAMETERS.save(deps.storage, &params)?;
 
@@ -175,7 +172,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
             funds: vec![],
             label: "White Whale Luna Vault LP".to_string(),
         }
-        .into(),
+            .into(),
         gas_limit: None,
         id: u64::from(INSTANTIATE_REPLY_ID),
         reply_on: ReplyOn::Success,
@@ -243,19 +240,13 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             last_unbonded_time,
             last_processed_batch,
         ),
-        ExecuteMsg::UpdateParams {
-            epoch_period,
+        ExecuteMsg::UpdateUnbondingPeriod {
             unbonding_period,
-            peg_recovery_fee,
-            er_threshold,
-        } => commands::update_params(
+        } => commands::update_unbonding_period(
             deps,
             env,
             info,
-            epoch_period,
             unbonding_period,
-            peg_recovery_fee,
-            er_threshold,
         ),
         ExecuteMsg::Callback(msg) => flashloan::_handle_callback(deps, env, info, msg),
     }
@@ -299,7 +290,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::CurrentBatch {} => to_binary(&queries::query_current_batch(deps)?),
         QueryMsg::WithdrawableUnbonded { address } => {
             to_binary(&queries::query_withdrawable_unbonded(deps, address, env)?)
-        },
+        }
         QueryMsg::Parameters {} => to_binary(&queries::query_params(deps)?),
         QueryMsg::UnbondRequests {
             address,

@@ -55,14 +55,9 @@ pub struct CurrentBatch {
 // The Parameters contain necessary information for unbonding vluna
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Parameters {
-    pub epoch_period: u64,
-    // as a duration in seconds
     pub underlying_coin_denom: String,
-    pub unbonding_period: u64,
     // as a duration in seconds
-    pub peg_recovery_fee: Decimal,
-    // must be in [0, 1].
-    pub er_threshold: Decimal, // exchange rate threshold. Must be in [0, 1].
+    pub unbonding_period: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -88,8 +83,8 @@ pub const UNBOND_WAITLIST: Map<(&Addr, U64Key), Uint128> = Map::new("unbond_wait
 pub const UNBOND_HISTORY: Map<U64Key, UnbondHistory> = Map::new("unbond_history");
 pub const CURRENT_BATCH: Item<CurrentBatch> = Item::new("current_batch");
 
-/// Store undelegation wait list per each batch
-/// HashMap<user's address + batch_id, requested_amount>
+/// Store unbond wait list for the user
+/// HashMap<user's address + batch_id, refund_amount>
 pub fn store_unbond_wait_list(
     storage: &mut dyn Storage,
     batch_id: u64,
@@ -106,6 +101,7 @@ pub fn store_unbond_wait_list(
     Ok(())
 }
 
+/// Stores an [UnbondHistory] with a given [batch_id].
 pub fn store_unbond_history(
     storage: &mut dyn Storage,
     batch_id: u64,
@@ -114,37 +110,44 @@ pub fn store_unbond_history(
     UNBOND_HISTORY.save(storage, batch_id.into(), &history)
 }
 
-pub fn read_unbond_history(storage: &dyn Storage, epoc_id: u64) -> StdResult<UnbondHistory> {
+/// Gets an unbond history by [batch_id]
+pub fn get_unbond_history(storage: &dyn Storage, batch_id: u64) -> StdResult<UnbondHistory> {
     UNBOND_HISTORY
-        .load(storage, epoc_id.into())
+        .load(storage, batch_id.into())
         .map_err(|_| StdError::generic_err("Burn requests not found for the specified time period"))
+}
+
+/// Prepares next unbond batch
+pub fn prepare_next_unbond_batch(storage: &mut dyn Storage) -> StdResult<()> {
+    let mut current_batch = CURRENT_BATCH.load(deps.storage)?;
+    current_batch.id += 1;
+    current_batch.requested_with_fee = Uint128::zero();
+    CURRENT_BATCH.save(deps.storage, &current_batch)?;
+    Ok(())
 }
 
 const DEFAULT_UNBOND_WAITLIST_READ_LIMIT: u32 = 30u32;
 
-/// Return all requested unbond amount.
-/// This needs to be called after process withdraw rate function.
-/// If the batch is released, this will return user's requested
-/// amount proportional to withdraw rate.
-pub fn get_finished_amount(
+/// Gets the amount of luna that is withdrawable by the user.
+/// This is known by looking at the [unbound_history] time, which is registered when unbonding, and
+/// comparing it with a given [withdrawable_time], which is calculated as now - unbonding period.
+/// If the necessary time has passed, then allows withdrawing the funds.
+/// It allows for withdrawing multiple unbonded batches at once.
+pub fn get_withdrawable_amount(
     storage: &dyn Storage,
     sender_addr: &Addr,
-    limit: Option<u32>,
+    withdrawable_time: u64,
 ) -> StdResult<Uint128> {
     let withdrawable_amount = UNBOND_WAITLIST
         .prefix(sender_addr)
         .range(storage, None, None, Order::Ascending)
-        .take(
-            limit
-                .unwrap_or(DEFAULT_UNBOND_WAITLIST_READ_LIMIT)
-                .min(MAX_LIMIT) as usize,
-        )
+        .take(DEFAULT_UNBOND_WAITLIST_READ_LIMIT as usize)
         .fold(Uint128::zero(), |acc, item| {
             let (k, v) = item.unwrap();
             let batch_id = deserialize_key::<u64>(k).unwrap();
-            if let Ok(h) = read_unbond_history(storage, batch_id) {
-                if h.released {
-                    acc + v * h.withdraw_rate
+            if let Ok(unbond_history) = get_unbond_history(storage, batch_id) {
+                if withdrawable_time > unbond_history.time {
+                    acc + v
                 } else {
                     acc
                 }
@@ -155,24 +158,64 @@ pub fn get_finished_amount(
     Ok(withdrawable_amount)
 }
 
-pub fn get_unbond_batches(
+/// Gets the ids of those unbond batches that are to be withdrawn.
+/// This is known by looking at the [unbound_history] time, which is registered when unbonding, and
+/// comparing it with a given [withdrawable_time], which is calculated as now - unbonding period.
+/// If the necessary time has passed, then returns the batch id.
+pub fn get_withdrawable_unbond_batch_ids(
     storage: &dyn Storage,
     sender_addr: &Addr,
-    limit: Option<u32>,
+    withdrawable_time: u64,
+) -> StdResult<Vec<u64>> {
+    let withdrawable_batches: Vec<u64> = UNBOND_WAITLIST
+        .prefix(sender_addr)
+        .range(storage, None, None, Order::Ascending)
+        .take(DEFAULT_UNBOND_WAITLIST_READ_LIMIT as usize)
+        .filter_map(|item| {
+            let (k, _) = item.unwrap();
+            let batch_id = deserialize_key::<u64>(k).unwrap();
+            if let Ok(unbond_history) = get_unbond_history(storage, batch_id) {
+                if withdrawable_time > unbond_history.time {
+                    Some(batch_id)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+    Ok(withdrawable_batches)
+}
+
+/// Deprecate unbond batches by marking them as released, i.e. funds have been withdrawn.
+pub fn deprecate_unbond_batches(
+    storage: &mut dyn Storage,
+    batch_ids: Vec<u64>,
+) -> StdResult<()> {
+    for batch_id in batch_ids {
+        if let Ok(mut unbond_history) = get_unbond_history(storage, batch_id) {
+            unbond_history.released = true;
+            store_unbond_history(storage, batch_id, unbond_history)?;
+        }
+    }
+    Ok(())
+}
+
+/// Get the ids of deprecated unbond batches, i.e. those that are to be released
+pub fn get_deprecated_unbond_batch_ids(
+    storage: &dyn Storage,
+    sender_addr: &Addr,
 ) -> StdResult<Vec<u64>> {
     let deprecated_batches: Vec<u64> = UNBOND_WAITLIST
         .prefix(sender_addr)
         .range(storage, None, None, Order::Ascending)
-        .take(
-            limit
-                .unwrap_or(DEFAULT_UNBOND_WAITLIST_READ_LIMIT)
-                .min(MAX_LIMIT) as usize,
-        )
+        .take(DEFAULT_UNBOND_WAITLIST_READ_LIMIT as usize)
         .filter_map(|item| {
             let (k, _) = item.unwrap();
             let batch_id = deserialize_key::<u64>(k).unwrap();
-            if let Ok(h) = read_unbond_history(storage, batch_id) {
-                if h.released {
+            if let Ok(unbonded_history) = get_unbond_history(storage, batch_id) {
+                if unbonded_history.released {
                     Some(batch_id)
                 } else {
                     None
@@ -185,14 +228,14 @@ pub fn get_unbond_batches(
     Ok(deprecated_batches)
 }
 
-/// Remove unbond batch id from user's wait list
+/// Remove unbond batch id from user's wait list.
 pub fn remove_unbond_wait_list(
     storage: &mut dyn Storage,
-    batch_id: Vec<u64>,
+    batch_ids: Vec<u64>,
     sender_addr: &Addr,
 ) -> StdResult<()> {
-    for b in batch_id {
-        UNBOND_WAITLIST.remove(storage, (sender_addr, b.into()));
+    for batch_id in batch_ids {
+        UNBOND_WAITLIST.remove(storage, (sender_addr, batch_id.into()));
     }
     Ok(())
 }
@@ -244,7 +287,7 @@ pub fn query_get_finished_amount(
         .fold(Uint128::zero(), |acc, item| {
             let (k, v) = item.unwrap();
             let batch_id = deserialize_key::<u64>(k).unwrap();
-            if let Ok(h) = read_unbond_history(storage, batch_id) {
+            if let Ok(h) = get_unbond_history(storage, batch_id) {
                 if h.time < block_time {
                     acc + v * h.withdraw_rate
                 } else {
