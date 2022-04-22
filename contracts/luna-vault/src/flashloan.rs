@@ -1,16 +1,18 @@
 use core::result::Result::Err;
-use cosmwasm_std::{CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg};
+use cosmwasm_std::{
+    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
+};
 use terraswap::asset::{Asset, AssetInfo};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::luna_vault::msg::{CallbackMsg, FlashLoanPayload};
 use white_whale::tax::into_msg_without_tax;
 
+use crate::commands::{deposit_passive_strategy, withdraw_passive_strategy};
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::compute_total_value;
+use crate::helpers::{compute_total_value, get_lp_token_address};
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
-use crate::commands::{deposit_passive_strategy, withdraw_passive_strategy};
 const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
 
 pub fn handle_flashloan(
@@ -41,7 +43,8 @@ pub fn handle_flashloan(
 
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value, luna_available, _, _, _) = compute_total_value(&env, deps.as_ref(), &pool_info)?;
+    let (total_value, luna_available, _, _, _) =
+        compute_total_value(&env, deps.as_ref(), &pool_info)?;
     let requested_asset = payload.requested_asset;
 
     // Max tax buffer will be 2 transfers of the borrowed assets
@@ -59,32 +62,39 @@ pub fn handle_flashloan(
     // Withdraw funds from Passive Strategy if needed
     // FEE_BUFFER as buffer for fees and taxes
     /*    if (requested_asset.amount + tax_buffer) > luna_available {
-            // Attempt to remove some money from anchor
-            let to_withdraw = (requested_asset.amount + tax_buffer) - luna_available;
-            let aust_exchange_rate = query_aust_exchange_rate(
-                env.clone(),
-                deps.as_ref(),
-                state.anchor_money_market_address.to_string(),
-            )?;
+        // Attempt to remove some money from anchor
+        let to_withdraw = (requested_asset.amount + tax_buffer) - luna_available;
+        let aust_exchange_rate = query_aust_exchange_rate(
+            env.clone(),
+            deps.as_ref(),
+            state.anchor_money_market_address.to_string(),
+        )?;
 
-            let withdraw_msg = anchor_withdraw_msg(
-                state.bluna_address,
-                state.anchor_money_market_address,
-                to_withdraw * aust_exchange_rate.inv().unwrap(),
-            )?;
+        let withdraw_msg = anchor_withdraw_msg(
+            state.bluna_address,
+            state.anchor_money_market_address,
+            to_withdraw * aust_exchange_rate.inv().unwrap(),
+        )?;
 
-            // Add msg to response and update withdrawn value
-            response = response
-                .add_message(withdraw_msg)
-                .add_attribute("Anchor withdrawal", to_withdraw.to_string())
-                .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
-        }*/
+        // Add msg to response and update withdrawn value
+        response = response
+            .add_message(withdraw_msg)
+            .add_attribute("Anchor withdrawal", to_withdraw.to_string())
+            .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
+    }*/
     // pool_info.luna_cap ? instead of tax_cap
-    if (requested_asset.amount + tax_buffer) > luna_available{
+    if (requested_asset.amount + tax_buffer) > luna_available {
         // If we need too, withdraw from the various passive strategies, initially defined as the bLuna-Luna LP. This method will return both assets and assumes no desired assets as-is
         // TODO: Add a flag to this method so that a user can specify if they want luna or bluna, we can expand this later with an enum to offer a quick way to get any variant of luna via swapp ;-)
         // TODO: NOTE: Check the clone usage, added it to fixup tests
-        let _ = withdraw_passive_strategy(&deps.as_ref(), requested_asset.amount, state.bluna_address, &state.astro_lp_address, &state.astro_lp_address, response.clone())?;
+        let _ = withdraw_passive_strategy(
+            &deps.as_ref(),
+            requested_asset.amount,
+            state.bluna_address,
+            &get_lp_token_address(&deps.as_ref(), state.astro_lp_address.clone())?,
+            &state.astro_lp_address,
+            response.clone(),
+        )?;
     }
 
     // If caller not whitelisted, calculate flashloan fee
@@ -238,7 +248,12 @@ pub fn encapsulate_payload(
 }
 
 /// Handles the callback after using a flashloan
-pub fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> VaultResult {
+pub fn _handle_callback(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: CallbackMsg,
+) -> VaultResult {
     // Callback functions can only be called this contract itself
     if info.sender != env.contract.address {
         return Err(LunaVaultError::NotCallback {});

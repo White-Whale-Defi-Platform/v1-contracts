@@ -15,6 +15,7 @@ use crate::pool_info::PoolInfoRaw;
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
     pub bluna_address: Addr,
+    /// The address of the liquidity pool to provide bLuna-Luna assets to for passive income
     pub astro_lp_address: Addr,
     pub memory_address: Addr,
     pub whitelisted_contracts: Vec<Addr>,
@@ -33,7 +34,6 @@ pub struct ProfitCheck {
 pub struct CurrentBatch {
     pub id: u64,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UnbondHistory {
@@ -160,10 +160,7 @@ pub fn get_withdrawable_unbond_batch_ids(
 }
 
 /// Deprecate unbond batches by marking them as released, i.e. funds have been withdrawn.
-pub fn deprecate_unbond_batches(
-    storage: &mut dyn Storage,
-    batch_ids: Vec<u64>,
-) -> StdResult<()> {
+pub fn deprecate_unbond_batches(storage: &mut dyn Storage, batch_ids: Vec<u64>) -> StdResult<()> {
     for batch_id in batch_ids {
         if let Ok(mut unbond_history) = get_unbond_history(storage, batch_id) {
             unbond_history.released = true;

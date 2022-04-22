@@ -1,12 +1,12 @@
-use cosmwasm_std::{Coin, Decimal, Deps, Env, StdResult, Uint128};
+use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, StdResult, Uint128};
 use terraswap::asset::AssetInfo;
-use terraswap::querier::{query_balance};
+use terraswap::querier::query_balance;
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 
+use crate::error::LunaVaultError;
 use white_whale::query::astroport::query_astro_lp_exchange_rate;
 use white_whale::tax::compute_tax;
-use crate::error::LunaVaultError;
 
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{FEE, STATE};
@@ -28,7 +28,8 @@ pub fn compute_total_value(
 
     //TODO fix query_astro_lp_exchange_rate
     let astro_lp_info = info.asset_infos[1].to_normal(deps.api)?;
-    let astro_lp_amount = astro_lp_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
+    let astro_lp_amount =
+        astro_lp_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
     let astro_lp_exchange_rate = query_astro_lp_exchange_rate()?;
 
     let astroport_lp_value_in_luna = astro_lp_amount * astro_lp_exchange_rate;
@@ -36,8 +37,15 @@ pub fn compute_total_value(
     let bluna_value_in_luna = Uint128::zero();
     let cluna_value_in_luna = Uint128::zero();
 
-    let total_deposits_in_luna = luna_amount + astroport_lp_value_in_luna + bluna_value_in_luna + cluna_value_in_luna;
-    Ok((total_deposits_in_luna, luna_amount, astroport_lp_value_in_luna, bluna_value_in_luna, cluna_value_in_luna))
+    let total_deposits_in_luna =
+        luna_amount + astroport_lp_value_in_luna + bluna_value_in_luna + cluna_value_in_luna;
+    Ok((
+        total_deposits_in_luna,
+        luna_amount,
+        astroport_lp_value_in_luna,
+        bluna_value_in_luna,
+        cluna_value_in_luna,
+    ))
 }
 
 pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
@@ -67,4 +75,13 @@ pub fn check_fee(fee: Fee) -> Result<Fee, LunaVaultError> {
         return Err(LunaVaultError::InvalidFee {});
     }
     Ok(fee)
+}
+
+pub fn get_lp_token_address(deps: &Deps, pool_address: Addr) -> StdResult<Addr> {
+    let pool_info: astroport::asset::PairInfo = deps.querier.query_wasm_smart(
+        pool_address,
+        &astroport::pair_stable_bluna::QueryMsg::Pair {},
+    )?;
+
+    Ok(pool_info.liquidity_token)
 }

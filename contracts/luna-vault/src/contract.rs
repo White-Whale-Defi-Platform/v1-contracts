@@ -1,37 +1,31 @@
 use cosmwasm_std::{
-    Addr, Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Reply, ReplyOn, Response, StdError, StdResult,
-    SubMsg, to_binary, Uint128, WasmMsg,
+    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
+    Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
-use cw20::{MinterResponse};
+use cw20::MinterResponse;
 use protobuf::Message;
 use semver::Version;
-use terraswap::asset::{AssetInfo};
-
-
+use terraswap::asset::AssetInfo;
 
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
-
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
+use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::luna_vault::msg::*;
-use white_whale::luna_vault::msg::{
-    VaultQueryMsg as QueryMsg,
-};
 
-
-
-use crate::{commands, flashloan, helpers, queries};
 use crate::commands::set_fee;
 use crate::error::LunaVaultError;
+use crate::helpers::get_lp_token_address;
+use crate::{commands, flashloan, helpers, queries};
 
-use crate::pool_info::{PoolInfoRaw};
+use crate::pool_info::PoolInfoRaw;
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{
-    ADMIN, CURRENT_BATCH, CurrentBatch, DEPOSIT_INFO, FEE, POOL_INFO,
-    PROFIT, ProfitCheck, State, STATE,
+    CurrentBatch, ProfitCheck, State, ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT,
+    STATE,
 };
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
@@ -48,9 +42,12 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateMsg) -> VaultResult {
     // Use CW2 to set the contract version, this is needed for migrations
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let astro_lp_address = deps.api.addr_validate(&msg.astro_lp_address)?;
+
     let state = State {
         bluna_address: deps.api.addr_validate(&msg.bluna_address)?,
-        astro_lp_address: deps.api.addr_validate(&msg.astro_lp_address)?,
+        astro_lp_address: astro_lp_address.clone(),
         memory_address: deps.api.addr_validate(&msg.memory_addr)?,
         whitelisted_contracts: vec![],
         allow_non_whitelisted: false,
@@ -100,17 +97,18 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?, // 0 - luna
             AssetInfo::Token {
-                contract_addr: msg.astro_lp_address,
+                contract_addr: get_lp_token_address(&deps.as_ref(), astro_lp_address)?
+                    .into_string(),
             }
-                .to_raw(deps.api)?, // 1 - astro lp
+            .to_raw(deps.api)?, // 1 - astro lp
             AssetInfo::Token {
                 contract_addr: msg.bluna_address,
             }
-                .to_raw(deps.api)?, // 2 - bluna
+            .to_raw(deps.api)?, // 2 - bluna
             AssetInfo::Token {
                 contract_addr: msg.cluna_address,
             }
-                .to_raw(deps.api)?, // 3 - cluna
+            .to_raw(deps.api)?, // 3 - cluna
         ],
     };
     POOL_INFO.save(deps.storage, pool_info)?;
@@ -122,9 +120,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
     PROFIT.save(deps.storage, &profit)?;
 
     // Setup current batch
-    let batch = CurrentBatch {
-        id: 1,
-    };
+    let batch = CurrentBatch { id: 1 };
     CURRENT_BATCH.save(deps.storage, &batch)?;
 
     // Setup the admin as the creator of the contract
@@ -156,7 +152,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
             funds: vec![],
             label: "White Whale Luna Vault LP".to_string(),
         }
-            .into(),
+        .into(),
         gas_limit: None,
         id: u64::from(INSTANTIATE_REPLY_ID),
         reply_on: ReplyOn::Success,
@@ -203,7 +199,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
             memory_address,
             whitelisted_contracts,
             allow_non_whitelisted,
-            unbonding_period
+            unbonding_period,
         } => commands::update_state(
             deps,
             info,
@@ -261,9 +257,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
             address,
             start_from,
             limit,
-        } => to_binary(&queries::query_unbond_requests(deps, address, start_from, limit)?),
-        QueryMsg::AllHistory { start_from, limit } => {
-            to_binary(&queries::query_unbond_requests_limitation(deps, start_from, limit)?)
-        }
+        } => to_binary(&queries::query_unbond_requests(
+            deps, address, start_from, limit,
+        )?),
+        QueryMsg::AllHistory { start_from, limit } => to_binary(
+            &queries::query_unbond_requests_limitation(deps, start_from, limit)?,
+        ),
     }
 }
