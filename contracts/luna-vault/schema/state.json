@@ -15,7 +15,12 @@
       "type": "boolean"
     },
     "astro_lp_address": {
-      "$ref": "#/definitions/Addr"
+      "description": "The address of the liquidity pool to provide bLuna-Luna assets to for passive income",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        }
+      ]
     },
     "bluna_address": {
       "$ref": "#/definitions/Addr"
