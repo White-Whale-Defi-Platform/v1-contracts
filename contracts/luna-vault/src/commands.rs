@@ -1,16 +1,10 @@
-
-
 use cosmwasm_std::{
-    Addr, attr, BankMsg, Binary, coins, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    from_binary, MessageInfo, Response, to_binary, Uint128,
-    WasmMsg,
+    attr, coins, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Deps, DepsMut,
+    Env, MessageInfo, Response, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_supply;
-
-
-
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
@@ -22,7 +16,12 @@ use crate::error::LunaVaultError;
 use crate::helpers::{check_fee, compute_total_value, get_treasury_fee};
 
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{ADMIN, CURRENT_BATCH, DEPOSIT_INFO, deprecate_unbond_batches, FEE, get_deprecated_unbond_batch_ids, get_withdrawable_amount, get_withdrawable_unbond_batch_ids, POOL_INFO, prepare_next_unbond_batch, PROFIT, remove_unbond_wait_list, STATE, store_unbond_history, store_unbond_wait_list, UnbondHistory};
+use crate::state::{
+    deprecate_unbond_batches, get_deprecated_unbond_batch_ids, get_withdrawable_amount,
+    get_withdrawable_unbond_batch_ids, prepare_next_unbond_batch, remove_unbond_wait_list,
+    store_unbond_history, store_unbond_wait_list, UnbondHistory, ADMIN, CURRENT_BATCH,
+    DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE,
+};
 
 /// handler function invoked when the luna-vault contract receives
 /// a transaction. In this case it is triggered when the LP tokens are deposited
@@ -128,7 +127,7 @@ pub(crate) fn deposit_passive_strategy(
         },
     };
 
-    // simulate the luna deposit so we know the bluna return amount when we later provide liquidity
+    // simulate the luna swap so we know the bluna return amount when we later provide liquidity
     let bluna_return: astroport::pair::SimulationResponse = deps.querier.query_wasm_smart(
         astro_lp_address,
         &astroport::pair::QueryMsg::Simulation {
@@ -182,7 +181,6 @@ pub(crate) fn withdraw_passive_strategy(
     astro_lp_address: &Addr,
     response: Response,
 ) -> VaultResult {
-
     // Msg that gets called on the pair address.
     let withdraw_msg: Binary = to_binary(&astroport::pair::Cw20HookMsg::WithdrawLiquidity {})?;
 
@@ -199,7 +197,6 @@ pub(crate) fn withdraw_passive_strategy(
         msg: to_binary(&cw20_msg)?,
         funds: vec![],
     });
-
 
     // Leaving this here for now but commented, this logic allows us to offer luna or bLuna if caller is willing to assume fees
     // let bluna_asset = astroport::asset::Asset {
@@ -222,7 +219,7 @@ pub(crate) fn withdraw_passive_strategy(
 
     let response = response.add_messages(vec![
         withdraw_msg, // 1. withdraw bluna and Luna from LP.
-        // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
+                      // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
     ]);
 
     Ok(response)
@@ -264,12 +261,7 @@ fn unbond(
 
     // Add unbond to the wait list
     let sender_addr = deps.api.addr_validate(&sender)?;
-    store_unbond_wait_list(
-        deps.storage,
-        current_batch.id,
-        &sender_addr,
-        refund_amount,
-    )?;
+    store_unbond_wait_list(deps.storage, current_batch.id, &sender_addr, refund_amount)?;
 
     let unbond_history = UnbondHistory {
         batch_id: current_batch.id,
@@ -316,20 +308,20 @@ fn unbond(
 }
 
 /// Withdraws unbonded luna after unbond has been called and the time lock period expired
-pub fn withdraw_unbonded(
-    deps: DepsMut,
-    env: Env,
-    msg_info: MessageInfo,
-) -> VaultResult {
+pub fn withdraw_unbonded(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     let withdrawable_time = env.block.time.seconds() - state.unbonding_period;
-    let withdraw_amount = get_withdrawable_amount(deps.storage, &msg_info.sender, withdrawable_time)?;
+    let withdraw_amount =
+        get_withdrawable_amount(deps.storage, &msg_info.sender, withdrawable_time)?;
     if withdraw_amount.is_zero() {
-        return Err(LunaVaultError::NoWithdrawableAssetsAvailable(LUNA_DENOM.to_string()));
+        return Err(LunaVaultError::NoWithdrawableAssetsAvailable(
+            LUNA_DENOM.to_string(),
+        ));
     }
 
     // remove batches to be withdrawn for the user
-    let withdrawable_batch_ids = get_withdrawable_unbond_batch_ids(deps.storage, &msg_info.sender, withdrawable_time)?;
+    let withdrawable_batch_ids =
+        get_withdrawable_unbond_batch_ids(deps.storage, &msg_info.sender, withdrawable_time)?;
     deprecate_unbond_batches(deps.storage, withdrawable_batch_ids)?;
     let deprecated_batch_ids = get_deprecated_unbond_batch_ids(deps.storage, &msg_info.sender)?;
     remove_unbond_wait_list(deps.storage, deprecated_batch_ids, &msg_info.sender)?;
@@ -498,11 +490,17 @@ pub fn update_state(
             contracts.push(deps.api.addr_validate(&contract_addr)?);
         }
         state.whitelisted_contracts = contracts;
-        attrs.push(("new whitelisted_contracts", format!("{:?}", whitelisted_contracts)));
+        attrs.push((
+            "new whitelisted_contracts",
+            format!("{:?}", whitelisted_contracts),
+        ));
     }
     if let Some(allow_non_whitelisted) = allow_non_whitelisted {
         state.allow_non_whitelisted = allow_non_whitelisted;
-        attrs.push(("new allow_non_whitelisted", allow_non_whitelisted.to_string()));
+        attrs.push((
+            "new allow_non_whitelisted",
+            allow_non_whitelisted.to_string(),
+        ));
     }
 
     if let Some(unbonding_period) = unbonding_period {
@@ -518,10 +516,7 @@ pub fn update_state(
 pub fn swap_rewards(deps: DepsMut, _env: Env, msg_info: MessageInfo) -> VaultResult {
     let state = STATE.load(deps.storage)?;
     // Check if sender is in whitelist, i.e. bot or bot proxy
-    if !state
-        .whitelisted_contracts
-        .contains(&msg_info.sender)
-    {
+    if !state.whitelisted_contracts.contains(&msg_info.sender) {
         return Err(LunaVaultError::NotWhitelisted {});
     }
 
