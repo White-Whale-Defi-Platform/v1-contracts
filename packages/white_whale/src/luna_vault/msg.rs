@@ -1,7 +1,7 @@
 use std::fmt;
 
 use cosmwasm_std::{
-    Addr, Binary, Coin, CosmosMsg, Decimal, StdResult, to_binary, Uint128, WasmMsg,
+    to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, StdResult, Uint128, WasmMsg,
 };
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
@@ -15,6 +15,7 @@ use crate::fee::{Fee, VaultFee};
 pub struct InstantiateMsg {
     pub bluna_address: String,
     pub cluna_address: String,
+    /// The address of the liquidity pool to provide bLuna-Luna assets to for passive income
     pub astro_lp_address: String,
     pub treasury_addr: String,
     pub memory_addr: String,
@@ -113,7 +114,9 @@ pub enum VaultQueryMsg {
     PoolState {},
     State {},
     Fees {},
-    EstimateWithdrawFee { amount: Uint128 },
+    EstimateWithdrawFee {
+        amount: Uint128,
+    },
     VaultValue {},
     LastBalance {},
     LastProfit {},
