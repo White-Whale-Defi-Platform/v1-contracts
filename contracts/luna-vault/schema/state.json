@@ -4,16 +4,17 @@
   "type": "object",
   "required": [
     "allow_non_whitelisted",
-    "anchor_money_market_address",
+    "astro_lp_address",
     "bluna_address",
     "memory_address",
+    "unbonding_period",
     "whitelisted_contracts"
   ],
   "properties": {
     "allow_non_whitelisted": {
       "type": "boolean"
     },
-    "anchor_money_market_address": {
+    "astro_lp_address": {
       "$ref": "#/definitions/Addr"
     },
     "bluna_address": {
@@ -21,6 +22,11 @@
     },
     "memory_address": {
       "$ref": "#/definitions/Addr"
+    },
+    "unbonding_period": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "whitelisted_contracts": {
       "type": "array",

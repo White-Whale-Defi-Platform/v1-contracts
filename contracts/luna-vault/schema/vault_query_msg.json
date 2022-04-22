@@ -105,6 +105,104 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "current_batch"
+      ],
+      "properties": {
+        "current_batch": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "withdrawable_unbonded"
+      ],
+      "properties": {
+        "withdrawable_unbonded": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "unbond_requests"
+      ],
+      "properties": {
+        "unbond_requests": {
+          "type": "object",
+          "required": [
+            "address"
+          ],
+          "properties": {
+            "address": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_from": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "all_history"
+      ],
+      "properties": {
+        "all_history": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_from": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

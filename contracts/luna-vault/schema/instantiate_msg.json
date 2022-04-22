@@ -3,25 +3,30 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "anchor_money_market_address",
     "asset_info",
+    "astro_lp_address",
     "bluna_address",
+    "cluna_address",
     "commission_fee",
     "flash_loan_fee",
     "luna_cap",
     "memory_addr",
     "token_code_id",
     "treasury_addr",
-    "treasury_fee"
+    "treasury_fee",
+    "unbonding_period"
   ],
   "properties": {
-    "anchor_money_market_address": {
-      "type": "string"
-    },
     "asset_info": {
       "$ref": "#/definitions/AssetInfo"
     },
+    "astro_lp_address": {
+      "type": "string"
+    },
     "bluna_address": {
+      "type": "string"
+    },
+    "cluna_address": {
       "type": "string"
     },
     "commission_fee": {
@@ -46,6 +51,11 @@
     },
     "treasury_fee": {
       "$ref": "#/definitions/Decimal"
+    },
+    "unbonding_period": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "vault_lp_token_name": {
       "type": [

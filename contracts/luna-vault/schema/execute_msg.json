@@ -37,6 +37,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Send back unbonded luna to the user",
+      "type": "object",
+      "required": [
+        "withdraw_unbonded"
+      ],
+      "properties": {
+        "withdraw_unbonded": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Set minimum amount of luna held liquid (not deposited somewhere else)",
       "type": "object",
       "required": [
@@ -166,7 +179,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Update the interal State struct",
+      "description": "Update the internal State struct",
       "type": "object",
       "required": [
         "update_state"
@@ -181,7 +194,7 @@
                 "null"
               ]
             },
-            "anchor_money_market_address": {
+            "astro_lp_address": {
               "type": [
                 "string",
                 "null"
@@ -198,6 +211,23 @@
                 "string",
                 "null"
               ]
+            },
+            "unbonding_period": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "whitelisted_contracts": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "string"
+              }
             }
           }
         }
@@ -221,6 +251,19 @@
               "$ref": "#/definitions/FlashLoanPayload"
             }
           }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Swaps the passive strategy token rewards for luna",
+      "type": "object",
+      "required": [
+        "swap_rewards"
+      ],
+      "properties": {
+        "swap_rewards": {
+          "type": "object"
         }
       },
       "additionalProperties": false
