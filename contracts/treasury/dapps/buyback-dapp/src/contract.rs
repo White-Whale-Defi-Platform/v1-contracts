@@ -11,9 +11,10 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 use crate::commands;
-use crate::msg::{ExecuteMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 pub type BuyBackResult = Result<Response, BaseDAppError>;
+use crate::state::{State, STATE};
 
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -21,15 +22,19 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
-    msg: BaseInstantiateMsg,
+    msg: InstantiateMsg,
 ) -> BaseDAppResult {
-    let base_state = handle_base_init(deps.as_ref(), msg)?;
+    let base_state = handle_base_init(deps.as_ref(), msg.base)?;
 
+    let config: State = State {
+        whale_vust_lp: msg.whale_vust_lp,
+        vust_token: msg.vust_token,
+        whale_token: msg.whale_token,
+    };
     BASESTATE.save(deps.storage, &base_state)?;
     ADMIN.set(deps, Some(info.sender))?;
-
-    // TODO: Add State for contract such as token addrs and a count of buyback amount over time 
-
+    STATE.save(deps.storage, &config)?;
+    
     Ok(Response::default())
 }
 

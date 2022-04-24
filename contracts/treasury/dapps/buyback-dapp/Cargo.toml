@@ -32,10 +32,12 @@ overflow-checks = true
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-cosmwasm-std = { version = "0.16" }
-cosmwasm-storage = { version = "0.16" }
-cw-storage-plus = { version = "0.10" }
-cw2 = { version = "0.10" }
+cosmwasm-std = { version = "0.16.7", features = ["iterator"] }
+cosmwasm-storage = { version = "0.16.7", features = ["iterator"] }
+cw-controllers = { version = "0.8" }
+cw-storage-plus = { version = "0.8" }
+cw2 = { version = "0.8" }
+cw20-base = { version = "0.8", features = ["library"] }
 schemars = "0.8.3"
 serde = { version = "1.0.127", default-features = false, features = ["derive"] }
 terraswap = "2.4.0"

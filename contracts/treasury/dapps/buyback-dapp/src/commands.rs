@@ -8,6 +8,7 @@ use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::state::BASESTATE;
 use terraswap::pair::ExecuteMsg as PairExecuteMsg;
 use white_whale::treasury::msg::send_to_treasury;
+use crate::state::{State, STATE};
 
 
 
@@ -15,6 +16,8 @@ use crate::contract::BuyBackResult;
 
 pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amount_to_buy: Uint128) -> BuyBackResult{
         let state = BASESTATE.load(deps.storage)?;
+
+        
         // Check if caller is trader.
         if msg_info.sender != state.trader {
             return Err(BaseDAppError::Unauthorized {});
@@ -34,7 +37,7 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
         // vUST INFO
         let vust_info = AssetInfo::Token{
             contract_addr: config.vust_token
-        }
+        };
         // Ensure Treasury has enough to perform the buy 
         // let avail_ust = deps.querier.query_balance(env.contract.address, "uusd")?;
         if let Some(amount_to_buy) = None{
