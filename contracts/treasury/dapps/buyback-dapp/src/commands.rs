@@ -9,14 +9,15 @@ use white_whale::treasury::dapp_base::state::BASESTATE;
 use terraswap::pair::ExecuteMsg as PairExecuteMsg;
 use white_whale::treasury::msg::send_to_treasury;
 use crate::state::{State, STATE};
+use white_whale::query::terraswap::query_asset_balance;
 
 
 
 use crate::contract::BuyBackResult;
 
-pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amount_to_buy: Uint128) -> BuyBackResult{
+pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amount_to_buy: Uint128) -> BuyBackResult {
         let state = BASESTATE.load(deps.storage)?;
-
+        let config: State = STATE.load(deps.storage)?;
         
         // Check if caller is trader.
         if msg_info.sender != state.trader {
@@ -24,9 +25,9 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
         }
         // Prepare empty message vec
         let mut messages: Vec<CosmosMsg> = vec![];
-        let treasury_address = &state.treasury_address;
+        let treasury_address = state.treasury_address;
         // Validate whale token and setup an AssetInfo
-        let whale_token = deps.api.addr_humanize(&config.whale_token)?;
+        let whale_token = config.whale_token;
         let whale_info = AssetInfo::Token {
             contract_addr: whale_token.to_string(),
         };
@@ -36,13 +37,12 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
         };
         // vUST INFO
         let vust_info = AssetInfo::Token{
-            contract_addr: config.vust_token
+            contract_addr: config.vust_token.to_string()
         };
-        // Ensure Treasury has enough to perform the buy 
-        // let avail_ust = deps.querier.query_balance(env.contract.address, "uusd")?;
-        if let Some(amount_to_buy) = None{
-            // TODO: Custom error here would be nice 
-            return Err(BaseDAppError::Unauthorized {});
+        
+        // Get balance and ensure Treasury has enough vUST
+        if query_asset_balance(deps.as_ref(), &vust_info, treasury_address.clone())? < amount_to_buy {
+            return Err(BaseDAppError::Broke {});
         }
         // Prepare the swap amount with vUST Token Info and the amount_to_buy
         let swap_amount = Asset {
@@ -68,5 +68,5 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
         });
 
         messages.push(whale_purchase_msg);
-        Ok(Response::new().add_message(send_to_treasury(messages, treasury_address)?));
+        Ok(Response::new().add_message(send_to_treasury(messages, &treasury_address)?))
     }

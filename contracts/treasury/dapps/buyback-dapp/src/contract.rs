@@ -31,20 +31,21 @@ pub fn instantiate(
         vust_token: msg.vust_token,
         whale_token: msg.whale_token,
     };
+    STATE.save(deps.storage, &config)?;
     BASESTATE.save(deps.storage, &base_state)?;
     ADMIN.set(deps, Some(info.sender))?;
-    STATE.save(deps.storage, &config)?;
     
+
     Ok(Response::default())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> BaseDAppResult {
+pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> BuyBackResult {
     match msg {
         ExecuteMsg::Base(message) => dapp_base_commands::handle_base_message(deps, info, message),
         // handle dapp-specific messages here
         // ExecuteMsg::Custom{} => commands::custom_command(),
-        ExecuteMsg::Buyback{ amount } => commands::handle_buyback_whale(deps, env, info, amount_to_buy),
+        ExecuteMsg::Buyback{ amount } => commands::handle_buyback_whale(deps, env, info, amount),
     }
 }
 
