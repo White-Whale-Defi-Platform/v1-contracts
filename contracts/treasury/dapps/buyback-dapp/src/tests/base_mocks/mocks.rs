@@ -5,14 +5,19 @@ use white_whale::treasury::dapp_base::common_test::{
     MEMORY_CONTRACT, TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT,
 };
 use white_whale::treasury::dapp_base::msg::BaseInstantiateMsg;
-
+use cosmwasm_std::{Addr};
 use crate::contract::instantiate;
-
-pub(crate) fn instantiate_msg() -> BaseInstantiateMsg {
-    BaseInstantiateMsg {
-        memory_addr: MEMORY_CONTRACT.to_string(),
-        treasury_address: TREASURY_CONTRACT.to_string(),
-        trader: TRADER_CONTRACT.to_string(),
+use crate::msg::InstantiateMsg;
+pub(crate) fn instantiate_msg() -> InstantiateMsg {
+    InstantiateMsg{
+        whale_vust_lp: Addr::unchecked("vust_lp"),
+        vust_token: Addr::unchecked("vust_token"),
+        whale_token: Addr::unchecked("whale_token"),
+        base: BaseInstantiateMsg {
+            memory_addr: MEMORY_CONTRACT.to_string(),
+            treasury_address: TREASURY_CONTRACT.to_string(),
+            trader: TRADER_CONTRACT.to_string(),
+            }
     }
 }
 
