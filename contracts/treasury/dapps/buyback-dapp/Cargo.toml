@@ -1,7 +1,7 @@
 [package]
 name = "buyback-dapp"
 version = "0.1.0"
-authors = ["CyberHoward", "Kerber0x", "0xFable"]
+authors = ["0xFable", "CyberHoward", "Kerber0x"]
 edition = "2018"
 license = "MIT"
 
@@ -45,10 +45,10 @@ thiserror = { version = "1.0.26" }
 white-whale = { version = "1.0.0", path = "../../../../packages/white_whale" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "0.16" }
-cw-multi-test = { version = "0.8"}
+cosmwasm-schema = { version = "0.16.7" }
+cw-multi-test = { version = "0.13.2"}
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="e0dcab33c0a414c6cfb2c24b78ddc606f574325f", package = "terra-multi-test"}
 terra-mocks = {git ="https://github.com/terra-money/cosmwasm-contracts.git", rev = "b25f4ac2d7bddaa3a18838cfe51d18e1ae855dcd", package = "terra-mocks"}
-terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="b3991b9b109accf445fec086ce9792b197be6ca4", package = "terra-multi-test"}
 terraswap = "2.4.0"
 cw20-base = { version = "0.8", features = ["library"] }
 cw20 = { version = "0.8" }
@@ -57,3 +57,4 @@ memory = { version = "0.1.0", path = "../../memory" }
 terraswap-factory = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_factory" }
 terraswap-pair = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_pair" }
 terraswap-token = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_token" }
+terraswap-dapp = {version = "0.1.0", path = "../terraswap"}
