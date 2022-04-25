@@ -17,6 +17,8 @@ pub struct BaseContracts {
     pub whale_ust: Addr,
     pub vust: Addr,
     pub vust_whale_pair: Addr,
+    pub vust_whale_lp: Addr,
+
 }
 
 #[allow(dead_code)]
@@ -143,7 +145,8 @@ pub fn init_contracts(app: &mut TerraApp) -> BaseContracts {
         whale_ust_pair: pair,
         whale_ust: lp,
         vust: vust_token_instance,
-        vust_whale_pair: vustpair
+        vust_whale_pair: vustpair,
+        vust_whale_lp: vustlp,
     }
 }
 

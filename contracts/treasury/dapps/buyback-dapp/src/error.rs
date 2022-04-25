@@ -4,7 +4,7 @@ use thiserror::Error;
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum AnchorError {
+pub enum BuyBackError {
     #[error("{0}")]
     Std(#[from] StdError),
 
@@ -13,4 +13,7 @@ pub enum AnchorError {
 
     #[error("{0}")]
     BaseDAppError(#[from] BaseDAppError),
+
+    #[error("Not enough funds to perform buyback")]
+    NotEnoughFunds {},
 }

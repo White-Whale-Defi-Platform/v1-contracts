@@ -93,7 +93,7 @@ fn init_terraswap_dapp(app: &mut TerraApp, owner: Addr, base_contracts: &BaseCon
 
 
 #[test]
-fn proper_initialization() {
+fn proper_initialization_and_commence_buyback() {
     let mut app = mock_app();
     let sender = Addr::unchecked(TEST_CREATOR);
     let base_contracts = init_contracts(&mut app);
@@ -177,35 +177,6 @@ fn proper_initialization() {
     assert_eq!("whale".to_string(), resp.assets[3].0);
     assert_eq!("whale_ust".to_string(), resp.assets[4].0);
 
-    // // Add whale_ust pair to the memory contracts
-    // // Is tested on unit-test level
-    // app.execute_contract(
-    //     sender.clone(),
-    //     base_contracts.memory.clone(),
-    //     &MemoryMsg::ExecuteMsg::UpdateContractAddresses {
-    //         to_add: vec![(
-    //             "whale_ust_pair".to_string(),
-    //             base_contracts.whale_ust_pair.to_string(),
-    //         )],
-    //         to_remove: vec![],
-    //     },
-    //     &[],
-    // )
-    // .unwrap();
-    //
-    // // Check Memory
-    // let resp: MemoryMsg::ContractQueryResponse = app
-    //     .wrap()
-    //     .query_wasm_smart(
-    //         &base_contracts.memory,
-    //         &MemoryMsg::QueryMsg::QueryContracts {
-    //             names: vec!["whale_ust_pair".to_string()],
-    //         },
-    //     )
-    //     .unwrap();
-    //
-    // // Detailed check handled in unit-tests
-    // assert_eq!("whale_ust_pair".to_string(), resp.contracts[0].0);
 
     // Add whale_ust pair to the memory contracts
     // Is tested on unit-test level
@@ -261,7 +232,7 @@ fn proper_initialization() {
         &mut app,
         sender.clone(),
         base_contracts.vust.clone(),
-        Uint128::from(10000u64 * MILLION),
+        Uint128::from(1001u64 * MILLION),
         base_contracts.treasury.to_string(),
     );
 
@@ -291,49 +262,17 @@ fn proper_initialization() {
         )
         .unwrap();
 
-    // let lp = Cw20Contract(base_contracts.whale_ust.clone());
+    let lp = Cw20Contract(base_contracts.vust_whale_lp.clone());
 
     // Get treasury lp token balance
-    // let treasury_bal = lp.balance(&app, base_contracts.treasury.clone()).unwrap();
+    let treasury_bal = lp.balance(&app, base_contracts.treasury.clone()).unwrap();
 
     // 1 WHALE and UST in pool
     assert_eq!(Uint128::from(1000u64 * MILLION), pool_res.assets[0].amount);
     assert_eq!(Uint128::from(1000u64 * MILLION), pool_res.assets[1].amount);
     // All LP tokens owned by treasury
-    // assert_eq!(treasury_bal, pool_res.total_share);
+    assert_eq!(treasury_bal, pool_res.total_share);
 
-    // Failed swap UST for WHALE due to max spread
-    // app.execute_contract(
-    //     sender.clone(),
-    //     tswap_dapp.clone(),
-    //     &ExecuteMsg::SwapAsset {
-    //         pool_id: "whale_ust_pair".to_string(),
-    //         offer_id: "ust".into(),
-    //         amount: Uint128::from(10000u64),
-    //         max_spread: Some(Decimal::zero()),
-    //         belief_price: Some(Decimal::one()),
-    //     },
-    //     &[],
-    // )
-    // .unwrap_err();
-    //
-    // // Successful swap UST for WHALE
-    // app.execute_contract(
-    //     sender.clone(),
-    //     tswap_dapp.clone(),
-    //     &ExecuteMsg::SwapAsset {
-    //         pool_id: "whale_ust_pair".to_string(),
-    //         offer_id: "ust".into(),
-    //         amount: Uint128::from(100u64),
-    //         max_spread: None,
-    //         belief_price: None,
-    //     },
-    //     &[],
-    // )
-    // .unwrap();
-
-
-    // TODO: This should unwrap, perhaps an issue with using TSWAP Dapp and an astro pair ? No idea
     //Use BuyBack_Dapp to perform a simple buyback
     app.execute_contract(
         sender.clone(),
@@ -343,4 +282,23 @@ fn proper_initialization() {
         },
         &[],
     ).unwrap();
+
+    app.execute_contract(
+        sender.clone(),
+        buyback_dapp.clone(),
+        &BuyBackExecuteMsg::Buyback {
+            amount: Uint128::from(1000u64),
+        },
+        &[],
+    ).unwrap();
+
+    // Lets try a buyback with too much funds
+    app.execute_contract(
+        sender.clone(),
+        buyback_dapp.clone(),
+        &BuyBackExecuteMsg::Buyback {
+            amount: Uint128::from(10000000000u64),
+        },
+        &[],
+    ).unwrap_err();
 }

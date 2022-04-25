@@ -8,6 +8,7 @@ use white_whale::treasury::dapp_base::state::{BaseState, ADMIN, BASESTATE};
 
 use crate::contract::execute;
 use crate::msg::ExecuteMsg;
+use crate::error::BuyBackError;
 use crate::tests::base_mocks::mocks::mock_instantiate;
 use white_whale::treasury::dapp_base::common_test::{
     MEMORY_CONTRACT, TEST_CREATOR, TRADER_CONTRACT, TREASURY_CONTRACT,
@@ -31,7 +32,7 @@ pub fn test_unsuccessfully_update_config_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
 
     match res {
-        Err(BaseDAppError::Admin(_)) => (),
+        Err(BuyBackError::BaseDAppError(BaseDAppError::Admin(_))) => (),
         Ok(_) => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
         _ => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
     }
@@ -193,7 +194,7 @@ pub fn test_unsuccessfully_set_admin_msg() {
     let res = execute(deps.as_mut(), env.clone(), info, msg);
 
     match res {
-        Err(BaseDAppError::Admin(_)) => (),
+        Err(BuyBackError::BaseDAppError(BaseDAppError::Admin(_))) => (),
         Ok(_) => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
         _ => panic!("Should return unauthorized Error, Admin(NotAdmin)"),
     }

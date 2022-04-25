@@ -12,8 +12,9 @@ use white_whale::treasury::dapp_base::error::BaseDAppError;
 
 use crate::commands;
 use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::error::BuyBackError;
 
-pub type BuyBackResult = Result<Response, BaseDAppError>;
+pub type BuyBackResult = Result<Response, BuyBackError>;
 use crate::state::{State, STATE};
 
 
@@ -34,7 +35,7 @@ pub fn instantiate(
     STATE.save(deps.storage, &config)?;
     BASESTATE.save(deps.storage, &base_state)?;
     ADMIN.set(deps, Some(info.sender))?;
-    
+
 
     Ok(Response::default())
 }
@@ -42,7 +43,9 @@ pub fn instantiate(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> BuyBackResult {
     match msg {
-        ExecuteMsg::Base(message) => dapp_base_commands::handle_base_message(deps, info, message),
+        ExecuteMsg::Base(message) => {
+            from_base_dapp_result(dapp_base_commands::handle_base_message(deps, info, message))
+        }
         // handle dapp-specific messages here
         // ExecuteMsg::Custom{} => commands::custom_command(),
         ExecuteMsg::Buyback{ amount } => commands::handle_buyback_whale(deps, env, info, amount),
@@ -55,5 +58,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Base(message) => dapp_base_queries::handle_base_query(deps, message),
         // handle dapp-specific queries here
         // QueryMsg::Custom{} => queries::custom_query(),
+    }
+}
+
+/// Required to convert BaseDAppResult into TerraswapResult
+/// Can't implement the From trait directly
+fn from_base_dapp_result(result: BaseDAppResult) -> BuyBackResult {
+    match result {
+        Err(e) => Err(e.into()),
+        Ok(r) => Ok(r),
     }
 }

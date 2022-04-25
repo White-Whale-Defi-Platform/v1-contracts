@@ -13,6 +13,7 @@ use white_whale::query::terraswap::query_asset_balance;
 
 
 use crate::contract::BuyBackResult;
+use crate::error::BuyBackError;
 
 pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amount_to_buy: Uint128) -> BuyBackResult {
         let state = BASESTATE.load(deps.storage)?;
@@ -20,7 +21,7 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
 
         // Check if caller is trader.
         if msg_info.sender != state.trader {
-            return Err(BaseDAppError::Unauthorized {});
+            return Err(BuyBackError::BaseDAppError(BaseDAppError::Unauthorized {}));
         }
         // Prepare empty message vec
         let mut messages: Vec<CosmosMsg> = vec![];
@@ -37,7 +38,7 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
 
         // Get balance and ensure Treasury has enough vUST
         if query_asset_balance(deps.as_ref(), &vust_info, treasury_address.clone())? < amount_to_buy {
-            return Err(BaseDAppError::Broke {});
+            return Err(BuyBackError::NotEnoughFunds {});
         }
         // Prepare the swap amount with vUST Token Info and the amount_to_buy
         let swap_amount = Asset {
