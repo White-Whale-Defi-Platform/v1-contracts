@@ -53,8 +53,3 @@ pub fn pool_ratio(deps: Deps, pool_address: Addr) -> StdResult<Decimal> {
     let ratio = Decimal::from_ratio(response.assets[0].amount, response.assets[1].amount);
     Ok(ratio)
 }
-
-// queries the exchange rate of the luna-bluna astro lp token to luna
-pub fn query_astro_lp_exchange_rate() -> StdResult<Decimal>  {
-    Ok(Decimal::one())
-}

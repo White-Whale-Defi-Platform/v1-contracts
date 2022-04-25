@@ -1,11 +1,9 @@
-use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, StdResult, Uint128};
-use terraswap::asset::AssetInfo;
-use terraswap::querier::query_balance;
+use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, StdError, StdResult, Uint128};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
+use white_whale::query::terraswap::query_asset_balance;
 
 use crate::error::LunaVaultError;
-use white_whale::query::astroport::query_astro_lp_exchange_rate;
 use white_whale::tax::compute_tax;
 
 use crate::pool_info::PoolInfoRaw;
@@ -18,23 +16,33 @@ pub fn compute_total_value(
     deps: Deps,
     info: &PoolInfoRaw,
 ) -> StdResult<(Uint128, Uint128, Uint128, Uint128, Uint128)> {
-    let _state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
+    // get liquid Luna in the vault
     let luna_info = info.asset_infos[0].to_normal(deps.api)?;
-    let luna_denom = match luna_info {
-        AssetInfo::Token { .. } => String::default(),
-        AssetInfo::NativeToken { denom } => denom,
-    };
-    let luna_amount = query_balance(&deps.querier, info.contract_addr.clone(), luna_denom)?;
+    let luna_amount = query_asset_balance(deps, &luna_info, info.contract_addr.clone())?;
 
-    //TODO fix query_astro_lp_exchange_rate
+    // get Luna from the passive strategy
+    // first, get the amount of LP tokens that we have
+    // then, query the pool to find out the underlying Luna assets we are entitled to
     let astro_lp_info = info.asset_infos[1].to_normal(deps.api)?;
-    let astro_lp_amount =
-        astro_lp_info.query_pool(&deps.querier, deps.api, info.contract_addr.clone())?;
-    let astro_lp_exchange_rate = query_astro_lp_exchange_rate()?;
+    let astro_lp_amount = query_asset_balance(deps, &astro_lp_info, info.contract_addr.clone())?;
+    let astro_lp_assets: [astroport::asset::Asset; 2] = deps.querier.query_wasm_smart(
+        state.astro_lp_address.clone(),
+        &astroport::pair_stable_bluna::QueryMsg::Share {
+            amount: astro_lp_amount,
+        },
+    )?;
+    // NOTICE: we are assuming that the assets in the LP are equivalent to 1 Luna
+    let astroport_lp_value_in_luna = astro_lp_assets
+        .iter()
+        .fold(Uint128::zero(), |accum, asset| accum + asset.amount);
 
-    let astroport_lp_value_in_luna = astro_lp_amount * astro_lp_exchange_rate;
-    //TODO fix bluna and cluna values in luna
-    let bluna_value_in_luna = Uint128::zero();
+    // NOTICE: we are assuming that bLuna is equivalent to 1 Luna
+    let bluna_value_in_luna = astro_lp_assets
+        .iter()
+        .find(|asset| asset.info == astroport::asset::token_asset_info(state.bluna_address.clone()))
+        .ok_or_else(|| StdError::generic_err("Failed to get bLuna asset from astro LP"))?
+        .amount;
     let cluna_value_in_luna = Uint128::zero();
 
     let total_deposits_in_luna =
