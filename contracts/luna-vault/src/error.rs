@@ -74,3 +74,13 @@ impl From<semver::Error> for LunaVaultError {
         Self::SemVer(err.to_string())
     }
 }
+
+impl LunaVaultError {
+    pub fn generic_err(msg: impl Into<String>) -> Self {
+        Self::Std(StdError::GenericErr {
+            msg: msg.into(),
+            #[cfg(feature = "backtraces")]
+            backtrace: Backtrace::capture(),
+        })
+    }
+}

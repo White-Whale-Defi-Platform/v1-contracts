@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, StdResult, Uint128};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::query::terraswap::query_asset_balance;
@@ -15,7 +15,7 @@ pub fn compute_total_value(
     _env: &Env,
     deps: Deps,
     info: &PoolInfoRaw,
-) -> StdResult<(Uint128, Uint128, Uint128, Uint128, Uint128)> {
+) -> Result<(Uint128, Uint128, Uint128, Uint128, Uint128), LunaVaultError> {
     let state = STATE.load(deps.storage)?;
     // get liquid Luna in the vault
     let luna_info = info.asset_infos[0].to_normal(deps.api)?;
@@ -41,7 +41,7 @@ pub fn compute_total_value(
     let bluna_value_in_luna = astro_lp_assets
         .iter()
         .find(|asset| asset.info == astroport::asset::token_asset_info(state.bluna_address.clone()))
-        .ok_or_else(|| StdError::generic_err("Failed to get bLuna asset from astro LP"))?
+        .ok_or_else(|| LunaVaultError::generic_err("Failed to get bLuna asset from astro LP"))?
         .amount;
     let cluna_value_in_luna = Uint128::zero();
 
