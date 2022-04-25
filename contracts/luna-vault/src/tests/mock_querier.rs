@@ -204,7 +204,7 @@ impl WasmMockQuerier {
                     )));
                 }
                 // Handle calls for Profit Check; LastBalance
-                if contract_addr == &String::from("test_aust") {
+                if contract_addr == &String::from("bluna") {
                     println!("{:?}", request);
 
                     // Handle Anchor EpochStateQuery

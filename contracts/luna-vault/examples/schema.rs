@@ -1,7 +1,7 @@
 use std::env::current_dir;
 use std::fs::create_dir_all;
 
-use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
+use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 
 use luna_vault::pool_info::PoolInfo;
 use luna_vault::state::State;
@@ -15,7 +15,7 @@ fn main() {
 
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
-    export_schema(&schema_for!(VaultQueryMsg), &out_dir);
+    export_schema_with_title(&mut schema_for!(VaultQueryMsg), &out_dir, "LunaVaultQueryMsg");
     export_schema(&schema_for!(State), &out_dir);
     export_schema(&schema_for!(PoolResponse), &out_dir);
     export_schema(&schema_for!(PoolInfo), &out_dir);

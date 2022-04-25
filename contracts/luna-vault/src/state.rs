@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::VaultFee;
+use white_whale::luna_vault::msg::UnbondHistoryResponse;
 
 use crate::deserializer::deserialize_key;
 use crate::pool_info::PoolInfoRaw;
@@ -41,6 +42,17 @@ pub struct UnbondHistory {
     pub time: u64,
     pub amount: Uint128,
     pub released: bool,
+}
+
+impl UnbondHistory {
+    pub fn as_res(&self) -> UnbondHistoryResponse {
+        UnbondHistoryResponse {
+            batch_id: self.batch_id,
+            time: self.time,
+            amount: self.amount,
+            released: self.released,
+        }
+    }
 }
 
 pub type UnbondRequest = Vec<(u64, Uint128)>;

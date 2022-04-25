@@ -120,7 +120,6 @@ pub enum VaultQueryMsg {
     VaultValue {},
     LastBalance {},
     LastProfit {},
-    CurrentBatch {},
     WithdrawableUnbonded {
         address: String,
     },
@@ -197,11 +196,6 @@ pub struct WithdrawableUnbondedResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CurrentBatchResponse {
-    pub id: u64,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UnbondRequestsResponse {
     pub address: String,
     pub requests: UnbondRequestResponse,
@@ -219,7 +213,5 @@ pub struct UnbondHistoryResponse {
     pub batch_id: u64,
     pub time: u64,
     pub amount: Uint128,
-    pub applied_exchange_rate: Decimal,
-    pub withdraw_rate: Decimal,
     pub released: bool,
 }
