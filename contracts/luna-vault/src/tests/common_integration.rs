@@ -11,13 +11,13 @@ use white_whale::luna_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 pub fn instantiate_msg(
     token_code_id: u64,
     war_chest: String,
-    anchor_addr: String,
+    _anchor_addr: String,
     bluna_address: String,
 ) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
         bluna_address: bluna_address.clone(),
         cluna_address: bluna_address.clone(),
-        astro_lp_address: bluna_address.clone(),
+        astro_lp_address: bluna_address,
         treasury_addr: war_chest,
         memory_addr: "memory".to_string(),
         asset_info: AssetInfo::NativeToken {
@@ -30,10 +30,7 @@ pub fn instantiate_msg(
         luna_cap: Uint128::from(100_000_000_000_000u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
-        epoch_period: 0,
         unbonding_period: 0,
-        peg_recovery_fee: Default::default(),
-        er_threshold: Default::default()
     }
 }
 

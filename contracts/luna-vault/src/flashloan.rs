@@ -1,11 +1,10 @@
 use core::result::Result::Err;
-use std::os::macos::raw::stat;
 use cosmwasm_std::{CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::luna_vault::msg::{CallbackMsg, FlashLoanPayload};
 use white_whale::tax::into_msg_without_tax;
-use crate::contract;
+
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
 use crate::helpers::compute_total_value;
@@ -152,12 +151,17 @@ pub fn after_trade(
 ) -> VaultResult {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
-
-
-    let mut state = STATE.load(deps.storage)?;
+    let state = STATE.load(deps.storage)?;
     // Deposit funds into a passive strategy again if applicable.
-    let mut response = Response::new();
-
+    let mut response = Response::default();
+    // TODO: NOTE: Check the clone usage, added it to fixup tests
+    deposit_passive_strategy(
+        &deps.as_ref(),
+        luna_in_contract - info.luna_cap,
+        state.bluna_address.clone(),
+        &state.astro_lp_address,
+        response.clone(),
+    )?;
 
     let mut conf = PROFIT.load(deps.storage)?;
 

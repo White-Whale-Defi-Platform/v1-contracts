@@ -256,9 +256,9 @@ impl WasmMockQuerier {
                         liquidity_token: "Liqtoken".to_string(),
                     };
 
-                    return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)));
+                    SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)))
                 } else {
-                    match from_binary(&msg).unwrap() {
+                    match from_binary(msg).unwrap() {
                         // AnchorQuery::EpochState{ distributed_interest, aterra_supply} => {
 
                         //     return SystemResult::Ok(ContractResult::Ok(

@@ -14,11 +14,9 @@ fn unsuccessful_handle_callback_not_same_contract() {
     let mut deps = mock_dependencies(&[]);
     mock_instantiate(deps.as_mut());
 
-    let msg = ExecuteMsg::Callback {
-        0: CallbackMsg::AfterTrade {
+    let msg = ExecuteMsg::Callback(CallbackMsg::AfterTrade {
             loan_fee: Uint128::zero(),
-        },
-    };
+        });
     let info = mock_info("anything", &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg);
@@ -33,11 +31,9 @@ fn successful_handle_callback_without_anchor_deposit() {
     let mut deps = mock_dependencies(&[coin(100u128, LUNA_DENOM)]);
     mock_instantiate(deps.as_mut());
 
-    let msg = ExecuteMsg::Callback {
-        0: CallbackMsg::AfterTrade {
+    let msg = ExecuteMsg::Callback(CallbackMsg::AfterTrade {
             loan_fee: Uint128::zero(),
-        },
-    };
+        });
     let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
@@ -51,11 +47,9 @@ fn successful_handle_callback_with_anchor_deposit() {
     let mut deps = mock_dependencies(&[coin(15000000000000001u128, LUNA_DENOM)]);
     mock_instantiate(deps.as_mut());
 
-    let msg = ExecuteMsg::Callback {
-        0: CallbackMsg::AfterTrade {
+    let msg = ExecuteMsg::Callback(CallbackMsg::AfterTrade {
             loan_fee: Uint128::zero(),
-        },
-    };
+        });
     let info = mock_info(MOCK_CONTRACT_ADDR, &[]);
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();

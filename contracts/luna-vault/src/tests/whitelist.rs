@@ -79,7 +79,7 @@ fn unsuccessful_add_to_whitelist_limit_exceeded() {
             Err(LunaVaultError::WhitelistLimitReached {}) => {
                 let state: State = STATE.load(&deps.storage).unwrap();
                 assert_eq!(state.whitelisted_contracts.len(), LIST_SIZE_LIMIT);
-                ()
+                
             } //expected at n > LIST_SIZE_LIMIT
             Err(e) => panic!("Unexpected error: {:?}", e),
         }

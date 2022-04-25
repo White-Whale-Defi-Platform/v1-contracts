@@ -26,7 +26,7 @@ pub fn test_state_query() {
 
     let q_res: StateResponse =
         from_binary(&query(deps.as_ref(), env, QueryMsg::State {}).unwrap()).unwrap();
-    assert_eq!(q_res.allow_non_whitelisted, false)
+    assert!(!q_res.allow_non_whitelisted)
 }
 
 #[test]

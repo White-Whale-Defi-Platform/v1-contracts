@@ -1,6 +1,6 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{from_binary, to_binary, MessageInfo, ReplyOn, SubMsg, WasmMsg};
-use cosmwasm_std::{Api, Decimal, Uint128};
+use cosmwasm_std::{Api, Decimal};
 
 use crate::contract::{execute, instantiate, query};
 use crate::state::{State, STATE};
@@ -19,7 +19,7 @@ use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 use crate::error::LunaVaultError;
-use terraswap::asset::AssetInfo;
+
 
 /**
  * Tests successful instantiation of the contract.
@@ -61,7 +61,7 @@ fn successful_initialization() {
     let state: State = STATE.load(&deps.storage).unwrap();
     assert_eq!(
         state.whitelisted_contracts[0],
-        deps.api.addr_validate(&ARB_CONTRACT).unwrap(),
+        deps.api.addr_validate(ARB_CONTRACT).unwrap(),
     );
 }
 
@@ -164,7 +164,7 @@ fn test_init_with_non_default_vault_lp_token() {
     let custom_token_name = String::from("My LP Token");
     let custom_token_symbol = String::from("MyLP");
 
-    let msg = InstantiateMsg::from(vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string()));
+    let msg = vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string());
 
     // Prepare mock env
     let env = mock_env();
@@ -185,8 +185,8 @@ fn test_init_with_non_default_vault_lp_token() {
                 admin: None,
                 code_id: msg.token_code_id,
                 msg: to_binary(&TokenInstantiateMsg {
-                    name: custom_token_name.to_string(),
-                    symbol: custom_token_symbol.to_string(),
+                    name: custom_token_name,
+                    symbol: custom_token_symbol,
                     decimals: 6,
                     initial_balances: vec![],
                     mint: Some(MinterResponse {
