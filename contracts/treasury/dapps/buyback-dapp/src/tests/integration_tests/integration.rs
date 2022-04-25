@@ -1,5 +1,5 @@
-use cosmwasm_std::{Addr, Coin, Decimal, Uint128};
-use cw20::Cw20Contract;
+use cosmwasm_std::{Addr, Coin, Decimal, to_binary, Uint128};
+use cw20::{Cw20Contract, Cw20ExecuteMsg};
 
 use terra_multi_test::{App, ContractWrapper, TerraApp};
 use terraswap::asset::AssetInfo;
@@ -10,6 +10,7 @@ use crate::tests::integration_tests::common_integration::{
 use terra_multi_test::Executor;
 use terraswap::pair::PoolResponse;
 use white_whale::dapps::terraswap::msg::{ExecuteMsg};
+use terraswap::pair::Cw20HookMsg;
 use white_whale::denom::{UST_DENOM, LUNA_DENOM};
 use white_whale::memory::msg as MemoryMsg;
 use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
@@ -341,5 +342,5 @@ fn proper_initialization() {
             amount: Uint128::from(10u64),
         },
         &[],
-    ).unwrap_err();
+    ).unwrap();
 }

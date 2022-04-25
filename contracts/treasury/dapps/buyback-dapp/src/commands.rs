@@ -1,15 +1,12 @@
 // Add the custom dapp-specific message commands here
-use cosmwasm_std::{
-    to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Response, Uint128,
-    WasmMsg,
-};
-use cw20::Cw20ExecuteMsg;
+use cosmwasm_std::{to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Response, Uint128, WasmMsg, BankMsg};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::state::BASESTATE;
-use terraswap::pair::ExecuteMsg as PairExecuteMsg;
+use terraswap::pair::{ExecuteMsg as PairExecuteMsg, Cw20HookMsg};
 use white_whale::denom::UST_DENOM;
-use white_whale::treasury::msg::send_to_treasury;
+use white_whale::treasury::msg::{ExecuteMsg, send_to_treasury};
 use crate::state::{State, STATE};
 use white_whale::query::terraswap::query_asset_balance;
 
@@ -53,25 +50,28 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
             amount: amount_to_buy,
         };
 
-        let vust_cw20 = Cw20ExecuteMsg{
+        // Define the stake voting tokens msg and wrap it in a Cw20ExecuteMsg
+        let msg = Cw20HookMsg::Swap {
+            belief_price: None,
+            max_spread: None,
+            to: None
+        };
 
-        }
-
-        // Buyback WHALE by providing vUST as the offer asset with None for all other options
-        // Buyback WHALE at any price or spread to fill the 'amount_to_buy'. Limited by the amount of vUST held by the Treasury
-        let whale_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: config.whale_vust_lp.to_string(),
-            msg: to_binary(&PairExecuteMsg::Swap {
-                offer_asset: offer_asset,
-                belief_price: None,
-                max_spread: None,
-                to: None,
-            })?,
+        // Prepare cw20 message with our attempt to buy tokens
+        let send_msg = Cw20ExecuteMsg::Send {
+            contract: config.whale_vust_lp.to_string(),
+            amount: amount_to_buy,
+            msg: to_binary(&msg).unwrap(),
+        };
+        // Prepare the final CosmosMsg to be sent to vUST token to trigger the Receive() on the pair via the CW20Hook
+        let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: config.vust_token.to_string(),
+            msg: to_binary(&send_msg)?,
             funds: vec![],
         });
 
-        println!("{:?}", whale_purchase_msg);
+        println!("{:?}", msg);
 
-        messages.push(whale_purchase_msg);
+        messages.push(msg);
         Ok(Response::new().add_message(send_to_treasury(messages, &treasury_address)?))
     }
