@@ -1,10 +1,10 @@
 use cosmwasm_std::{Coin, Deps, Env, StdResult, Uint128};
 use terraswap::asset::Asset;
 use terraswap::querier::query_supply;
-use white_whale::luna_vault::msg::{AllHistoryResponse, CurrentBatchResponse, EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse, LastProfitResponse, PoolResponse, UnbondRequestsResponse, ValueResponse, WithdrawableUnbondedResponse};
+use white_whale::luna_vault::msg::{AllHistoryResponse, EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse, LastProfitResponse, PoolResponse, UnbondRequestsResponse, ValueResponse, WithdrawableUnbondedResponse};
 use crate::helpers::{compute_total_value, get_withdraw_fee};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::state::{all_unbond_history, CURRENT_BATCH, DEPOSIT_INFO, FEE, get_unbond_requests, get_withdrawable_amount, POOL_INFO, PROFIT, STATE, State};
+use crate::state::{all_unbond_history, DEPOSIT_INFO, FEE, get_unbond_requests, get_withdrawable_amount, POOL_INFO, PROFIT, STATE, State};
 
 /// Queries the PoolInfo configuration
 pub fn query_pool_info(deps: Deps) -> StdResult<PoolInfo> {
@@ -96,13 +96,6 @@ pub fn query_withdrawable_unbonded(
     Ok(withdrawable)
 }
 
-pub fn query_current_batch(deps: Deps) -> StdResult<CurrentBatchResponse> {
-    let current_batch = CURRENT_BATCH.load(deps.storage)?;
-    Ok(CurrentBatchResponse {
-        id: current_batch.id,
-    })
-}
-
 pub fn query_unbond_requests(
     deps: Deps,
     address: String,
@@ -120,11 +113,11 @@ pub fn query_unbond_requests_limitation(
     start: Option<u64>,
     limit: Option<u32>,
 ) -> StdResult<AllHistoryResponse> {
-    let _requests = all_unbond_history(deps.storage, start, limit)?;
-    // TODO: fixup
-    // let requests_res = requests.iter().map(|item| item.into()).collect();
+    let requests = all_unbond_history(deps.storage, start, limit)?;
+    let requests_res = requests.iter().map(|item| item.as_res()).collect();
     let res = AllHistoryResponse {
-        history: vec![],
+        history: requests_res,
     };
     Ok(res)
 }
+

@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "VaultQueryMsg",
+  "title": "LunaVaultQueryMsg",
   "oneOf": [
     {
       "type": "object",
@@ -101,18 +101,6 @@
       ],
       "properties": {
         "last_profit": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "current_batch"
-      ],
-      "properties": {
-        "current_batch": {
           "type": "object"
         }
       },
