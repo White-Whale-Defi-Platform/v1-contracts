@@ -50,10 +50,12 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let astro_lp_address = deps.api.addr_validate(&msg.astro_lp_address)?;
+    let astro_factory_address = deps.api.addr_validate(&msg.astro_factory_address)?;
 
     let state = State {
         bluna_address: deps.api.addr_validate(&msg.bluna_address)?,
         astro_lp_address: astro_lp_address.clone(),
+        astro_factory_address,
         memory_address: deps.api.addr_validate(&msg.memory_addr)?,
         whitelisted_contracts: vec![],
         allow_non_whitelisted: false,

@@ -17,6 +17,8 @@ pub struct InstantiateMsg {
     pub cluna_address: String,
     /// The address of the liquidity pool to provide bLuna-Luna assets to for passive income
     pub astro_lp_address: String,
+    /// The address of the Astroport factory
+    pub astro_factory_address: String,
     pub treasury_addr: String,
     pub memory_addr: String,
     pub asset_info: AssetInfo,

@@ -13,7 +13,7 @@ use white_whale::memory::LIST_SIZE_LIMIT;
 
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::{check_fee, compute_total_value, get_treasury_fee};
+use crate::helpers::{check_fee, compute_total_value, get_lp_token_address, get_treasury_fee};
 
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{
@@ -517,12 +517,116 @@ pub fn update_state(
     Ok(Response::new().add_attributes(attrs))
 }
 
-pub fn swap_rewards(deps: DepsMut, _env: Env, msg_info: MessageInfo) -> VaultResult<Response> {
+pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResult<Response> {
     let state = STATE.load(deps.storage)?;
     // Check if sender is in whitelist, i.e. bot or bot proxy
     if !state.whitelisted_contracts.contains(&msg_info.sender) {
         return Err(LunaVaultError::NotWhitelisted {});
     }
 
-    Ok(Response::new().add_attributes(vec![attr("action", "swap_rewards")]))
+    let mut response = Response::new();
+
+    let passive_lp_token_address =
+        get_lp_token_address(&deps.as_ref(), state.astro_lp_address.clone())?;
+
+    // swap ASTRO rewards for Luna to stay in the vault
+    let pending_tokens: astroport::generator::PendingTokenResponse =
+        deps.querier.query_wasm_smart(
+            state.astro_lp_address.clone(),
+            &astroport::generator::QueryMsg::PendingToken {
+                lp_token: passive_lp_token_address.clone().into_string(),
+                user: env.contract.address.clone().into_string(),
+            },
+        )?;
+
+    // get generator address
+    let astro_factory_config: astroport::factory::ConfigResponse = deps.querier.query_wasm_smart(
+        state.astro_factory_address.clone(),
+        &astroport::factory::QueryMsg::Config {},
+    )?;
+    let astro_generator_address = astro_factory_config.generator_address.ok_or_else(|| {
+        LunaVaultError::generic_err("Astroport generator was not set in factory config")
+    })?;
+
+    // get ASTRO token address
+    let astro_generator_config: astroport::generator::ConfigResponse =
+        deps.querier.query_wasm_smart(
+            astro_generator_address.clone(),
+            &astroport::generator::QueryMsg::Config {},
+        )?;
+    let astro_token_address = astro_generator_config.astro_token;
+    let astro_pending = astroport::asset::Asset {
+        amount: pending_tokens.pending,
+        info: astroport::asset::AssetInfo::Token {
+            contract_addr: astro_token_address.clone(),
+        },
+    };
+
+    // withdraw ASTRO rewards
+    let withdraw_rewards_msg: CosmosMsg = WasmMsg::Execute {
+        contract_addr: astro_generator_address.into_string(),
+        msg: to_binary(&astroport::generator::ExecuteMsg::ClaimRewards {
+            lp_tokens: vec![passive_lp_token_address.into_string()],
+        })?,
+        funds: vec![],
+    }
+    .into();
+
+    // swap ASTRO into Luna
+    // first, get the address of the pool from Astroport
+    // then, perform the swap, and finally perform passive strategy with the gained luna
+    let astro_luna_pool_address: astroport::asset::PairInfo = deps.querier.query_wasm_smart(
+        state.astro_factory_address,
+        &astroport::factory::QueryMsg::Pair {
+            asset_infos: [
+                astroport::asset::AssetInfo::Token {
+                    contract_addr: astro_token_address,
+                },
+                astroport::asset::AssetInfo::NativeToken {
+                    denom: LUNA_DENOM.to_string(),
+                },
+            ],
+        },
+    )?;
+
+    let swap_simulation_response = astroport::querier::simulate(
+        &deps.querier,
+        astro_luna_pool_address.contract_addr.clone(),
+        &astro_pending,
+    )?;
+    let swap_luna_return = swap_simulation_response.return_amount;
+
+    let swap_astro_message = WasmMsg::Execute {
+        contract_addr: astro_luna_pool_address.contract_addr.into_string(),
+        msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
+            offer_asset: astro_pending.clone(),
+            belief_price: None,
+            max_spread: None,
+            to: None,
+        })?,
+        funds: vec![],
+    }
+    .into();
+
+    response = response.add_messages([withdraw_rewards_msg, swap_astro_message]);
+
+    // check to see if we need to deposit into passive strategy
+    let info = POOL_INFO.load(deps.storage)?;
+    let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
+    // If contract holds more than ASTROPORT_DEPOSIT_THRESHOLD [LUNA] then try deposit to Astroport and leave LUNA_CAP [LUNA] in contract.
+    if luna_in_contract + swap_luna_return > info.luna_cap {
+        response = deposit_passive_strategy(
+            &deps.as_ref(),
+            luna_in_contract + swap_luna_return - info.luna_cap,
+            state.bluna_address,
+            &state.astro_lp_address,
+            response,
+        )?;
+    }
+
+    Ok(response.add_attributes(vec![
+        attr("action", "swap_rewards"),
+        attr("astro_swapped", astro_pending.amount),
+        attr("luna_return", swap_luna_return),
+    ]))
 }
