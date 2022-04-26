@@ -1,11 +1,12 @@
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
-    Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::MinterResponse;
 use protobuf::Message;
 use semver::Version;
+use serde::Serialize;
 use terraswap::asset::AssetInfo;
 
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
@@ -32,14 +33,19 @@ const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale Luna Vault LP Token";
 pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVLuna";
 
-pub(crate) type VaultResult = Result<Response, LunaVaultError>;
+pub(crate) type VaultResult<T> = Result<T, LunaVaultError>;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:ww-luna-vault";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateMsg) -> VaultResult {
+pub fn instantiate(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: InstantiateMsg,
+) -> VaultResult<Response> {
     // Use CW2 to set the contract version, this is needed for migrations
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
@@ -160,7 +166,7 @@ pub fn instantiate(deps: DepsMut, env: Env, info: MessageInfo, msg: InstantiateM
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult<Response> {
     let version: Version = CONTRACT_VERSION.parse()?;
     let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
 
@@ -171,7 +177,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> VaultResult {
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> VaultResult {
+pub fn execute(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: ExecuteMsg,
+) -> VaultResult<Response> {
     match msg {
         ExecuteMsg::Receive(msg) => commands::receive_cw20(deps, env, info, msg),
         ExecuteMsg::ProvideLiquidity { asset } => {
@@ -216,7 +227,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> V
 
 /// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
     if msg.id == u64::from(INSTANTIATE_REPLY_ID) {
         let data = msg.result.unwrap().data.unwrap();
         let res: MsgInstantiateContractResponse = Message::parse_from_bytes(data.as_slice())
@@ -226,7 +237,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         let liquidity_token = res.get_contract_address();
 
         let api = deps.api;
-        POOL_INFO.update(deps.storage, |mut meta| -> StdResult<_> {
+        POOL_INFO.update(deps.storage, |mut meta| -> VaultResult<_> {
             meta.liquidity_token = api.addr_validate(liquidity_token)?;
             Ok(meta)
         })?;
@@ -236,8 +247,15 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     Ok(Response::default())
 }
 
+fn to_binary<T>(data: &T) -> VaultResult<Binary>
+where
+    T: Serialize + ?Sized,
+{
+    Ok(cosmwasm_std::to_binary(data)?)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> VaultResult<Binary> {
     match msg {
         QueryMsg::PoolConfig {} => to_binary(&queries::query_pool_info(deps)?),
         QueryMsg::PoolState {} => to_binary(&queries::try_query_pool_state(env, deps)?),

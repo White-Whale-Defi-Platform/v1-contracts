@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Order, StdError, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Order, Storage, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Bound, Item, Map, U64Key};
 use schemars::JsonSchema;
@@ -8,7 +8,9 @@ use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::VaultFee;
 use white_whale::luna_vault::msg::UnbondHistoryResponse;
 
+use crate::contract::VaultResult;
 use crate::deserializer::deserialize_key;
+use crate::error::LunaVaultError;
 use crate::pool_info::PoolInfoRaw;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -74,11 +76,11 @@ pub fn store_unbond_wait_list(
     batch_id: u64,
     sender_addr: &Addr,
     amount: Uint128,
-) -> StdResult<()> {
+) -> VaultResult<()> {
     UNBOND_WAITLIST.update(
         storage,
         (sender_addr, batch_id.into()),
-        |existing_amount: Option<Uint128>| -> StdResult<_> {
+        |existing_amount: Option<Uint128>| -> VaultResult<_> {
             Ok(existing_amount.unwrap_or_default() + amount)
         },
     )?;
@@ -90,19 +92,19 @@ pub fn store_unbond_history(
     storage: &mut dyn Storage,
     batch_id: u64,
     history: UnbondHistory,
-) -> StdResult<()> {
-    UNBOND_HISTORY.save(storage, batch_id.into(), &history)
+) -> VaultResult<()> {
+    Ok(UNBOND_HISTORY.save(storage, batch_id.into(), &history)?)
 }
 
 /// Gets an unbond history by [batch_id]
-pub fn get_unbond_history(storage: &dyn Storage, batch_id: u64) -> StdResult<UnbondHistory> {
-    UNBOND_HISTORY
-        .load(storage, batch_id.into())
-        .map_err(|_| StdError::generic_err("Burn requests not found for the specified time period"))
+pub fn get_unbond_history(storage: &dyn Storage, batch_id: u64) -> VaultResult<UnbondHistory> {
+    UNBOND_HISTORY.load(storage, batch_id.into()).map_err(|_| {
+        LunaVaultError::generic_err("Burn requests not found for the specified time period")
+    })
 }
 
 /// Prepares next unbond batch
-pub fn prepare_next_unbond_batch(storage: &mut dyn Storage) -> StdResult<()> {
+pub fn prepare_next_unbond_batch(storage: &mut dyn Storage) -> VaultResult<()> {
     let mut current_batch = CURRENT_BATCH.load(storage)?;
     current_batch.id += 1;
     CURRENT_BATCH.save(storage, &current_batch)?;
@@ -120,7 +122,7 @@ pub fn get_withdrawable_amount(
     storage: &dyn Storage,
     sender_addr: &Addr,
     withdrawable_time: u64,
-) -> StdResult<Uint128> {
+) -> VaultResult<Uint128> {
     let withdrawable_amount = UNBOND_WAITLIST
         .prefix(sender_addr)
         .range(storage, None, None, Order::Ascending)
@@ -149,7 +151,7 @@ pub fn get_withdrawable_unbond_batch_ids(
     storage: &dyn Storage,
     sender_addr: &Addr,
     withdrawable_time: u64,
-) -> StdResult<Vec<u64>> {
+) -> VaultResult<Vec<u64>> {
     let withdrawable_batches: Vec<u64> = UNBOND_WAITLIST
         .prefix(sender_addr)
         .range(storage, None, None, Order::Ascending)
@@ -172,7 +174,7 @@ pub fn get_withdrawable_unbond_batch_ids(
 }
 
 /// Deprecate unbond batches by marking them as released, i.e. funds have been withdrawn.
-pub fn deprecate_unbond_batches(storage: &mut dyn Storage, batch_ids: Vec<u64>) -> StdResult<()> {
+pub fn deprecate_unbond_batches(storage: &mut dyn Storage, batch_ids: Vec<u64>) -> VaultResult<()> {
     for batch_id in batch_ids {
         if let Ok(mut unbond_history) = get_unbond_history(storage, batch_id) {
             unbond_history.released = true;
@@ -186,7 +188,7 @@ pub fn deprecate_unbond_batches(storage: &mut dyn Storage, batch_ids: Vec<u64>) 
 pub fn get_deprecated_unbond_batch_ids(
     storage: &dyn Storage,
     sender_addr: &Addr,
-) -> StdResult<Vec<u64>> {
+) -> VaultResult<Vec<u64>> {
     let deprecated_batches: Vec<u64> = UNBOND_WAITLIST
         .prefix(sender_addr)
         .range(storage, None, None, Order::Ascending)
@@ -213,7 +215,7 @@ pub fn remove_unbond_wait_list(
     storage: &mut dyn Storage,
     batch_ids: Vec<u64>,
     sender_addr: &Addr,
-) -> StdResult<()> {
+) -> VaultResult<()> {
     for batch_id in batch_ids {
         UNBOND_WAITLIST.remove(storage, (sender_addr, batch_id.into()));
     }
@@ -230,7 +232,7 @@ pub fn all_unbond_history(
     storage: &dyn Storage,
     start: Option<u64>,
     limit: Option<u32>,
-) -> StdResult<Vec<UnbondHistory>> {
+) -> VaultResult<Vec<UnbondHistory>> {
     let start = U64Key::from(start.unwrap_or_default());
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let res = UNBOND_HISTORY
@@ -255,7 +257,7 @@ pub fn get_unbond_requests(
     sender_addr: &Addr,
     start: Option<u64>,
     limit: Option<u32>,
-) -> StdResult<UnbondRequest> {
+) -> VaultResult<UnbondRequest> {
     let start = U64Key::from(start.unwrap_or_default());
 
     let sender_requests: Vec<_> = UNBOND_WAITLIST

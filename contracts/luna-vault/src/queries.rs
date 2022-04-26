@@ -1,19 +1,27 @@
-use cosmwasm_std::{Coin, Deps, Env, StdResult, Uint128};
-use terraswap::asset::Asset;
-use terraswap::querier::query_supply;
-use white_whale::luna_vault::msg::{AllHistoryResponse, EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse, LastProfitResponse, PoolResponse, UnbondRequestsResponse, ValueResponse, WithdrawableUnbondedResponse};
+use crate::contract::VaultResult;
 use crate::helpers::{compute_total_value, get_withdraw_fee};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::state::{all_unbond_history, DEPOSIT_INFO, FEE, get_unbond_requests, get_withdrawable_amount, POOL_INFO, PROFIT, STATE, State};
+use crate::state::{
+    all_unbond_history, get_unbond_requests, get_withdrawable_amount, State, DEPOSIT_INFO, FEE,
+    POOL_INFO, PROFIT, STATE,
+};
+use cosmwasm_std::{Coin, Deps, Env, Uint128};
+use terraswap::asset::Asset;
+use terraswap::querier::query_supply;
+use white_whale::luna_vault::msg::{
+    AllHistoryResponse, EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse,
+    LastProfitResponse, PoolResponse, UnbondRequestsResponse, ValueResponse,
+    WithdrawableUnbondedResponse,
+};
 
 /// Queries the PoolInfo configuration
-pub fn query_pool_info(deps: Deps) -> StdResult<PoolInfo> {
+pub fn query_pool_info(deps: Deps) -> VaultResult<PoolInfo> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     info.to_normal(deps)
 }
 
 /// Queries pool state
-pub fn try_query_pool_state(env: Env, deps: Deps) -> StdResult<PoolResponse> {
+pub fn try_query_pool_state(env: Env, deps: Deps) -> VaultResult<PoolResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let assets: [Asset; 4] = info.query_pools(deps, info.contract_addr.clone())?;
     let total_share: Uint128 = query_supply(&deps.querier, info.liquidity_token.clone())?;
@@ -29,19 +37,19 @@ pub fn try_query_pool_state(env: Env, deps: Deps) -> StdResult<PoolResponse> {
 }
 
 /// Queries contract [State]
-pub fn query_state(deps: Deps) -> StdResult<State> {
-    STATE.load(deps.storage)
+pub fn query_state(deps: Deps) -> VaultResult<State> {
+    Ok(STATE.load(deps.storage)?)
 }
 
 /// Queries Fees
-pub fn query_fees(deps: Deps) -> StdResult<FeeResponse> {
+pub fn query_fees(deps: Deps) -> VaultResult<FeeResponse> {
     Ok(FeeResponse {
         fees: FEE.load(deps.storage)?,
     })
 }
 
 /// Queries total luna value in vault
-pub fn query_total_value(env: Env, deps: Deps) -> StdResult<ValueResponse> {
+pub fn query_total_value(env: Env, deps: Deps) -> VaultResult<ValueResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (total_luna_value, _, _, _, _) = compute_total_value(&env, deps, &info)?;
     Ok(ValueResponse { total_luna_value })
@@ -51,7 +59,7 @@ pub fn query_total_value(env: Env, deps: Deps) -> StdResult<ValueResponse> {
 pub fn estimate_withdraw_fee(
     deps: Deps,
     amount: Uint128,
-) -> StdResult<EstimateWithdrawFeeResponse> {
+) -> VaultResult<EstimateWithdrawFeeResponse> {
     let fee = get_withdraw_fee(deps, amount)?;
     Ok(EstimateWithdrawFeeResponse {
         fee: vec![Coin {
@@ -62,7 +70,7 @@ pub fn estimate_withdraw_fee(
 }
 
 /// Queries vault's last profit
-pub fn query_last_profit(deps: Deps) -> StdResult<LastProfitResponse> {
+pub fn query_last_profit(deps: Deps) -> VaultResult<LastProfitResponse> {
     let conf = PROFIT.load(deps.storage)?;
     Ok(LastProfitResponse {
         last_profit: conf.last_profit,
@@ -70,7 +78,7 @@ pub fn query_last_profit(deps: Deps) -> StdResult<LastProfitResponse> {
 }
 
 /// Queries vault's last balance
-pub fn query_last_balance(deps: Deps) -> StdResult<LastBalanceResponse> {
+pub fn query_last_balance(deps: Deps) -> VaultResult<LastBalanceResponse> {
     let conf = PROFIT.load(deps.storage)?;
     Ok(LastBalanceResponse {
         last_balance: conf.last_balance,
@@ -82,7 +90,7 @@ pub fn query_withdrawable_unbonded(
     deps: Deps,
     address: String,
     env: Env,
-) -> StdResult<WithdrawableUnbondedResponse> {
+) -> VaultResult<WithdrawableUnbondedResponse> {
     let state = STATE.load(deps.storage)?;
 
     let historical_time = env.block.time.seconds() - state.unbonding_period;
@@ -101,7 +109,7 @@ pub fn query_unbond_requests(
     address: String,
     start: Option<u64>,
     limit: Option<u32>,
-) -> StdResult<UnbondRequestsResponse> {
+) -> VaultResult<UnbondRequestsResponse> {
     let addr = deps.api.addr_validate(&address)?;
     let requests = get_unbond_requests(deps.storage, &addr, start, limit)?;
     let res = UnbondRequestsResponse { address, requests };
@@ -112,7 +120,7 @@ pub fn query_unbond_requests_limitation(
     deps: Deps,
     start: Option<u64>,
     limit: Option<u32>,
-) -> StdResult<AllHistoryResponse> {
+) -> VaultResult<AllHistoryResponse> {
     let requests = all_unbond_history(deps.storage, start, limit)?;
     let requests_res = requests.iter().map(|item| item.as_res()).collect();
     let res = AllHistoryResponse {
@@ -120,4 +128,3 @@ pub fn query_unbond_requests_limitation(
     };
     Ok(res)
 }
-

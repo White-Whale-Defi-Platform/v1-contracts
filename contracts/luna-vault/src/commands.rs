@@ -31,7 +31,7 @@ pub fn receive_cw20(
     env: Env,
     msg_info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
-) -> VaultResult {
+) -> VaultResult<Response> {
     match from_binary(&cw20_msg.msg)? {
         Cw20HookMsg::Unbond {} => {
             // only vLuna token contract can execute this message
@@ -50,7 +50,7 @@ pub fn provide_liquidity(
     env: Env,
     msg_info: MessageInfo,
     asset: Asset,
-) -> VaultResult {
+) -> VaultResult<Response> {
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let profit = PROFIT.load(deps.storage)?;
     let state = STATE.load(deps.storage)?;
@@ -118,7 +118,7 @@ pub(crate) fn deposit_passive_strategy(
     bluna_address: Addr,
     astro_lp_address: &Addr,
     response: Response,
-) -> VaultResult {
+) -> VaultResult<Response> {
     // split luna into half so half goes to purchase bLuna, remaining half is used as liquidity
     let luna_asset = astroport::asset::Asset {
         amount: deposit_amount.checked_div(Uint128::from(2_u8))?,
@@ -180,7 +180,7 @@ pub(crate) fn withdraw_passive_strategy(
     astro_lp_token_address: &Addr,
     astro_lp_address: &Addr,
     response: Response,
-) -> VaultResult {
+) -> VaultResult<Response> {
     // Msg that gets called on the pair address.
     let withdraw_msg: Binary = to_binary(&astroport::pair::Cw20HookMsg::WithdrawLiquidity {})?;
 
@@ -232,7 +232,7 @@ fn unbond(
     env: Env,
     amount: Uint128,
     sender: String, // human who sent the vluna to us
-) -> VaultResult {
+) -> VaultResult<Response> {
     let profit = PROFIT.load(deps.storage)?;
     if profit.last_balance != Uint128::zero() {
         return Err(LunaVaultError::DepositDuringLoan {});
@@ -308,7 +308,7 @@ fn unbond(
 }
 
 /// Withdraws unbonded luna after unbond has been called and the time lock period expired
-pub fn withdraw_unbonded(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResult {
+pub fn withdraw_unbonded(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResult<Response> {
     let state = STATE.load(deps.storage)?;
     let withdrawable_time = env.block.time.seconds() - state.unbonding_period;
     let withdraw_amount =
@@ -342,7 +342,11 @@ pub fn withdraw_unbonded(deps: DepsMut, env: Env, msg_info: MessageInfo) -> Vaul
 }
 
 /// Sets the liquid luna cap on the vault.
-pub fn set_luna_cap(deps: DepsMut, msg_info: MessageInfo, luna_cap: Uint128) -> VaultResult {
+pub fn set_luna_cap(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    luna_cap: Uint128,
+) -> VaultResult<Response> {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
@@ -356,7 +360,7 @@ pub fn set_luna_cap(deps: DepsMut, msg_info: MessageInfo, luna_cap: Uint128) -> 
 }
 
 /// Sets a new admin
-pub fn set_admin(deps: DepsMut, info: MessageInfo, admin: String) -> VaultResult {
+pub fn set_admin(deps: DepsMut, info: MessageInfo, admin: String) -> VaultResult<Response> {
     let admin_addr = deps.api.addr_validate(&admin)?;
     let previous_admin = ADMIN.get(deps.as_ref())?.unwrap();
     ADMIN.execute_update_admin(deps, info, Some(admin_addr))?;
@@ -372,7 +376,7 @@ pub fn set_fee(
     flash_loan_fee: Option<Fee>,
     treasury_fee: Option<Fee>,
     commission_fee: Option<Fee>,
-) -> VaultResult {
+) -> VaultResult<Response> {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
     let mut fee_config = FEE.load(deps.storage)?;
@@ -396,7 +400,7 @@ pub fn add_to_whitelist(
     deps: DepsMut,
     msg_info: MessageInfo,
     contract_addr: String,
-) -> VaultResult {
+) -> VaultResult<Response> {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
@@ -429,7 +433,7 @@ pub fn remove_from_whitelist(
     deps: DepsMut,
     msg_info: MessageInfo,
     contract_addr: String,
-) -> VaultResult {
+) -> VaultResult<Response> {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
 
@@ -463,7 +467,7 @@ pub fn update_state(
     whitelisted_contracts: Option<Vec<String>>,
     allow_non_whitelisted: Option<bool>,
     unbonding_period: Option<u64>,
-) -> VaultResult {
+) -> VaultResult<Response> {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
 
@@ -513,7 +517,7 @@ pub fn update_state(
     Ok(Response::new().add_attributes(attrs))
 }
 
-pub fn swap_rewards(deps: DepsMut, _env: Env, msg_info: MessageInfo) -> VaultResult {
+pub fn swap_rewards(deps: DepsMut, _env: Env, msg_info: MessageInfo) -> VaultResult<Response> {
     let state = STATE.load(deps.storage)?;
     // Check if sender is in whitelist, i.e. bot or bot proxy
     if !state.whitelisted_contracts.contains(&msg_info.sender) {

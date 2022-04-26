@@ -1,8 +1,9 @@
-use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, StdResult, Uint128};
+use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, Uint128};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::query::terraswap::query_asset_balance;
 
+use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
 use white_whale::tax::compute_tax;
 
@@ -15,7 +16,7 @@ pub fn compute_total_value(
     _env: &Env,
     deps: Deps,
     info: &PoolInfoRaw,
-) -> Result<(Uint128, Uint128, Uint128, Uint128, Uint128), LunaVaultError> {
+) -> VaultResult<(Uint128, Uint128, Uint128, Uint128, Uint128)> {
     let state = STATE.load(deps.storage)?;
     // get liquid Luna in the vault
     let luna_info = info.asset_infos[0].to_normal(deps.api)?;
@@ -56,7 +57,7 @@ pub fn compute_total_value(
     ))
 }
 
-pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> VaultResult<Uint128> {
     let treasury_fee = get_treasury_fee(deps, amount)?;
     //TODO fee from Passive Strategy, i.e. Astroport LP?
     let astroport_lp_fee = Uint128::zero();
@@ -71,21 +72,21 @@ pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
     Ok(treasury_fee + astroport_lp_fee + luna_transfer_fee)
 }
 
-pub fn get_treasury_fee(deps: Deps, amount: Uint128) -> StdResult<Uint128> {
+pub fn get_treasury_fee(deps: Deps, amount: Uint128) -> VaultResult<Uint128> {
     let fee_config = FEE.load(deps.storage)?;
     let fee = fee_config.treasury_fee.compute(amount);
     Ok(fee)
 }
 
 /// Checks that the given [Fee] is valid, i.e. it's lower than 100%
-pub fn check_fee(fee: Fee) -> Result<Fee, LunaVaultError> {
+pub fn check_fee(fee: Fee) -> VaultResult<Fee> {
     if fee.share >= Decimal::percent(100) {
         return Err(LunaVaultError::InvalidFee {});
     }
     Ok(fee)
 }
 
-pub fn get_lp_token_address(deps: &Deps, pool_address: Addr) -> StdResult<Addr> {
+pub fn get_lp_token_address(deps: &Deps, pool_address: Addr) -> VaultResult<Addr> {
     let pool_info: astroport::asset::PairInfo = deps.querier.query_wasm_smart(
         pool_address,
         &astroport::pair_stable_bluna::QueryMsg::Pair {},

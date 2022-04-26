@@ -1,4 +1,4 @@
-use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Empty, Response, StdResult, Uint128};
+use cosmwasm_std::{from_binary, to_binary, Addr, Binary, Empty, Response, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw20::{BalanceResponse, TokenInfoResponse};
 use cw_storage_plus::Map;
@@ -8,6 +8,8 @@ use serde::{Deserialize, Serialize};
 use std::sync::RwLock;
 use terra_multi_test::{Contract, ContractWrapper};
 use terraswap::asset::{Asset, AssetInfo};
+
+use crate::contract::VaultResult;
 
 lazy_static! {
     static ref TOKEN_ADDR: RwLock<String> = RwLock::new("string".to_string());
@@ -72,7 +74,7 @@ pub const BALANCES: Map<&Addr, Uint128> = Map::new("balance");
 
 pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        |deps, _, info, msg: MockExecuteMsg| -> StdResult<Response> {
+        |deps, _, info, msg: MockExecuteMsg| -> VaultResult<Response> {
             match msg {
                 MockExecuteMsg::Receive(Cw20ReceiveMsg {
                     sender: _,
@@ -106,7 +108,7 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
                     BALANCES.update(
                         deps.storage,
                         &rcpt_addr,
-                        |balance: Option<Uint128>| -> StdResult<_> {
+                        |balance: Option<Uint128>| -> VaultResult<_> {
                             Ok(balance.unwrap_or_default() + amount)
                         },
                     )?;
@@ -118,8 +120,8 @@ pub fn contract_receiver_mock() -> Box<dyn Contract<Empty>> {
                 }
             }
         },
-        |_, _, _, _: MockInstantiateMsg| -> StdResult<Response> { Ok(Response::default()) },
-        |_, _, msg: MockQueryMsg| -> StdResult<Binary> {
+        |_, _, _, _: MockInstantiateMsg| -> VaultResult<Response> { Ok(Response::default()) },
+        |_, _, msg: MockQueryMsg| -> VaultResult<Binary> {
             match msg {
                 MockQueryMsg::Pair {} => Ok(to_binary(&mock_pair_info())?),
                 MockQueryMsg::Pool {} => Ok(to_binary(&mock_pool_info())?),

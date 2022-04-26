@@ -1,7 +1,7 @@
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::{
-    attr, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Empty, Response, StdError,
-    StdResult, Uint128, WasmMsg,
+    attr, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Empty, Response, Uint128,
+    WasmMsg,
 };
 
 use cw20::Cw20ExecuteMsg;
@@ -11,6 +11,9 @@ use serde::{Deserialize, Serialize};
 use terra_multi_test::{Contract, ContractWrapper};
 use terraswap::asset::{Asset, AssetInfo};
 use white_whale::query::anchor::{AnchorQuery, EpochStateResponse};
+
+use crate::contract::VaultResult;
+use crate::error::LunaVaultError;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -55,7 +58,7 @@ pub enum Cw20HookMsg {
 
 pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
-        |deps, _, info, msg: MockExecuteMsg| -> StdResult<Response> {
+        |deps, _, info, msg: MockExecuteMsg| -> VaultResult<Response> {
             match msg {
                 MockExecuteMsg::Receive(Cw20ReceiveMsg {
                     sender: _,
@@ -92,7 +95,7 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
                                 attr("redeem_amount", redeem_amount),
                             ]))
                     }
-                    _ => Err(StdError::generic_err("Unauthorized")),
+                    _ => Err(LunaVaultError::generic_err("Unauthorized")),
                 },
                 MockExecuteMsg::DepositStable {} => {
                     // Check base denom deposit
@@ -160,8 +163,8 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
                 }
             }
         },
-        |_, _, _, _: MockInstantiateMsg| -> StdResult<Response> { Ok(Response::default()) },
-        |_, _, msg: AnchorQuery| -> StdResult<Binary> {
+        |_, _, _, _: MockInstantiateMsg| -> VaultResult<Response> { Ok(Response::default()) },
+        |_, _, msg: AnchorQuery| -> VaultResult<Binary> {
             match msg {
                 AnchorQuery::EpochState {
                     distributed_interest: _,

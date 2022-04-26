@@ -1,7 +1,5 @@
 use core::result::Result::Err;
-use cosmwasm_std::{
-    CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult, Uint128, WasmMsg,
-};
+use cosmwasm_std::{CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::luna_vault::msg::{CallbackMsg, FlashLoanPayload};
@@ -20,7 +18,7 @@ pub fn handle_flashloan(
     env: Env,
     info: MessageInfo,
     payload: FlashLoanPayload,
-) -> VaultResult {
+) -> VaultResult<Response> {
     let state = STATE.load(deps.storage)?;
     let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let fees = FEE.load(deps.storage)?;
@@ -129,14 +127,12 @@ pub fn handle_flashloan(
 }
 
 /// Resets last trade and sets current UST balance of caller
-pub fn before_trade(deps: DepsMut, env: Env) -> StdResult<Vec<(&str, String)>> {
+pub fn before_trade(deps: DepsMut, env: Env) -> Result<Vec<(&str, String)>, LunaVaultError> {
     let mut profit_check = PROFIT.load(deps.storage)?;
 
     // last_balance call can not be reset until after the loan.
     if profit_check.last_balance != Uint128::zero() {
-        return Err(StdError::generic_err(
-            LunaVaultError::Nonzero {}.to_string(),
-        ));
+        return Err(LunaVaultError::Nonzero {});
     }
 
     profit_check.last_profit = Uint128::zero();
@@ -158,7 +154,7 @@ pub fn after_trade(
     env: Env,
     msg_info: MessageInfo,
     loan_fee: Uint128,
-) -> VaultResult {
+) -> VaultResult<Response> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
     let state = STATE.load(deps.storage)?;
@@ -198,7 +194,6 @@ pub fn after_trade(
     // TODO: NOTE: Check the clone usage, added it to fixup tests
 
     if luna_in_contract > info.luna_cap {
-
         deposit_passive_strategy(
             &deps.as_ref(),
             luna_in_contract - info.luna_cap,
@@ -206,15 +201,14 @@ pub fn after_trade(
             &state.astro_lp_address,
             response,
         )
-    }
-    else{
+    } else {
         Ok(response)
     }
 }
 
 ///TODO potentially improve this function by passing the Asset, so that this component could be reused for other vaults
 /// Sends the commission fee which is a function of the profit made by the contract, forwarded by the profit-check contract
-fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultResult {
+fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultResult<Response> {
     let fees = FEE.load(deps.storage)?;
 
     let commission_amount = fees.commission_fee.compute(profit);
@@ -242,7 +236,7 @@ pub fn encapsulate_payload(
     env: Env,
     response: Response,
     loan_fee: Uint128,
-) -> VaultResult {
+) -> VaultResult<Response> {
     let total_response: Response = Response::new().add_attributes(response.attributes);
 
     // Callback for after the loan
@@ -267,7 +261,7 @@ pub fn _handle_callback(
     env: Env,
     info: MessageInfo,
     msg: CallbackMsg,
-) -> VaultResult {
+) -> VaultResult<Response> {
     // Callback functions can only be called this contract itself
     if info.sender != env.contract.address {
         return Err(LunaVaultError::NotCallback {});
