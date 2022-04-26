@@ -6,7 +6,6 @@ use terra_multi_test::{App, BankKeeper, Contract, ContractWrapper};
 use terraswap::asset::AssetInfo;
 use white_whale::luna_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 
-
 // Custom Vault Instant msg func which takes code ID
 pub fn instantiate_msg(
     token_code_id: u64,
@@ -18,6 +17,7 @@ pub fn instantiate_msg(
         bluna_address: bluna_address.clone(),
         cluna_address: bluna_address.clone(),
         astro_lp_address: bluna_address,
+        astro_factory_address: "astro_factory_address".to_string(),
         treasury_addr: war_chest,
         memory_addr: "memory".to_string(),
         asset_info: AssetInfo::NativeToken {
@@ -33,7 +33,6 @@ pub fn instantiate_msg(
         unbonding_period: 0,
     }
 }
-
 
 pub fn contract_cw20_token() -> Box<dyn Contract<Empty>> {
     // Instantiate WHALE Token Contract

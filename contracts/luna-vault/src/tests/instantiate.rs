@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{from_binary, to_binary, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
+use cosmwasm_std::{from_binary, to_binary, Addr, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
 use cosmwasm_std::{Api, Decimal, Uint128};
 use cw20::MinterResponse;
 use terraswap::asset::AssetInfo;
@@ -13,31 +13,42 @@ use crate::contract::{execute, instantiate, query};
 use crate::error::LunaVaultError;
 use crate::state::{State, FEE, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
-use crate::tests::common_integration::{instantiate_msg as vault_msg};
+use crate::tests::common_integration::instantiate_msg as vault_msg;
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub(crate) const TREASURY_FEE: u64 = 10u64;
 
 pub fn instantiate_msg() -> InstantiateMsg {
     // TODO: Update, maybe this should be a blank message ??
-    vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string())
+    vault_msg(
+        3,
+        "warchest".to_string(),
+        "anchor".to_string(),
+        "bluna".to_string(),
+    )
 }
 
 /**
  * Mocks instantiation.
  */
 pub fn mock_instantiate(deps: DepsMut) {
-    let msg = vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string());
+    let msg = vault_msg(
+        3,
+        "warchest".to_string(),
+        "anchor".to_string(),
+        "bluna".to_string(),
+    );
 
     let info = mock_info(TEST_CREATOR, &[]);
     let _res = instantiate(deps, mock_env(), info, msg).expect("Contract failed init");
 }
 
-pub fn mock_instantiate_no_asset_info(deps: DepsMut){
+pub fn mock_instantiate_no_asset_info(deps: DepsMut) {
     let bluna_address = "bluna".to_string();
     let msg = InstantiateMsg {
         bluna_address: bluna_address.clone(),
         cluna_address: bluna_address.clone(),
         astro_lp_address: bluna_address,
+        astro_factory_address: "astro_factory".to_string(),
         treasury_addr: "war_chest".to_string(),
         memory_addr: "memory".to_string(),
         asset_info: AssetInfo::NativeToken {
@@ -76,6 +87,7 @@ fn successful_initialization() {
         State {
             bluna_address: deps.api.addr_validate("test_aust").unwrap(),
             astro_lp_address: deps.api.addr_validate("astro").unwrap(),
+            astro_factory_address: Addr::unchecked("astro_factory".to_string()),
             memory_address: deps.api.addr_validate("memory").unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false,
@@ -98,7 +110,12 @@ fn successful_initialization() {
 fn unsuccessful_initialization_invalid_fees() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string());
+    let msg = vault_msg(
+        3,
+        "warchest".to_string(),
+        "anchor".to_string(),
+        "bluna".to_string(),
+    );
 
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
@@ -116,6 +133,7 @@ fn unsuccessful_initialization_invalid_asset() {
         bluna_address: bluna_address.clone(),
         cluna_address: bluna_address.clone(),
         astro_lp_address: bluna_address,
+        astro_factory_address: "astro_factory".to_string(),
         treasury_addr: "war_chest".to_string(),
         memory_addr: "memory".to_string(),
         asset_info: AssetInfo::NativeToken {
@@ -262,7 +280,12 @@ fn test_init_with_non_default_vault_lp_token() {
     let custom_token_symbol = String::from("MyLP");
 
     // Define a custom Init Msg with the custom token info provided
-    let msg = vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string());
+    let msg = vault_msg(
+        3,
+        "warchest".to_string(),
+        "anchor".to_string(),
+        "bluna".to_string(),
+    );
 
     // Prepare mock env
     let env = mock_env();

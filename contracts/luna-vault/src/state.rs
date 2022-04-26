@@ -20,6 +20,8 @@ pub struct State {
     pub bluna_address: Addr,
     /// The address of the liquidity pool to provide bLuna-Luna assets to for passive income
     pub astro_lp_address: Addr,
+    /// The address of the Astroport factory
+    pub astro_factory_address: Addr,
     pub memory_address: Addr,
     pub whitelisted_contracts: Vec<Addr>,
     pub allow_non_whitelisted: bool,
