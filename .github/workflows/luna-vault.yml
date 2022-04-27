@@ -24,11 +24,12 @@ jobs:
         with:
           toolchain: 1.58.1
           target: wasm32-unknown-unknown
+          override: true
           components: clippy, rustfmt
       - name: Run clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --locked -- -D warnings
       - name: Run rustfmt
-        run: cargo fmt -- --check
+        run: cargo fmt --locked -- --check
 
   compile:
     name: Compile
@@ -40,6 +41,7 @@ jobs:
         with:
           toolchain: 1.58.1
           target: wasm32-unknown-unknown
+          override: true
       - name: Build
         run: cargo wasm --locked
 
@@ -54,6 +56,7 @@ jobs:
         with:
           toolchain: 1.58.1
           target: wasm32-unknown-unknown
+          override: true
       - name: Run tests
         run: cargo unit-test
       - name: Run schema
