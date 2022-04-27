@@ -4,7 +4,7 @@ use terraswap::asset::AssetInfo;
 use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_deposit_msg, anchor_withdraw_msg, anchor_withdraw_unbonded_msg};
 use white_whale::denom::UST_DENOM;
 use white_whale::query::anchor::query_aust_exchange_rate;
-use white_whale::treasury::dapp_base::common::{ANCHOR_MONEY_MARKET_ID, AUST_TOKEN_ID};
+use white_whale::treasury::dapp_base::common::{ANCHOR_BLUNA_HUB_ID, ANCHOR_MONEY_MARKET_ID, AUST_TOKEN_ID, BLUNA_TOKEN_ID};
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::state::BASESTATE;
 use white_whale::treasury::msg::send_to_treasury;
@@ -44,7 +44,6 @@ pub fn handle_deposit_stable(
         anchor_address,
         Coin::new(ust_deposit_amount.u128(), UST_DENOM),
     )?;
-    println!("{:?}", deposit_msg);
     messages.push(deposit_msg);
     Ok(Response::new().add_message(send_to_treasury(messages, treasury_address)?))
 }
@@ -116,7 +115,7 @@ pub fn handle_unbond(
         .memory
         .query_contract(deps, &String::from(ANCHOR_BLUNA_HUB_ID))?;
 
-    // Get anchor bluna hub address
+    // Get anchor bluna token address
     let bluna_address: Addr = match state
         .memory
         .query_asset(deps, &String::from(BLUNA_TOKEN_ID))? {
@@ -132,7 +131,6 @@ pub fn handle_unbond(
         bluna_hub_address,
         bluna_amount,
     )?;
-    println!("{:?}", unbond_msg);
     messages.push(unbond_msg);
     Ok(Response::new().add_message(send_to_treasury(messages, treasury_address)?))
 }
@@ -163,7 +161,6 @@ pub fn handle_withdraw_unbonded(
     // Prepare the withdraw unbonded msg using the provided info.
     // The anchor dapp will then use this message and pass it to the treasury for execution
     let withdraw_unbonded_msg: CosmosMsg = anchor_withdraw_unbonded_msg(bluna_hub_address)?;
-    println!("{:?}", withdraw_unbonded_msg);
     messages.push(withdraw_unbonded_msg);
     Ok(Response::new().add_message(send_to_treasury(messages, treasury_address)?))
 }
