@@ -1,7 +1,7 @@
 [package]
 name = "luna-vault"
 version = "0.1.1"
-authors = ["CyberHoward", "Kerber0x", "0xFable"]
+authors = ["CyberHoward", "Kerber0x", "0xFable", "kaimen-sano <kaimen_sano@protonmail.com>"]
 edition = "2018"
 license = "MIT"
 

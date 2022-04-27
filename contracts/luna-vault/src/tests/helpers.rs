@@ -1,5 +1,5 @@
 use cosmwasm_std::testing::{mock_env, mock_info};
-use cosmwasm_std::{ReplyOn, Response, SubMsg, to_binary, Uint128};
+use cosmwasm_std::{to_binary, ReplyOn, Response, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use terraswap::pair::Cw20HookMsg;
 

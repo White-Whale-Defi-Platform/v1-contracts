@@ -6,11 +6,11 @@ use crate::contract::{execute, instantiate, query};
 use crate::state::{State, STATE};
 use cw20::MinterResponse;
 
+use crate::tests::common_integration::instantiate_msg as vault_msg;
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use white_whale::fee::*;
 use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::luna_vault::msg::*;
-use crate::tests::common_integration::{instantiate_msg as vault_msg};
 
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 
@@ -19,7 +19,6 @@ use crate::tests::mock_querier::mock_dependencies;
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 use crate::error::LunaVaultError;
-
 
 /**
  * Tests successful instantiation of the contract.
@@ -164,7 +163,12 @@ fn test_init_with_non_default_vault_lp_token() {
     let custom_token_name = String::from("My LP Token");
     let custom_token_symbol = String::from("MyLP");
 
-    let msg = vault_msg(3, "warchest".to_string(), "anchor".to_string(), "bluna".to_string());
+    let msg = vault_msg(
+        3,
+        "warchest".to_string(),
+        "anchor".to_string(),
+        "bluna".to_string(),
+    );
 
     // Prepare mock env
     let env = mock_env();

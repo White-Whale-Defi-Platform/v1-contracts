@@ -1,5 +1,5 @@
-use cosmwasm_std::{Api, MessageInfo};
 use cosmwasm_std::testing::mock_env;
+use cosmwasm_std::{Api, MessageInfo};
 
 use white_whale::luna_vault::msg::ExecuteMsg;
 
@@ -67,9 +67,7 @@ fn successful_set_state() {
     assert_ne!(original_state, new_state);
     assert_eq!(
         new_state.bluna_address,
-        deps.api
-            .addr_validate("newbluna")
-            .unwrap()
+        deps.api.addr_validate("newbluna").unwrap()
     );
     assert!(new_state.allow_non_whitelisted);
 }
