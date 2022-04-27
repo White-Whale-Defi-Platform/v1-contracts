@@ -26,7 +26,6 @@ pub struct InstantiateMsg {
     pub treasury_fee: Decimal,
     pub flash_loan_fee: Decimal,
     pub commission_fee: Decimal,
-    pub luna_cap: Uint128,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
     pub unbonding_period: u64,
@@ -41,8 +40,6 @@ pub enum ExecuteMsg {
     ProvideLiquidity { asset: Asset },
     /// Send back unbonded luna to the user
     WithdrawUnbonded {},
-    /// Set minimum amount of luna held liquid (not deposited somewhere else)
-    SetLunaCap { luna_cap: Uint128 },
     /// Sets the withdraw fee and flash loan fee
     SetFee {
         flash_loan_fee: Option<Fee>,

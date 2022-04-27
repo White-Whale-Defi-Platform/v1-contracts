@@ -4,6 +4,7 @@
   "type": "object",
   "required": [
     "allow_non_whitelisted",
+    "astro_factory_address",
     "astro_lp_address",
     "bluna_address",
     "memory_address",
@@ -13,6 +14,14 @@
   "properties": {
     "allow_non_whitelisted": {
       "type": "boolean"
+    },
+    "astro_factory_address": {
+      "description": "The address of the Astroport factory",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        }
+      ]
     },
     "astro_lp_address": {
       "description": "The address of the liquidity pool to provide bLuna-Luna assets to for passive income",

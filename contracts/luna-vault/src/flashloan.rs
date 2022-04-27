@@ -102,6 +102,9 @@ pub fn handle_flashloan(
     // } else {
     //     fees.flash_loan_fee.compute(requested_asset.amount)
     // };
+    //TODO why charge everybody? in theory we don't want to charge fees for ourselves, but to others.
+    // for now the vault will be closed to the public but i guess we can keep the logic in place.
+    // Either that or remove the fee completely and then reintroduce it if we want to open the vault
     let loan_fee = fees.flash_loan_fee.compute(requested_asset.amount);
 
     // NOTE: Forget the whitelist and just charge everyone, why should anyone get free flashloans ?
@@ -160,10 +163,13 @@ pub fn after_trade(
     let state = STATE.load(deps.storage)?;
     // Deposit funds into a passive strategy again if applicable.
     let mut response = Response::default();
-    // TODO: NOTE: Check the clone usage, added it to fixup tests
-    deposit_passive_strategy(
+    //TODO revise what is it that we are depositing here into the passive strategy.
+    // After trade prob should check if we did the flashloan with bluna,cluna or just pure luna.
+    // if the flashloan returned luna, then somehow account for the liquid luna that was sitting there waiting to
+    // be withdrawn
+    response = deposit_passive_strategy(
         &deps.as_ref(),
-        luna_in_contract - info.luna_cap,
+        luna_in_contract,
         state.bluna_address.clone(),
         &state.astro_lp_address,
         response.clone(),
@@ -191,19 +197,15 @@ pub fn after_trade(
         .add_submessages(commission_response.messages)
         .add_attributes(commission_response.attributes)
         .add_attribute("value after commission: ", balance.to_string());
-    // TODO: NOTE: Check the clone usage, added it to fixup tests
 
-    if luna_in_contract > info.luna_cap {
-        deposit_passive_strategy(
-            &deps.as_ref(),
-            luna_in_contract - info.luna_cap,
-            state.bluna_address,
-            &state.astro_lp_address,
-            response,
-        )
-    } else {
-        Ok(response)
-    }
+    //TODO again deposit to passive strategy??
+    deposit_passive_strategy(
+        &deps.as_ref(),
+        luna_in_contract,
+        state.bluna_address,
+        &state.astro_lp_address,
+        response,
+    )
 }
 
 ///TODO potentially improve this function by passing the Asset, so that this component could be reused for other vaults
