@@ -10,6 +10,8 @@ pub enum ExecuteMsg {
     // Add dapp-specific messages here
     DepositStable { deposit_amount: Uint128 },
     RedeemStable { withdraw_amount: Uint128 },
+    Unbond { bluna_amount: Uint128 },
+    WithdrawUnbonded {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
