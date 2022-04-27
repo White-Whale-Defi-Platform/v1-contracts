@@ -1,12 +1,11 @@
 // Add the custom dapp-specific message commands here
-use cosmwasm_std::{to_binary, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env, Fraction, MessageInfo, Response, Uint128, WasmMsg, BankMsg};
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
-use terraswap::asset::{Asset, AssetInfo};
+use cosmwasm_std::{to_binary, CosmosMsg, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg};
+use cw20::{Cw20ExecuteMsg};
+use terraswap::asset::{AssetInfo};
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::state::BASESTATE;
-use terraswap::pair::{ExecuteMsg as PairExecuteMsg, Cw20HookMsg};
-use white_whale::denom::UST_DENOM;
-use white_whale::treasury::msg::{ExecuteMsg, send_to_treasury};
+use terraswap::pair::{Cw20HookMsg};
+use white_whale::treasury::msg::{send_to_treasury};
 use crate::state::{State, STATE};
 use white_whale::query::terraswap::query_asset_balance;
 
@@ -15,7 +14,7 @@ use white_whale::query::terraswap::query_asset_balance;
 use crate::contract::BuyBackResult;
 use crate::error::BuyBackError;
 
-pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amount_to_buy: Uint128) -> BuyBackResult {
+pub fn handle_buyback_whale(deps: DepsMut, _env: Env, msg_info: MessageInfo, amount_to_buy: Uint128) -> BuyBackResult {
         let state = BASESTATE.load(deps.storage)?;
         let config: State = STATE.load(deps.storage)?;
 
@@ -26,11 +25,6 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
         // Prepare empty message vec
         let mut messages: Vec<CosmosMsg> = vec![];
         let treasury_address = state.treasury_address;
-        // Validate whale token and setup an AssetInfo
-        let whale_token = config.whale_token;
-        let whale_info = AssetInfo::Token {
-            contract_addr: whale_token.to_string(),
-        };
         // vUST INFO
         let vust_info = AssetInfo::Token{
             contract_addr: config.vust_token.to_string()
@@ -40,16 +34,7 @@ pub fn handle_buyback_whale(deps: DepsMut, env: Env, msg_info: MessageInfo, amou
         if query_asset_balance(deps.as_ref(), &vust_info, treasury_address.clone())? < amount_to_buy {
             return Err(BuyBackError::NotEnoughFunds {});
         }
-        // Prepare the swap amount with vUST Token Info and the amount_to_buy
-        let swap_amount = Asset {
-            info: vust_info.clone(),
-            amount: amount_to_buy,
-        };
-        // Prepare the offer asset for buying WHALE
-        let offer_asset = Asset {
-            info: vust_info,
-            amount: amount_to_buy,
-        };
+
 
         // Define the stake voting tokens msg and wrap it in a Cw20ExecuteMsg
         let msg = Cw20HookMsg::Swap {
