@@ -3,8 +3,8 @@ name: Luna Vault
 on:
   push:
     branches:
-      - "main"
-      - "luna-vault-feature-branch"
+      - main
+      - luna-vault-feature-branch
     tags:
       - ["*"]
   pull_request:
