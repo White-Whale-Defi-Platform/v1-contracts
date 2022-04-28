@@ -50,7 +50,8 @@ pub fn execute(
     match msg {
         ExecuteMsg::Receive(msg) => commands::receive_cw20(deps, env, info, msg),
         ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded_bluna(deps),
-        ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin)
+        ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
+        ExecuteMsg::Callback(msg) => commands::_handle_callback(deps, env, info, msg),
     }
 }
 

@@ -16,6 +16,9 @@ pub enum UnbondHandlerError {
     #[error("Unauthorized")]
     Unauthorized {},
 
+    #[error("Call is not a callback!")]
+    NotCallback {},
+
     #[error("Unsupported token")]
     UnsupportedToken {},
 

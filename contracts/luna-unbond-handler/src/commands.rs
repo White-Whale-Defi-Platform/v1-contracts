@@ -1,14 +1,17 @@
-use cosmwasm_std::{DepsMut, Env, from_binary, MessageInfo, Response, StdError, Uint128};
+use cosmwasm_std::{BankMsg, CosmosMsg, DepsMut, Env, from_binary, MessageInfo, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
-use terraswap::asset::AssetInfo;
+use terraswap::asset::{Asset, AssetInfo};
+use terraswap::querier::query_balance;
 
 use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_withdraw_unbonded_msg};
+use white_whale::denom::LUNA_DENOM;
 use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_ASSET_MEMORY_NAME};
 use white_whale::memory::BLUNA_TOKEN_MEMORY_ID;
 use white_whale::memory::queries::{query_asset_from_mem, query_contract_from_mem, query_contracts_from_mem};
+use white_whale::ust_vault::msg::ExecuteMsg::Callback;
 
 use crate::{UnbondHandlerError, UnbondHandlerResult};
-use crate::msg::Cw20HookMsg;
+use crate::msg::{CallbackMsg, Cw20HookMsg};
 use crate::state::{ADMIN, STATE};
 
 /// handler function invoked when the unbond handler contract receives
@@ -34,7 +37,7 @@ pub fn receive_cw20(
                 }
             };
 
-            unbond_bluna(deps, env, cw20_msg.amount, cw20_msg.sender)
+            unbond_bluna(deps, env, cw20_msg.amount)
         }
     }
 }
@@ -43,7 +46,6 @@ fn unbond_bluna(
     deps: DepsMut,
     _env: Env,
     amount: Uint128,
-    sender: String, // human who is requesting the unbonding
 ) -> UnbondHandlerResult {
     let state = STATE.load(deps.storage)?;
     let contracts = [BLUNA_TOKEN_MEMORY_ID.to_string(), ANCHOR_BLUNA_HUB_ID.to_string(), ];
@@ -56,7 +58,13 @@ fn unbond_bluna(
     let bluna_address = contract_addresses.get(BLUNA_TOKEN_MEMORY_ID).ok_or(UnbondHandlerError::MemoryError(StdError::generic_err("couldn't find contracts in memory")))?.clone();
     let bluna_hub_address = contract_addresses.get(ANCHOR_BLUNA_HUB_ID).ok_or(UnbondHandlerError::MemoryError(StdError::generic_err("couldn't find contracts in memory")))?.clone();
 
-    anchor_bluna_unbond_msg(bluna_address, bluna_hub_address, amount)
+    let bluna_unbond_msg = anchor_bluna_unbond_msg(bluna_address, bluna_hub_address, amount);
+    Ok(Response::new()
+        .add_attributes(vec![
+            ("action", "unbond_bluna"),
+            ("amount", amount.to_string()),
+        ])
+        .add_message(bluna_unbond_msg))
 }
 
 pub(crate) fn withdraw_unbonded_bluna(
@@ -64,11 +72,19 @@ pub(crate) fn withdraw_unbonded_bluna(
 ) -> UnbondHandlerResult {
     let state = STATE.load(deps.storage)?;
     let bluna_hub_address = query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
-    anchor_withdraw_unbonded_msg(bluna_hub_address)
 
-    //catch this stuff (or create a callback/submessage that will get triggered if this is successful)
-    // then send it to state.owner
-    // clear the owner and state.expiration_time`
+    let withdraw_unbonded_msg = SubMsg::new(anchor_withdraw_unbonded_msg(bluna_hub_address));
+
+    // Callback for after withdrawing the unbonded bluna
+    let after_withdraw_msg = CallbackMsg::AfterWithdraw {}.to_cosmos_msg(&env.contract.address)?;
+
+    Ok(Response::new()
+        .add_attributes(vec![
+            ("action", "withdraw_unbonded_bluna"),
+            ("amount", amount.to_string()),
+        ])
+        .add_submessage(withdraw_unbonded_msg)
+        .add_message(after_withdraw_msg))
 }
 
 /// Sets a new admin
@@ -79,4 +95,55 @@ pub fn set_admin(deps: DepsMut, info: MessageInfo, admin: String) -> UnbondHandl
     Ok(Response::default()
         .add_attribute("previous admin", previous_admin)
         .add_attribute("admin", admin))
+}
+
+pub(crate) fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> UnbondHandlerResult {
+    // Callback functions can only be called this contract itself
+    if info.sender != env.contract.address {
+        return Err(UnbondHandlerError::NotCallback {});
+    }
+    match msg {
+        CallbackMsg::AfterWithdraw {} => _after_withdraw(deps, env),
+        CallbackMsg::AfterFundsSent {} => _after_funds_sent(deps),
+    }
+}
+
+/// Sends luna to its owner after it is withdrawn from Anchor.
+fn _after_withdraw(deps: DepsMut, env: Env) -> UnbondHandlerResult {
+    let state = STATE.load(deps.storage)?;
+    let owner = state.owner?;
+
+    let refund_amount = query_balance(&deps.querier, owner.clone(), LUNA_DENOM.to_string())?;
+    // Construct refund message
+    let refund_asset = Asset {
+        info: AssetInfo::NativeToken { denom: LUNA_DENOM.to_string() },
+        amount: refund_amount,
+    };
+    let taxed_asset = refund_asset.deduct_tax(&deps.querier)?;
+
+    let refund_msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        to_address: owner.to_string(),
+        amount: vec![taxed_asset],
+    }));
+
+    // Callback for after funds are sent
+    let after_funds_sent_msg = CallbackMsg::AfterFundsSent {}.to_cosmos_msg(&env.contract.address)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "after_withdraw")
+        .add_submessage(refund_msg)
+        .add_message(after_funds_sent_msg))
+}
+
+/// Resets the handler's properties, i.e. owner and expiration_time so it is clean and ready to
+/// be reused.
+fn _after_funds_sent(deps: DepsMut) -> UnbondHandlerResult {
+    let mut state = STATE.load(deps.storage)?;
+    state.owner = None;
+    state.expiration_time = None;
+
+    STATE.save(deps.storage, &state);
+    Ok(Response::new()
+        .add_attribute("action", "after_funds_sent")
+    )
 }
