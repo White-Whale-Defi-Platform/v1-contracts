@@ -5,7 +5,7 @@ use cosmwasm_std::DepsMut;
 use crate::contract::{execute, instantiate};
 use crate::tests::common::TEST_CREATOR;
 
-use crate::error::MemoryError;
+use white_whale::memory::error::MemoryError;
 use crate::tests::mock_querier::mock_dependencies;
 use white_whale::memory::msg::*;
 
