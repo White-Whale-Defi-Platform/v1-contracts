@@ -15,7 +15,11 @@ fn main() {
 
     export_schema(&schema_for!(InstantiateMsg), &out_dir);
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
-    export_schema_with_title(&mut schema_for!(VaultQueryMsg), &out_dir, "LunaVaultQueryMsg");
+    export_schema_with_title(
+        &mut schema_for!(VaultQueryMsg),
+        &out_dir,
+        "LunaVaultQueryMsg",
+    );
     export_schema(&schema_for!(State), &out_dir);
     export_schema(&schema_for!(PoolResponse), &out_dir);
     export_schema(&schema_for!(PoolInfo), &out_dir);
