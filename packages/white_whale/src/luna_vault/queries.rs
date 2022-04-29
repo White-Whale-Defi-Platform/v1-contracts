@@ -1,6 +1,6 @@
-use cosmwasm_std::{Addr, Decimal, Deps, QueryRequest, StdResult, to_binary, WasmQuery};
+use cosmwasm_std::{Addr, Deps, QueryRequest, StdResult, to_binary, WasmQuery};
 
-use crate::fee::{Fee, VaultFee};
+use crate::fee::VaultFee;
 use crate::luna_vault::msg::{FeeResponse, VaultQueryMsg};
 
 /// Queries the luna vault fees

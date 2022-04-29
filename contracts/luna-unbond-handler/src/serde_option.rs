@@ -1,5 +1,3 @@
-use serde::{Serialize, Serializer};
-
 pub fn serde_option<T>(option: Option<T>) -> String
 where
     T: ToString,

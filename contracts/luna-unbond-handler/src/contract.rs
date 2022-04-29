@@ -1,12 +1,13 @@
+use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_binary};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
-use crate::state::{State, STATE};
 use crate::{commands, queries, UnbondHandlerResult};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use crate::serde_option::serde_option;
+use crate::state::{State, STATE};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:luna-unbond-handler";
@@ -36,11 +37,8 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", state.owner.unwrap_or(Addr::unchecked("")))
-        .add_attribute(
-            "expiration_time",
-            state.expiration_time.unwrap_or(0).to_string(),
-        ))
+        .add_attribute("owner", serde_option(state.owner))
+        .add_attribute("expiration_time", serde_option(state.expiration_time)))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

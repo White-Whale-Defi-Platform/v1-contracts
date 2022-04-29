@@ -1,8 +1,5 @@
-use std::str::FromStr;
-
-use cosmwasm_std::{Addr, BankMsg, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError, SubMsg, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::{BankMsg, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, to_binary, Uint128, WasmMsg};
 use cw20::Cw20ReceiveMsg;
-use cw_controllers::AdminError;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_balance;
 
@@ -233,7 +230,7 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
     let bluna_hub_address =
         query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
 
-    if query_unbond_requests(deps.as_ref(), bluna_hub_address, env.contract.address)?
+    if query_unbond_requests(deps.as_ref(), bluna_hub_address, env.contract.address.clone())?
         .requests
         .is_empty()
     {
