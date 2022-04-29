@@ -63,3 +63,6 @@ pub enum QueryMsg {
     /// Queries the state
     State {},
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct MigrateMsg {}

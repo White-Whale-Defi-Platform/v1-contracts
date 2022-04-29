@@ -1,9 +1,10 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{to_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
-use cw2::set_contract_version;
+use cw2::{get_contract_version, set_contract_version};
+use semver::Version;
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::state::{State, STATE};
 use crate::{commands, queries, UnbondHandlerResult};
 
@@ -62,4 +63,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::State {} => to_binary(&queries::query_state(deps)?),
     }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: MigrateMsg) -> UnbondHandlerResult {
+    let version: Version = CONTRACT_VERSION.parse()?;
+    let storage_version: Version = get_contract_version(deps.storage)?.version.parse()?;
+
+    if storage_version < version {
+        set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    }
+    Ok(Response::default())
 }
