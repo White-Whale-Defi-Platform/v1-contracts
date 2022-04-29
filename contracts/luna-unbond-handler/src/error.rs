@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{OverflowError, StdError};
 use cw_controllers::AdminError;
 use thiserror::Error;
 use white_whale::memory::error::MemoryError;
@@ -14,6 +14,9 @@ pub enum UnbondHandlerError {
     #[error("Semver parsing error: {0}")]
     SemVer(String),
 
+    #[error("{0}")]
+    OverflowError(#[from] OverflowError),
+
     #[error("Unauthorized")]
     Unauthorized {},
 
@@ -22,6 +25,9 @@ pub enum UnbondHandlerError {
 
     #[error("Unsupported token")]
     UnsupportedToken {},
+
+    #[error("Contract is not owned by any address")]
+    UnownedHandler {},
 
     #[error("{0}")]
     MemoryError(#[from] MemoryError),

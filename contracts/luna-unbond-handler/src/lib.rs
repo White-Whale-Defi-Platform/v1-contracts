@@ -2,11 +2,12 @@ use cosmwasm_std::Response;
 
 pub use crate::error::UnbondHandlerError;
 
+mod commands;
 pub mod contract;
 mod error;
 pub mod msg;
-pub mod state;
 mod queries;
-mod commands;
+mod serde_option;
+pub mod state;
 
 type UnbondHandlerResult = Result<Response, UnbondHandlerError>;

@@ -53,7 +53,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> U
             expiration_time,
             memory_contract,
         } => commands::update_state(deps, info, owner, expiration_time, memory_contract),
-        ExecuteMsg::Callback(msg) => commands::_handle_callback(deps, env, info, msg),
+        ExecuteMsg::Callback(msg) => commands::handle_callback(deps, env, info, msg),
     }
 }
 
