@@ -204,7 +204,7 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
     }
         .into_msg(&deps.querier, owner)?;
 
-    let response = Response::new();
+    let mut response = Response::new();
     // Construct liquidation reward message if withdrawal wasn't triggered by the user
     if !liquidation_fee_amount.is_zero() {
         // Send the liquidation_fee_amount * (1 - commission_fee) to whoever triggered the liquidation as a reward
@@ -225,12 +225,10 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         attrs.push(("reward_amount", reward_amount.to_string()));
         attrs.push(("treasury_fee_amount", treasury_fee_amount.to_string()));
 
-        response.add_messages(vec![reward_msg, treasury_fee_msg]);
+        response = response.add_messages(vec![reward_msg, treasury_fee_msg]);
     }
 
-    // check if there is no more unbonds on Anchor, so that the handler can be reused
-    // todo: ensure that user has no waitlist requests for unbonding
-    // maybe we need to store a counter of the amount of unbond requests, and decrement to 0 eventually?
+    // check if there are no more pending unbonds on Anchor for this handler, so that it can be reused
     let bluna_hub_address =
         query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
 
@@ -244,6 +242,7 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         state.expiration_time = None;
 
         STATE.save(deps.storage, &state)?;
+        attrs.push(("unbond_handler_released", true.to_string()));
     }
 
     Ok(response
