@@ -5,8 +5,8 @@ use terraswap::querier::query_balance;
 
 use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_withdraw_unbonded_msg};
 use white_whale::denom::LUNA_DENOM;
-use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_ASSET_MEMORY_NAME};
-use white_whale::memory::BLUNA_TOKEN_MEMORY_ID;
+use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID};
+use white_whale::memory::error::MemoryError;
 use white_whale::memory::queries::{query_asset_from_mem, query_contract_from_mem, query_contracts_from_mem};
 use white_whale::ust_vault::msg::ExecuteMsg::Callback;
 
@@ -55,8 +55,8 @@ fn unbond_bluna(
         return Err(UnbondHandlerError::Std(StdError::generic_err("couldn't find contracts in memory")));
     }
 
-    let bluna_address = contract_addresses.get(BLUNA_TOKEN_MEMORY_ID).ok_or(UnbondHandlerError::MemoryError(StdError::generic_err("couldn't find contracts in memory")))?.clone();
-    let bluna_hub_address = contract_addresses.get(ANCHOR_BLUNA_HUB_ID).ok_or(UnbondHandlerError::MemoryError(StdError::generic_err("couldn't find contracts in memory")))?.clone();
+    let bluna_address = contract_addresses.get(BLUNA_TOKEN_MEMORY_ID).ok_or(UnbondHandlerError::MemoryError(MemoryError::NotFoundInMemory {}))?.clone();
+    let bluna_hub_address = contract_addresses.get(ANCHOR_BLUNA_HUB_ID).ok_or(UnbondHandlerError::MemoryError(MemoryError::NotFoundInMemory {}))?.clone();
 
     let bluna_unbond_msg = anchor_bluna_unbond_msg(bluna_address, bluna_hub_address, amount);
     Ok(Response::new()

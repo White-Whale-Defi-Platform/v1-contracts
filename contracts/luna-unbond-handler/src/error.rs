@@ -1,6 +1,7 @@
 use cosmwasm_std::StdError;
 use cw_controllers::AdminError;
 use thiserror::Error;
+use white_whale::memory::error::MemoryError;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum UnbondHandlerError {
@@ -23,7 +24,7 @@ pub enum UnbondHandlerError {
     UnsupportedToken {},
 
     #[error("{0}")]
-    MemoryError(#[from] StdError),
+    MemoryError(#[from] MemoryError),
 }
 
 impl From<semver::Error> for UnbondHandlerError {
