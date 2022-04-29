@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Deps, Uint128};
+use cosmwasm_std::{Addr, Deps};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};

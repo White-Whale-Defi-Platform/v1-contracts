@@ -159,7 +159,7 @@ pub fn after_trade(
     loan_fee: Uint128,
 ) -> VaultResult<Response> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
+    let (total_value_in_luna, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
     let state = STATE.load(deps.storage)?;
     // Deposit funds into a passive strategy again if applicable.
     let mut response = Response::default();
@@ -177,15 +177,12 @@ pub fn after_trade(
 
     let mut conf = PROFIT.load(deps.storage)?;
 
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let balance = compute_total_value(&env, deps.as_ref(), &info)?.0;
-
-    // Check if balance increased with expected fee, otherwise cancel everything
-    if balance < conf.last_balance + loan_fee {
+    // Check if total_value_in_luna increased with expected fee, otherwise cancel everything
+    if total_value_in_luna < conf.last_balance + loan_fee {
         return Err(LunaVaultError::CancelLosingTrade {});
     }
 
-    let profit = balance - conf.last_balance;
+    let profit = total_value_in_luna - conf.last_balance;
 
     conf.last_profit = profit;
     conf.last_balance = Uint128::zero();
@@ -196,9 +193,8 @@ pub fn after_trade(
         // Send commission of profit to Treasury
         .add_submessages(commission_response.messages)
         .add_attributes(commission_response.attributes)
-        .add_attribute("value after commission: ", balance.to_string());
+        .add_attribute("value after commission: ", total_value_in_luna.to_string());
 
-    //TODO again deposit to passive strategy??
     deposit_passive_strategy(
         &deps.as_ref(),
         luna_in_contract,
