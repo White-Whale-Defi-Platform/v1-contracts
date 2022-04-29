@@ -50,27 +50,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Set minimum amount of luna held liquid (not deposited somewhere else)",
-      "type": "object",
-      "required": [
-        "set_luna_cap"
-      ],
-      "properties": {
-        "set_luna_cap": {
-          "type": "object",
-          "required": [
-            "luna_cap"
-          ],
-          "properties": {
-            "luna_cap": {
-              "$ref": "#/definitions/Uint128"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "Sets the withdraw fee and flash loan fee",
       "type": "object",
       "required": [

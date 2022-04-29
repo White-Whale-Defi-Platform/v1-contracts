@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError,
+    Addr, Binary, Deps, DepsMut, entry_point, Env, MessageInfo, Reply, ReplyOn, Response, StdError,
     SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
@@ -8,24 +8,22 @@ use protobuf::Message;
 use semver::Version;
 use serde::Serialize;
 use terraswap::asset::AssetInfo;
-
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
-use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::luna_vault::msg::*;
+use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
 
+use crate::{commands, flashloan, helpers, queries};
 use crate::commands::set_fee;
 use crate::error::LunaVaultError;
 use crate::helpers::get_lp_token_address;
-use crate::{commands, flashloan, helpers, queries};
-
 use crate::pool_info::PoolInfoRaw;
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{
-    CurrentBatch, ProfitCheck, State, ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT,
+    ADMIN, CURRENT_BATCH, CurrentBatch, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, ProfitCheck, State,
     STATE,
 };
 
@@ -101,22 +99,21 @@ pub fn instantiate(
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
         liquidity_token: Addr::unchecked(""),
-        luna_cap: msg.luna_cap,
         asset_infos: [
             msg.asset_info.to_raw(deps.api)?, // 0 - luna
             AssetInfo::Token {
                 contract_addr: get_lp_token_address(&deps.as_ref(), astro_lp_address)?
                     .into_string(),
             }
-            .to_raw(deps.api)?, // 1 - astro lp
+                .to_raw(deps.api)?, // 1 - astro lp
             AssetInfo::Token {
                 contract_addr: msg.bluna_address,
             }
-            .to_raw(deps.api)?, // 2 - bluna
+                .to_raw(deps.api)?, // 2 - bluna
             AssetInfo::Token {
                 contract_addr: msg.cluna_address,
             }
-            .to_raw(deps.api)?, // 3 - cluna
+                .to_raw(deps.api)?, // 3 - cluna
         ],
     };
     POOL_INFO.save(deps.storage, pool_info)?;
@@ -160,7 +157,7 @@ pub fn instantiate(
             funds: vec![],
             label: "White Whale Luna Vault LP".to_string(),
         }
-        .into(),
+            .into(),
         gas_limit: None,
         id: u64::from(INSTANTIATE_REPLY_ID),
         reply_on: ReplyOn::Success,
@@ -191,7 +188,6 @@ pub fn execute(
             commands::provide_liquidity(deps, env, info, asset)
         }
         ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded(deps, env, info),
-        ExecuteMsg::SetLunaCap { luna_cap } => commands::set_luna_cap(deps, info, luna_cap),
         ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
         ExecuteMsg::SetFee {
             flash_loan_fee,
@@ -250,8 +246,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
 }
 
 fn to_binary<T>(data: &T) -> VaultResult<Binary>
-where
-    T: Serialize + ?Sized,
+    where
+        T: Serialize + ?Sized,
 {
     Ok(cosmwasm_std::to_binary(data)?)
 }

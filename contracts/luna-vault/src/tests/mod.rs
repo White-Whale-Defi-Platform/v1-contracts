@@ -8,7 +8,6 @@ pub mod instantiate;
 
 mod integration_test;
 mod mock_querier;
-mod pool;
 
 mod anchor_mock;
 mod deposit;

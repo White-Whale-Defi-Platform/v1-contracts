@@ -102,6 +102,9 @@ pub fn handle_flashloan(
     // } else {
     //     fees.flash_loan_fee.compute(requested_asset.amount)
     // };
+    //TODO why charge everybody? in theory we don't want to charge fees for ourselves, but to others.
+    // for now the vault will be closed to the public but i guess we can keep the logic in place.
+    // Either that or remove the fee completely and then reintroduce it if we want to open the vault
     let loan_fee = fees.flash_loan_fee.compute(requested_asset.amount);
 
     // NOTE: Forget the whitelist and just charge everyone, why should anyone get free flashloans ?
@@ -156,14 +159,17 @@ pub fn after_trade(
     loan_fee: Uint128,
 ) -> VaultResult<Response> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
+    let (total_value_in_luna, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
     let state = STATE.load(deps.storage)?;
     // Deposit funds into a passive strategy again if applicable.
     let mut response = Response::default();
-    // TODO: NOTE: Check the clone usage, added it to fixup tests
-    deposit_passive_strategy(
+    //TODO revise what is it that we are depositing here into the passive strategy.
+    // After trade prob should check if we did the flashloan with bluna,cluna or just pure luna.
+    // if the flashloan returned luna, then somehow account for the liquid luna that was sitting there waiting to
+    // be withdrawn
+    response = deposit_passive_strategy(
         &deps.as_ref(),
-        luna_in_contract - info.luna_cap,
+        luna_in_contract,
         state.bluna_address.clone(),
         &state.astro_lp_address,
         response.clone(),
@@ -171,15 +177,12 @@ pub fn after_trade(
 
     let mut conf = PROFIT.load(deps.storage)?;
 
-    let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let balance = compute_total_value(&env, deps.as_ref(), &info)?.0;
-
-    // Check if balance increased with expected fee, otherwise cancel everything
-    if balance < conf.last_balance + loan_fee {
+    // Check if total_value_in_luna increased with expected fee, otherwise cancel everything
+    if total_value_in_luna < conf.last_balance + loan_fee {
         return Err(LunaVaultError::CancelLosingTrade {});
     }
 
-    let profit = balance - conf.last_balance;
+    let profit = total_value_in_luna - conf.last_balance;
 
     conf.last_profit = profit;
     conf.last_balance = Uint128::zero();
@@ -190,20 +193,15 @@ pub fn after_trade(
         // Send commission of profit to Treasury
         .add_submessages(commission_response.messages)
         .add_attributes(commission_response.attributes)
-        .add_attribute("value after commission: ", balance.to_string());
-    // TODO: NOTE: Check the clone usage, added it to fixup tests
+        .add_attribute("value after commission: ", total_value_in_luna.to_string());
 
-    if luna_in_contract > info.luna_cap {
-        deposit_passive_strategy(
-            &deps.as_ref(),
-            luna_in_contract - info.luna_cap,
-            state.bluna_address,
-            &state.astro_lp_address,
-            response,
-        )
-    } else {
-        Ok(response)
-    }
+    deposit_passive_strategy(
+        &deps.as_ref(),
+        luna_in_contract,
+        state.bluna_address,
+        &state.astro_lp_address,
+        response,
+    )
 }
 
 ///TODO potentially improve this function by passing the Asset, so that this component could be reused for other vaults

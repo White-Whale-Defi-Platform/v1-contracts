@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    attr, coins, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Deps, DepsMut,
-    Env, MessageInfo, Response, Uint128, WasmMsg,
+    Addr, attr, BankMsg, Binary, coins, CosmosMsg, Decimal, Deps, DepsMut, Env, from_binary,
+    MessageInfo, Response, to_binary, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
@@ -14,13 +14,12 @@ use white_whale::memory::LIST_SIZE_LIMIT;
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
 use crate::helpers::{check_fee, compute_total_value, get_lp_token_address, get_treasury_fee};
-
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{
-    deprecate_unbond_batches, get_deprecated_unbond_batch_ids, get_withdrawable_amount,
-    get_withdrawable_unbond_batch_ids, prepare_next_unbond_batch, remove_unbond_wait_list,
-    store_unbond_history, store_unbond_wait_list, UnbondHistory, ADMIN, CURRENT_BATCH,
-    DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE,
+    ADMIN, CURRENT_BATCH, DEPOSIT_INFO,
+    deprecate_unbond_batches, FEE, get_deprecated_unbond_batch_ids,
+    get_withdrawable_amount, get_withdrawable_unbond_batch_ids, POOL_INFO, prepare_next_unbond_batch, PROFIT,
+    remove_unbond_wait_list, STATE, store_unbond_history, store_unbond_wait_list, UnbondHistory,
 };
 
 /// handler function invoked when the luna-vault contract receives
@@ -72,7 +71,7 @@ pub fn provide_liquidity(
     let deposit: Uint128 = asset.amount;
 
     // Get total value in Vault
-    let (total_deposits_in_luna, luna_in_contract, _, _, _) =
+    let (total_deposits_in_luna, _, _, _, _) =
         compute_total_value(&env, deps.as_ref(), &info)?;
     // Get total supply of vLuna tokens and calculate share
     let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
@@ -97,18 +96,14 @@ pub fn provide_liquidity(
     });
 
     let response = Response::new().add_attributes(attrs).add_message(msg);
-    // If contract holds more than ASTROPORT_DEPOSIT_THRESHOLD [LUNA] then try deposit to Astroport and leave LUNA_CAP [LUNA] in contract.
-    if luna_in_contract > info.luna_cap {
-        deposit_passive_strategy(
-            &deps.as_ref(),
-            luna_in_contract - info.luna_cap,
-            state.bluna_address,
-            &state.astro_lp_address,
-            response,
-        )
-    } else {
-        Ok(response)
-    }
+    // Deposit liquid luna into passive strategy
+    deposit_passive_strategy(
+        &deps.as_ref(),
+        deposit,
+        state.bluna_address,
+        &state.astro_lp_address,
+        response,
+    )
 }
 
 // Deposits Luna into the passive strategy (Astroport) -> luna-bluna LP
@@ -219,7 +214,7 @@ pub(crate) fn withdraw_passive_strategy(
 
     let response = response.add_messages(vec![
         withdraw_msg, // 1. withdraw bluna and Luna from LP.
-                      // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
+        // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
     ]);
 
     Ok(response)
@@ -338,24 +333,6 @@ pub fn withdraw_unbonded(deps: DepsMut, env: Env, msg_info: MessageInfo) -> Vaul
             attr("amount", withdraw_amount),
         ])
         .add_message(withdraw_msg))
-}
-
-/// Sets the liquid luna cap on the vault.
-pub fn set_luna_cap(
-    deps: DepsMut,
-    msg_info: MessageInfo,
-    luna_cap: Uint128,
-) -> VaultResult<Response> {
-    // Only the admin should be able to call this
-    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
-
-    let mut info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let previous_cap = info.luna_cap;
-    info.luna_cap = luna_cap;
-    POOL_INFO.save(deps.storage, &info)?;
-    Ok(Response::new()
-        .add_attribute("new luna cap", luna_cap.to_string())
-        .add_attribute("previous luna cap", previous_cap.to_string()))
 }
 
 /// Sets a new admin
@@ -568,8 +545,7 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
             lp_tokens: vec![passive_lp_token_address.into_string()],
         })?,
         funds: vec![],
-    }
-    .into();
+    }.into();
 
     // swap ASTRO into Luna
     // first, get the address of the pool from Astroport
@@ -605,23 +581,18 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
         })?,
         funds: vec![],
     }
-    .into();
+        .into();
 
     response = response.add_messages([withdraw_rewards_msg, swap_astro_message]);
 
-    // check to see if we need to deposit into passive strategy
-    let info = POOL_INFO.load(deps.storage)?;
-    let (_, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
-    // If contract holds more than ASTROPORT_DEPOSIT_THRESHOLD [LUNA] then try deposit to Astroport and leave LUNA_CAP [LUNA] in contract.
-    if luna_in_contract + swap_luna_return > info.luna_cap {
-        response = deposit_passive_strategy(
-            &deps.as_ref(),
-            luna_in_contract + swap_luna_return - info.luna_cap,
-            state.bluna_address,
-            &state.astro_lp_address,
-            response,
-        )?;
-    }
+    // Deposit luna into passive strategy
+    response = deposit_passive_strategy(
+        &deps.as_ref(),
+        swap_luna_return,
+        state.bluna_address,
+        &state.astro_lp_address,
+        response,
+    )?;
 
     Ok(response.add_attributes(vec![
         attr("action", "swap_rewards"),
