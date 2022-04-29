@@ -1,4 +1,4 @@
-use cosmwasm_std::{BankMsg, CosmosMsg, DepsMut, Env, from_binary, MessageInfo, Response, StdError, SubMsg, Uint128};
+use cosmwasm_std::{Addr, BankMsg, CosmosMsg, DepsMut, Env, from_binary, MessageInfo, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_balance;
@@ -95,6 +95,34 @@ pub fn set_admin(deps: DepsMut, info: MessageInfo, admin: String) -> UnbondHandl
     Ok(Response::default()
         .add_attribute("previous admin", previous_admin)
         .add_attribute("admin", admin))
+}
+
+/// Updates the state of the contract
+pub fn update_state(deps: DepsMut, msg_info: MessageInfo, owner: Option<String>, expiration_time: Option<u64>, memory_contract: Option<String>) -> UnbondHandlerResult {
+    // Only the admin should be able to call this
+    ADMIN.assert_admin(deps.as_ref(), &msg_info.sender)?;
+
+    let mut state = STATE.load(deps.storage)?;
+
+    let mut attrs = vec![];
+
+    if let Some(owner) = owner {
+        state.owner = Some(deps.api.addr_validate(&owner)?);
+        attrs.push(("new owner", owner));
+    }
+
+    if let Some(expiration_time) = expiration_time {
+        state.expiration_time = Some(expiration_time);
+        attrs.push(("new expiration_time", expiration_time.to_string()));
+    }
+
+    if let Some(memory_contract) = memory_contract {
+        state.memory_contract = deps.api.addr_validate(&memory_contract)?;
+        attrs.push(("new memory_contract", memory_contract));
+    }
+
+    STATE.save(deps.storage, &state)?;
+    Ok(Response::new().add_attributes(attrs))
 }
 
 pub(crate) fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: CallbackMsg) -> UnbondHandlerResult {

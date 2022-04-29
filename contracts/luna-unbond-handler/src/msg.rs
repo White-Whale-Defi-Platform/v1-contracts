@@ -19,6 +19,12 @@ pub enum ExecuteMsg {
     WithdrawUnbonded {},
     /// Set the admin of the contract
     SetAdmin { admin: String },
+    /// Updates the internal contract state
+    UpdateState {
+        owner: Option<String>,
+        expiration_time: Option<u64>,
+        memory_contract: Option<String>,
+    },
     /// Internal callback message
     Callback(CallbackMsg),
 }

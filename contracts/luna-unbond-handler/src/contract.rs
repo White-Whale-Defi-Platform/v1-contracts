@@ -51,6 +51,7 @@ pub fn execute(
         ExecuteMsg::Receive(msg) => commands::receive_cw20(deps, env, info, msg),
         ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded_bluna(deps),
         ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
+        ExecuteMsg::UpdateState { owner, expiration_time, memory_contract } => commands::update_state(deps, info, owner, expiration_time, memory_contract),
         ExecuteMsg::Callback(msg) => commands::_handle_callback(deps, env, info, msg),
     }
 }
