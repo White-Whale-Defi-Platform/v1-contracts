@@ -23,7 +23,7 @@ use crate::state::{ADMIN, STATE};
 /// a transaction. This is triggered when someone wants to unbond and withdraw luna from the vault
 pub fn receive_cw20(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     msg_info: MessageInfo,
     cw20_msg: Cw20ReceiveMsg,
 ) -> UnbondHandlerResult {
@@ -45,12 +45,13 @@ pub fn receive_cw20(
                 }
             };
 
-            unbond_bluna(deps, env, cw20_msg.amount)
+            unbond_bluna(deps, cw20_msg.amount)
         }
     }
 }
 
-fn unbond_bluna(deps: DepsMut, _env: Env, amount: Uint128) -> UnbondHandlerResult {
+/// Triggers the unbonding process with the received bluna on Anchor
+fn unbond_bluna(deps: DepsMut, amount: Uint128) -> UnbondHandlerResult {
     let state = STATE.load(deps.storage)?;
     let contracts = [
         BLUNA_TOKEN_MEMORY_ID.to_string(),
@@ -59,6 +60,7 @@ fn unbond_bluna(deps: DepsMut, _env: Env, amount: Uint128) -> UnbondHandlerResul
     let contract_addresses =
         query_contracts_from_mem(deps.as_ref(), &state.memory_contract, &contracts)?;
 
+    // if the required contracts are not found in memory, return an error
     if contract_addresses.len() != 2 {
         return Err(UnbondHandlerError::MemoryError(
             MemoryError::NotFoundInMemory {},
@@ -78,6 +80,7 @@ fn unbond_bluna(deps: DepsMut, _env: Env, amount: Uint128) -> UnbondHandlerResul
         ))?
         .clone();
 
+    // create message for unbonding bluna on anchor
     let bluna_unbond_msg = anchor_bluna_unbond_msg(bluna_address, bluna_hub_address, amount)?;
     Ok(Response::new()
         .add_attributes(vec![
@@ -87,15 +90,17 @@ fn unbond_bluna(deps: DepsMut, _env: Env, amount: Uint128) -> UnbondHandlerResul
         .add_message(bluna_unbond_msg))
 }
 
-pub(crate) fn withdraw_unbonded_bluna(deps: DepsMut, env: Env) -> UnbondHandlerResult {
+/// Withdraws the unbonded bluna from Anchor
+pub fn withdraw_unbonded_bluna(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerResult {
     let state = STATE.load(deps.storage)?;
     let bluna_hub_address =
         query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
 
+    // create the message for withdrawing unbonded bluna from anchor
     let withdraw_unbonded_msg = anchor_withdraw_unbonded_msg(bluna_hub_address)?;
 
     // Callback for after withdrawing the unbonded bluna
-    let after_withdraw_msg = CallbackMsg::AfterWithdraw {}.to_cosmos_msg(&env.contract.address)?;
+    let after_withdraw_msg = CallbackMsg::AfterWithdraw { triggered_by_addr: info.sender.to_string() }.to_cosmos_msg(&env.contract.address)?;
 
     Ok(Response::new()
         .add_attributes(vec![("action", "withdraw_unbonded_bluna")])
@@ -159,39 +164,43 @@ pub(crate) fn handle_callback(
     }
 
     match msg {
-        CallbackMsg::AfterWithdraw {} => after_withdraw(deps, env, info),
+        CallbackMsg::AfterWithdraw { triggered_by_addr } => after_withdraw(deps, env, triggered_by_addr),
     }
 }
 
-/// Sends luna to its owner after it is withdrawn from Anchor.
-fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerResult {
+/// Sends luna to its owner after it is withdrawn from Anchor
+fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondHandlerResult {
     let state = STATE.load(deps.storage)?;
+    let triggered_by = deps.api.addr_validate(&triggered_by_addr)?;
     let owner = state
         .owner
         .clone()
         .ok_or(UnbondHandlerError::UnownedHandler {})?;
 
+    // Logging var
+    let mut attrs = vec![];
+
+    // get amount of luna obtained from Anchor
     let refund_amount = query_balance(
         &deps.querier,
         env.contract.address.clone(),
         LUNA_DENOM.to_string(),
     )?;
+    attrs.push(("refund_amount", refund_amount.to_string()));
 
     // if the withdrawal is done by someone other than the owner of the unbond handler AND past the expiration time, we charge a fee
     let expiration_time = state
         .expiration_time
         .ok_or(UnbondHandlerError::UnownedHandler {})?;
 
-    // Logging var
-    let mut attrs = vec![];
-
     // get treasury fee from luna vault, which is the admin of the unbond handler
     let luna_vault_addr = ADMIN.get(deps.as_ref())?.ok_or(UnbondHandlerError::NotAdminSet {})?;
     let vault_fees = query_luna_vault_fees(deps.as_ref(), &luna_vault_addr)?;
-    let liquidation_fee_amount = match info.sender != owner && env.block.time.seconds() > expiration_time {
+    let liquidation_fee_amount = match triggered_by != owner && env.block.time.seconds() > expiration_time {
         true => refund_amount * vault_fees.treasury_fee.share,
         false => Uint128::zero(),
     };
+    attrs.push(("liquidation_fee_amount", liquidation_fee_amount.to_string()));
 
     // Construct refund message
     let refund_msg = Asset {
@@ -203,12 +212,12 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         .into_msg(&deps.querier, owner)?;
 
     let mut response = Response::new();
-    // Construct liquidation reward message if withdrawal wasn't triggered by the user
+    // Construct liquidation reward message if withdrawal wasn't triggered by the owner
     if !liquidation_fee_amount.is_zero() {
         // Send the liquidation_fee_amount * (1 - commission_fee) to whoever triggered the liquidation as a reward
         let reward_amount = liquidation_fee_amount * (Decimal::one() - vault_fees.commission_fee.share);
         let reward_msg = CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
+            to_address: triggered_by.to_string(),
             amount: coins(reward_amount.u128(), &*LUNA_DENOM.to_string()),
         });
 

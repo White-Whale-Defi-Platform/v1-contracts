@@ -39,7 +39,7 @@ pub enum Cw20HookMsg {
 #[serde(rename_all = "snake_case")]
 pub enum CallbackMsg {
     /// To be called after withdrawing luna from Anchor so luna is sent back to the owner
-    AfterWithdraw {},
+    AfterWithdraw { triggered_by_addr: String },
 }
 
 // Modified from
