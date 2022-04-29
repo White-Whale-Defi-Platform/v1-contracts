@@ -7,8 +7,8 @@ use terraswap::asset::{Asset, AssetInfo};
 use crate::tests::anchor_mock::{contract_anchor_mock, MockInstantiateMsg as AnchorMsg};
 use crate::tests::tswap_mock::{contract_receiver_mock, set_liq_token_addr, MockInstantiateMsg};
 use white_whale::denom::{LUNA_DENOM, UST_DENOM};
-use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 use white_whale::luna_vault::msg::*;
+use white_whale::treasury::msg::InstantiateMsg as TreasuryInitMsg;
 
 use crate::contract::{execute, DEFAULT_LP_TOKEN_NAME, DEFAULT_LP_TOKEN_SYMBOL};
 use crate::error::LunaVaultError;
@@ -270,7 +270,8 @@ mod integration_tests {
             },
         };
 
-        let res = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
+        let res =
+            router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
 
         match res {
             Err(_) => (), //match StableVaultError::Broke
@@ -466,6 +467,7 @@ mod integration_tests {
             },
         };
 
-        let _ = router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
+        let _ =
+            router.execute_contract(Addr::unchecked(ARB_CONTRACT), vault_addr.clone(), &msg, &[]);
     }
 }

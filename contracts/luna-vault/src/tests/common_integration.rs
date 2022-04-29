@@ -27,7 +27,6 @@ pub fn instantiate_msg(
         treasury_fee: Decimal::percent(10u64),
         flash_loan_fee: Decimal::permille(5u64),
         commission_fee: Decimal::permille(8u64),
-        luna_cap: Uint128::from(100_000_000_000_000u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
         unbonding_period: 0,

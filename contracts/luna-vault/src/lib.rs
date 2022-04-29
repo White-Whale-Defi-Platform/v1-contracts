@@ -1,14 +1,14 @@
+mod commands;
 pub mod contract;
+mod deserializer;
 pub mod error;
+mod flashloan;
+mod helpers;
 pub mod pool_info;
 pub mod querier;
+mod queries;
 pub mod response;
 pub mod state;
-mod helpers;
-mod commands;
-mod deserializer;
-mod queries;
-mod flashloan;
 
 #[cfg(test)]
 #[cfg(not(target_arch = "wasm32"))]
