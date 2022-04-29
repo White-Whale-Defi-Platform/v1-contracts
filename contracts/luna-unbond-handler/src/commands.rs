@@ -1,9 +1,6 @@
 use std::str::FromStr;
 
-use cosmwasm_std::{
-    Addr, BankMsg, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError,
-    SubMsg, Uint128,
-};
+use cosmwasm_std::{Addr, BankMsg, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError, SubMsg, Uint128};
 use cw20::Cw20ReceiveMsg;
 use cw_controllers::AdminError;
 use terraswap::asset::{Asset, AssetInfo};
@@ -11,13 +8,13 @@ use terraswap::querier::query_balance;
 
 use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_withdraw_unbonded_msg};
 use white_whale::denom::LUNA_DENOM;
-use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID};
+use white_whale::luna_vault::queries::query_luna_vault_fees;
+use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID, TREASURY_ADDRESS_ID};
 use white_whale::memory::error::MemoryError;
 use white_whale::memory::queries::{
     query_asset_from_mem, query_contract_from_mem, query_contracts_from_mem,
 };
 use white_whale::query::anchor::query_unbond_requests;
-use white_whale::luna_vault::queries::query_luna_vault_fees;
 
 use crate::{UnbondHandlerError, UnbondHandlerResult};
 use crate::msg::{CallbackMsg, Cw20HookMsg};
@@ -187,11 +184,14 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         .expiration_time
         .ok_or(UnbondHandlerError::UnownedHandler {})?;
 
+    // Logging var
+    let mut attrs = vec![];
+
     // get treasury fee from luna vault, which is the admin of the unbond handler
     let luna_vault_addr = ADMIN.get(deps.as_ref())?.ok_or(UnbondHandlerError::NotAdminSet {})?;
-    let treasury_fee = query_luna_vault_fees(deps.as_ref(), &luna_vault_addr)?.treasury_fee;
-    let fee_amount = match info.sender != owner && env.block.time.seconds() > expiration_time {
-        true => refund_amount * treasury_fee.share,
+    let vault_fees = query_luna_vault_fees(deps.as_ref(), &luna_vault_addr)?;
+    let liquidation_fee_amount = match info.sender != owner && env.block.time.seconds() > expiration_time {
+        true => refund_amount * vault_fees.treasury_fee.share,
         false => Uint128::zero(),
     };
 
@@ -200,13 +200,33 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         info: AssetInfo::NativeToken {
             denom: LUNA_DENOM.to_string(),
         },
-        amount: refund_amount.checked_sub(fee_amount)?,
+        amount: refund_amount.checked_sub(liquidation_fee_amount)?,
     }
         .into_msg(&deps.querier, owner)?;
 
-    // todo: construct message to
-    // 1. send fee_amt * (1 - VAULT_FEE_RATE) to info.sender (if it is non-zero)
-    // 2. construct message to send fee_amt * VAULT_FEE_RATE to the vault
+    let response = Response::new();
+    // Construct liquidation reward message if withdrawal wasn't triggered by the user
+    if !liquidation_fee_amount.is_zero() {
+        // Send the liquidation_fee_amount * (1 - commission_fee) to whoever triggered the liquidation as a reward
+        let reward_amount = liquidation_fee_amount * (Decimal::one() - vault_fees.commission_fee.share);
+        let reward_msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: info.sender.to_string(),
+            amount: coins(reward_amount.u128(), &*LUNA_DENOM.to_string()),
+        });
+
+        // Send the remaining chunk of the liquidation_fee_amount to the treasury
+        let treasury_addr = query_contract_from_mem(deps.as_ref(), &state.memory_contract, TREASURY_ADDRESS_ID)?;
+        let treasury_fee_amount = liquidation_fee_amount.checked_sub(reward_amount)?;
+        let treasury_fee_msg = CosmosMsg::Bank(BankMsg::Send {
+            to_address: treasury_addr.to_string(),
+            amount: coins(treasury_fee_amount.u128(), &*LUNA_DENOM.to_string()),
+        });
+
+        attrs.push(("reward_amount", reward_amount.to_string()));
+        attrs.push(("treasury_fee_amount", treasury_fee_amount.to_string()));
+
+        response.add_messages(vec![reward_msg, treasury_fee_msg]);
+    }
 
     // check if there is no more unbonds on Anchor, so that the handler can be reused
     // todo: ensure that user has no waitlist requests for unbonding
@@ -226,7 +246,8 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         STATE.save(deps.storage, &state)?;
     }
 
-    Ok(Response::new()
+    Ok(response
         .add_attribute("action", "after_withdraw")
+        .add_attributes(attrs)
         .add_message(refund_msg))
 }
