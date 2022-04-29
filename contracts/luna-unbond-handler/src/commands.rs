@@ -1,26 +1,28 @@
 use std::str::FromStr;
 
 use cosmwasm_std::{
-    from_binary, Addr, BankMsg, CosmosMsg, Decimal, DepsMut, Env, MessageInfo, Response, StdError,
+    Addr, BankMsg, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError,
     SubMsg, Uint128,
 };
 use cw20::Cw20ReceiveMsg;
+use cw_controllers::AdminError;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_balance;
 
 use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_withdraw_unbonded_msg};
 use white_whale::denom::LUNA_DENOM;
+use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID};
 use white_whale::memory::error::MemoryError;
 use white_whale::memory::queries::{
     query_asset_from_mem, query_contract_from_mem, query_contracts_from_mem,
 };
-use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID};
 use white_whale::query::anchor::query_unbond_requests;
+use white_whale::luna_vault::queries::query_luna_vault_fees;
 
+use crate::{UnbondHandlerError, UnbondHandlerResult};
 use crate::msg::{CallbackMsg, Cw20HookMsg};
 use crate::serde_option::serde_option;
 use crate::state::{ADMIN, STATE};
-use crate::{UnbondHandlerError, UnbondHandlerResult};
 
 /// handler function invoked when the unbond handler contract receives
 /// a transaction. This is triggered when someone wants to unbond and withdraw luna from the vault
@@ -39,7 +41,7 @@ pub fn receive_cw20(
                 query_asset_from_mem(deps.as_ref(), &state.memory_contract, BLUNA_TOKEN_MEMORY_ID)?;
             match bluna_asset_info {
                 AssetInfo::NativeToken { .. } => {
-                    return Err(UnbondHandlerError::UnsupportedToken {})
+                    return Err(UnbondHandlerError::UnsupportedToken {});
                 }
                 AssetInfo::Token { contract_addr } => {
                     if deps.api.addr_validate(&msg_info.sender.to_string())? != contract_addr {
@@ -185,9 +187,11 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         .expiration_time
         .ok_or(UnbondHandlerError::UnownedHandler {})?;
 
-    // todo: query the luna vault for the proper fee rate
-    let fee_amt = match info.sender != owner && env.block.time.seconds() > expiration_time {
-        true => refund_amount * Decimal::from_str("0.01")?,
+    // get treasury fee from luna vault, which is the admin of the unbond handler
+    let luna_vault_addr = ADMIN.get(deps.as_ref())?.ok_or(UnbondHandlerError::NotAdminSet {})?;
+    let treasury_fee = query_luna_vault_fees(deps.as_ref(), &luna_vault_addr)?.treasury_fee;
+    let fee_amount = match info.sender != owner && env.block.time.seconds() > expiration_time {
+        true => refund_amount * treasury_fee.share,
         false => Uint128::zero(),
     };
 
@@ -196,9 +200,9 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         info: AssetInfo::NativeToken {
             denom: LUNA_DENOM.to_string(),
         },
-        amount: refund_amount.checked_sub(fee_amt)?,
+        amount: refund_amount.checked_sub(fee_amount)?,
     }
-    .into_msg(&deps.querier, owner)?;
+        .into_msg(&deps.querier, owner)?;
 
     // todo: construct message to
     // 1. send fee_amt * (1 - VAULT_FEE_RATE) to info.sender (if it is non-zero)

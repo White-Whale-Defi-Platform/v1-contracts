@@ -11,6 +11,9 @@ pub enum UnbondHandlerError {
     #[error("{0}")]
     Admin(#[from] AdminError),
 
+    #[error("The contract has not set the luna vault address")]
+    NotAdminSet{},
+
     #[error("Semver parsing error: {0}")]
     SemVer(String),
 
