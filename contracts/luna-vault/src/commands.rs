@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    attr, coins, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Deps, DepsMut,
-    Env, MessageInfo, Response, Uint128, WasmMsg,
+    Addr, attr, BankMsg, Binary, coins, CosmosMsg, Decimal, Deps, DepsMut, Env, from_binary,
+    MessageInfo, Response, to_binary, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
@@ -8,19 +8,18 @@ use terraswap::querier::query_supply;
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
-use white_whale::luna_vault::msg::Cw20HookMsg;
+use white_whale::luna_vault::msg::{Cw20HookMsg, UnbondHandlerMsg};
 use white_whale::memory::LIST_SIZE_LIMIT;
 
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
 use crate::helpers::{check_fee, compute_total_value, get_lp_token_address, get_treasury_fee};
-
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{
-    deprecate_unbond_batches, get_deprecated_unbond_batch_ids, get_withdrawable_amount,
-    get_withdrawable_unbond_batch_ids, prepare_next_unbond_batch, remove_unbond_wait_list,
-    store_unbond_history, store_unbond_wait_list, UnbondHistory, ADMIN, CURRENT_BATCH,
-    DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE,
+    ADMIN, CURRENT_BATCH, DEPOSIT_INFO,
+    deprecate_unbond_batches, FEE, get_deprecated_unbond_batch_ids,
+    get_withdrawable_amount, get_withdrawable_unbond_batch_ids, POOL_INFO, prepare_next_unbond_batch, PROFIT,
+    remove_unbond_wait_list, STATE, store_unbond_history, store_unbond_wait_list, UnbondHistory,
 };
 
 /// handler function invoked when the luna-vault contract receives
@@ -219,7 +218,7 @@ pub(crate) fn withdraw_passive_strategy(
 
     let response = response.add_messages(vec![
         withdraw_msg, // 1. withdraw bluna and Luna from LP.
-                      // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
+        // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
     ]);
 
     Ok(response)
@@ -569,7 +568,7 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
         })?,
         funds: vec![],
     }
-    .into();
+        .into();
 
     // swap ASTRO into Luna
     // first, get the address of the pool from Astroport
@@ -605,7 +604,7 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
         })?,
         funds: vec![],
     }
-    .into();
+        .into();
 
     response = response.add_messages([withdraw_rewards_msg, swap_astro_message]);
 
@@ -628,4 +627,17 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
         attr("astro_swapped", astro_pending.amount),
         attr("luna_return", swap_luna_return),
     ]))
+}
+
+pub(crate) fn handle_unbond_handler_msg(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: UnbondHandlerMsg,
+) -> VaultResult<Response> {
+    todo!()
+    //todo verify the message was sent by a handler, i.e. check address with the list of unbonded handlers
+    // registered by the vault
+    //todo find the unbond handler address on the map and clear it, place it back to the
+    // vector of available unbond handlers
 }

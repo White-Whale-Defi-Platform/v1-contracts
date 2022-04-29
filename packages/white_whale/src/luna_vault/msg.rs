@@ -70,6 +70,8 @@ pub enum ExecuteMsg {
     SwapRewards {},
     /// Internal callback message
     Callback(CallbackMsg),
+    /// Messages sent by unbond handlers to the vault
+    UnbondHandler(UnbondHandlerMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -93,6 +95,15 @@ pub struct MigrateMsg {}
 pub enum CallbackMsg {
     AfterTrade { loan_fee: Uint128 },
 }
+
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum UnbondHandlerMsg {
+    AfterUnbondHandlerReleased { unbond_handler_addr: String },
+}
+
+
 
 // Modified from
 // https://github.com/CosmWasm/cosmwasm-plus/blob/v0.2.3/packages/cw20/src/receiver.rs#L15

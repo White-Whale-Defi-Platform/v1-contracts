@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use cosmwasm_std::{Addr, BankMsg, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError, SubMsg, Uint128};
+use cosmwasm_std::{Addr, BankMsg, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, StdError, SubMsg, to_binary, Uint128, WasmMsg};
 use cw20::Cw20ReceiveMsg;
 use cw_controllers::AdminError;
 use terraswap::asset::{Asset, AssetInfo};
@@ -8,6 +8,7 @@ use terraswap::querier::query_balance;
 
 use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_withdraw_unbonded_msg};
 use white_whale::denom::LUNA_DENOM;
+use white_whale::luna_vault::msg::UnbondHandlerMsg;
 use white_whale::luna_vault::queries::query_luna_vault_fees;
 use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID, TREASURY_ADDRESS_ID};
 use white_whale::memory::error::MemoryError;
@@ -242,6 +243,17 @@ fn after_withdraw(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerRe
         state.expiration_time = None;
 
         STATE.save(deps.storage, &state)?;
+
+        // construct message for the vault to release the unbond handler
+        let release_unbond_handler_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: luna_vault_addr.to_string(),
+            msg: to_binary(&UnbondHandlerMsg::AfterUnbondHandlerReleased {
+                unbond_handler_addr: env.contract.address.to_string()
+            })?,
+            funds: vec![],
+        });
+
+        response = response.add_message(release_unbond_handler_msg);
         attrs.push(("unbond_handler_released", true.to_string()));
     }
 

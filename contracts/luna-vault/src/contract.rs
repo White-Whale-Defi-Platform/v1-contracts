@@ -224,6 +224,7 @@ pub fn execute(
             unbonding_period,
         ),
         ExecuteMsg::Callback(msg) => flashloan::_handle_callback(deps, env, info, msg),
+        ExecuteMsg::UnbondHandler(msg) => commands::handle_unbond_handler_msg(deps,env,info,msg),
     }
 }
 
