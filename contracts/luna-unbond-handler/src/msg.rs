@@ -40,8 +40,6 @@ pub enum Cw20HookMsg {
 pub enum CallbackMsg {
     /// To be called after withdrawing luna from Anchor so luna is sent back to the owner
     AfterWithdraw {},
-    /// To be called after luna was sent to the user, to clean up the handler
-    AfterFundsSent {},
 }
 
 // Modified from

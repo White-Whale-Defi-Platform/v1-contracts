@@ -132,7 +132,6 @@ pub(crate) fn _handle_callback(deps: DepsMut, env: Env, info: MessageInfo, msg: 
     }
     match msg {
         CallbackMsg::AfterWithdraw {} => _after_withdraw(deps, env),
-        CallbackMsg::AfterFundsSent {} => _after_funds_sent(deps),
     }
 }
 
@@ -141,7 +140,7 @@ fn _after_withdraw(deps: DepsMut, env: Env) -> UnbondHandlerResult {
     let state = STATE.load(deps.storage)?;
     let owner = state.owner?;
 
-    let refund_amount = query_balance(&deps.querier, owner.clone(), LUNA_DENOM.to_string())?;
+    let refund_amount = query_balance(&deps.querier, env.contract.address, LUNA_DENOM.to_string())?;
     // Construct refund message
     let refund_asset = Asset {
         info: AssetInfo::NativeToken { denom: LUNA_DENOM.to_string() },
@@ -149,29 +148,20 @@ fn _after_withdraw(deps: DepsMut, env: Env) -> UnbondHandlerResult {
     };
     let taxed_asset = refund_asset.deduct_tax(&deps.querier)?;
 
-    let refund_msg = SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+    let refund_msg = CosmosMsg::Bank(BankMsg::Send {
         to_address: owner.to_string(),
         amount: vec![taxed_asset],
-    }));
+    });
 
-    // Callback for after funds are sent
-    let after_funds_sent_msg = CallbackMsg::AfterFundsSent {}.to_cosmos_msg(&env.contract.address)?;
-
-    Ok(Response::new()
-        .add_attribute("action", "after_withdraw")
-        .add_submessage(refund_msg)
-        .add_message(after_funds_sent_msg))
-}
-
-/// Resets the handler's properties, i.e. owner and expiration_time so it is clean and ready to
-/// be reused.
-fn _after_funds_sent(deps: DepsMut) -> UnbondHandlerResult {
+    //todo check for further unbonding batches on anchor
+    // Clean state so that the handler can be reused
     let mut state = STATE.load(deps.storage)?;
     state.owner = None;
     state.expiration_time = None;
 
     STATE.save(deps.storage, &state);
+
     Ok(Response::new()
-        .add_attribute("action", "after_funds_sent")
-    )
+        .add_attribute("action", "after_withdraw")
+        .add_message(refund_msg))
 }
