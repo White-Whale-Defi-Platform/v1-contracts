@@ -38,7 +38,9 @@ pub enum Cw20HookMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum CallbackMsg {
+    /// To be called after withdrawing luna from Anchor so luna is sent back to the owner
     AfterWithdraw {},
+    /// To be called after luna was sent to the user, to clean up the handler
     AfterFundsSent {},
 }
 
@@ -60,23 +62,6 @@ impl CallbackMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    /*    WithdrawableUnbonded {
-            address: String,
-        },
-        UnbondRequests {
-            address: String,
-        },*/
+    /// Queries the state
+    State { }
 }
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct WithdrawableUnbondedResponse {
-    pub withdrawable: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct UnbondRequestsResponse {
-    pub address: String,
-    pub requests: UnbondRequest,
-}
-
-pub type UnbondRequest = Vec<(u64, Uint128)>;

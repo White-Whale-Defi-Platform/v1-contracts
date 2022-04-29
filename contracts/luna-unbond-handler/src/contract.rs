@@ -56,12 +56,9 @@ pub fn execute(
     }
 }
 
-/*
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::WithdrawableUnbonded { address } => to_binary(&queries::query_withdrawable_unbonded(deps, address)?),
-        QueryMsg::UnbondRequests { address } => to_binary(&queries::query_unbond_requests(deps, address)?)
+        QueryMsg::State { } => to_binary(&queries::query_state(deps)?),
     }
 }
-*/
