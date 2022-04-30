@@ -2,6 +2,8 @@ name: Luna Vault
 
 on:
   push:
+    branches:
+      - main
   pull_request:
     branches:
       - main
