@@ -1,3 +1,4 @@
+/// Serializes an option into a string
 pub fn serde_option<T>(option: Option<T>) -> String
 where
     T: ToString,

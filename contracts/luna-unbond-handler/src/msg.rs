@@ -13,7 +13,7 @@ pub struct InstantiateMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    /// Receive hook for bluna or cluna
+    /// Receive hook for bluna
     Receive(Cw20ReceiveMsg),
     /// Withdraws unbonded luna from Anchor and send to the user
     WithdrawUnbonded {},

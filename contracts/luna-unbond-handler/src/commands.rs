@@ -22,7 +22,7 @@ use crate::serde_option::serde_option;
 use crate::state::{ADMIN, STATE};
 use crate::{UnbondHandlerError, UnbondHandlerResult};
 
-/// handler function invoked when the unbond handler contract receives
+/// Handler function invoked when the unbond handler contract receives
 /// a transaction. This is triggered when someone wants to unbond and withdraw luna from the vault
 pub fn receive_cw20(
     deps: DepsMut,
@@ -158,6 +158,7 @@ pub fn update_state(
     Ok(Response::new().add_attributes(attrs))
 }
 
+/// Handles callbacks from the contract
 pub(crate) fn handle_callback(
     deps: DepsMut,
     env: Env,
@@ -176,7 +177,7 @@ pub(crate) fn handle_callback(
     }
 }
 
-/// Sends luna to its owner after it is withdrawn from Anchor
+/// Sends luna to its owner after it is withdrawn from Anchor, along with any liquidation fee
 fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondHandlerResult {
     let state = STATE.load(deps.storage)?;
     let triggered_by = deps.api.addr_validate(&triggered_by_addr)?;
@@ -185,8 +186,7 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         .clone()
         .ok_or(UnbondHandlerError::UnownedHandler {})?;
 
-    // Logging var
-    let mut attrs = vec![];
+    let mut response = Response::new().add_attribute("action", "after_withdraw");
 
     // get amount of luna obtained from Anchor
     let refund_amount = query_balance(
@@ -194,7 +194,6 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         env.contract.address.clone(),
         LUNA_DENOM.to_string(),
     )?;
-    attrs.push(("refund_amount", refund_amount.to_string()));
 
     // if the withdrawal is done by someone other than the owner of the unbond handler AND past the expiration time, we charge a fee
     let expiration_time = state
@@ -211,7 +210,6 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
             true => refund_amount * vault_fees.treasury_fee.share,
             false => Uint128::zero(),
         };
-    attrs.push(("liquidation_fee_amount", liquidation_fee_amount.to_string()));
 
     // Construct refund message
     let refund_msg = Asset {
@@ -221,8 +219,13 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         amount: refund_amount.checked_sub(liquidation_fee_amount)?,
     }
     .into_msg(&deps.querier, owner)?;
+    response = response.add_attribute(
+        "refund_amount",
+        refund_amount.checked_sub(liquidation_fee_amount)?,
+    );
+    response = response.add_attribute("liquidation_fee", liquidation_fee_amount);
+    response = response.add_message(refund_msg);
 
-    let mut response = Response::new();
     // Construct liquidation reward message if withdrawal wasn't triggered by the owner
     if !liquidation_fee_amount.is_zero() {
         // Send the liquidation_fee_amount * (1 - commission_fee) to whoever triggered the liquidation as a reward
@@ -242,8 +245,8 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
             amount: coins(treasury_fee_amount.u128(), &*LUNA_DENOM.to_string()),
         });
 
-        attrs.push(("reward_amount", reward_amount.to_string()));
-        attrs.push(("treasury_fee_amount", treasury_fee_amount.to_string()));
+        response = response.add_attribute("reward_amount", reward_amount);
+        response = response.add_attribute("treasury_fee_amount", treasury_fee_amount);
 
         response = response.add_messages(vec![reward_msg, treasury_fee_msg]);
     }
@@ -277,11 +280,8 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         });
 
         response = response.add_message(release_unbond_handler_msg);
-        attrs.push(("unbond_handler_released", true.to_string()));
+        response = response.add_attribute("unbond_handler_released", true.to_string());
     }
 
-    Ok(response
-        .add_attribute("action", "after_withdraw")
-        .add_attributes(attrs)
-        .add_message(refund_msg))
+    Ok(response)
 }
