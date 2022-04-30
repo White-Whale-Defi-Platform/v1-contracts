@@ -1,4 +1,7 @@
-use cosmwasm_std::{BankMsg, coins, CosmosMsg, Decimal, DepsMut, Env, from_binary, MessageInfo, Response, to_binary, Uint128, WasmMsg};
+use cosmwasm_std::{
+    coins, from_binary, to_binary, BankMsg, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
+    Response, Uint128, WasmMsg,
+};
 use cw20::Cw20ReceiveMsg;
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_balance;
@@ -7,17 +10,17 @@ use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_withdraw_unbonded_msg}
 use white_whale::denom::LUNA_DENOM;
 use white_whale::luna_vault::msg::UnbondHandlerMsg;
 use white_whale::luna_vault::queries::query_luna_vault_fees;
-use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID, TREASURY_ADDRESS_ID};
 use white_whale::memory::error::MemoryError;
 use white_whale::memory::queries::{
     query_asset_from_mem, query_contract_from_mem, query_contracts_from_mem,
 };
+use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID, TREASURY_ADDRESS_ID};
 use white_whale::query::anchor::query_unbond_requests;
 
-use crate::{UnbondHandlerError, UnbondHandlerResult};
 use crate::msg::{CallbackMsg, Cw20HookMsg};
 use crate::serde_option::serde_option;
 use crate::state::{ADMIN, STATE};
+use crate::{UnbondHandlerError, UnbondHandlerResult};
 
 /// handler function invoked when the unbond handler contract receives
 /// a transaction. This is triggered when someone wants to unbond and withdraw luna from the vault
@@ -100,7 +103,10 @@ pub fn withdraw_unbonded_bluna(deps: DepsMut, env: Env, info: MessageInfo) -> Un
     let withdraw_unbonded_msg = anchor_withdraw_unbonded_msg(bluna_hub_address)?;
 
     // Callback for after withdrawing the unbonded bluna
-    let after_withdraw_msg = CallbackMsg::AfterWithdraw { triggered_by_addr: info.sender.to_string() }.to_cosmos_msg(&env.contract.address)?;
+    let after_withdraw_msg = CallbackMsg::AfterWithdraw {
+        triggered_by_addr: info.sender.to_string(),
+    }
+    .to_cosmos_msg(&env.contract.address)?;
 
     Ok(Response::new()
         .add_attributes(vec![("action", "withdraw_unbonded_bluna")])
@@ -164,7 +170,9 @@ pub(crate) fn handle_callback(
     }
 
     match msg {
-        CallbackMsg::AfterWithdraw { triggered_by_addr } => after_withdraw(deps, env, triggered_by_addr),
+        CallbackMsg::AfterWithdraw { triggered_by_addr } => {
+            after_withdraw(deps, env, triggered_by_addr)
+        }
     }
 }
 
@@ -194,12 +202,15 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         .ok_or(UnbondHandlerError::UnownedHandler {})?;
 
     // get treasury fee from luna vault, which is the admin of the unbond handler
-    let luna_vault_addr = ADMIN.get(deps.as_ref())?.ok_or(UnbondHandlerError::NotAdminSet {})?;
+    let luna_vault_addr = ADMIN
+        .get(deps.as_ref())?
+        .ok_or(UnbondHandlerError::NotAdminSet {})?;
     let vault_fees = query_luna_vault_fees(deps.as_ref(), &luna_vault_addr)?;
-    let liquidation_fee_amount = match triggered_by != owner && env.block.time.seconds() > expiration_time {
-        true => refund_amount * vault_fees.treasury_fee.share,
-        false => Uint128::zero(),
-    };
+    let liquidation_fee_amount =
+        match triggered_by != owner && env.block.time.seconds() > expiration_time {
+            true => refund_amount * vault_fees.treasury_fee.share,
+            false => Uint128::zero(),
+        };
     attrs.push(("liquidation_fee_amount", liquidation_fee_amount.to_string()));
 
     // Construct refund message
@@ -209,20 +220,22 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         },
         amount: refund_amount.checked_sub(liquidation_fee_amount)?,
     }
-        .into_msg(&deps.querier, owner)?;
+    .into_msg(&deps.querier, owner)?;
 
     let mut response = Response::new();
     // Construct liquidation reward message if withdrawal wasn't triggered by the owner
     if !liquidation_fee_amount.is_zero() {
         // Send the liquidation_fee_amount * (1 - commission_fee) to whoever triggered the liquidation as a reward
-        let reward_amount = liquidation_fee_amount * (Decimal::one() - vault_fees.commission_fee.share);
+        let reward_amount =
+            liquidation_fee_amount * (Decimal::one() - vault_fees.commission_fee.share);
         let reward_msg = CosmosMsg::Bank(BankMsg::Send {
             to_address: triggered_by.to_string(),
             amount: coins(reward_amount.u128(), &*LUNA_DENOM.to_string()),
         });
 
         // Send the remaining chunk of the liquidation_fee_amount to the treasury
-        let treasury_addr = query_contract_from_mem(deps.as_ref(), &state.memory_contract, TREASURY_ADDRESS_ID)?;
+        let treasury_addr =
+            query_contract_from_mem(deps.as_ref(), &state.memory_contract, TREASURY_ADDRESS_ID)?;
         let treasury_fee_amount = liquidation_fee_amount.checked_sub(reward_amount)?;
         let treasury_fee_msg = CosmosMsg::Bank(BankMsg::Send {
             to_address: treasury_addr.to_string(),
@@ -239,9 +252,13 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
     let bluna_hub_address =
         query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
 
-    if query_unbond_requests(deps.as_ref(), bluna_hub_address, env.contract.address.clone())?
-        .requests
-        .is_empty()
+    if query_unbond_requests(
+        deps.as_ref(),
+        bluna_hub_address,
+        env.contract.address.clone(),
+    )?
+    .requests
+    .is_empty()
     {
         // clean state so that the handler can be reused
         let mut state = state;
@@ -254,7 +271,7 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         let release_unbond_handler_msg = CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: luna_vault_addr.to_string(),
             msg: to_binary(&UnbondHandlerMsg::AfterUnbondHandlerReleased {
-                unbond_handler_addr: env.contract.address.to_string()
+                unbond_handler_addr: env.contract.address.to_string(),
             })?,
             funds: vec![],
         });

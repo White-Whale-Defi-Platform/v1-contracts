@@ -1,13 +1,13 @@
-use cosmwasm_std::{Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult, to_binary};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
+use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::{commands, queries, UnbondHandlerResult};
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::serde_option::serde_option;
 use crate::state::{State, STATE};
+use crate::{commands, queries, UnbondHandlerResult};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:luna-unbond-handler";
