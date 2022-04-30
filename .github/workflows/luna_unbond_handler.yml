@@ -32,7 +32,7 @@ jobs:
       - name: Run clippy
         run: cargo clippy --locked -- -D warnings
       - name: Run rustfmt
-        run: cargo fmt --locked -- --check
+        run: cargo fmt -- --check
 
   compile:
     name: Compile
