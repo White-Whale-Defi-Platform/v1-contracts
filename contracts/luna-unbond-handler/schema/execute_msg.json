@@ -48,12 +48,85 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Updates the internal contract state",
+      "type": "object",
+      "required": [
+        "update_state"
+      ],
+      "properties": {
+        "update_state": {
+          "type": "object",
+          "properties": {
+            "expiration_time": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "memory_contract": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "owner": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Internal callback message",
+      "type": "object",
+      "required": [
+        "callback"
+      ],
+      "properties": {
+        "callback": {
+          "$ref": "#/definitions/CallbackMsg"
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
     "Binary": {
       "description": "Binary is a wrapper around Vec<u8> to add base64 de/serialization with serde. It also adds some helper methods to help encode inline.\n\nThis is only needed as serde-json-{core,wasm} has a horrible encoding for Vec<u8>",
       "type": "string"
+    },
+    "CallbackMsg": {
+      "oneOf": [
+        {
+          "description": "To be called after withdrawing luna from Anchor so luna is sent back to the owner",
+          "type": "object",
+          "required": [
+            "after_withdraw"
+          ],
+          "properties": {
+            "after_withdraw": {
+              "type": "object",
+              "required": [
+                "triggered_by_addr"
+              ],
+              "properties": {
+                "triggered_by_addr": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "Cw20ReceiveMsg": {
       "description": "Cw20ReceiveMsg should be de/serialized under `Receive()` variant in a ExecuteMsg",
