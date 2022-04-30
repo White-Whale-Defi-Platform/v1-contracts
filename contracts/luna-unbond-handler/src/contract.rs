@@ -6,18 +6,18 @@ use semver::Version;
 
 use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
 use crate::serde_option::serde_option;
-use crate::state::{State, STATE};
+use crate::state::{State, ADMIN, STATE};
 use crate::{commands, queries, UnbondHandlerResult};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:luna-unbond-handler";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub(crate) const CONTRACT_NAME: &str = "crates.io:luna-unbond-handler";
+pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
     env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> UnbondHandlerResult {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
@@ -34,6 +34,9 @@ pub fn instantiate(
     }
 
     STATE.save(deps.storage, &state)?;
+
+    // set the admin
+    ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")

@@ -11,3 +11,7 @@ mod serde_option;
 pub mod state;
 
 type UnbondHandlerResult = Result<Response, UnbondHandlerError>;
+
+#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+pub mod tests;
