@@ -60,6 +60,8 @@ impl UnbondHistory {
 }
 
 pub type UnbondRequest = Vec<(u64, Uint128)>;
+pub type UnbondHandlerAddr = Addr;
+pub type UserAddr = Addr;
 
 pub const PROFIT: Item<ProfitCheck> = Item::new("\u{0}{6}profit");
 pub const ADMIN: Admin = Admin::new("admin");
@@ -70,6 +72,15 @@ pub const FEE: Item<VaultFee> = Item::new("\u{0}{3}fee");
 pub const UNBOND_WAITLIST: Map<(&Addr, U64Key), Uint128> = Map::new("unbond_waitlist");
 pub const UNBOND_HISTORY: Map<U64Key, UnbondHistory> = Map::new("unbond_history");
 pub const CURRENT_BATCH: Item<CurrentBatch> = Item::new("current_batch");
+
+// Unbond handler addresses that are available and ready to be used
+pub const UNBOND_HANDLERS_AVAILABLE: Item<Vec<Addr>> = Item::new("unbond_handlers_available");
+// Map of unbond handlers assigned to user addresses
+pub const UNBOND_HANDLERS_ASSIGNED: Map<&UserAddr, &UnbondHandlerAddr> =
+    Map::new("unbond_handlers_assigned");
+// Map of expiration times for a unbond handlers addresses
+pub const UNBOND_HANDLER_EXPIRATION_TIMES: Map<&UnbondHandlerAddr, u64> =
+    Map::new("unbond_handler_expiration_times");
 
 /// Store unbond wait list for the user
 /// HashMap<user's address + batch_id, refund_amount>
