@@ -10,6 +10,7 @@ use terraswap::querier::query_supply;
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
+use white_whale::luna_vault::luna_unbond_handler::msg::Cw20HookMsg::Unbond as UnbondHandlerUnbondMsg;
 use white_whale::luna_vault::luna_unbond_handler::msg::InstantiateMsg;
 use white_whale::luna_vault::msg::{Cw20HookMsg, UnbondHandlerMsg};
 use white_whale::memory::LIST_SIZE_LIMIT;
@@ -22,7 +23,8 @@ use crate::state::{
     deprecate_unbond_batches, get_deprecated_unbond_batch_ids, get_withdrawable_amount,
     get_withdrawable_unbond_batch_ids, prepare_next_unbond_batch, remove_unbond_wait_list,
     store_unbond_history, store_unbond_wait_list, UnbondHistory, ADMIN, CURRENT_BATCH,
-    DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE, UNBOND_HANDLERS_AVAILABLE,
+    DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE, UNBOND_HANDLERS_ASSIGNED,
+    UNBOND_HANDLERS_AVAILABLE,
 };
 
 /// handler function invoked when the luna-vault contract receives
@@ -88,7 +90,7 @@ pub fn provide_liquidity(
     };
 
     // mint LP token to sender
-    let msg = CosmosMsg::Wasm(WasmMsg::Execute {
+    let mint_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: info.liquidity_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Mint {
             recipient: msg_info.sender.to_string(),
@@ -97,7 +99,7 @@ pub fn provide_liquidity(
         funds: vec![],
     });
 
-    let response = Response::new().add_attributes(attrs).add_message(msg);
+    let response = Response::new().add_attributes(attrs).add_message(mint_msg);
     // Deposit liquid luna into passive strategy
     deposit_passive_strategy(
         &deps.as_ref(),
@@ -298,32 +300,77 @@ fn unbond(
     });
 
     //------------------------------------------------
-    // if there are no unbond handlers available, create a new one
-    if UNBOND_HANDLERS_AVAILABLE.load(deps.storage)?.is_empty() {
-        let state = STATE.load(deps.storage)?;
-        let unbond_handler_instantiation_msg = SubMsg {
-            id: u64::from(INSTANTIATE_UNBOND_HANDLER_REPLY_ID),
-            msg: WasmMsg::Instantiate {
-                admin: Some(env.contract.address.to_string()),
-                code_id: state.unbond_handler_code_id,
-                msg: to_binary(&InstantiateMsg {
-                    owner: Some(sender),
-                    memory_contract: state.memory_address.to_string(),
-                })?,
-                funds: vec![],
-                label: "White Whale Unbond Handler".to_string(),
-            }
-            .into(),
-            gas_limit: None,
-            reply_on: ReplyOn::Success,
+    //todo withdraw shares from LP
+    let bluna_amount = Uint128::zero();
+
+    // Check if there's a handler assigned to the user
+    let unbond_handler_result = UNBOND_HANDLERS_ASSIGNED.load(deps.storage, &sender_addr);
+    let unbond_handler: Addr;
+    if unbond_handler_result.is_ok() {
+        // there's an unbond handler assigned to the user
+        unbond_handler = unbond_handler_result?.clone();
+
+        // send bluna to unbond handler
+        response =
+            unbond_bluna_with_handler(deps, &response, bluna_amount.clone(), &unbond_handler);
+    } else {
+        // there's no unbond handlers assigned to the user
+        // check if there are handlers available
+        let unbond_handlers_available = UNBOND_HANDLERS_AVAILABLE.load(deps.storage)?;
+        if unbond_handlers_available.is_empty() {
+            // create a new handler if there are no handlers available
+            let state = STATE.load(deps.storage)?;
+            let unbond_handler_instantiation_msg = SubMsg {
+                id: u64::from(INSTANTIATE_UNBOND_HANDLER_REPLY_ID),
+                msg: WasmMsg::Instantiate {
+                    admin: Some(env.contract.address.to_string()),
+                    code_id: state.unbond_handler_code_id,
+                    msg: to_binary(&InstantiateMsg {
+                        owner: Some(sender_addr.to_string()),
+                        memory_contract: state.memory_address.to_string(),
+                    })?,
+                    funds: vec![],
+                    label: "White Whale Unbond Handler".to_string(),
+                }
+                .into(),
+                gas_limit: None,
+                reply_on: ReplyOn::Success,
+            };
+            response = response.add_submessage(unbond_handler_instantiation_msg);
+        } else {
+            //otherwise, use an available one
+            unbond_handler = unbond_handlers_available.first()?.clone();
+            UNBOND_HANDLERS_ASSIGNED.save(deps.storage, &sender_addr, &&unbond_handler)?;
+
+            // send bluna to unbond handler
+            response =
+                unbond_bluna_with_handler(deps, &response, bluna_amount.clone(), &unbond_handler);
         };
-        response = response.add_submessage(unbond_handler_instantiation_msg);
-    } else { //otherwise, une an available one
-    };
+    }
 
     Ok(response
         .add_messages(vec![burn_msg, treasury_fee_msg])
         .add_attributes(attrs))
+}
+
+fn unbond_bluna_with_handler(
+    deps: DepsMut,
+    response: &Response,
+    bluna_amount: Uint128,
+    unbond_handler: &Addr,
+) -> Response {
+    let state = STATE.load(deps.storage)?;
+    let unbond_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: state.bluna_address.to_string(),
+        msg: to_binary(&Cw20ExecuteMsg::Send {
+            contract: unbond_handler.to_string(),
+            amount: bluna_amount,
+            msg: to_binary(&UnbondHandlerUnbondMsg {})?,
+        })?,
+        funds: vec![],
+    });
+    let response = response.add_message(unbond_msg);
+    response
 }
 
 /// Withdraws unbonded luna after unbond has been called and the time lock period expired
