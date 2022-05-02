@@ -61,6 +61,7 @@ pub fn mock_instantiate_no_asset_info(deps: DepsMut) {
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
         unbonding_period: 0,
+        unbond_handler_code_id: 0,
     };
 
     let info = mock_info(TEST_CREATOR, &[]);
@@ -90,7 +91,8 @@ fn successful_initialization() {
             memory_address: deps.api.addr_validate("memory").unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false,
-            unbonding_period: 60
+            unbonding_period: 60,
+            unbond_handler_code_id: 0,
         }
     );
 
@@ -145,6 +147,7 @@ fn unsuccessful_initialization_invalid_asset() {
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
         unbonding_period: 0,
+        unbond_handler_code_id: 0,
     };
 
     let info = mock_info(TEST_CREATOR, &[]);

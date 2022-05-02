@@ -27,6 +27,8 @@ pub struct State {
     pub allow_non_whitelisted: bool,
     // as a duration in seconds
     pub unbonding_period: u64,
+    // code id for the unbond handler contract
+    pub unbond_handler_code_id: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

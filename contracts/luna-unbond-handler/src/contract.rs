@@ -4,7 +4,11 @@ use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use white_whale::luna_vault::luna_unbond_handler::msg::{
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
+use white_whale::luna_vault::luna_unbond_handler::{EXPIRATION_TIME_KEY, OWNER_KEY};
+
 use crate::serde_option::serde_option;
 use crate::state::{State, ADMIN, STATE};
 use crate::{commands, queries, UnbondHandlerResult};
@@ -40,8 +44,8 @@ pub fn instantiate(
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
-        .add_attribute("owner", serde_option(state.owner))
-        .add_attribute("expiration_time", serde_option(state.expiration_time)))
+        .add_attribute(OWNER_KEY, serde_option(state.owner))
+        .add_attribute(EXPIRATION_TIME_KEY, serde_option(state.expiration_time)))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

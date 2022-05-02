@@ -1,6 +1,8 @@
+use std::os::macos::raw::stat;
+
 use cosmwasm_std::{
-    Addr, attr, BankMsg, Binary, coins, CosmosMsg, Decimal, Deps, DepsMut, Env, from_binary,
-    MessageInfo, Response, to_binary, Uint128, WasmMsg,
+    attr, coins, from_binary, to_binary, Addr, BankMsg, Binary, CosmosMsg, Decimal, Deps, DepsMut,
+    Env, MessageInfo, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
@@ -8,18 +10,19 @@ use terraswap::querier::query_supply;
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
+use white_whale::luna_vault::luna_unbond_handler::msg::InstantiateMsg;
 use white_whale::luna_vault::msg::{Cw20HookMsg, UnbondHandlerMsg};
 use white_whale::memory::LIST_SIZE_LIMIT;
 
-use crate::contract::VaultResult;
+use crate::contract::{VaultResult, INSTANTIATE_UNBOND_HANDLER_REPLY_ID};
 use crate::error::LunaVaultError;
 use crate::helpers::{check_fee, compute_total_value, get_lp_token_address, get_treasury_fee};
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{
-    ADMIN, CURRENT_BATCH, DEPOSIT_INFO,
-    deprecate_unbond_batches, FEE, get_deprecated_unbond_batch_ids,
-    get_withdrawable_amount, get_withdrawable_unbond_batch_ids, POOL_INFO, prepare_next_unbond_batch, PROFIT,
-    remove_unbond_wait_list, STATE, store_unbond_history, store_unbond_wait_list, UnbondHistory,
+    deprecate_unbond_batches, get_deprecated_unbond_batch_ids, get_withdrawable_amount,
+    get_withdrawable_unbond_batch_ids, prepare_next_unbond_batch, remove_unbond_wait_list,
+    store_unbond_history, store_unbond_wait_list, UnbondHistory, ADMIN, CURRENT_BATCH,
+    DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE, UNBOND_HANDLERS_AVAILABLE,
 };
 
 /// handler function invoked when the luna-vault contract receives
@@ -71,8 +74,7 @@ pub fn provide_liquidity(
     let deposit: Uint128 = asset.amount;
 
     // Get total value in Vault
-    let (total_deposits_in_luna, _, _, _, _) =
-        compute_total_value(&env, deps.as_ref(), &info)?;
+    let (total_deposits_in_luna, _, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
     // Get total supply of vLuna tokens and calculate share
     let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
@@ -214,7 +216,7 @@ pub(crate) fn withdraw_passive_strategy(
 
     let response = response.add_messages(vec![
         withdraw_msg, // 1. withdraw bluna and Luna from LP.
-        // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
+                      // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
     ]);
 
     Ok(response)
@@ -234,6 +236,7 @@ fn unbond(
     }
 
     // Logging var
+    let mut response = Response::new().add_attribute("action", "unbond");
     let mut attrs = vec![];
     attrs.push(("from", sender.clone()));
     attrs.push(("burnt_amount", amount.to_string()));
@@ -294,10 +297,32 @@ fn unbond(
         funds: vec![],
     });
 
-    Ok(Response::new()
-        .add_message(burn_msg)
-        .add_message(treasury_fee_msg)
-        .add_attribute("action", "unbond")
+    //------------------------------------------------
+    // if there are no unbond handlers available, create a new one
+    if UNBOND_HANDLERS_AVAILABLE.load(deps.storage)?.is_empty() {
+        let state = STATE.load(deps.storage)?;
+        let unbond_handler_instantiation_msg = SubMsg {
+            id: u64::from(INSTANTIATE_UNBOND_HANDLER_REPLY_ID),
+            msg: WasmMsg::Instantiate {
+                admin: Some(env.contract.address.to_string()),
+                code_id: state.unbond_handler_code_id,
+                msg: to_binary(&InstantiateMsg {
+                    owner: Some(sender),
+                    memory_contract: state.memory_address.to_string(),
+                })?,
+                funds: vec![],
+                label: "White Whale Unbond Handler".to_string(),
+            }
+            .into(),
+            gas_limit: None,
+            reply_on: ReplyOn::Success,
+        };
+        response = response.add_submessage(unbond_handler_instantiation_msg);
+    } else { //otherwise, une an available one
+    };
+
+    Ok(response
+        .add_messages(vec![burn_msg, treasury_fee_msg])
         .add_attributes(attrs))
 }
 
@@ -546,7 +571,7 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
         })?,
         funds: vec![],
     }
-        .into();
+    .into();
 
     // swap ASTRO into Luna
     // first, get the address of the pool from Astroport
@@ -582,7 +607,7 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
         })?,
         funds: vec![],
     }
-        .into();
+    .into();
 
     response = response.add_messages([withdraw_rewards_msg, swap_astro_message]);
 
