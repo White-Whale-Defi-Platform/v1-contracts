@@ -1,7 +1,7 @@
 use cosmwasm_std::{entry_point, Binary, Deps, DepsMut, Env, MessageInfo, Response, StdResult};
 
 use crate::commands::*;
-use crate::error::MemoryError;
+use white_whale::memory::error::MemoryError;
 use crate::queries;
 use crate::state::ADMIN;
 use white_whale::memory::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};

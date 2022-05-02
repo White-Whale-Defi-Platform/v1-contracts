@@ -1,4 +1,4 @@
-name: Luna Vault
+name: Luna Unbond Handler
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
 
 defaults:
   run:
-    working-directory: contracts/luna-vault
+    working-directory: contracts/luna-unbond-handler
 
 jobs:
   lint:

@@ -8,7 +8,7 @@ use terraswap::querier::query_supply;
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
-use white_whale::luna_vault::msg::Cw20HookMsg;
+use white_whale::luna_vault::msg::{Cw20HookMsg, UnbondHandlerMsg};
 use white_whale::memory::LIST_SIZE_LIMIT;
 
 use crate::contract::VaultResult;
@@ -545,7 +545,8 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
             lp_tokens: vec![passive_lp_token_address.into_string()],
         })?,
         funds: vec![],
-    }.into();
+    }
+        .into();
 
     // swap ASTRO into Luna
     // first, get the address of the pool from Astroport
@@ -599,4 +600,17 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
         attr("astro_swapped", astro_pending.amount),
         attr("luna_return", swap_luna_return),
     ]))
+}
+
+pub(crate) fn handle_unbond_handler_msg(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    msg: UnbondHandlerMsg,
+) -> VaultResult<Response> {
+    todo!()
+    //todo verify the message was sent by a handler, i.e. check address with the list of unbonded handlers
+    // registered by the vault
+    //todo find the unbond handler address on the map and clear it, place it back to the
+    // vector of available unbond handlers
 }

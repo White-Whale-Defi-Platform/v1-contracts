@@ -1,5 +1,5 @@
 use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{to_binary, Decimal, Deps, Env, QueryRequest, StdResult, WasmQuery};
+use cosmwasm_std::{Addr, Decimal, Deps, Env, QueryRequest, StdResult, to_binary, Uint128, WasmQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -10,6 +10,9 @@ pub enum AnchorQuery {
         block_height: Option<u64>,
         distributed_interest: Option<Uint256>,
     },
+    UnbondRequests {
+        address: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -17,6 +20,14 @@ pub struct EpochStateResponse {
     pub exchange_rate: Decimal256,
     pub aterra_supply: Uint256,
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct UnbondRequestsResponse {
+    pub address: String,
+    pub requests: UnbondRequest,
+}
+
+pub type UnbondRequest = Vec<(u64, Uint128, Uint128)>;
 
 pub fn query_aust_exchange_rate(
     env: Env,
@@ -32,4 +43,20 @@ pub fn query_aust_exchange_rate(
             })?,
         }))?;
     Ok(Decimal::from(response.exchange_rate))
+}
+
+pub fn query_unbond_requests(
+    deps: Deps,
+    bluna_hub_address: Addr,
+    address: Addr,
+) -> StdResult<UnbondRequestsResponse> {
+    let response: UnbondRequestsResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: bluna_hub_address.to_string(),
+            msg: to_binary(&AnchorQuery::UnbondRequests {
+                address: address.to_string()
+            })?,
+        }))?;
+
+    Ok(response)
 }

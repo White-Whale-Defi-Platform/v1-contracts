@@ -1479,6 +1479,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "luna-unbond-handler"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std 0.16.7",
+ "cosmwasm-storage 0.16.7",
+ "cw-controllers",
+ "cw-multi-test 0.8.1",
+ "cw-storage-plus 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cw2 0.8.1",
+ "cw20",
+ "schemars",
+ "semver",
+ "serde",
+ "terraswap",
+ "thiserror",
+ "white-whale",
+]
+
+[[package]]
 name = "luna-vault"
 version = "0.1.1"
 dependencies = [

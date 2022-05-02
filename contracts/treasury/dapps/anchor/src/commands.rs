@@ -3,8 +3,9 @@ use terraswap::asset::AssetInfo;
 
 use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_deposit_msg, anchor_withdraw_msg, anchor_withdraw_unbonded_msg};
 use white_whale::denom::UST_DENOM;
+use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID};
 use white_whale::query::anchor::query_aust_exchange_rate;
-use white_whale::treasury::dapp_base::common::{ANCHOR_BLUNA_HUB_ID, ANCHOR_MONEY_MARKET_ID, AUST_TOKEN_ID, BLUNA_TOKEN_ID};
+use white_whale::treasury::dapp_base::common::{ANCHOR_MONEY_MARKET_ID, AUST_TOKEN_ID};
 use white_whale::treasury::dapp_base::error::BaseDAppError;
 use white_whale::treasury::dapp_base::state::BASESTATE;
 use white_whale::treasury::msg::send_to_treasury;
@@ -118,7 +119,7 @@ pub fn handle_unbond(
     // Get anchor bluna token address
     let bluna_address: Addr = match state
         .memory
-        .query_asset(deps, &String::from(BLUNA_TOKEN_ID))? {
+        .query_asset(deps, &String::from(BLUNA_TOKEN_MEMORY_ID))? {
         AssetInfo::Token { contract_addr } => Addr::unchecked(contract_addr),
         _ => return Err(BaseDAppError::Std(StdError::generic_err("bLuna token asset identified as Native in memory.")))
     };
