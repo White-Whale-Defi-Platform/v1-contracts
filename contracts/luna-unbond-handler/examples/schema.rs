@@ -3,8 +3,8 @@ use std::fs::create_dir_all;
 
 use cosmwasm_schema::{export_schema, remove_schemas, schema_for};
 
-use luna_unbond_handler::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 use luna_unbond_handler::state::State;
+use white_whale::luna_vault::luna_unbond_handler::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     let mut out_dir = current_dir().unwrap();

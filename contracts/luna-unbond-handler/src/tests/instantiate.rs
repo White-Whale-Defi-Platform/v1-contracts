@@ -3,10 +3,10 @@ use cosmwasm_std::{
     Addr, DepsMut, Response,
 };
 use cw2::{ContractVersion, CONTRACT};
+use white_whale::luna_vault::luna_unbond_handler::msg::InstantiateMsg;
 
 use crate::{
     contract::{instantiate, CONTRACT_NAME, CONTRACT_VERSION},
-    msg::InstantiateMsg,
     state::{State, STATE},
 };
 
@@ -16,6 +16,7 @@ use super::common::{mock_creator_info, TEST_CREATOR, TEST_MEMORY_CONTRACT, TEST_
 pub fn mock_instantiate(deps: DepsMut) -> Response {
     let msg = InstantiateMsg {
         owner: Some(TEST_OWNER.into()),
+        expires_in: Some(0u64),
         memory_contract: TEST_MEMORY_CONTRACT.into(),
     };
 
@@ -52,7 +53,7 @@ fn initialization_does_return_attributes() {
     assert_eq!(
         res,
         Response::new().add_attributes(vec![
-            ("method", "instantiate"),
+            ("action", "instantiate"),
             ("owner", TEST_OWNER),
             ("expiration_time", &expiration_time.to_string())
         ])

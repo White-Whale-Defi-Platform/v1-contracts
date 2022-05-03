@@ -32,6 +32,9 @@ pub enum UnbondHandlerError {
     #[error("Contract is not owned by any address")]
     UnownedHandler {},
 
+    #[error("Expiration time was impossible to calculate")]
+    WrongExpirationTime {},
+
     #[error("{0}")]
     MemoryError(#[from] MemoryError),
 }

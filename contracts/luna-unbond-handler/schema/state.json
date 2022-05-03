@@ -1,6 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "State",
+  "description": "Stores the state of the contract, including the current owner of the unbond handler, the expiration time for when liquidations are allowed, and the address of the memory contract",
   "type": "object",
   "required": [
     "memory_contract"

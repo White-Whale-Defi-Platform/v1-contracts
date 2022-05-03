@@ -7,6 +7,7 @@ use std::fmt;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub owner: Option<String>,
+    pub expires_in: Option<u64>,
     pub memory_contract: String,
 }
 

@@ -11,7 +11,7 @@ use white_whale::luna_vault::luna_unbond_handler::{EXPIRATION_TIME_KEY, OWNER_KE
 
 use crate::serde_option::serde_option;
 use crate::state::{State, ADMIN, STATE};
-use crate::{commands, queries, UnbondHandlerResult};
+use crate::{commands, queries, UnbondHandlerError, UnbondHandlerResult};
 
 // version info for migration info
 pub(crate) const CONTRACT_NAME: &str = "crates.io:luna-unbond-handler";
@@ -34,7 +34,16 @@ pub fn instantiate(
 
     if let Some(owner) = msg.owner {
         state.owner = Some(deps.api.addr_validate(&owner)?);
-        state.expiration_time = Some(env.block.time.seconds());
+    }
+
+    if let Some(expires_in) = msg.expires_in {
+        let expiration_time = env
+            .block
+            .time
+            .seconds()
+            .checked_add(expires_in)
+            .ok_or(UnbondHandlerError::WrongExpirationTime {})?;
+        state.expiration_time = Some(expiration_time);
     }
 
     STATE.save(deps.storage, &state)?;

@@ -1,6 +1,6 @@
 [package]
 name = "luna-unbond-handler"
-version = "0.1.0"
+version = "0.1.2"
 authors = ["Kerber0x <kerber0x@protonmail.com>", "kaimen-sano <kaimen_sano@protonmail.com>"]
 edition = "2018"
 

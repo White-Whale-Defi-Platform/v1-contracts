@@ -3,11 +3,9 @@ use cosmwasm_std::{
     Addr, MessageInfo, Response,
 };
 use cw_controllers::{AdminError, AdminResponse};
+use white_whale::luna_vault::luna_unbond_handler::msg::ExecuteMsg;
 
-use crate::{
-    contract::execute, msg::ExecuteMsg, state::ADMIN, tests::common::TEST_CREATOR,
-    UnbondHandlerError,
-};
+use crate::{contract::execute, state::ADMIN, tests::common::TEST_CREATOR, UnbondHandlerError};
 
 use super::{common::mock_creator_info, instantiate::mock_instantiate};
 
