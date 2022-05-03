@@ -1,3 +1,4 @@
+use std::backtrace::Backtrace;
 use thiserror::Error;
 
 use cosmwasm_std::{DivideByZeroError, OverflowError, StdError};
@@ -64,6 +65,12 @@ pub enum LunaVaultError {
 
     #[error("Cancel losing trade.")]
     CancelLosingTrade {},
+
+    #[error("Missing unbond data cache.")]
+    UnbondHandlerMissingDataCache {},
+
+    #[error("The data parsed from the unbond handler instantiation msg and cache does not match.")]
+    UnbondHandlerMissmatchingDataCache {},
 
     #[error("Last balance is non-zero, you can only call this function once.")]
     Nonzero {},

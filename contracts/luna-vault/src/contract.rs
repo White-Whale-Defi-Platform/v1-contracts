@@ -238,9 +238,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
         })?;
 
     match msg.id {
-        u64::from(INSTANTIATE_REPLY_ID) => replies::after_token_instantiation(&deps, &response),
+        u64::from(INSTANTIATE_REPLY_ID) => replies::after_token_instantiation(deps, response),
         u64::from(INSTANTIATE_UNBOND_HANDLER_REPLY_ID) => {
-            replies::after_token_instantiation(&deps, &response)
+            replies::after_unbond_handler_instantiation(deps, response)
         }
         _ => {
             //noop

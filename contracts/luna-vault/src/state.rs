@@ -2,6 +2,7 @@ use cosmwasm_std::{Addr, Order, Storage, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Bound, Item, Map, U64Key};
 use schemars::JsonSchema;
+use schemars::_private::NoSerialize;
 use serde::{Deserialize, Serialize};
 
 use white_whale::deposit_info::DepositInfo;
@@ -42,6 +43,7 @@ pub struct CurrentBatch {
     pub id: u64,
 }
 
+//todo delete
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct UnbondHistory {
     pub batch_id: u64,
@@ -49,7 +51,7 @@ pub struct UnbondHistory {
     pub amount: Uint128,
     pub released: bool,
 }
-
+//todo delete
 impl UnbondHistory {
     pub fn as_res(&self) -> UnbondHistoryResponse {
         UnbondHistoryResponse {
@@ -61,18 +63,29 @@ impl UnbondHistory {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct UnbondDataCache {
+    pub owner: Addr,
+    pub bluna_amount: Uint128,
+}
+
 pub type UnbondRequest = Vec<(u64, Uint128)>;
 pub type UnbondHandlerAddr = Addr;
 pub type UserAddr = Addr;
 
-pub const PROFIT: Item<ProfitCheck> = Item::new("\u{0}{6}profit");
+pub const PROFIT: Item<ProfitCheck> = Item::new("profit");
 pub const ADMIN: Admin = Admin::new("admin");
-pub const STATE: Item<State> = Item::new("\u{0}{5}state");
-pub const POOL_INFO: Item<PoolInfoRaw> = Item::new("\u{0}{4}pool");
-pub const DEPOSIT_INFO: Item<DepositInfo> = Item::new("\u{0}{7}deposit");
-pub const FEE: Item<VaultFee> = Item::new("\u{0}{3}fee");
+pub const STATE: Item<State> = Item::new("state");
+pub const POOL_INFO: Item<PoolInfoRaw> = Item::new("pool");
+pub const DEPOSIT_INFO: Item<DepositInfo> = Item::new("deposit");
+pub const FEE: Item<VaultFee> = Item::new("fee");
+pub const UNBOND_HANDLER_EXPIRATION_TIME: Item<u64> = Item::new("unbond_handler_expiration_time");
+
+//todo delete
 pub const UNBOND_WAITLIST: Map<(&Addr, U64Key), Uint128> = Map::new("unbond_waitlist");
+//todo delete
 pub const UNBOND_HISTORY: Map<U64Key, UnbondHistory> = Map::new("unbond_history");
+//todo delete
 pub const CURRENT_BATCH: Item<CurrentBatch> = Item::new("current_batch");
 
 // Unbond handler addresses that are available and ready to be used
@@ -83,7 +96,25 @@ pub const UNBOND_HANDLERS_ASSIGNED: Map<&UserAddr, &UnbondHandlerAddr> =
 // Map of expiration times for a unbond handlers addresses
 pub const UNBOND_HANDLER_EXPIRATION_TIMES: Map<&UnbondHandlerAddr, u64> =
     Map::new("unbond_handler_expiration_times");
+// Cache use to temporarily store [UnbondDataCache] when no handler are available and a new one
+// needs to be created. This cache will be used by the reply handler.
+pub const UNBOND_CACHE: Item<UnbondDataCache> = Item::new("unbond_cache");
 
+// 40 days
+pub const DEFAULT_UNBOND_EXPIRATION_TIME: u64 = 3456000u64;
+
+/// Gets the unbond handler expiration time if set, returns the default value otherwise
+pub fn get_unbond_handler_expiration_time(storage: &mut dyn Storage) -> u64 {
+    let expiration_time = UNBOND_HANDLER_EXPIRATION_TIME.may_load(storage)?;
+
+    return if let Some(expiration_time) = expiration_time {
+        expiration_time
+    } else {
+        DEFAULT_UNBOND_EXPIRATION_TIME
+    };
+}
+
+//todo delete
 /// Store unbond wait list for the user
 /// HashMap<user's address + batch_id, refund_amount>
 pub fn store_unbond_wait_list(
@@ -118,6 +149,7 @@ pub fn get_unbond_history(storage: &dyn Storage, batch_id: u64) -> VaultResult<U
     })
 }
 
+//todo delete
 /// Prepares next unbond batch
 pub fn prepare_next_unbond_batch(storage: &mut dyn Storage) -> VaultResult<()> {
     let mut current_batch = CURRENT_BATCH.load(storage)?;

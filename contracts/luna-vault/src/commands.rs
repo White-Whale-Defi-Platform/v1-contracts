@@ -11,7 +11,7 @@ use terraswap::querier::query_supply;
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::luna_vault::luna_unbond_handler::msg::Cw20HookMsg::Unbond as UnbondHandlerUnbondMsg;
-use white_whale::luna_vault::luna_unbond_handler::msg::InstantiateMsg;
+use white_whale::luna_vault::luna_unbond_handler::msg::{ExecuteMsg, InstantiateMsg};
 use white_whale::luna_vault::msg::{Cw20HookMsg, UnbondActionReply, UnbondHandlerMsg};
 use white_whale::memory::LIST_SIZE_LIMIT;
 
@@ -19,14 +19,18 @@ use crate::contract::{
     VaultResult, INSTANTIATE_UNBOND_HANDLER_REPLY_ID, POST_INSTANTIATE_UNBOND_ACTION_REPLY_ID,
 };
 use crate::error::LunaVaultError;
-use crate::helpers::{check_fee, compute_total_value, get_lp_token_address, get_treasury_fee};
+use crate::helpers::{
+    check_fee, compute_total_value, get_lp_token_address, get_treasury_fee,
+    unbond_bluna_with_handler_msg, update_unbond_handler_state_msg,
+};
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{
-    deprecate_unbond_batches, get_deprecated_unbond_batch_ids, get_withdrawable_amount,
-    get_withdrawable_unbond_batch_ids, prepare_next_unbond_batch, remove_unbond_wait_list,
-    store_unbond_history, store_unbond_wait_list, UnbondHistory, ADMIN, CURRENT_BATCH,
-    DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE, UNBOND_HANDLERS_ASSIGNED,
-    UNBOND_HANDLERS_AVAILABLE,
+    deprecate_unbond_batches, get_deprecated_unbond_batch_ids, get_unbond_handler_expiration_time,
+    get_withdrawable_amount, get_withdrawable_unbond_batch_ids, prepare_next_unbond_batch,
+    remove_unbond_wait_list, store_unbond_history, store_unbond_wait_list, UnbondDataCache,
+    UnbondHistory, ADMIN, CURRENT_BATCH, DEFAULT_UNBOND_EXPIRATION_TIME, DEPOSIT_INFO, FEE,
+    POOL_INFO, PROFIT, STATE, UNBOND_CACHE, UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLERS_AVAILABLE,
+    UNBOND_HANDLER_EXPIRATION_TIMES,
 };
 
 /// handler function invoked when the luna-vault contract receives
@@ -258,22 +262,7 @@ fn unbond(
     let refund_amount: Uint128 = total_value_in_luna * share_ratio;
     attrs.push(("post_fee_unbonded_amount", refund_amount.to_string()));
 
-    let current_batch = CURRENT_BATCH.load(deps.storage)?;
-
-    // Add unbond to the wait list
     let sender_addr = deps.api.addr_validate(&sender)?;
-    store_unbond_wait_list(deps.storage, current_batch.id, &sender_addr, refund_amount)?;
-
-    let unbond_history = UnbondHistory {
-        batch_id: current_batch.id,
-        time: env.block.time.seconds(),
-        amount: refund_amount,
-        released: false,
-    };
-    store_unbond_history(deps.storage, current_batch.id, unbond_history)?;
-
-    // Prepare for next unbond batch
-    prepare_next_unbond_batch(deps.storage)?;
 
     // LP token treasury Asset
     let lp_token_treasury_fee = Asset {
@@ -301,23 +290,34 @@ fn unbond(
         funds: vec![],
     });
 
-    //------------------------------------------------
     //todo withdraw shares from LP
     let bluna_amount = Uint128::zero();
 
     // Check if there's a handler assigned to the user
-    let unbond_handler_result = UNBOND_HANDLERS_ASSIGNED.load(deps.storage, &sender_addr);
+    let unbond_handler_option = UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, &sender_addr)?;
+
     let unbond_handler: Addr;
-    if unbond_handler_result.is_ok() {
+    if unbond_handler_option.is_some() {
         // there's an unbond handler assigned to the user
-        unbond_handler = unbond_handler_result?.clone();
+        unbond_handler = unbond_handler_option?.clone();
+
+        // update the expiration time on the assigned handler
+        let expiration_time = env
+            .block
+            .time
+            .seconds()
+            .checked_add(get_unbond_handler_expiration_time(deps.storage.as_mut()))?;
+        let unbond_handler_update_state_msg =
+            update_unbond_handler_state_msg(unbond_handler, None, Some(expiration_time));
+        UNBOND_HANDLER_EXPIRATION_TIMES.save(deps.storage, &unbond_handler, &&expiration_time)?;
 
         // send bluna to unbond handler
         let unbond_msg = unbond_bluna_with_handler_msg(deps, bluna_amount.clone(), &unbond_handler);
-        response = response.add_message(unbond_msg);
+
+        response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
     } else {
         // there's no unbond handlers assigned to the user
-        // check if there are handlers available
+        // check if there are handlers available to be used
         let unbond_handlers_available = UNBOND_HANDLERS_AVAILABLE.load(deps.storage)?;
         if unbond_handlers_available.is_empty() {
             // create a new handler if there are no handlers available
@@ -329,6 +329,7 @@ fn unbond(
                     code_id: state.unbond_handler_code_id,
                     msg: to_binary(&InstantiateMsg {
                         owner: Some(sender_addr.to_string()),
+                        expires_in: Some(get_unbond_handler_expiration_time(deps.storage)),
                         memory_contract: state.memory_address.to_string(),
                     })?,
                     funds: vec![],
@@ -338,27 +339,51 @@ fn unbond(
                 gas_limit: None,
                 reply_on: ReplyOn::Success,
             };
-            /*let unbond_msg = SubMsg {
-                id: u64::from(POST_INSTANTIATE_UNBOND_ACTION_REPLY_ID),
-                msg: ???,
-                gas_limit: None,
-                reply_on: ReplyOn::Success,
-            };*/
 
-            response = response
-                .add_submessages(vec![unbond_handler_instantiation_msg /*, unbond_msg*/]);
-
-            //todo no way to know how much the user wanted to unbond, need to sync this with the reply messages
-            // maybe possible to send the bluna on the instantiation message directly somehow?
+            // temporarily store unbond data in cache to be used in the reply handler
+            UNBOND_CACHE.save(
+                deps.storage,
+                &UnbondDataCache {
+                    owner: sender_addr,
+                    bluna_amount,
+                },
+            )?;
+            response = response.add_submessage(unbond_handler_instantiation_msg);
         } else {
-            //otherwise, use an available one
-            unbond_handler = unbond_handlers_available.first()?.clone();
+            // split unbond_handlers_available in a slice with first and rest of handlers
+            let handlers = unbond_handlers_available.split_first();
+            // use first available unbond handler
+            unbond_handler = handlers?.0.clone();
+            // assign unbond handler to user
             UNBOND_HANDLERS_ASSIGNED.save(deps.storage, &sender_addr, &&unbond_handler)?;
+
+            // store remaining unbond handler addresses
+            let remaining_unbond_handlers_available = handlers?.1.to_vec();
+            UNBOND_HANDLERS_AVAILABLE.save(deps.storage, &remaining_unbond_handlers_available)?;
+
+            // update state of the selected unbond handler, make sender_addr the owner
+            // and update the expiration_time
+            let expiration_time = env
+                .block
+                .time
+                .seconds()
+                .checked_add(get_unbond_handler_expiration_time(deps.storage))?;
+            let unbond_handler_update_state_msg = update_unbond_handler_state_msg(
+                unbond_handler,
+                Some(sender_addr.to_string()),
+                Some(expiration_time),
+            );
+            UNBOND_HANDLER_EXPIRATION_TIMES.save(
+                deps.storage,
+                &unbond_handler,
+                &&expiration_time,
+            )?;
 
             // send bluna to unbond handler
             let unbond_msg =
                 unbond_bluna_with_handler_msg(deps, bluna_amount.clone(), &unbond_handler);
-            response = response.add_message(unbond_msg);
+
+            response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
         };
     }
 
@@ -367,26 +392,11 @@ fn unbond(
         .add_attributes(attrs))
 }
 
-/// Sends bluna to a handler and triggers the unbond action
-pub fn unbond_bluna_with_handler_msg(
-    deps: DepsMut,
-    bluna_amount: Uint128,
-    unbond_handler: &Addr,
-) -> CosmosMsg {
-    let state = STATE.load(deps.storage)?;
-    CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.bluna_address.to_string(),
-        msg: to_binary(&Cw20ExecuteMsg::Send {
-            contract: unbond_handler.to_string(),
-            amount: bluna_amount,
-            msg: to_binary(&UnbondHandlerUnbondMsg {})?,
-        })?,
-        funds: vec![],
-    })
-}
-
 /// Withdraws unbonded luna after unbond has been called and the time lock period expired
 pub fn withdraw_unbonded(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResult<Response> {
+    //fetch handler handler
+    //send message to handler
+
     let state = STATE.load(deps.storage)?;
     let withdrawable_time = env.block.time.seconds() - state.unbonding_period;
     let withdraw_amount =

@@ -1480,7 +1480,7 @@ dependencies = [
 
 [[package]]
 name = "luna-unbond-handler"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std 0.16.7",
