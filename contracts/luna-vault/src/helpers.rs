@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, Uint128};
+use cosmwasm_std::{Addr, Coin, Decimal, Deps, Env, Event, StdError, StdResult, Uint128};
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::query::terraswap::query_asset_balance;
@@ -93,4 +93,23 @@ pub fn get_lp_token_address(deps: &Deps, pool_address: Addr) -> VaultResult<Addr
     )?;
 
     Ok(pool_info.liquidity_token)
+}
+
+/// Determine if an event contains a specific key-value pair
+pub fn event_contains_attr(event: &Event, key: &str, value: &str) -> bool {
+    event
+        .attributes
+        .iter()
+        .any(|attr| attr.key == key && attr.value == value)
+}
+
+/// Gets the string value of an attribute from the event
+pub fn get_attribute_value_from_event(event: &Event, key: &str) -> String {
+    event
+        .attributes
+        .iter()
+        .cloned()
+        .find(|attr| attr.key == key)
+        .ok_or_else(|| StdError::generic_err(format!("cannot find {} attribute", key)))?
+        .value
 }

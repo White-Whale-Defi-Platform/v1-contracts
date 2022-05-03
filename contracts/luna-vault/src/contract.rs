@@ -19,14 +19,14 @@ use white_whale::luna_vault::msg::*;
 
 use crate::commands::set_fee;
 use crate::error::LunaVaultError;
-use crate::helpers::get_lp_token_address;
+use crate::helpers::{event_contains_attr, get_attribute_value_from_event, get_lp_token_address};
 use crate::pool_info::PoolInfoRaw;
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{
     CurrentBatch, ProfitCheck, State, ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT,
     STATE, UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLER_EXPIRATION_TIMES,
 };
-use crate::{commands, flashloan, helpers, queries};
+use crate::{commands, flashloan, helpers, queries, replies};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub(crate) const INSTANTIATE_UNBOND_HANDLER_REPLY_ID: u8 = 2u8;
@@ -238,55 +238,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
         })?;
 
     match msg.id {
-        u64::from(INSTANTIATE_REPLY_ID) => {
-            let liquidity_token = deps.api.addr_validate(response.get_contract_address())?;
-
-            POOL_INFO.update(deps.storage, |mut meta| -> VaultResult<_> {
-                meta.liquidity_token = liquidity_token;
-                Ok(meta)
-            })?;
-
-            return Ok(
-                Response::new().add_attribute("liquidity_token_addr", liquidity_token.to_string())
-            );
-        }
+        u64::from(INSTANTIATE_REPLY_ID) => replies::after_token_instantiation(&deps, &response),
         u64::from(INSTANTIATE_UNBOND_HANDLER_REPLY_ID) => {
-            let unbond_handler_contract =
-                deps.api.addr_validate(response.get_contract_address())?;
-            let events = msg.result.unwrap().events;
-            let owner: Addr;
-            let expiration_time: u64;
-            //todo rewrite this more elegantly
-            for event in events {
-                for attribute in event.attributes {
-                    if attribute.key == OWNER_KEY {
-                        owner = deps.api.addr_validate(&attribute.value)?;
-                        UNBOND_HANDLERS_ASSIGNED.save(
-                            deps.storage,
-                            &owner,
-                            &&unbond_handler_contract,
-                        )?;
-                    }
-                    if attribute.key == EXPIRATION_TIME_KEY {
-                        expiration_time = attribute.value.parse::<u64>()?;
-                        UNBOND_HANDLER_EXPIRATION_TIMES.save(
-                            deps.storage,
-                            &unbond_handler_contract,
-                            &expiration_time,
-                        )?;
-                    }
-                }
-            }
-
-            Ok(Response::new().add_attributes(vec![
-                attr("action", "unbond_handler_instantiation"),
-                attr("owner", owner.to_string()),
-                attr(
-                    "unbond_handler_contract",
-                    unbond_handler_contract.to_string(),
-                ),
-                attr("expiration_time", expiration_time.to_string()),
-            ]))
+            replies::after_token_instantiation(&deps, &response)
         }
         _ => {
             //noop

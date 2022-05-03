@@ -43,7 +43,7 @@ pub fn instantiate(
     ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::new()
-        .add_attribute("method", "instantiate")
+        .add_attribute("action", "instantiate")
         .add_attribute(OWNER_KEY, serde_option(state.owner))
         .add_attribute(EXPIRATION_TIME_KEY, serde_option(state.expiration_time)))
 }

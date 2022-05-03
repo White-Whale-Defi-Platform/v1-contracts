@@ -7,6 +7,7 @@ mod helpers;
 pub mod pool_info;
 pub mod querier;
 mod queries;
+mod replies;
 pub mod response;
 pub mod state;
 
