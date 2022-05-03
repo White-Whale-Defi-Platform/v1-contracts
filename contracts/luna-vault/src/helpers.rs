@@ -3,18 +3,20 @@ use cosmwasm_std::{
     Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
+
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::luna_vault::luna_unbond_handler::msg::Cw20HookMsg::Unbond as UnbondHandlerUnbondMsg;
 use white_whale::luna_vault::luna_unbond_handler::msg::ExecuteMsg;
+use white_whale::luna_vault::luna_unbond_handler::msg::ExecuteMsg::WithdrawUnbonded as UnbondHandlerWithdrawMsg;
+use white_whale::memory::ANCHOR_BLUNA_HUB_ID;
 use white_whale::query::terraswap::query_asset_balance;
+use white_whale::tax::compute_tax;
 
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use white_whale::tax::compute_tax;
-
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{FEE, STATE};
+use crate::state::{UnbondHandlerAddr, FEE, STATE};
 
 /// compute total vault value of deposits in LUNA and return a tuple with those values.
 /// (total, luna, astro lp, bluna, cluna)
@@ -151,6 +153,15 @@ pub fn unbond_bluna_with_handler_msg(
             amount: bluna_amount,
             msg: to_binary(&UnbondHandlerUnbondMsg {})?,
         })?,
+        funds: vec![],
+    })
+}
+
+/// Builds message to withdraw luna from a handler triggering the withdraw_unbonded action
+pub fn withdraw_luna_from_handler_msg(unbond_handler: Addr) -> CosmosMsg {
+    CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: unbond_handler.to_string(),
+        msg: to_binary(&UnbondHandlerWithdrawMsg {})?,
         funds: vec![],
     })
 }

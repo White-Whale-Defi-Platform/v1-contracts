@@ -275,6 +275,7 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
             contract_addr: luna_vault_addr.to_string(),
             msg: to_binary(&UnbondHandlerMsg::AfterUnbondHandlerReleased {
                 unbond_handler_addr: env.contract.address.to_string(),
+                previous_owner: owner.to_string(),
             })?,
             funds: vec![],
         });

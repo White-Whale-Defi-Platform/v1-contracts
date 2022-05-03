@@ -64,7 +64,7 @@ pub fn after_unbond_handler_instantiation(
     // make sure the cached owner corresponds to the one fetched from the instantiation msg
     let cached_owner = unbond_data_cache?.owner;
     if cached_owner != owner {
-        return Err(LunaVaultError::UnbondHandlerMissmatchingDataCache {});
+        return Err(LunaVaultError::UnbondHandlerMismatchingDataCache {});
     }
 
     // get bluna amount from cache

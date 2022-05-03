@@ -39,6 +39,7 @@ pub enum LunaVaultError {
     #[error("The provided asset is not the luna token.")]
     NotLunaToken {},
 
+    //todo delete
     #[error("No withdrawable {0} assets are available yet.")]
     NoWithdrawableAssetsAvailable(String),
 
@@ -70,7 +71,16 @@ pub enum LunaVaultError {
     UnbondHandlerMissingDataCache {},
 
     #[error("The data parsed from the unbond handler instantiation msg and cache does not match.")]
-    UnbondHandlerMissmatchingDataCache {},
+    UnbondHandlerMismatchingDataCache {},
+
+    #[error("There's no unbond handler assigned to the given address.")]
+    NoUnbondHandlerAssigned {},
+
+    #[error("The handler couldn't be released as it was not assigned the the given address.")]
+    UnbondHandlerNotAssigned {},
+
+    #[error("The handler triggering the release does not match the on.")]
+    UnbondHandlerReleaseMismatch {},
 
     #[error("Last balance is non-zero, you can only call this function once.")]
     Nonzero {},

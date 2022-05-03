@@ -26,6 +26,8 @@ pub struct State {
     pub memory_address: Addr,
     pub whitelisted_contracts: Vec<Addr>,
     pub allow_non_whitelisted: bool,
+
+    //todo delete
     // as a duration in seconds
     pub unbonding_period: u64,
     // code id for the unbond handler contract
@@ -160,6 +162,7 @@ pub fn prepare_next_unbond_batch(storage: &mut dyn Storage) -> VaultResult<()> {
 
 const DEFAULT_UNBOND_WAITLIST_READ_LIMIT: u32 = 30u32;
 
+//todo delete
 /// Gets the amount of luna that is withdrawable by the user.
 /// This is known by looking at the [unbound_history] time, which is registered when unbonding, and
 /// comparing it with a given [withdrawable_time], which is calculated as now - unbonding period.
@@ -190,6 +193,7 @@ pub fn get_withdrawable_amount(
     Ok(withdrawable_amount)
 }
 
+//todo delete
 /// Gets the ids of those unbond batches that are to be withdrawn.
 /// This is known by looking at the [unbound_history] time, which is registered when unbonding, and
 /// comparing it with a given [withdrawable_time], which is calculated as now - unbonding period.
@@ -220,6 +224,7 @@ pub fn get_withdrawable_unbond_batch_ids(
     Ok(withdrawable_batches)
 }
 
+//todo delete
 /// Deprecate unbond batches by marking them as released, i.e. funds have been withdrawn.
 pub fn deprecate_unbond_batches(storage: &mut dyn Storage, batch_ids: Vec<u64>) -> VaultResult<()> {
     for batch_id in batch_ids {
@@ -231,6 +236,7 @@ pub fn deprecate_unbond_batches(storage: &mut dyn Storage, batch_ids: Vec<u64>) 
     Ok(())
 }
 
+//todo delete
 /// Get the ids of deprecated unbond batches, i.e. those that are to be released
 pub fn get_deprecated_unbond_batch_ids(
     storage: &dyn Storage,
@@ -257,6 +263,7 @@ pub fn get_deprecated_unbond_batch_ids(
     Ok(deprecated_batches)
 }
 
+//todo delete
 /// Remove unbond batch id from user's wait list.
 pub fn remove_unbond_wait_list(
     storage: &mut dyn Storage,

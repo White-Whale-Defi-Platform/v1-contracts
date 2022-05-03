@@ -97,7 +97,10 @@ pub enum CallbackMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum UnbondHandlerMsg {
-    AfterUnbondHandlerReleased { unbond_handler_addr: String },
+    AfterUnbondHandlerReleased {
+        unbond_handler_addr: String,
+        previous_owner: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
