@@ -171,9 +171,10 @@ pub(crate) fn deposit_passive_strategy(
 
 // Withdraws Luna from the passive strategy (Astroport): luna-bluna LP -> Luna + bLuna
 pub(crate) fn withdraw_passive_strategy(
-    _deps: &Deps,
+    deps: &Deps,
     withdraw_amount: Uint128,
-    _bluna_address: Addr,
+    bluna_address: Addr,
+    requested_token: Option<Addr>,
     astro_lp_token_address: &Addr,
     astro_lp_address: &Addr,
     response: Response,
@@ -195,28 +196,64 @@ pub(crate) fn withdraw_passive_strategy(
         funds: vec![],
     });
 
-    // Leaving this here for now but commented, this logic allows us to offer luna or bLuna if caller is willing to assume fees
-    // let bluna_asset = astroport::asset::Asset {
-    //     amount: bluna_return.return_amount,
-    //     info: astroport::asset::AssetInfo::Token {
-    //         contract_addr: bluna_address,
-    //     },
-    // };
-    //
-    // let bluna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-    //     contract_addr: astro_lp_address.to_string(),
-    //     msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
-    //         offer_asset: luna_asset.clone(),
-    //         belief_price: None,
-    //         max_spread: None,
-    //         to: None,
-    //     })?,
-    //     funds: vec![],
-    // });
+    // Prepare a LUNA Asset
+    // split luna into half so half goes to purchase bLuna, remaining half is used as liquidity
+    let luna_asset = astroport::asset::Asset {
+        amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
+        info: astroport::asset::AssetInfo::NativeToken {
+            denom: LUNA_DENOM.to_string(),
+        },
+    };
+
+    let bluna_asset = astroport::asset::Asset {
+        amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
+        info: astroport::asset::AssetInfo::Token {
+            contract_addr: bluna_address.clone(),
+        },
+    };
+
+
+    // simulate the luna swap so we know the bluna return amount when we later provide liquidity
+    let luna_return: astroport::pair::SimulationResponse = deps.querier.query_wasm_smart(
+        astro_lp_address,
+        &astroport::pair::QueryMsg::Simulation {
+            offer_asset: bluna_asset.clone(),
+        },
+    )?;
+
+    let swap_asset = astroport::asset::Asset {
+        amount: luna_return.return_amount,
+        info: astroport::asset::AssetInfo::NativeToken {
+            denom: LUNA_DENOM.to_string(),
+        },
+    };
+
+    if !requested_token.is_none(){
+        // Prepare the variant return asset, assuming the passed addr is valid
+        let luna_variant_asset = astroport::asset::Asset {
+            amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
+            info: astroport::asset::AssetInfo::Token {
+                contract_addr: requested_token.unwrap_or_else(||bluna_address),
+            },
+        };
+    }
+
+
+    // Now make a purchase on the relevant LUNAVARIANT-LUNA pair
+    let luna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
+        contract_addr: astro_lp_address.to_string(),
+        msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
+            offer_asset: swap_asset.clone(),
+            belief_price: None,
+            max_spread: None,
+            to: None,
+        })?,
+        funds: vec![],
+    });
 
     let response = response.add_messages(vec![
         withdraw_msg, // 1. withdraw bluna and Luna from LP.
-                      // deposit_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
+        luna_purchase_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
     ]);
 
     Ok(response)
