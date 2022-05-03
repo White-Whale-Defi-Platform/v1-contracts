@@ -87,6 +87,7 @@ pub fn handle_flashloan(
             &deps.as_ref(),
             requested_asset.amount,
             state.bluna_address,
+            None,
             &get_lp_token_address(&deps.as_ref(), state.astro_lp_address.clone())?,
             &state.astro_lp_address,
             response.clone(),

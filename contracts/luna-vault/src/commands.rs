@@ -169,8 +169,9 @@ pub(crate) fn deposit_passive_strategy(
 
 // Withdraws Luna from the passive strategy (Astroport): luna-bluna LP -> Luna + bLuna
 pub(crate) fn withdraw_passive_strategy(
-    _deps: &Deps,
+    deps: &Deps,
     withdraw_amount: Uint128,
+    bluna_address: Addr,
     requested_token: Option<Addr>,
     astro_lp_token_address: &Addr,
     astro_lp_address: &Addr,
@@ -203,9 +204,9 @@ pub(crate) fn withdraw_passive_strategy(
     };
 
     let bluna_asset = astroport::asset::Asset {
-        amount: bluna_return.return_amount,
+        amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
         info: astroport::asset::AssetInfo::Token {
-            contract_addr: bluna_address,
+            contract_addr: bluna_address.clone(),
         },
     };
 
@@ -228,9 +229,9 @@ pub(crate) fn withdraw_passive_strategy(
     if !requested_token.is_none(){
         // Prepare the variant return asset, assuming the passed addr is valid
         let luna_variant_asset = astroport::asset::Asset {
-            amount: bluna_return.return_amount,
+            amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
             info: astroport::asset::AssetInfo::Token {
-                contract_addr: requested_token?,
+                contract_addr: requested_token.unwrap_or_else(||bluna_address),
             },
         };
     }
