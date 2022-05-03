@@ -100,6 +100,14 @@ pub enum UnbondHandlerMsg {
     AfterUnbondHandlerReleased { unbond_handler_addr: String },
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum UnbondActionReply {
+    /// Message send right after creating a new unbond handler instance
+    /// Used to trigger a reply and execute the unbond message on the handler
+    Unbond { bluna_amount: Uint128 },
+}
+
 // Modified from
 // https://github.com/CosmWasm/cosmwasm-plus/blob/v0.2.3/packages/cw20/src/receiver.rs#L15
 impl CallbackMsg {

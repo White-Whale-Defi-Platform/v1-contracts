@@ -30,6 +30,7 @@ use crate::{commands, flashloan, helpers, queries};
 
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub(crate) const INSTANTIATE_UNBOND_HANDLER_REPLY_ID: u8 = 2u8;
+pub(crate) const POST_INSTANTIATE_UNBOND_ACTION_REPLY_ID: u8 = 3u8;
 pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale Luna Vault LP Token";
 pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVLuna";
 
