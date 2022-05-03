@@ -24,8 +24,6 @@ pub fn handle_flashloan(
     let fees = FEE.load(deps.storage)?;
     let whitelisted_contracts = state.whitelisted_contracts;
     let whitelisted: bool;
-    // Check if requested asset is base token of vault
-    deposit_info.assert(&payload.requested_asset.info)?;
 
     // Check if sender is whitelisted
     if !whitelisted_contracts.contains(&deps.api.addr_validate(&info.sender.to_string())?) {
@@ -97,15 +95,11 @@ pub fn handle_flashloan(
 
     // If caller not whitelisted, calculate flashloan fee
 
-    // let loan_fee: Uint128 = if whitelisted {
-    //     Uint128::zero()
-    // } else {
-    //     fees.flash_loan_fee.compute(requested_asset.amount)
-    // };
-    //TODO why charge everybody? in theory we don't want to charge fees for ourselves, but to others.
-    // for now the vault will be closed to the public but i guess we can keep the logic in place.
-    // Either that or remove the fee completely and then reintroduce it if we want to open the vault
-    let loan_fee = fees.flash_loan_fee.compute(requested_asset.amount);
+    let loan_fee: Uint128 = if whitelisted {
+        Uint128::zero()
+    } else {
+        fees.flash_loan_fee.compute(requested_asset.amount)
+    };
 
     // NOTE: Forget the whitelist and just charge everyone, why should anyone get free flashloans ?
     fees.flash_loan_fee.compute(requested_asset.amount);
