@@ -218,7 +218,7 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         },
         amount: refund_amount.checked_sub(liquidation_fee_amount)?,
     }
-    .into_msg(&deps.querier, owner)?;
+    .into_msg(&deps.querier, owner.clone())?;
     response = response.add_attribute(
         "refund_amount",
         refund_amount.checked_sub(liquidation_fee_amount)?,

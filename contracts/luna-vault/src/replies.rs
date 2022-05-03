@@ -1,4 +1,4 @@
-use cosmwasm_std::{attr, Api, DepsMut, Response, StdError};
+use cosmwasm_std::{attr, DepsMut, Event, Response, StdError};
 
 use white_whale::luna_vault::luna_unbond_handler::{EXPIRATION_TIME_KEY, OWNER_KEY};
 
@@ -20,7 +20,7 @@ pub fn after_token_instantiation(
     let liquidity_token = deps.api.addr_validate(response.get_contract_address())?;
 
     POOL_INFO.update(deps.storage, |mut meta| -> VaultResult<_> {
-        meta.liquidity_token = liquidity_token;
+        meta.liquidity_token = liquidity_token.clone();
         Ok(meta)
     })?;
 
@@ -32,9 +32,9 @@ pub fn after_token_instantiation(
 pub fn after_unbond_handler_instantiation(
     deps: DepsMut,
     response: MsgInstantiateContractResponse,
+    events: Vec<Event>,
 ) -> VaultResult<Response> {
     let unbond_handler_contract = deps.api.addr_validate(response.get_contract_address())?;
-    let events = msg.result.unwrap().events;
 
     let event = events
         .iter()
@@ -42,39 +42,42 @@ pub fn after_unbond_handler_instantiation(
         .ok_or_else(|| StdError::generic_err("cannot find `instantiate` event"))?;
 
     // get owner from event
-    let owner_string = get_attribute_value_from_event(event, OWNER_KEY);
+    let owner_string = get_attribute_value_from_event(event, OWNER_KEY)?;
     let owner = deps.api.addr_validate(&owner_string)?;
-    UNBOND_HANDLERS_ASSIGNED.save(deps.storage, &owner, &&unbond_handler_contract)?;
+    UNBOND_HANDLERS_ASSIGNED.save(deps.storage, owner.clone(), &&unbond_handler_contract)?;
 
     // get expiration_time from event
-    let expiration_time_string = get_attribute_value_from_event(event, EXPIRATION_TIME_KEY);
+    let expiration_time_string = get_attribute_value_from_event(event, EXPIRATION_TIME_KEY)?;
     let expiration_time = expiration_time_string.parse::<u64>()?;
     UNBOND_HANDLER_EXPIRATION_TIMES.save(
         deps.storage,
-        &unbond_handler_contract,
+        unbond_handler_contract.clone(),
         &expiration_time,
     )?;
 
     // get data from the cache to execute the unbond operation after the unbond handler is created
-    let unbond_data_cache = UNBOND_CACHE.may_load(deps.storage)?;
-    if unbond_data_cache.is_none() {
+    let unbond_data_cache_option = UNBOND_CACHE.may_load(deps.storage)?;
+    if unbond_data_cache_option.is_none() {
         return Err(LunaVaultError::UnbondHandlerMissingDataCache {});
     }
 
+    let unbond_data_cache =
+        unbond_data_cache_option.ok_or(LunaVaultError::UnbondDataCacheError {})?;
     // make sure the cached owner corresponds to the one fetched from the instantiation msg
-    let cached_owner = unbond_data_cache?.owner;
+    let cached_owner = unbond_data_cache.clone().owner;
     if cached_owner != owner {
         return Err(LunaVaultError::UnbondHandlerMismatchingDataCache {});
     }
 
     // get bluna amount from cache
-    let bluna_amount = unbond_data_cache?.bluna_amount;
+    let bluna_amount = unbond_data_cache.bluna_amount;
 
     // send bluna to unbond handler
-    let unbond_msg = unbond_bluna_with_handler_msg(deps, bluna_amount, &unbond_handler_contract);
+    let unbond_msg =
+        unbond_bluna_with_handler_msg(deps.storage, bluna_amount, &unbond_handler_contract)?;
 
     // clear the unbond cache
-    UNBOND_CACHE.remove(deps.storage.as_mut());
+    UNBOND_CACHE.remove(deps.storage);
 
     return Ok(Response::new().add_message(unbond_msg).add_attributes(vec![
         attr("action", "unbond_handler_instantiate"),

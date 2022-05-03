@@ -133,24 +133,19 @@ pub enum VaultQueryMsg {
     PoolState {},
     State {},
     Fees {},
-    EstimateWithdrawFee {
-        amount: Uint128,
-    },
+    EstimateWithdrawFee { amount: Uint128 },
     VaultValue {},
     LastBalance {},
     LastProfit {},
-    WithdrawableUnbonded {
+    //todo proxy those queries through the unbond handler
+    /*WithdrawableUnbonded {
         address: String,
     },
     UnbondRequests {
         address: String,
         start_from: Option<u64>,
         limit: Option<u32>,
-    },
-    AllHistory {
-        start_from: Option<u64>,
-        limit: Option<u32>,
-    },
+    },*/
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -207,30 +202,4 @@ pub struct LastBalanceResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LastProfitResponse {
     pub last_profit: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct WithdrawableUnbondedResponse {
-    pub withdrawable: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct UnbondRequestsResponse {
-    pub address: String,
-    pub requests: UnbondRequestResponse,
-}
-
-pub type UnbondRequestResponse = Vec<(u64, Uint128)>;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AllHistoryResponse {
-    pub history: Vec<UnbondHistoryResponse>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct UnbondHistoryResponse {
-    pub batch_id: u64,
-    pub time: u64,
-    pub amount: Uint128,
-    pub released: bool,
 }

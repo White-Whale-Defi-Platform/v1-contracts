@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    attr, entry_point, from_binary, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn,
-    Response, StdError, SubMsg, Uint128, WasmMsg,
+    entry_point, Addr, Binary, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response, StdError,
+    SubMsg, Uint128, WasmMsg,
 };
 use cw2::{get_contract_version, set_contract_version};
 use cw20::MinterResponse;
@@ -13,24 +13,19 @@ use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use white_whale::denom::LUNA_DENOM;
 use white_whale::deposit_info::DepositInfo;
 use white_whale::fee::{Fee, VaultFee};
-use white_whale::luna_vault::luna_unbond_handler::{EXPIRATION_TIME_KEY, OWNER_KEY};
 use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::luna_vault::msg::*;
 
 use crate::commands::set_fee;
 use crate::error::LunaVaultError;
-use crate::helpers::{event_contains_attr, get_attribute_value_from_event, get_lp_token_address};
+use crate::helpers::get_lp_token_address;
 use crate::pool_info::PoolInfoRaw;
 use crate::response::MsgInstantiateContractResponse;
-use crate::state::{
-    CurrentBatch, ProfitCheck, State, ADMIN, CURRENT_BATCH, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT,
-    STATE, UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLER_EXPIRATION_TIMES,
-};
+use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 use crate::{commands, flashloan, helpers, queries, replies};
 
-const INSTANTIATE_REPLY_ID: u8 = 1u8;
-pub(crate) const INSTANTIATE_UNBOND_HANDLER_REPLY_ID: u8 = 2u8;
-pub(crate) const POST_INSTANTIATE_UNBOND_ACTION_REPLY_ID: u8 = 3u8;
+const INSTANTIATE_REPLY_ID: u64 = 1u64;
+pub(crate) const INSTANTIATE_UNBOND_HANDLER_REPLY_ID: u64 = 2u64;
 pub const DEFAULT_LP_TOKEN_NAME: &str = "White Whale Luna Vault LP Token";
 pub const DEFAULT_LP_TOKEN_SYMBOL: &str = "wwVLuna";
 
@@ -128,10 +123,6 @@ pub fn instantiate(
     };
     PROFIT.save(deps.storage, &profit)?;
 
-    // Setup current batch
-    let batch = CurrentBatch { id: 1 };
-    CURRENT_BATCH.save(deps.storage, &batch)?;
-
     // Setup the admin as the creator of the contract
     ADMIN.set(deps, Some(info.sender))?;
 
@@ -163,7 +154,7 @@ pub fn instantiate(
         }
         .into(),
         gas_limit: None,
-        id: u64::from(INSTANTIATE_REPLY_ID),
+        id: INSTANTIATE_REPLY_ID,
         reply_on: ReplyOn::Success,
     }))
 }
@@ -191,7 +182,7 @@ pub fn execute(
         ExecuteMsg::ProvideLiquidity { asset } => {
             commands::provide_liquidity(deps, env, info, asset)
         }
-        ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded(deps, env, info),
+        ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded(deps, info),
         ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
         ExecuteMsg::SetFee {
             flash_loan_fee,
@@ -231,22 +222,20 @@ pub fn execute(
 /// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
-    let data = msg.result.unwrap().data.unwrap();
+    let data = msg.result.clone().unwrap().data.unwrap();
     let response: MsgInstantiateContractResponse = Message::parse_from_bytes(data.as_slice())
         .map_err(|_| {
             StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
         })?;
 
-    match msg.id {
-        u64::from(INSTANTIATE_REPLY_ID) => replies::after_token_instantiation(deps, response),
-        u64::from(INSTANTIATE_UNBOND_HANDLER_REPLY_ID) => {
-            replies::after_unbond_handler_instantiation(deps, response)
+    return match msg.id {
+        INSTANTIATE_REPLY_ID => replies::after_token_instantiation(deps, response),
+        INSTANTIATE_UNBOND_HANDLER_REPLY_ID => {
+            let events = msg.result.unwrap().events;
+            replies::after_unbond_handler_instantiation(deps, response, events)
         }
-        _ => {
-            //noop
-        }
-    }
-    Ok(Response::default())
+        _ => Ok(Response::default()),
+    };
 }
 
 fn to_binary<T>(data: &T) -> VaultResult<Binary>
@@ -269,7 +258,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> VaultResult<Binary> {
         }
         QueryMsg::LastBalance {} => to_binary(&queries::query_last_balance(deps)?),
         QueryMsg::LastProfit {} => to_binary(&queries::query_last_profit(deps)?),
-        QueryMsg::WithdrawableUnbonded { address } => {
+        /*QueryMsg::WithdrawableUnbonded { address } => {
             to_binary(&queries::query_withdrawable_unbonded(deps, address, env)?)
         }
         QueryMsg::UnbondRequests {
@@ -278,9 +267,6 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> VaultResult<Binary> {
             limit,
         } => to_binary(&queries::query_unbond_requests(
             deps, address, start_from, limit,
-        )?),
-        QueryMsg::AllHistory { start_from, limit } => to_binary(
-            &queries::query_unbond_requests_limitation(deps, start_from, limit)?,
-        ),
+        )?),*/
     }
 }

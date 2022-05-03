@@ -1,17 +1,13 @@
 use crate::contract::VaultResult;
 use crate::helpers::{compute_total_value, get_withdraw_fee};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::state::{
-    all_unbond_history, get_unbond_requests, get_withdrawable_amount, State, DEPOSIT_INFO, FEE,
-    POOL_INFO, PROFIT, STATE,
-};
+use crate::state::{State, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 use cosmwasm_std::{Coin, Deps, Env, Uint128};
 use terraswap::asset::Asset;
 use terraswap::querier::query_supply;
 use white_whale::luna_vault::msg::{
-    AllHistoryResponse, EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse,
-    LastProfitResponse, PoolResponse, UnbondRequestsResponse, ValueResponse,
-    WithdrawableUnbondedResponse,
+    EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse, LastProfitResponse,
+    PoolResponse, ValueResponse,
 };
 
 /// Queries the PoolInfo configuration
@@ -83,48 +79,4 @@ pub fn query_last_balance(deps: Deps) -> VaultResult<LastBalanceResponse> {
     Ok(LastBalanceResponse {
         last_balance: conf.last_balance,
     })
-}
-
-/// Queries withdrawable unbonded
-pub fn query_withdrawable_unbonded(
-    deps: Deps,
-    address: String,
-    env: Env,
-) -> VaultResult<WithdrawableUnbondedResponse> {
-    let state = STATE.load(deps.storage)?;
-
-    let historical_time = env.block.time.seconds() - state.unbonding_period;
-    let addr = deps.api.addr_validate(&address)?;
-    // query the withdrawable amount
-    let all_requests = get_withdrawable_amount(deps.storage, &addr, historical_time)?;
-
-    let withdrawable = WithdrawableUnbondedResponse {
-        withdrawable: all_requests,
-    };
-    Ok(withdrawable)
-}
-
-pub fn query_unbond_requests(
-    deps: Deps,
-    address: String,
-    start: Option<u64>,
-    limit: Option<u32>,
-) -> VaultResult<UnbondRequestsResponse> {
-    let addr = deps.api.addr_validate(&address)?;
-    let requests = get_unbond_requests(deps.storage, &addr, start, limit)?;
-    let res = UnbondRequestsResponse { address, requests };
-    Ok(res)
-}
-
-pub fn query_unbond_requests_limitation(
-    deps: Deps,
-    start: Option<u64>,
-    limit: Option<u32>,
-) -> VaultResult<AllHistoryResponse> {
-    let requests = all_unbond_history(deps.storage, start, limit)?;
-    let requests_res = requests.iter().map(|item| item.as_res()).collect();
-    let res = AllHistoryResponse {
-        history: requests_res,
-    };
-    Ok(res)
 }

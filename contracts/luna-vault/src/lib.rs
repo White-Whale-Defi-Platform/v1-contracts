@@ -1,6 +1,5 @@
 mod commands;
 pub mod contract;
-mod deserializer;
 pub mod error;
 mod flashloan;
 mod helpers;

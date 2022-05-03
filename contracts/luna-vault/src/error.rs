@@ -1,4 +1,4 @@
-use std::backtrace::Backtrace;
+use std::num::ParseIntError;
 use thiserror::Error;
 
 use cosmwasm_std::{DivideByZeroError, OverflowError, StdError};
@@ -14,6 +14,9 @@ pub enum LunaVaultError {
 
     #[error("{0}")]
     OverflowError(#[from] OverflowError),
+
+    #[error("{0}")]
+    ParseIntError(#[from] ParseIntError),
 
     #[error("Semver parsing error: {0}")]
     SemVer(String),
@@ -70,6 +73,9 @@ pub enum LunaVaultError {
     #[error("Missing unbond data cache.")]
     UnbondHandlerMissingDataCache {},
 
+    #[error("An error occurred reading the unbond data cache.")]
+    UnbondDataCacheError {},
+
     #[error("The data parsed from the unbond handler instantiation msg and cache does not match.")]
     UnbondHandlerMismatchingDataCache {},
 
@@ -81,6 +87,12 @@ pub enum LunaVaultError {
 
     #[error("The handler triggering the release does not match the on.")]
     UnbondHandlerReleaseMismatch {},
+
+    #[error("Expiration time couldn't be fetched.")]
+    ExpirationTimeUnSet {},
+
+    #[error("Couldn't get unbond handler.")]
+    UnbondHandlerError {},
 
     #[error("Last balance is non-zero, you can only call this function once.")]
     Nonzero {},
