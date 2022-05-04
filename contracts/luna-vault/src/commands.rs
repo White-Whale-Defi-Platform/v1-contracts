@@ -19,6 +19,7 @@ use crate::helpers::{
     unbond_bluna_with_handler_msg, update_unbond_handler_state_msg, withdraw_luna_from_handler_msg,
 };
 use crate::pool_info::PoolInfoRaw;
+use crate::queries::query_withdrawable_unbonded;
 use crate::state::{
     get_unbond_handler_expiration_time, UnbondDataCache, UnbondHandlerAddr, ADMIN, DEPOSIT_INFO,
     FEE, POOL_INFO, PROFIT, STATE, UNBOND_CACHE, UNBOND_HANDLERS_ASSIGNED,
@@ -448,10 +449,15 @@ pub fn withdraw_unbonded(deps: DepsMut, msg_info: MessageInfo) -> VaultResult<Re
     let unbond_handler = unbond_handler_option.ok_or(LunaVaultError::UnbondHandlerError {})?;
     // create the withdraw unbonded msg with the assigned unbond handler
     let withdraw_unbonded_msg = withdraw_luna_from_handler_msg(unbond_handler.clone())?;
+    let withadrawable_amount =
+        query_withdrawable_unbonded(deps.as_ref(), unbond_handler.clone().to_string())?
+            .withdrawable;
+
     Ok(Response::new()
         .add_attributes(vec![
             attr("action", "withdraw_unbonded"),
             attr("unbond_handler", unbond_handler.to_string()),
+            attr("withadrawable_amount", withadrawable_amount.to_string()),
         ])
         .add_message(withdraw_unbonded_msg))
 }

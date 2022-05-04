@@ -1,5 +1,7 @@
 use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{Addr, Decimal, Deps, Env, QueryRequest, StdResult, to_binary, Uint128, WasmQuery};
+use cosmwasm_std::{
+    to_binary, Addr, Decimal, Deps, Env, QueryRequest, StdResult, Uint128, WasmQuery,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +13,9 @@ pub enum AnchorQuery {
         distributed_interest: Option<Uint256>,
     },
     UnbondRequests {
+        address: String,
+    },
+    WithdrawableUnbonded {
         address: String,
     },
 }
@@ -28,6 +33,11 @@ pub struct UnbondRequestsResponse {
 }
 
 pub type UnbondRequest = Vec<(u64, Uint128, Uint128)>;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct WithdrawableUnbondedResponse {
+    pub withdrawable: Uint128,
+}
 
 pub fn query_aust_exchange_rate(
     env: Env,
@@ -54,7 +64,23 @@ pub fn query_unbond_requests(
         deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
             contract_addr: bluna_hub_address.to_string(),
             msg: to_binary(&AnchorQuery::UnbondRequests {
-                address: address.to_string()
+                address: address.to_string(),
+            })?,
+        }))?;
+
+    Ok(response)
+}
+
+pub fn query_withdrawable_unbonded(
+    deps: Deps,
+    bluna_hub_address: Addr,
+    address: Addr,
+) -> StdResult<WithdrawableUnbondedResponse> {
+    let response: WithdrawableUnbondedResponse =
+        deps.querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+            contract_addr: bluna_hub_address.to_string(),
+            msg: to_binary(&AnchorQuery::WithdrawableUnbonded {
+                address: address.to_string(),
             })?,
         }))?;
 

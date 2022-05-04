@@ -133,19 +133,20 @@ pub enum VaultQueryMsg {
     PoolState {},
     State {},
     Fees {},
-    EstimateWithdrawFee { amount: Uint128 },
+    EstimateWithdrawFee {
+        amount: Uint128,
+    },
     VaultValue {},
     LastBalance {},
     LastProfit {},
-    //todo proxy those queries through the unbond handler
-    /*WithdrawableUnbonded {
+    /// queries anchor for withdrawable unbonded amount
+    WithdrawableUnbonded {
         address: String,
     },
+    /// queries anchor for unbonded requests
     UnbondRequests {
         address: String,
-        start_from: Option<u64>,
-        limit: Option<u32>,
-    },*/
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
