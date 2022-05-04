@@ -1,13 +1,22 @@
-use crate::contract::VaultResult;
-use crate::helpers::{compute_total_value, get_withdraw_fee};
-use crate::pool_info::{PoolInfo, PoolInfoRaw};
-use crate::state::{State, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 use cosmwasm_std::{Coin, Deps, Env, Uint128};
 use terraswap::asset::Asset;
 use terraswap::querier::query_supply;
+
+use white_whale::luna_vault::luna_unbond_handler::msg::QueryMsg;
 use white_whale::luna_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse, LastProfitResponse,
     PoolResponse, ValueResponse,
+};
+use white_whale::memory::queries::query_contract_from_mem;
+use white_whale::memory::ANCHOR_BLUNA_HUB_ID;
+use white_whale::query::anchor::{UnbondRequestsResponse, WithdrawableUnbondedResponse};
+
+use crate::contract::VaultResult;
+use crate::error::LunaVaultError;
+use crate::helpers::{compute_total_value, get_withdraw_fee};
+use crate::pool_info::{PoolInfo, PoolInfoRaw};
+use crate::state::{
+    State, UnbondHandlerAddr, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE, UNBOND_HANDLERS_ASSIGNED,
 };
 
 /// Queries the PoolInfo configuration
@@ -79,4 +88,57 @@ pub fn query_last_balance(deps: Deps) -> VaultResult<LastBalanceResponse> {
     Ok(LastBalanceResponse {
         last_balance: conf.last_balance,
     })
+}
+
+/// Queries withdrawable unbonded amount for the unbond handler associated with the given address
+pub fn query_withdrawable_unbonded(
+    deps: Deps,
+    address: String,
+) -> VaultResult<WithdrawableUnbondedResponse> {
+    let address = deps.api.addr_validate(&address)?;
+    let unbond_handler_option = UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, address.clone())?;
+
+    let unbond_handler: UnbondHandlerAddr;
+    if unbond_handler_option.is_some() {
+        let state = STATE.load(deps.storage)?;
+        let bluna_hub_address =
+            query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
+        unbond_handler = unbond_handler_option
+            .ok_or(LunaVaultError::UnbondHandlerError {})?
+            .clone();
+
+        // query how much withdrawable_unbonded is on anchor for the given unbond handler
+        Ok(white_whale::query::anchor::query_withdrawable_unbonded(
+            deps,
+            bluna_hub_address,
+            unbond_handler,
+        )?)
+    } else {
+        Err(LunaVaultError::NoUnbondHandlerAssigned {})
+    }
+}
+
+/// Queries unbond requests for the unbond handler associated with the given address
+pub fn query_unbond_requests(deps: Deps, address: String) -> VaultResult<UnbondRequestsResponse> {
+    let address = deps.api.addr_validate(&address)?;
+    let unbond_handler_option = UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, address.clone())?;
+
+    let unbond_handler: UnbondHandlerAddr;
+    if unbond_handler_option.is_some() {
+        let state = STATE.load(deps.storage)?;
+        let bluna_hub_address =
+            query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
+        unbond_handler = unbond_handler_option
+            .ok_or(LunaVaultError::UnbondHandlerError {})?
+            .clone();
+
+        // query unbond requests on anchor for the given unbond handler
+        Ok(white_whale::query::anchor::query_unbond_requests(
+            deps,
+            bluna_hub_address,
+            unbond_handler,
+        )?)
+    } else {
+        Err(LunaVaultError::NoUnbondHandlerAssigned {})
+    }
 }

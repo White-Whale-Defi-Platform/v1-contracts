@@ -76,6 +76,10 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> U
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::State {} => to_binary(&queries::query_state(deps)?),
+        QueryMsg::WithdrawableUnbonded {} => {
+            to_binary(&queries::query_withdrawable_unbonded(deps, env)?)
+        }
+        QueryMsg::UnbondRequests {} => to_binary(&queries::query_unbond_requests(deps, env)?),
     }
 }
 
