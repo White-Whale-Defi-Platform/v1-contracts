@@ -21,8 +21,6 @@ pub struct State {
     pub memory_address: Addr,
     pub whitelisted_contracts: Vec<Addr>,
     pub allow_non_whitelisted: bool,
-    // as a duration in seconds
-    pub unbonding_period: u64,
     // code id for the unbond handler contract
     pub unbond_handler_code_id: u64,
 }
