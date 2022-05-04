@@ -212,7 +212,6 @@ pub(crate) fn withdraw_passive_strategy(
         },
     };
 
-
     // simulate the luna swap so we know the bluna return amount when we later provide liquidity
     let luna_return: astroport::pair::SimulationResponse = deps.querier.query_wasm_smart(
         astro_lp_address,
@@ -228,16 +227,15 @@ pub(crate) fn withdraw_passive_strategy(
         },
     };
 
-    if !requested_token.is_none(){
+    if !requested_token.is_none() {
         // Prepare the variant return asset, assuming the passed addr is valid
         let luna_variant_asset = astroport::asset::Asset {
             amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
             info: astroport::asset::AssetInfo::Token {
-                contract_addr: requested_token.unwrap_or_else(||bluna_address),
+                contract_addr: requested_token.unwrap_or_else(|| bluna_address),
             },
         };
     }
-
 
     // Now make a purchase on the relevant LUNAVARIANT-LUNA pair
     let luna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
@@ -252,8 +250,8 @@ pub(crate) fn withdraw_passive_strategy(
     });
 
     let response = response.add_messages(vec![
-        withdraw_msg, // 1. withdraw bluna and Luna from LP.
-        luna_purchase_msg,        // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
+        withdraw_msg,      // 1. withdraw bluna and Luna from LP.
+        luna_purchase_msg, // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
     ]);
 
     Ok(response)
@@ -443,7 +441,6 @@ fn unbond(
 pub fn withdraw_unbonded(deps: DepsMut, msg_info: MessageInfo) -> VaultResult<Response> {
     // get handler assigned to user
     let unbond_handler_option = UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, msg_info.sender)?;
-    //todo think how to trigger liquidations as the msg_info.sender will be a bot, not the owner
     if unbond_handler_option.is_none() {
         return Err(LunaVaultError::NoUnbondHandlerAssigned {});
     }
@@ -451,12 +448,10 @@ pub fn withdraw_unbonded(deps: DepsMut, msg_info: MessageInfo) -> VaultResult<Re
     let unbond_handler = unbond_handler_option.ok_or(LunaVaultError::UnbondHandlerError {})?;
     // create the withdraw unbonded msg with the assigned unbond handler
     let withdraw_unbonded_msg = withdraw_luna_from_handler_msg(unbond_handler.clone())?;
-    //todo query the withdrawable amount from the handler and append it to the response
     Ok(Response::new()
         .add_attributes(vec![
             attr("action", "withdraw_unbonded"),
             attr("unbond_handler", unbond_handler.to_string()),
-            // attr("amount", withdraw_amount),
         ])
         .add_message(withdraw_unbonded_msg))
 }
