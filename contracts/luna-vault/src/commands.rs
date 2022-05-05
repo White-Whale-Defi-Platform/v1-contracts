@@ -21,9 +21,8 @@ use crate::helpers::{
 use crate::pool_info::PoolInfoRaw;
 use crate::queries::{query_unbond_handler_expiration_time, query_withdrawable_unbonded};
 use crate::state::{
-    UnbondDataCache, UnbondHandlerAddr, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE,
-    UNBOND_CACHE, UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLERS_AVAILABLE,
-    UNBOND_HANDLER_EXPIRATION_TIMES,
+    UnbondDataCache, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE, UNBOND_CACHE,
+    UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLERS_AVAILABLE, UNBOND_HANDLER_EXPIRATION_TIMES,
 };
 
 /// handler function invoked when the luna-vault contract receives
@@ -322,16 +321,9 @@ fn unbond(
     let bluna_amount = Uint128::zero();
 
     // Check if there's a handler assigned to the user
-    let unbond_handler_option =
-        UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, sender_addr.clone())?;
-
-    let unbond_handler: UnbondHandlerAddr;
-    if unbond_handler_option.is_some() {
-        // there's an unbond handler assigned to the user
-        unbond_handler = unbond_handler_option
-            .ok_or(LunaVaultError::UnbondHandlerError {})?
-            .clone();
-
+    if let Some(unbond_handler) =
+        UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, sender_addr.clone())?
+    {
         // update the expiration time on the assigned handler
         let expiration_time = env
             .block
@@ -356,9 +348,36 @@ fn unbond(
     } else {
         // there's no unbond handlers assigned to the user
         // check if there are handlers available to be used
-        let unbond_handlers_available = UNBOND_HANDLERS_AVAILABLE.load(deps.storage)?;
-        if unbond_handlers_available.is_empty() {
-            // create a new handler if there are no handlers available
+        if let Some((first, others)) = UNBOND_HANDLERS_AVAILABLE.load(deps.storage)?.split_first() {
+            // assign unbond handler to user
+            UNBOND_HANDLERS_ASSIGNED.save(deps.storage, sender_addr.clone(), &first)?;
+
+            // store remaining unbond handler addresses
+            UNBOND_HANDLERS_AVAILABLE.save(deps.storage, &others.to_vec())?;
+
+            // update state of the selected unbond handler, make sender_addr the owner
+            // and update the expiration_time
+            let expiration_time = env
+                .block
+                .time
+                .seconds()
+                .checked_add(query_unbond_handler_expiration_time(deps.storage)?)
+                .ok_or(LunaVaultError::ExpirationTimeUnSet {})?;
+
+            let unbond_handler_update_state_msg = update_unbond_handler_state_msg(
+                first.clone(),
+                Some(sender_addr.to_string()),
+                Some(expiration_time),
+            )?;
+            UNBOND_HANDLER_EXPIRATION_TIMES.save(deps.storage, first.clone(), &&expiration_time)?;
+
+            // send bluna to unbond handler
+            let unbond_msg =
+                unbond_bluna_with_handler_msg(deps.storage, bluna_amount.clone(), &first)?;
+
+            response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
+        } else {
+            // create a new unbond handler if there are no handlers available
             let state = STATE.load(deps.storage)?;
             let unbond_handler_instantiation_msg = SubMsg {
                 id: INSTANTIATE_UNBOND_HANDLER_REPLY_ID,
@@ -386,50 +405,7 @@ fn unbond(
                 },
             )?;
             response = response.add_submessage(unbond_handler_instantiation_msg);
-        } else {
-            // split unbond_handlers_available in a slice with first and rest of handlers
-            let handlers = unbond_handlers_available.split_first();
-            // use first available unbond handler
-            unbond_handler = handlers
-                .ok_or(LunaVaultError::UnbondHandlerError {})?
-                .0
-                .clone();
-            // assign unbond handler to user
-            UNBOND_HANDLERS_ASSIGNED.save(deps.storage, sender_addr.clone(), &unbond_handler)?;
-
-            // store remaining unbond handler addresses
-            let remaining_unbond_handlers_available = handlers
-                .ok_or(LunaVaultError::UnbondHandlerError {})?
-                .1
-                .to_vec();
-            UNBOND_HANDLERS_AVAILABLE.save(deps.storage, &remaining_unbond_handlers_available)?;
-
-            // update state of the selected unbond handler, make sender_addr the owner
-            // and update the expiration_time
-            let expiration_time = env
-                .block
-                .time
-                .seconds()
-                .checked_add(query_unbond_handler_expiration_time(deps.storage)?)
-                .ok_or(LunaVaultError::ExpirationTimeUnSet {})?;
-
-            let unbond_handler_update_state_msg = update_unbond_handler_state_msg(
-                unbond_handler.clone(),
-                Some(sender_addr.to_string()),
-                Some(expiration_time),
-            )?;
-            UNBOND_HANDLER_EXPIRATION_TIMES.save(
-                deps.storage,
-                unbond_handler.clone(),
-                &&expiration_time,
-            )?;
-
-            // send bluna to unbond handler
-            let unbond_msg =
-                unbond_bluna_with_handler_msg(deps.storage, bluna_amount.clone(), &unbond_handler)?;
-
-            response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
-        };
+        }
     }
 
     Ok(response
