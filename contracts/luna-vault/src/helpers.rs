@@ -132,7 +132,7 @@ pub fn unwrap_reply(reply: Reply) -> StdResult<SubMsgExecutionResponse> {
 pub fn unwrap_data(response: SubMsgExecutionResponse) -> Result<Binary, StdError> {
     response
         .data
-        .ok_or(StdError::generic_err("Can't get data from reply response"))
+        .ok_or_else(|| StdError::generic_err("Can't get data from reply response"))
 }
 
 /// Builds message to send bluna to a handler triggering the unbond action

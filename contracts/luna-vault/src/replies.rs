@@ -24,7 +24,7 @@ pub fn after_token_instantiation(
         Ok(meta)
     })?;
 
-    return Ok(Response::new().add_attribute("liquidity_token_addr", liquidity_token.to_string()));
+    Ok(Response::new().add_attribute("liquidity_token_addr", liquidity_token.to_string()))
 }
 
 /// Executes after the unbond contract instantiation occurs successfully
@@ -44,7 +44,7 @@ pub fn after_unbond_handler_instantiation(
     // get owner from event
     let owner_string = get_attribute_value_from_event(event, OWNER_KEY)?;
     let owner = deps.api.addr_validate(&owner_string)?;
-    UNBOND_HANDLERS_ASSIGNED.save(deps.storage, owner.clone(), &&unbond_handler_contract)?;
+    UNBOND_HANDLERS_ASSIGNED.save(deps.storage, owner.clone(), &unbond_handler_contract)?;
 
     // get expiration_time from event
     let expiration_time_string = get_attribute_value_from_event(event, EXPIRATION_TIME_KEY)?;
@@ -79,7 +79,7 @@ pub fn after_unbond_handler_instantiation(
     // clear the unbond cache
     UNBOND_CACHE.remove(deps.storage);
 
-    return Ok(Response::new().add_message(unbond_msg).add_attributes(vec![
+    Ok(Response::new().add_message(unbond_msg).add_attributes(vec![
         attr("action", "unbond_handler_instantiate"),
         attr("owner", owner_string),
         attr(
@@ -87,5 +87,5 @@ pub fn after_unbond_handler_instantiation(
             unbond_handler_contract.to_string(),
         ),
         attr("expiration_time", expiration_time_string),
-    ]));
+    ]))
 }

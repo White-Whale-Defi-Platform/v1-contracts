@@ -19,11 +19,11 @@ pub(crate) fn query_withdrawable_unbonded(
         query_contract_from_mem(deps, &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
 
     // query how much withdrawable_unbonded is on anchor for the given unbond handler
-    Ok(white_whale::query::anchor::query_withdrawable_unbonded(
+    white_whale::query::anchor::query_withdrawable_unbonded(
         deps,
         bluna_hub_address,
         env.contract.address,
-    )?)
+    )
 }
 
 /// Gets the state of the contract
@@ -33,9 +33,5 @@ pub(crate) fn query_unbond_requests(deps: Deps, env: Env) -> StdResult<UnbondReq
         query_contract_from_mem(deps, &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
 
     // query unbond requests on anchor for the given unbond handler
-    Ok(white_whale::query::anchor::query_unbond_requests(
-        deps,
-        bluna_hub_address,
-        env.contract.address,
-    )?)
+    white_whale::query::anchor::query_unbond_requests(deps, bluna_hub_address, env.contract.address)
 }

@@ -135,9 +135,9 @@ pub fn query_unbond_requests(deps: Deps, address: String) -> VaultResult<UnbondR
 pub fn query_unbond_handler_expiration_time(storage: &dyn Storage) -> VaultResult<u64> {
     let expiration_time = UNBOND_HANDLER_EXPIRATION_TIME.may_load(storage)?;
 
-    return if let Some(expiration_time) = expiration_time {
+    if let Some(expiration_time) = expiration_time {
         Ok(expiration_time)
     } else {
         Ok(DEFAULT_UNBOND_EXPIRATION_TIME)
-    };
+    }
 }

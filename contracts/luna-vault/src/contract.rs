@@ -227,14 +227,14 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
             StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
         })?;
 
-    return match msg.id {
+    match msg.id {
         INSTANTIATE_REPLY_ID => replies::after_token_instantiation(deps, response),
         INSTANTIATE_UNBOND_HANDLER_REPLY_ID => {
             let events = res.events;
             replies::after_unbond_handler_instantiation(deps, response, events)
         }
         _ => Ok(Response::default()),
-    };
+    }
 }
 
 fn to_binary<T>(data: &T) -> VaultResult<Binary>

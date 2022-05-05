@@ -337,12 +337,12 @@ fn unbond(
         UNBOND_HANDLER_EXPIRATION_TIMES.save(
             deps.storage,
             unbond_handler.clone(),
-            &&expiration_time,
+            &expiration_time,
         )?;
 
         // send bluna to unbond handler
         let unbond_msg =
-            unbond_bluna_with_handler_msg(deps.storage, bluna_amount.clone(), &unbond_handler)?;
+            unbond_bluna_with_handler_msg(deps.storage, bluna_amount, &unbond_handler)?;
 
         response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
     } else {
@@ -350,7 +350,7 @@ fn unbond(
         // check if there are handlers available to be used
         if let Some((first, others)) = UNBOND_HANDLERS_AVAILABLE.load(deps.storage)?.split_first() {
             // assign unbond handler to user
-            UNBOND_HANDLERS_ASSIGNED.save(deps.storage, sender_addr.clone(), &first)?;
+            UNBOND_HANDLERS_ASSIGNED.save(deps.storage, sender_addr.clone(), first)?;
 
             // store remaining unbond handler addresses
             UNBOND_HANDLERS_AVAILABLE.save(deps.storage, &others.to_vec())?;
@@ -369,11 +369,10 @@ fn unbond(
                 Some(sender_addr.to_string()),
                 Some(expiration_time),
             )?;
-            UNBOND_HANDLER_EXPIRATION_TIMES.save(deps.storage, first.clone(), &&expiration_time)?;
+            UNBOND_HANDLER_EXPIRATION_TIMES.save(deps.storage, first.clone(), &expiration_time)?;
 
             // send bluna to unbond handler
-            let unbond_msg =
-                unbond_bluna_with_handler_msg(deps.storage, bluna_amount.clone(), &first)?;
+            let unbond_msg = unbond_bluna_with_handler_msg(deps.storage, bluna_amount, first)?;
 
             response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
         } else {
@@ -400,7 +399,7 @@ fn unbond(
             UNBOND_CACHE.save(
                 deps.storage,
                 &UnbondDataCache {
-                    owner: sender_addr.clone(),
+                    owner: sender_addr,
                     bluna_amount,
                 },
             )?;
@@ -425,8 +424,7 @@ pub fn withdraw_unbonded(deps: DepsMut, msg_info: MessageInfo) -> VaultResult<Re
     // create the withdraw unbonded msg with the assigned unbond handler
     let withdraw_unbonded_msg = withdraw_luna_from_handler_msg(unbond_handler.clone())?;
     let withadrawable_amount =
-        query_withdrawable_unbonded(deps.as_ref(), unbond_handler.clone().to_string())?
-            .withdrawable;
+        query_withdrawable_unbonded(deps.as_ref(), unbond_handler.to_string())?.withdrawable;
 
     Ok(Response::new()
         .add_attributes(vec![
@@ -607,7 +605,7 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
             state.astro_lp_address.clone(),
             &astroport::generator::QueryMsg::PendingToken {
                 lp_token: passive_lp_token_address.clone().into_string(),
-                user: env.contract.address.clone().into_string(),
+                user: env.contract.address.into_string(),
             },
         )?;
 
@@ -717,9 +715,8 @@ pub(crate) fn handle_unbond_handler_msg(
             if assigned_handler_option.is_none() {
                 return Err(LunaVaultError::UnbondHandlerNotAssigned {});
             } else {
-                let assigned_handler = assigned_handler_option
-                    .ok_or(LunaVaultError::UnbondHandlerError {})?
-                    .clone();
+                let assigned_handler =
+                    assigned_handler_option.ok_or(LunaVaultError::UnbondHandlerError {})?;
                 if assigned_handler != info.sender || assigned_handler != unbond_handler {
                     return Err(LunaVaultError::UnbondHandlerReleaseMismatch {});
                 }
