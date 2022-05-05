@@ -1,13 +1,18 @@
 use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{attr, from_binary, to_binary, BankMsg, Binary, Coin, CosmosMsg, Empty, Response, Uint128, WasmMsg, Addr};
-
+use cosmwasm_std::{
+    attr, from_binary, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Empty, Response, Uint128,
+    WasmMsg,
+};
 use cw20::Cw20ExecuteMsg;
 use cw20::Cw20ReceiveMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use terra_multi_test::{Contract, ContractWrapper};
 use terraswap::asset::{Asset, AssetInfo};
-use white_whale::query::anchor::{AnchorQuery, EpochStateResponse, UnbondRequestsResponse};
+
+use white_whale::query::anchor::{
+    AnchorQuery, EpochStateResponse, UnbondRequestsResponse, WithdrawableUnbondedResponse,
+};
 
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
@@ -167,9 +172,12 @@ pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
                     distributed_interest: _,
                     block_height: _,
                 } => Ok(to_binary(&mock_epoch_state())?),
-                AnchorQuery::UnbondRequests {
-                    address: addr
-                } => Ok(to_binary(&mock_unbond_requests(deps.api.addr_validate(&*addr)?))?)
+                AnchorQuery::UnbondRequests { address: addr } => Ok(to_binary(
+                    &mock_unbond_requests(deps.api.addr_validate(&*addr)?),
+                )?),
+                AnchorQuery::WithdrawableUnbonded { .. } => {
+                    Ok(to_binary(&mock_withdrawable_unbonded())?)
+                }
             }
         },
     );
@@ -184,10 +192,17 @@ pub fn mock_epoch_state() -> EpochStateResponse {
     epoch_state
 }
 
-pub fn mock_unbond_requests(address:Addr) -> UnbondRequestsResponse {
+pub fn mock_unbond_requests(address: Addr) -> UnbondRequestsResponse {
     let unbond_requests: UnbondRequestsResponse = UnbondRequestsResponse {
         address: address.to_string(),
-        requests: vec![]
+        requests: vec![],
     };
     unbond_requests
+}
+
+pub fn mock_withdrawable_unbonded() -> WithdrawableUnbondedResponse {
+    let withdrawable_unbonded: WithdrawableUnbondedResponse = WithdrawableUnbondedResponse {
+        withdrawable: Uint128::zero(),
+    };
+    withdrawable_unbonded
 }

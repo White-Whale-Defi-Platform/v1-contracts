@@ -28,7 +28,7 @@ pub struct InstantiateMsg {
     pub commission_fee: Decimal,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
-    pub unbonding_period: u64,
+    pub unbond_handler_code_id: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema, CosmWasmContract)]
@@ -59,7 +59,6 @@ pub enum ExecuteMsg {
         memory_address: Option<String>,
         whitelisted_contracts: Option<Vec<String>>,
         allow_non_whitelisted: Option<bool>,
-        unbonding_period: Option<u64>,
     },
     /// Execute a flashloan
     FlashLoan { payload: FlashLoanPayload },
@@ -93,14 +92,22 @@ pub enum CallbackMsg {
     AfterTrade { loan_fee: Uint128 },
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum UnbondHandlerMsg {
-    AfterUnbondHandlerReleased { unbond_handler_addr: String },
+    AfterUnbondHandlerReleased {
+        unbond_handler_addr: String,
+        previous_owner: String,
+    },
 }
 
-
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum UnbondActionReply {
+    /// Message send right after creating a new unbond handler instance
+    /// Used to trigger a reply and execute the unbond message on the handler
+    Unbond { bluna_amount: Uint128 },
+}
 
 // Modified from
 // https://github.com/CosmWasm/cosmwasm-plus/blob/v0.2.3/packages/cw20/src/receiver.rs#L15
@@ -130,18 +137,16 @@ pub enum VaultQueryMsg {
     VaultValue {},
     LastBalance {},
     LastProfit {},
+    /// queries anchor for withdrawable unbonded amount
     WithdrawableUnbonded {
         address: String,
     },
+    /// queries anchor for unbonded requests
     UnbondRequests {
         address: String,
-        start_from: Option<u64>,
-        limit: Option<u32>,
     },
-    AllHistory {
-        start_from: Option<u64>,
-        limit: Option<u32>,
-    },
+    /// queries the expiration time for unbond handlers
+    UnbondHandlerExpirationTime {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -198,30 +203,4 @@ pub struct LastBalanceResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct LastProfitResponse {
     pub last_profit: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct WithdrawableUnbondedResponse {
-    pub withdrawable: Uint128,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct UnbondRequestsResponse {
-    pub address: String,
-    pub requests: UnbondRequestResponse,
-}
-
-pub type UnbondRequestResponse = Vec<(u64, Uint128)>;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AllHistoryResponse {
-    pub history: Vec<UnbondHistoryResponse>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct UnbondHistoryResponse {
-    pub batch_id: u64,
-    pub time: u64,
-    pub amount: Uint128,
-    pub released: bool,
 }

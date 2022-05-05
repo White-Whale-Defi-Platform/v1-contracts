@@ -2,10 +2,10 @@ use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
     Addr,
 };
+use white_whale::luna_vault::luna_unbond_handler::msg::ExecuteMsg;
 
 use crate::{
     contract::execute,
-    msg::ExecuteMsg,
     state::{State, STATE},
 };
 

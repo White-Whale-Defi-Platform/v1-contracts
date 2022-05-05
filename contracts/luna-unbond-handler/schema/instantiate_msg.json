@@ -6,6 +6,14 @@
     "memory_contract"
   ],
   "properties": {
+    "expires_in": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
+    },
     "memory_contract": {
       "type": "string"
     },

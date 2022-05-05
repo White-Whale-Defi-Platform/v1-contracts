@@ -62,6 +62,8 @@ impl CallbackMsg {
 pub enum QueryMsg {
     /// Queries the state
     State {},
+    WithdrawableUnbonded {},
+    UnbondRequests {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

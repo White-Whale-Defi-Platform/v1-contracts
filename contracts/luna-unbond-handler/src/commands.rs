@@ -8,6 +8,7 @@ use terraswap::querier::query_balance;
 
 use white_whale::anchor::{anchor_bluna_unbond_msg, anchor_withdraw_unbonded_msg};
 use white_whale::denom::LUNA_DENOM;
+use white_whale::luna_vault::luna_unbond_handler::msg::{CallbackMsg, Cw20HookMsg};
 use white_whale::luna_vault::msg::UnbondHandlerMsg;
 use white_whale::luna_vault::queries::query_luna_vault_fees;
 use white_whale::memory::error::MemoryError;
@@ -17,7 +18,6 @@ use white_whale::memory::queries::{
 use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, BLUNA_TOKEN_MEMORY_ID, TREASURY_ADDRESS_ID};
 use white_whale::query::anchor::query_unbond_requests;
 
-use crate::msg::{CallbackMsg, Cw20HookMsg};
 use crate::serde_option::serde_option;
 use crate::state::{ADMIN, STATE};
 use crate::{UnbondHandlerError, UnbondHandlerResult};
@@ -218,7 +218,7 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
         },
         amount: refund_amount.checked_sub(liquidation_fee_amount)?,
     }
-    .into_msg(&deps.querier, owner)?;
+    .into_msg(&deps.querier, owner.clone())?;
     response = response.add_attribute(
         "refund_amount",
         refund_amount.checked_sub(liquidation_fee_amount)?,
@@ -275,6 +275,7 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
             contract_addr: luna_vault_addr.to_string(),
             msg: to_binary(&UnbondHandlerMsg::AfterUnbondHandlerReleased {
                 unbond_handler_addr: env.contract.address.to_string(),
+                previous_owner: owner.to_string(),
             })?,
             funds: vec![],
         });

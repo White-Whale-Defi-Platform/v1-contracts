@@ -3,7 +3,7 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
-      "description": "Receive hook for bluna or cluna",
+      "description": "Receive hook for bluna",
       "type": "object",
       "required": [
         "receive"

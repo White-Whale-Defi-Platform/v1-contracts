@@ -154,7 +154,8 @@ pub fn after_trade(
     loan_fee: Uint128,
 ) -> VaultResult<Response> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value_in_luna, luna_in_contract, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
+    let (total_value_in_luna, luna_in_contract, _, _, _) =
+        compute_total_value(&env, deps.as_ref(), &info)?;
     let state = STATE.load(deps.storage)?;
     // Deposit funds into a passive strategy again if applicable.
     let mut response = Response::default();

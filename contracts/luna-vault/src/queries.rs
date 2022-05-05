@@ -1,17 +1,22 @@
+use cosmwasm_std::{Coin, Deps, Env, Storage, Uint128};
+use terraswap::asset::Asset;
+use terraswap::querier::query_supply;
+
+use white_whale::luna_vault::msg::{
+    EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse, LastProfitResponse,
+    PoolResponse, ValueResponse,
+};
+use white_whale::memory::queries::query_contract_from_mem;
+use white_whale::memory::ANCHOR_BLUNA_HUB_ID;
+use white_whale::query::anchor::{UnbondRequestsResponse, WithdrawableUnbondedResponse};
+
 use crate::contract::VaultResult;
+use crate::error::LunaVaultError;
 use crate::helpers::{compute_total_value, get_withdraw_fee};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::state::{
-    all_unbond_history, get_unbond_requests, get_withdrawable_amount, State, DEPOSIT_INFO, FEE,
-    POOL_INFO, PROFIT, STATE,
-};
-use cosmwasm_std::{Coin, Deps, Env, Uint128};
-use terraswap::asset::Asset;
-use terraswap::querier::query_supply;
-use white_whale::luna_vault::msg::{
-    AllHistoryResponse, EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse,
-    LastProfitResponse, PoolResponse, UnbondRequestsResponse, ValueResponse,
-    WithdrawableUnbondedResponse,
+    State, DEFAULT_UNBOND_EXPIRATION_TIME, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE,
+    UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLER_EXPIRATION_TIME,
 };
 
 /// Queries the PoolInfo configuration
@@ -85,46 +90,54 @@ pub fn query_last_balance(deps: Deps) -> VaultResult<LastBalanceResponse> {
     })
 }
 
-/// Queries withdrawable unbonded
+/// Queries withdrawable unbonded amount for the unbond handler associated with the given address
 pub fn query_withdrawable_unbonded(
     deps: Deps,
     address: String,
-    env: Env,
 ) -> VaultResult<WithdrawableUnbondedResponse> {
+    let address = deps.api.addr_validate(&address)?;
+    let unbond_handler = UNBOND_HANDLERS_ASSIGNED
+        .may_load(deps.storage, address)?
+        .ok_or(LunaVaultError::NoUnbondHandlerAssigned {})?;
+
     let state = STATE.load(deps.storage)?;
+    let bluna_hub_address =
+        query_contract_from_mem(deps, &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
 
-    let historical_time = env.block.time.seconds() - state.unbonding_period;
-    let addr = deps.api.addr_validate(&address)?;
-    // query the withdrawable amount
-    let all_requests = get_withdrawable_amount(deps.storage, &addr, historical_time)?;
-
-    let withdrawable = WithdrawableUnbondedResponse {
-        withdrawable: all_requests,
-    };
-    Ok(withdrawable)
+    // query how much withdrawable_unbonded is on anchor for the given unbond handler
+    Ok(white_whale::query::anchor::query_withdrawable_unbonded(
+        deps,
+        bluna_hub_address,
+        unbond_handler,
+    )?)
 }
 
-pub fn query_unbond_requests(
-    deps: Deps,
-    address: String,
-    start: Option<u64>,
-    limit: Option<u32>,
-) -> VaultResult<UnbondRequestsResponse> {
-    let addr = deps.api.addr_validate(&address)?;
-    let requests = get_unbond_requests(deps.storage, &addr, start, limit)?;
-    let res = UnbondRequestsResponse { address, requests };
-    Ok(res)
+/// Queries unbond requests for the unbond handler associated with the given address
+pub fn query_unbond_requests(deps: Deps, address: String) -> VaultResult<UnbondRequestsResponse> {
+    let address = deps.api.addr_validate(&address)?;
+    let unbond_handler = UNBOND_HANDLERS_ASSIGNED
+        .may_load(deps.storage, address)?
+        .ok_or(LunaVaultError::NoUnbondHandlerAssigned {})?;
+
+    let state = STATE.load(deps.storage)?;
+    let bluna_hub_address =
+        query_contract_from_mem(deps, &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
+
+    // query unbond requests on anchor for the given unbond handler
+    Ok(white_whale::query::anchor::query_unbond_requests(
+        deps,
+        bluna_hub_address,
+        unbond_handler,
+    )?)
 }
 
-pub fn query_unbond_requests_limitation(
-    deps: Deps,
-    start: Option<u64>,
-    limit: Option<u32>,
-) -> VaultResult<AllHistoryResponse> {
-    let requests = all_unbond_history(deps.storage, start, limit)?;
-    let requests_res = requests.iter().map(|item| item.as_res()).collect();
-    let res = AllHistoryResponse {
-        history: requests_res,
-    };
-    Ok(res)
+/// Queries the unbond handler expiration time if set, returns the default value otherwise
+pub fn query_unbond_handler_expiration_time(storage: &dyn Storage) -> VaultResult<u64> {
+    let expiration_time = UNBOND_HANDLER_EXPIRATION_TIME.may_load(storage)?;
+
+    if let Some(expiration_time) = expiration_time {
+        Ok(expiration_time)
+    } else {
+        Ok(DEFAULT_UNBOND_EXPIRATION_TIME)
+    }
 }

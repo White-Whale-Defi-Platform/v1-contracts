@@ -4,10 +4,15 @@ use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
-use crate::msg::{ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
+use white_whale::luna_vault::luna_unbond_handler::msg::{
+    ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
+};
+use white_whale::luna_vault::luna_unbond_handler::{EXPIRATION_TIME_KEY, OWNER_KEY};
+use white_whale::luna_vault::msg::VaultQueryMsg;
+
 use crate::serde_option::serde_option;
 use crate::state::{State, ADMIN, STATE};
-use crate::{commands, queries, UnbondHandlerResult};
+use crate::{commands, queries, UnbondHandlerError, UnbondHandlerResult};
 
 // version info for migration info
 pub(crate) const CONTRACT_NAME: &str = "crates.io:luna-unbond-handler";
@@ -30,7 +35,20 @@ pub fn instantiate(
 
     if let Some(owner) = msg.owner {
         state.owner = Some(deps.api.addr_validate(&owner)?);
-        state.expiration_time = Some(env.block.time.seconds());
+
+        let expires_in: u64 = deps.querier.query_wasm_smart(
+            info.sender.clone(),
+            &VaultQueryMsg::UnbondHandlerExpirationTime {},
+        )?;
+
+        let expiration_time = env
+            .block
+            .time
+            .seconds()
+            .checked_add(expires_in)
+            .ok_or(UnbondHandlerError::WrongExpirationTime {})?;
+
+        state.expiration_time = Some(expiration_time);
     }
 
     STATE.save(deps.storage, &state)?;
@@ -39,9 +57,9 @@ pub fn instantiate(
     ADMIN.set(deps, Some(info.sender))?;
 
     Ok(Response::new()
-        .add_attribute("method", "instantiate")
-        .add_attribute("owner", serde_option(state.owner))
-        .add_attribute("expiration_time", serde_option(state.expiration_time)))
+        .add_attribute("action", "instantiate")
+        .add_attribute(OWNER_KEY, serde_option(state.owner))
+        .add_attribute(EXPIRATION_TIME_KEY, serde_option(state.expiration_time)))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -60,9 +78,13 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> U
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::State {} => to_binary(&queries::query_state(deps)?),
+        QueryMsg::WithdrawableUnbonded {} => {
+            to_binary(&queries::query_withdrawable_unbonded(deps, env)?)
+        }
+        QueryMsg::UnbondRequests {} => to_binary(&queries::query_unbond_requests(deps, env)?),
     }
 }
 

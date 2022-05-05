@@ -29,7 +29,7 @@ pub fn instantiate_msg(
         commission_fee: Decimal::permille(8u64),
         vault_lp_token_name: None,
         vault_lp_token_symbol: None,
-        unbonding_period: 0,
+        unbond_handler_code_id: 0,
     }
 }
 
