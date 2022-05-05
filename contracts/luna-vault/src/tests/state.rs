@@ -18,7 +18,6 @@ fn state_msg() -> ExecuteMsg {
         memory_address: None,
         whitelisted_contracts: None,
         allow_non_whitelisted: None,
-        unbonding_period: None,
     }
 }
 
@@ -53,7 +52,6 @@ fn successful_set_state() {
         memory_address: None,
         whitelisted_contracts: None,
         allow_non_whitelisted: Some(true),
-        unbonding_period: None,
     };
     let info = MessageInfo {
         sender: deps.api.addr_validate(TEST_CREATOR).unwrap(),

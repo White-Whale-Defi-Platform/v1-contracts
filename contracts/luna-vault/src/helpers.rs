@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    to_binary, Addr, Coin, CosmosMsg, Decimal, Deps, Env, Event, StdError, StdResult, Storage,
-    Uint128, WasmMsg,
+    to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, Deps, Env, Event, Reply, StdError,
+    StdResult, Storage, SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use schemars::JsonSchema;
@@ -121,6 +121,18 @@ pub fn get_attribute_value_from_event(event: &Event, key: &str) -> Result<String
         .find(|attr| attr.key == key)
         .ok_or_else(|| StdError::generic_err(format!("cannot find {} attribute", key)))?
         .value)
+}
+
+/// Extracts response from reply
+pub fn unwrap_reply(reply: Reply) -> StdResult<SubMsgExecutionResponse> {
+    reply.result.into_result().map_err(StdError::generic_err)
+}
+
+/// Extracts data from reply response
+pub fn unwrap_data(response: SubMsgExecutionResponse) -> Result<Binary, StdError> {
+    response
+        .data
+        .ok_or(StdError::generic_err("Can't get data from reply response"))
 }
 
 /// Builds message to send bluna to a handler triggering the unbond action

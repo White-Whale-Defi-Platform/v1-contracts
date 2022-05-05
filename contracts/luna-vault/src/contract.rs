@@ -18,7 +18,7 @@ use white_whale::luna_vault::msg::*;
 
 use crate::commands::set_fee;
 use crate::error::LunaVaultError;
-use crate::helpers::get_lp_token_address;
+use crate::helpers::{get_lp_token_address, unwrap_data, unwrap_reply};
 use crate::pool_info::PoolInfoRaw;
 use crate::response::MsgInstantiateContractResponse;
 use crate::state::{ProfitCheck, State, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
@@ -219,7 +219,9 @@ pub fn execute(
 /// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
-    let data = msg.result.clone().unwrap().data.unwrap();
+    let res = unwrap_reply(msg.clone())?;
+    let data = unwrap_data(res.clone())?;
+
     let response: MsgInstantiateContractResponse = Message::parse_from_bytes(data.as_slice())
         .map_err(|_| {
             StdError::parse_err("MsgInstantiateContractResponse", "failed to parse data")
@@ -228,7 +230,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
     return match msg.id {
         INSTANTIATE_REPLY_ID => replies::after_token_instantiation(deps, response),
         INSTANTIATE_UNBOND_HANDLER_REPLY_ID => {
-            let events = msg.result.unwrap().events;
+            let events = res.events;
             replies::after_unbond_handler_instantiation(deps, response, events)
         }
         _ => Ok(Response::default()),
