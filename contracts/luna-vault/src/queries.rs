@@ -1,8 +1,7 @@
-use cosmwasm_std::{Coin, Deps, Env, Uint128};
+use cosmwasm_std::{Coin, Deps, Env, Storage, Uint128};
 use terraswap::asset::Asset;
 use terraswap::querier::query_supply;
 
-use white_whale::luna_vault::luna_unbond_handler::msg::QueryMsg;
 use white_whale::luna_vault::msg::{
     EstimateWithdrawFeeResponse, FeeResponse, LastBalanceResponse, LastProfitResponse,
     PoolResponse, ValueResponse,
@@ -16,7 +15,8 @@ use crate::error::LunaVaultError;
 use crate::helpers::{compute_total_value, get_withdraw_fee};
 use crate::pool_info::{PoolInfo, PoolInfoRaw};
 use crate::state::{
-    State, UnbondHandlerAddr, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE, UNBOND_HANDLERS_ASSIGNED,
+    State, DEFAULT_UNBOND_EXPIRATION_TIME, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE,
+    UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLER_EXPIRATION_TIME,
 };
 
 /// Queries the PoolInfo configuration
@@ -129,4 +129,15 @@ pub fn query_unbond_requests(deps: Deps, address: String) -> VaultResult<UnbondR
         bluna_hub_address,
         unbond_handler,
     )?)
+}
+
+/// Queries the unbond handler expiration time if set, returns the default value otherwise
+pub fn query_unbond_handler_expiration_time(storage: &dyn Storage) -> VaultResult<u64> {
+    let expiration_time = UNBOND_HANDLER_EXPIRATION_TIME.may_load(storage)?;
+
+    return if let Some(expiration_time) = expiration_time {
+        Ok(expiration_time)
+    } else {
+        Ok(DEFAULT_UNBOND_EXPIRATION_TIME)
+    };
 }

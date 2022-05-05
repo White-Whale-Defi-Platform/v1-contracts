@@ -8,6 +8,7 @@ use white_whale::luna_vault::luna_unbond_handler::msg::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use white_whale::luna_vault::luna_unbond_handler::{EXPIRATION_TIME_KEY, OWNER_KEY};
+use white_whale::luna_vault::msg::VaultQueryMsg;
 
 use crate::serde_option::serde_option;
 use crate::state::{State, ADMIN, STATE};
@@ -34,15 +35,19 @@ pub fn instantiate(
 
     if let Some(owner) = msg.owner {
         state.owner = Some(deps.api.addr_validate(&owner)?);
-    }
 
-    if let Some(expires_in) = msg.expires_in {
+        let expires_in: u64 = deps.querier.query_wasm_smart(
+            info.sender.clone(),
+            &VaultQueryMsg::UnbondHandlerExpirationTime {},
+        )?;
+
         let expiration_time = env
             .block
             .time
             .seconds()
             .checked_add(expires_in)
             .ok_or(UnbondHandlerError::WrongExpirationTime {})?;
+
         state.expiration_time = Some(expiration_time);
     }
 
@@ -73,7 +78,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> U
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::State {} => to_binary(&queries::query_state(deps)?),
         QueryMsg::WithdrawableUnbonded {} => {

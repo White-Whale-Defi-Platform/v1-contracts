@@ -28,7 +28,6 @@ pub struct InstantiateMsg {
     pub commission_fee: Decimal,
     pub vault_lp_token_name: Option<String>,
     pub vault_lp_token_symbol: Option<String>,
-    pub unbonding_period: u64,
     pub unbond_handler_code_id: u64,
 }
 
@@ -60,7 +59,6 @@ pub enum ExecuteMsg {
         memory_address: Option<String>,
         whitelisted_contracts: Option<Vec<String>>,
         allow_non_whitelisted: Option<bool>,
-        unbonding_period: Option<u64>,
     },
     /// Execute a flashloan
     FlashLoan { payload: FlashLoanPayload },
@@ -147,6 +145,8 @@ pub enum VaultQueryMsg {
     UnbondRequests {
         address: String,
     },
+    /// queries the expiration time for unbond handlers
+    UnbondHandlerExpirationTime {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

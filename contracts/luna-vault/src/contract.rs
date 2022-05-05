@@ -55,7 +55,6 @@ pub fn instantiate(
         memory_address: deps.api.addr_validate(&msg.memory_addr)?,
         whitelisted_contracts: vec![],
         allow_non_whitelisted: false,
-        unbonding_period: msg.unbonding_period,
         unbond_handler_code_id: msg.unbond_handler_code_id,
     };
 
@@ -203,7 +202,6 @@ pub fn execute(
             memory_address,
             whitelisted_contracts,
             allow_non_whitelisted,
-            unbonding_period,
         } => commands::update_state(
             deps,
             info,
@@ -212,7 +210,6 @@ pub fn execute(
             memory_address,
             whitelisted_contracts,
             allow_non_whitelisted,
-            unbonding_period,
         ),
         ExecuteMsg::Callback(msg) => flashloan::_handle_callback(deps, env, info, msg),
         ExecuteMsg::UnbondHandler(msg) => commands::handle_unbond_handler_msg(deps, info, msg),
@@ -264,5 +261,8 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> VaultResult<Binary> {
         QueryMsg::UnbondRequests { address } => {
             to_binary(&queries::query_unbond_requests(deps, address)?)
         }
+        QueryMsg::UnbondHandlerExpirationTime {} => to_binary(
+            &queries::query_unbond_handler_expiration_time(deps.storage)?,
+        ),
     }
 }

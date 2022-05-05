@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
+use cosmwasm_std::{Addr, Uint128};
 use cw_controllers::Admin;
 use cw_storage_plus::{Item, Map};
 use schemars::JsonSchema;
@@ -66,14 +66,3 @@ pub const UNBOND_CACHE: Item<UnbondDataCache> = Item::new("unbond_cache");
 
 // 40 days
 pub const DEFAULT_UNBOND_EXPIRATION_TIME: u64 = 3456000u64;
-
-/// Gets the unbond handler expiration time if set, returns the default value otherwise
-pub fn get_unbond_handler_expiration_time(storage: &mut dyn Storage) -> StdResult<u64> {
-    let expiration_time = UNBOND_HANDLER_EXPIRATION_TIME.may_load(storage)?;
-
-    return if let Some(expiration_time) = expiration_time {
-        Ok(expiration_time)
-    } else {
-        Ok(DEFAULT_UNBOND_EXPIRATION_TIME)
-    };
-}

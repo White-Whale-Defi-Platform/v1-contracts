@@ -19,11 +19,11 @@ use crate::helpers::{
     unbond_bluna_with_handler_msg, update_unbond_handler_state_msg, withdraw_luna_from_handler_msg,
 };
 use crate::pool_info::PoolInfoRaw;
-use crate::queries::query_withdrawable_unbonded;
+use crate::queries::{query_unbond_handler_expiration_time, query_withdrawable_unbonded};
 use crate::state::{
-    get_unbond_handler_expiration_time, UnbondDataCache, UnbondHandlerAddr, ADMIN, DEPOSIT_INFO,
-    FEE, POOL_INFO, PROFIT, STATE, UNBOND_CACHE, UNBOND_HANDLERS_ASSIGNED,
-    UNBOND_HANDLERS_AVAILABLE, UNBOND_HANDLER_EXPIRATION_TIMES,
+    UnbondDataCache, UnbondHandlerAddr, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE,
+    UNBOND_CACHE, UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLERS_AVAILABLE,
+    UNBOND_HANDLER_EXPIRATION_TIMES,
 };
 
 /// handler function invoked when the luna-vault contract receives
@@ -337,7 +337,7 @@ fn unbond(
             .block
             .time
             .seconds()
-            .checked_add(get_unbond_handler_expiration_time(deps.storage)?)
+            .checked_add(query_unbond_handler_expiration_time(deps.storage)?)
             .ok_or(LunaVaultError::ExpirationTimeUnSet {})?;
 
         let unbond_handler_update_state_msg =
@@ -367,7 +367,6 @@ fn unbond(
                     code_id: state.unbond_handler_code_id,
                     msg: to_binary(&InstantiateMsg {
                         owner: Some(sender_addr.to_string()),
-                        expires_in: Some(get_unbond_handler_expiration_time(deps.storage)?),
                         memory_contract: state.memory_address.to_string(),
                     })?,
                     funds: vec![],
@@ -411,7 +410,7 @@ fn unbond(
                 .block
                 .time
                 .seconds()
-                .checked_add(get_unbond_handler_expiration_time(deps.storage)?)
+                .checked_add(query_unbond_handler_expiration_time(deps.storage)?)
                 .ok_or(LunaVaultError::ExpirationTimeUnSet {})?;
 
             let unbond_handler_update_state_msg = update_unbond_handler_state_msg(
@@ -569,7 +568,6 @@ pub fn update_state(
     memory_address: Option<String>,
     whitelisted_contracts: Option<Vec<String>>,
     allow_non_whitelisted: Option<bool>,
-    unbonding_period: Option<u64>,
 ) -> VaultResult<Response> {
     // Only the admin should be able to call this
     ADMIN.assert_admin(deps.as_ref(), &info.sender)?;
@@ -608,11 +606,6 @@ pub fn update_state(
             "new allow_non_whitelisted",
             allow_non_whitelisted.to_string(),
         ));
-    }
-
-    if let Some(unbonding_period) = unbonding_period {
-        state.unbonding_period = unbonding_period;
-        attrs.push(("new unbonding_period", unbonding_period.to_string()));
     }
 
     STATE.save(deps.storage, &state)?;
