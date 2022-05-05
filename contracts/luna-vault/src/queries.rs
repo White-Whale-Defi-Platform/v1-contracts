@@ -96,49 +96,37 @@ pub fn query_withdrawable_unbonded(
     address: String,
 ) -> VaultResult<WithdrawableUnbondedResponse> {
     let address = deps.api.addr_validate(&address)?;
-    let unbond_handler_option = UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, address.clone())?;
+    let unbond_handler = UNBOND_HANDLERS_ASSIGNED
+        .may_load(deps.storage, address)?
+        .ok_or(LunaVaultError::NoUnbondHandlerAssigned {})?;
 
-    let unbond_handler: UnbondHandlerAddr;
-    if unbond_handler_option.is_some() {
-        let state = STATE.load(deps.storage)?;
-        let bluna_hub_address =
-            query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
-        unbond_handler = unbond_handler_option
-            .ok_or(LunaVaultError::UnbondHandlerError {})?
-            .clone();
+    let state = STATE.load(deps.storage)?;
+    let bluna_hub_address =
+        query_contract_from_mem(deps, &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
 
-        // query how much withdrawable_unbonded is on anchor for the given unbond handler
-        Ok(white_whale::query::anchor::query_withdrawable_unbonded(
-            deps,
-            bluna_hub_address,
-            unbond_handler,
-        )?)
-    } else {
-        Err(LunaVaultError::NoUnbondHandlerAssigned {})
-    }
+    // query how much withdrawable_unbonded is on anchor for the given unbond handler
+    Ok(white_whale::query::anchor::query_withdrawable_unbonded(
+        deps,
+        bluna_hub_address,
+        unbond_handler,
+    )?)
 }
 
 /// Queries unbond requests for the unbond handler associated with the given address
 pub fn query_unbond_requests(deps: Deps, address: String) -> VaultResult<UnbondRequestsResponse> {
     let address = deps.api.addr_validate(&address)?;
-    let unbond_handler_option = UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, address.clone())?;
+    let unbond_handler = UNBOND_HANDLERS_ASSIGNED
+        .may_load(deps.storage, address)?
+        .ok_or(LunaVaultError::NoUnbondHandlerAssigned {})?;
 
-    let unbond_handler: UnbondHandlerAddr;
-    if unbond_handler_option.is_some() {
-        let state = STATE.load(deps.storage)?;
-        let bluna_hub_address =
-            query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
-        unbond_handler = unbond_handler_option
-            .ok_or(LunaVaultError::UnbondHandlerError {})?
-            .clone();
+    let state = STATE.load(deps.storage)?;
+    let bluna_hub_address =
+        query_contract_from_mem(deps, &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
 
-        // query unbond requests on anchor for the given unbond handler
-        Ok(white_whale::query::anchor::query_unbond_requests(
-            deps,
-            bluna_hub_address,
-            unbond_handler,
-        )?)
-    } else {
-        Err(LunaVaultError::NoUnbondHandlerAssigned {})
-    }
+    // query unbond requests on anchor for the given unbond handler
+    Ok(white_whale::query::anchor::query_unbond_requests(
+        deps,
+        bluna_hub_address,
+        unbond_handler,
+    )?)
 }
