@@ -710,16 +710,11 @@ pub(crate) fn handle_unbond_handler_msg(
             let previous_owner = deps.api.addr_validate(&previous_owner)?;
 
             // make sure an assigned handler sent this message
-            let assigned_handler_option =
-                UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, previous_owner.clone())?;
-            if assigned_handler_option.is_none() {
-                return Err(LunaVaultError::UnbondHandlerNotAssigned {});
-            } else {
-                let assigned_handler =
-                    assigned_handler_option.ok_or(LunaVaultError::UnbondHandlerError {})?;
-                if assigned_handler != info.sender || assigned_handler != unbond_handler {
-                    return Err(LunaVaultError::UnbondHandlerReleaseMismatch {});
-                }
+            let assigned_handler = UNBOND_HANDLERS_ASSIGNED
+                .may_load(deps.storage, previous_owner.clone())?
+                .ok_or(LunaVaultError::UnbondHandlerNotAssigned {})?;
+            if assigned_handler != info.sender || assigned_handler != unbond_handler {
+                return Err(LunaVaultError::UnbondHandlerReleaseMismatch {});
             }
 
             // remove handler from assigned handlers map
@@ -734,7 +729,7 @@ pub(crate) fn handle_unbond_handler_msg(
             UNBOND_HANDLERS_AVAILABLE.save(deps.storage, &unbond_handlers_available)?;
 
             Ok(Response::new().add_attributes(vec![
-                attr("action", "after_unbon_handler_released"),
+                attr("action", "after_unbond_handler_released"),
                 attr("unbond_handler", unbond_handler.to_string()),
             ]))
         }
