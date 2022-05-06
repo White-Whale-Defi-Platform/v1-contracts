@@ -94,8 +94,13 @@ fn unbond_bluna(deps: DepsMut, amount: Uint128) -> UnbondHandlerResult {
 }
 
 /// Withdraws the unbonded bluna from Anchor
-pub fn withdraw_unbonded_bluna(deps: DepsMut, env: Env, info: MessageInfo) -> UnbondHandlerResult {
+pub fn withdraw_unbonded_bluna(
+    deps: DepsMut,
+    env: Env,
+    triggered_by_addr: String,
+) -> UnbondHandlerResult {
     let state = STATE.load(deps.storage)?;
+    let triggered_by = deps.api.addr_validate(&triggered_by_addr)?;
     let bluna_hub_address =
         query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
 
@@ -104,7 +109,7 @@ pub fn withdraw_unbonded_bluna(deps: DepsMut, env: Env, info: MessageInfo) -> Un
 
     // Callback for after withdrawing the unbonded bluna
     let after_withdraw_msg = CallbackMsg::AfterWithdraw {
-        triggered_by_addr: info.sender.to_string(),
+        triggered_by_addr: triggered_by.to_string(),
     }
     .to_cosmos_msg(&env.contract.address)?;
 

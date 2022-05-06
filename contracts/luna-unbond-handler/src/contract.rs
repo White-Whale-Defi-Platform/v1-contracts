@@ -66,7 +66,9 @@ pub fn instantiate(
 pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> UnbondHandlerResult {
     match msg {
         ExecuteMsg::Receive(msg) => commands::receive_cw20(deps, env, info, msg),
-        ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded_bluna(deps, env, info),
+        ExecuteMsg::WithdrawUnbonded { triggered_by_addr } => {
+            commands::withdraw_unbonded_bluna(deps, env, triggered_by_addr)
+        }
         ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
         ExecuteMsg::UpdateState {
             owner,

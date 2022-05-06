@@ -16,7 +16,7 @@ pub enum ExecuteMsg {
     /// Receive hook for bluna
     Receive(Cw20ReceiveMsg),
     /// Withdraws unbonded luna from Anchor and send to the user
-    WithdrawUnbonded {},
+    WithdrawUnbonded { triggered_by_addr: String },
     /// Set the admin of the contract
     SetAdmin { admin: String },
     /// Updates the internal contract state

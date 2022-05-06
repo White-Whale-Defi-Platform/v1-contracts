@@ -66,3 +66,4 @@ pub const UNBOND_CACHE: Item<UnbondDataCache> = Item::new("unbond_cache");
 
 // 40 days
 pub const DEFAULT_UNBOND_EXPIRATION_TIME: u64 = 3456000u64;
+pub const UNBOND_HANDLER_EXPIRATION_TIMES_READ_LIMIT: u32 = 30u32;

@@ -68,6 +68,8 @@ pub enum ExecuteMsg {
     Callback(CallbackMsg),
     /// Messages sent by unbond handlers to the vault
     UnbondHandler(UnbondHandlerMsg),
+    /// Liquidates expired unbond handlers if any
+    LiquidateExpiredUnbondHandler {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

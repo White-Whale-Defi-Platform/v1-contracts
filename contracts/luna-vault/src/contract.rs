@@ -181,7 +181,7 @@ pub fn execute(
         ExecuteMsg::ProvideLiquidity { asset } => {
             commands::provide_liquidity(deps, env, info, asset)
         }
-        ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded(deps, info),
+        ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded(deps, info, false),
         ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
         ExecuteMsg::SetFee {
             flash_loan_fee,
@@ -213,6 +213,9 @@ pub fn execute(
         ),
         ExecuteMsg::Callback(msg) => flashloan::_handle_callback(deps, env, info, msg),
         ExecuteMsg::UnbondHandler(msg) => commands::handle_unbond_handler_msg(deps, info, msg),
+        ExecuteMsg::LiquidateExpiredUnbondHandler {} => {
+            commands::withdraw_unbonded(deps, info, true)
+        }
     }
 }
 

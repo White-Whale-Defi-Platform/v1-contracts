@@ -1,6 +1,6 @@
 use cosmwasm_std::{
     attr, from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
+    MessageInfo, Order, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
@@ -23,6 +23,7 @@ use crate::queries::{query_unbond_handler_expiration_time, query_withdrawable_un
 use crate::state::{
     UnbondDataCache, ADMIN, DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE, UNBOND_CACHE,
     UNBOND_HANDLERS_ASSIGNED, UNBOND_HANDLERS_AVAILABLE, UNBOND_HANDLER_EXPIRATION_TIMES,
+    UNBOND_HANDLER_EXPIRATION_TIMES_READ_LIMIT,
 };
 
 /// handler function invoked when the luna-vault contract receives
@@ -413,16 +414,30 @@ fn unbond(
 }
 
 /// Withdraws unbonded luna after unbond has been called and the time lock period expired
-pub fn withdraw_unbonded(deps: DepsMut, msg_info: MessageInfo) -> VaultResult<Response> {
-    // get handler assigned to user
-    let unbond_handler_option = UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, msg_info.sender)?;
-    if unbond_handler_option.is_none() {
-        return Err(LunaVaultError::NoUnbondHandlerAssigned {});
-    }
+pub fn withdraw_unbonded(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    liquidation: bool,
+) -> VaultResult<Response> {
+    let unbond_handler = if liquidation {
+        let (index, _) = UNBOND_HANDLER_EXPIRATION_TIMES
+            .prefix(())
+            .range(deps.storage, None, None, Order::Ascending)
+            .take(UNBOND_HANDLER_EXPIRATION_TIMES_READ_LIMIT as usize)
+            .find_position(|&item| *item?.1 > env.block.time.seconds())
+            .ok_or(LunaVaultError::NoExpiredUnbondHandlers {})?;
 
-    let unbond_handler = unbond_handler_option.ok_or(LunaVaultError::UnbondHandlerError {})?;
+        UNBOND_HANDLER_EXPIRATION_TIMES[index]
+    } else {
+        // get handler assigned to user
+        UNBOND_HANDLERS_ASSIGNED
+            .may_load(deps.storage, msg_info.sender.clone())?
+            .ok_or(LunaVaultError::NoUnbondHandlerAssigned {})?
+    };
+
     // create the withdraw unbonded msg with the assigned unbond handler
-    let withdraw_unbonded_msg = withdraw_luna_from_handler_msg(unbond_handler.clone())?;
+    let withdraw_unbonded_msg =
+        withdraw_luna_from_handler_msg(unbond_handler.clone(), msg_info.sender)?;
     let withadrawable_amount =
         query_withdrawable_unbonded(deps.as_ref(), unbond_handler.to_string())?.withdrawable;
 
