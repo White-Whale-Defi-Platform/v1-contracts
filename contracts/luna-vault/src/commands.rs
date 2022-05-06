@@ -16,7 +16,8 @@ use crate::contract::{VaultResult, INSTANTIATE_UNBOND_HANDLER_REPLY_ID};
 use crate::error::LunaVaultError;
 use crate::helpers::{
     check_fee, compute_total_value, get_lp_token_address, get_treasury_fee,
-    unbond_bluna_with_handler_msg, update_unbond_handler_state_msg, withdraw_luna_from_handler_msg,
+    terraswap_asset_to_astroport, unbond_bluna_with_handler_msg, update_unbond_handler_state_msg,
+    withdraw_luna_from_handler_msg,
 };
 use crate::pool_info::PoolInfoRaw;
 use crate::queries::{query_unbond_handler_expiration_time, query_withdrawable_unbonded};
@@ -174,11 +175,30 @@ pub(crate) fn withdraw_passive_strategy(
     deps: &Deps,
     withdraw_amount: Uint128,
     bluna_address: Addr,
-    requested_token: Option<Addr>,
+    requested_info: AssetInfo,
     astro_lp_token_address: &Addr,
     astro_lp_address: &Addr,
     response: Response,
 ) -> VaultResult<Response> {
+    // the amount we will get from the LP pool in the form of the desired requested_token is equal to (x*z)/y = b
+    // where x = the share amount we withdraw, y = the share total, z = the pool size
+    // we can therefore get the desired share amount by rearranging to the form
+    // x = (b*y)/z
+    let pool_info: astroport::pair::PoolResponse = deps.querier.query_wasm_smart(
+        astro_lp_address,
+        &astroport::pair_stable_bluna::QueryMsg::Pool {},
+    )?;
+
+    let pool_desired_asset = pool_info
+        .assets
+        .iter()
+        .find(|asset| asset.info == terraswap_asset_to_astroport(deps, requested_info).transpose())
+        .ok_or(LunaVaultError::NoSwapAvailable {})?;
+
+    let share_to_withdraw = withdraw_amount
+        .checked_mul(pool_info.total_share)?
+        .checked_div(pool_desired_asset.amount)?;
+
     // Msg that gets called on the pair address.
     let withdraw_msg: Binary = to_binary(&astroport::pair::Cw20HookMsg::WithdrawLiquidity {})?;
 
@@ -227,21 +247,11 @@ pub(crate) fn withdraw_passive_strategy(
         },
     };
 
-    if !requested_token.is_none() {
-        // Prepare the variant return asset, assuming the passed addr is valid
-        let luna_variant_asset = astroport::asset::Asset {
-            amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
-            info: astroport::asset::AssetInfo::Token {
-                contract_addr: requested_token.unwrap_or_else(|| bluna_address),
-            },
-        };
-    }
-
     // Now make a purchase on the relevant LUNAVARIANT-LUNA pair
     let luna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: astro_lp_address.to_string(),
         msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
-            offer_asset: swap_asset.clone(),
+            offer_asset: swap_asset,
             belief_price: None,
             max_spread: None,
             to: None,
@@ -272,9 +282,10 @@ fn unbond(
 
     // Logging var
     let mut response = Response::new().add_attribute("action", "unbond");
-    let mut attrs = vec![];
-    attrs.push(("from", sender.clone()));
-    attrs.push(("burnt_amount", amount.to_string()));
+    let mut attrs = vec![
+        ("from", sender.clone()),
+        ("burnt_amount", amount.to_string()),
+    ];
 
     // Get treasury fee in LP tokens
     let treasury_fee = get_treasury_fee(deps.as_ref(), amount)?;

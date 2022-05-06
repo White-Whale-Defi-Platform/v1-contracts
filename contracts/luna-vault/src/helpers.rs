@@ -180,3 +180,19 @@ pub fn withdraw_luna_from_handler_msg<T: Clone + fmt::Debug + PartialEq + JsonSc
         funds: vec![],
     }))
 }
+
+pub fn terraswap_asset_info_to_astroport(
+    deps: Deps,
+    asset_info: terraswap::asset::AssetInfo,
+) -> Result<astroport::asset::AssetInfo, StdError> {
+    Ok(match asset_info {
+        terraswap::asset::AssetInfo::NativeToken { denom } => {
+            astroport::asset::AssetInfo::NativeToken { denom }
+        }
+        terraswap::asset::AssetInfo::Token { contract_addr } => {
+            astroport::asset::AssetInfo::Token {
+                contract_addr: deps.api.addr_validate(&contract_addr)?,
+            }
+        }
+    })
+}
