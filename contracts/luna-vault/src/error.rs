@@ -94,9 +94,6 @@ pub enum LunaVaultError {
     #[error("Couldn't get unbond handler.")]
     UnbondHandlerError {},
 
-    #[error("No expired unbond handlers found.")]
-    NoExpiredUnbondHandlers {},
-
     #[error("Last balance is non-zero, you can only call this function once.")]
     Nonzero {},
 }
