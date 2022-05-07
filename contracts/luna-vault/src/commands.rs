@@ -16,8 +16,8 @@ use crate::contract::{VaultResult, INSTANTIATE_UNBOND_HANDLER_REPLY_ID};
 use crate::error::LunaVaultError;
 use crate::helpers::{
     check_fee, compute_total_value, get_lp_token_address, get_treasury_fee,
-    terraswap_asset_to_astroport, unbond_bluna_with_handler_msg, update_unbond_handler_state_msg,
-    withdraw_luna_from_handler_msg,
+    unbond_bluna_with_handler_msg, update_unbond_handler_state_msg, withdraw_luna_from_handler_msg,
+    ConversionAsset,
 };
 use crate::pool_info::PoolInfoRaw;
 use crate::queries::{query_unbond_handler_expiration_time, query_withdrawable_unbonded};
@@ -189,10 +189,13 @@ pub(crate) fn withdraw_passive_strategy(
         &astroport::pair_stable_bluna::QueryMsg::Pool {},
     )?;
 
+    // convert requested_info into an Astroport asset
+    let requested_info = requested_info.to_astroport(deps)?;
+
     let pool_desired_asset = pool_info
         .assets
         .iter()
-        .find(|asset| asset.info == terraswap_asset_to_astroport(deps, requested_info).transpose())
+        .find(|asset| asset.info == requested_info)
         .ok_or(LunaVaultError::NoSwapAvailable {})?;
 
     let share_to_withdraw = withdraw_amount
@@ -205,7 +208,7 @@ pub(crate) fn withdraw_passive_strategy(
     // cw20 send message that transfers the LP tokens to the pair address
     let cw20_msg = Cw20ExecuteMsg::Send {
         contract: astro_lp_address.clone().into_string(),
-        amount: withdraw_amount,
+        amount: share_to_withdraw,
         msg: withdraw_msg,
     };
 
