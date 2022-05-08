@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    attr, from_binary, to_binary, Addr, Binary, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, ReplyOn, Response, SubMsg, Uint128, WasmMsg,
+    attr, from_binary, to_binary, Addr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo,
+    ReplyOn, Response, SubMsg, Uint128, WasmMsg,
 };
 use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
@@ -174,7 +174,6 @@ pub(crate) fn deposit_passive_strategy(
 pub(crate) fn withdraw_passive_strategy(
     deps: &Deps,
     withdraw_amount: Uint128,
-    bluna_address: Addr,
     requested_info: AssetInfo,
     astro_lp_token_address: &Addr,
     astro_lp_address: &Addr,
@@ -198,73 +197,77 @@ pub(crate) fn withdraw_passive_strategy(
         .find(|asset| asset.info == requested_info)
         .ok_or(LunaVaultError::NoSwapAvailable {})?;
 
-    let share_to_withdraw = withdraw_amount
-        .checked_mul(pool_info.total_share)?
-        .checked_div(pool_desired_asset.amount)?;
+    // before we do x = (b * y) / z, we must account for integer division rounding down
+    // the resultant share that we withdraw must be rounded up from the calculation, or we will get 1 uluna too little.
+    // to get the correct amount (i.e., do ceiling division), we calculate the remainder of the operation and make the numerator
+    // add the difference between the denominator and remainder
+    // example: pool sizes of 35323332730080000, 2889842192163. If we did not do ceiling division, we would get 12223.2739 = 12223
+    // share to withdraw. However, this will only give us 9999 uluna, not 10000uluna. Therefore, we need to do
+    // (35323332730080000 + (2889842192163 - (35323332730080000 % 2889842192163))) / 2889842192163 which gives a perfect 12224 share amount
+    // which is the correct amount.
+    let numerator = withdraw_amount.checked_mul(pool_info.total_share)?;
+    let denominator = pool_desired_asset.amount;
 
-    // Msg that gets called on the pair address.
-    let withdraw_msg: Binary = to_binary(&astroport::pair::Cw20HookMsg::WithdrawLiquidity {})?;
+    let remainder = numerator.checked_rem(denominator)?;
 
-    // cw20 send message that transfers the LP tokens to the pair address
-    let cw20_msg = Cw20ExecuteMsg::Send {
-        contract: astro_lp_address.clone().into_string(),
-        amount: share_to_withdraw,
-        msg: withdraw_msg,
-    };
+    // add to numerator so that division is rounding up instead of down
+    let numerator = numerator.checked_add(denominator.checked_sub(remainder)?)?;
 
-    // Call on LP token.
-    let withdraw_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: String::from(astro_lp_token_address),
-        msg: to_binary(&cw20_msg)?,
-        funds: vec![],
-    });
+    let share_to_withdraw = numerator.checked_div(denominator)?;
 
-    // Prepare a LUNA Asset
-    // split luna into half so half goes to purchase bLuna, remaining half is used as liquidity
-    let luna_asset = astroport::asset::Asset {
-        amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
-        info: astroport::asset::AssetInfo::NativeToken {
-            denom: LUNA_DENOM.to_string(),
-        },
-    };
-
-    let bluna_asset = astroport::asset::Asset {
-        amount: withdraw_amount.checked_div(Uint128::from(2_u8))?,
-        info: astroport::asset::AssetInfo::Token {
-            contract_addr: bluna_address.clone(),
-        },
-    };
-
-    // simulate the luna swap so we know the bluna return amount when we later provide liquidity
-    let luna_return: astroport::pair::SimulationResponse = deps.querier.query_wasm_smart(
-        astro_lp_address,
-        &astroport::pair::QueryMsg::Simulation {
-            offer_asset: bluna_asset.clone(),
-        },
-    )?;
-
-    let swap_asset = astroport::asset::Asset {
-        amount: luna_return.return_amount,
-        info: astroport::asset::AssetInfo::NativeToken {
-            denom: LUNA_DENOM.to_string(),
-        },
-    };
-
-    // Now make a purchase on the relevant LUNAVARIANT-LUNA pair
-    let luna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: astro_lp_address.to_string(),
-        msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
-            offer_asset: swap_asset,
-            belief_price: None,
-            max_spread: None,
-            to: None,
+    // cw20 send message that transfers the LP tokens to the pair address and withdraws liquidity
+    let cw20_withdraw_liquidity_msg: CosmosMsg = WasmMsg::Execute {
+        contract_addr: astro_lp_token_address.clone().into_string(),
+        msg: to_binary(&Cw20ExecuteMsg::Send {
+            contract: astro_lp_address.clone().into_string(),
+            amount: share_to_withdraw,
+            msg: to_binary(&astroport::pair::Cw20HookMsg::WithdrawLiquidity {})?,
         })?,
         funds: vec![],
-    });
+    }
+    .into();
+
+    // provide liquidity with the remaining bLuna as single-sided LP provision
+    let pool_non_desired_asset = pool_info
+        .assets
+        .iter()
+        .find(|asset| asset.info != requested_info)
+        .ok_or_else(|| {
+            LunaVaultError::generic_err(
+                "Failed to get non-desired asset when providing single-sided liquidity",
+            )
+        })?;
+
+    // reference: https://github.com/astroport-fi/astroport-core/blob/c0a121798157ea3e5540a19b8061eb0196b15667/contracts/pair_stable_bluna/src/contract.rs#L729-L737
+    let unwanted_amount_returned = Decimal::from_ratio(share_to_withdraw, pool_info.total_share)
+        * pool_non_desired_asset.amount;
+
+    let bluna_lp_msg = WasmMsg::Execute {
+        contract_addr: astro_lp_address.clone().into_string(),
+        msg: to_binary(
+            &astroport::pair_stable_bluna::ExecuteMsg::ProvideLiquidity {
+                assets: [
+                    astroport::asset::Asset {
+                        amount: Uint128::zero(),
+                        info: pool_desired_asset.info.clone(),
+                    },
+                    astroport::asset::Asset {
+                        amount: unwanted_amount_returned,
+                        info: pool_non_desired_asset.info.clone(),
+                    },
+                ],
+                slippage_tolerance: None,
+                auto_stake: None,
+                receiver: None,
+            },
+        )?,
+        funds: vec![],
+    }
+    .into();
 
     let response = response.add_messages(vec![
-        withdraw_msg,      // 1. withdraw bluna and Luna from LP.
-        luna_purchase_msg, // 2-N. Further steps could include, swapping to another luna variant to have one token rather than 2.
+        cw20_withdraw_liquidity_msg, // 1. withdraw bluna and Luna from LP.
+        bluna_lp_msg,                // 2. provide single-sided LP provision to astroport pool
     ]);
 
     Ok(response)

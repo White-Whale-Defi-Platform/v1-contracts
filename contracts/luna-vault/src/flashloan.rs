@@ -86,7 +86,6 @@ pub fn handle_flashloan(
         let _ = withdraw_passive_strategy(
             &deps.as_ref(),
             requested_asset.amount,
-            state.bluna_address,
             AssetInfo::NativeToken {
                 denom: LUNA_DENOM.to_string(),
             },
