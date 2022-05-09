@@ -1,6 +1,10 @@
 use core::result::Result::Err;
-use cosmwasm_std::{CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg};
-use terraswap::asset::{Asset, AssetInfo};
+use cosmwasm_std::{
+    to_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, Uint128,
+    WasmMsg,
+};
+use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
+use terraswap::querier::query_token_balance;
 use white_whale::denom::LUNA_DENOM;
 use white_whale::luna_vault::msg::{CallbackMsg, FlashLoanPayload};
 use white_whale::tax::into_msg_without_tax;
@@ -8,7 +12,7 @@ use white_whale::tax::into_msg_without_tax;
 use crate::commands::{deposit_passive_strategy, withdraw_passive_strategy};
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::{compute_total_value, get_lp_token_address};
+use crate::helpers::{compute_total_value, get_lp_token_address, ConversionAsset};
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
 const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
@@ -40,8 +44,18 @@ pub fn handle_flashloan(
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let (total_value, luna_available, _, _, _) =
-        compute_total_value(&env, deps.as_ref(), &pool_info)?;
+        compute_total_value(&env, deps.as_ref(), &pool_info.clone())?;
     let requested_asset = payload.requested_asset;
+
+    // check if the request_asset is uluna
+    match requested_asset.info.clone() {
+        AssetInfo::Token { .. } => return Err(LunaVaultError::NotLunaToken {}),
+        AssetInfo::NativeToken { denom } => {
+            if denom != LUNA_DENOM {
+                return Err(LunaVaultError::NotLunaToken {});
+            }
+        }
+    };
 
     // Max tax buffer will be 2 transfers of the borrowed assets
     // Passive Strategy -> Vault -> Caller
@@ -54,10 +68,8 @@ pub fn handle_flashloan(
     // Init response
     let mut response = Response::new().add_attribute("Action", "Flashloan");
 
-    // If we need too, withdraw from the various passive strategies, initially defined as the bLuna-Luna LP. This method will return both assets and assumes no desired assets as-is
-    // TODO: Add a flag to this method so that a user can specify if they want luna or bluna, we can expand this later with an enum to offer a quick way to get any variant of luna via swapp ;-)
-    // TODO: NOTE: Check the clone usage, added it to fixup tests
-    let _ = withdraw_passive_strategy(
+    // withdraw from passive strategy, initially defined as the bLuna-Luna LP. This returns luna + bluna
+    withdraw_passive_strategy(
         &deps.as_ref(),
         requested_asset.amount,
         AssetInfo::NativeToken {
@@ -68,9 +80,52 @@ pub fn handle_flashloan(
         response.clone(),
     )?;
 
+    // swap bluna for luna on astroport
+    let bluna_asset_info = pool_info.asset_infos[2].to_normal(deps.api)?;
+    let bluna_address = match bluna_asset_info {
+        AssetInfo::Token { contract_addr } => Ok(deps.api.addr_validate(contract_addr)?),
+        AssetInfo::NativeToken { .. } => Err(LunaVaultError::generic_err("Not bluna")),
+    }?;
+
+    let bluna_luna_pool_address: astroport::asset::PairInfo = deps.querier.query_wasm_smart(
+        state.astro_factory_address,
+        &astroport::factory::QueryMsg::Pair {
+            asset_infos: [
+                astroport::asset::AssetInfo::Token {
+                    contract_addr: bluna_address.clone(),
+                },
+                astroport::asset::AssetInfo::NativeToken {
+                    denom: LUNA_DENOM.to_string(),
+                },
+            ],
+        },
+    )?;
+
+    let bluna_amount = query_token_balance(
+        &deps.querier,
+        bluna_address.clone(),
+        env.contract.address.clone(),
+    )?;
+
+    let swap_bluna_msg = WasmMsg::Execute {
+        contract_addr: bluna_luna_pool_address.contract_addr.into_string(),
+        msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
+            offer_asset: astroport::asset::Asset {
+                amount: bluna_amount,
+                info: astroport::asset::AssetInfo::Token {
+                    contract_addr: bluna_address,
+                },
+            },
+            belief_price: None,
+            max_spread: None,
+            to: None,
+        })?,
+        funds: vec![],
+    }
+    .into();
+    response = response.add_message(swap_bluna_msg);
 
     // If caller not whitelisted, calculate flashloan fee
-
     let loan_fee: Uint128 = if whitelisted {
         Uint128::zero()
     } else {
