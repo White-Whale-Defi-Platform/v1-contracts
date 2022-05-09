@@ -1,7 +1,7 @@
 use std::fmt;
 
 use cosmwasm_std::{
-    Addr, Coin, CosmosMsg, Deps, ReplyOn, Response, StdError, StdResult, SubMsg, to_binary,
+    to_binary, Addr, Coin, CosmosMsg, Deps, ReplyOn, Response, StdError, StdResult, SubMsg,
     Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
