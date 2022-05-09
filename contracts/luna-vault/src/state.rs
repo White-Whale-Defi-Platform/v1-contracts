@@ -14,6 +14,7 @@ use crate::pool_info::PoolInfoRaw;
 // the address of the pool to trade in as well as some other addresses
 pub struct State {
     pub bluna_address: Addr,
+    pub cluna_address: Addr,
     /// The address of the liquidity pool to provide bLuna-Luna assets to for passive income
     pub astro_lp_address: Addr,
     /// The address of the Astroport factory

@@ -1,20 +1,29 @@
 use core::result::Result::Err;
+
 use cosmwasm_std::{
     to_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, Uint128,
     WasmMsg,
 };
 use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
 use terraswap::querier::query_token_balance;
+
+use white_whale::anchor::anchor_bluna_unbond_msg;
 use white_whale::denom::LUNA_DENOM;
 use white_whale::luna_vault::msg::{CallbackMsg, FlashLoanPayload};
+use white_whale::memory::queries::query_contract_from_mem;
+use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, PRISM_CLUNA_HUB_ID};
+use white_whale::prism::prism_cluna_unbond_msg;
 use white_whale::tax::into_msg_without_tax;
 
 use crate::commands::{deposit_passive_strategy, withdraw_passive_strategy};
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::{compute_total_value, get_lp_token_address, ConversionAsset};
+use crate::helpers::{
+    compute_total_value, get_attribute_value_from_event, get_lp_token_address, ConversionAsset,
+};
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
+
 const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
 
 pub fn handle_flashloan(
@@ -184,26 +193,12 @@ pub fn after_trade(
     loan_fee: Uint128,
 ) -> VaultResult<Response> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value_in_luna, luna_in_contract, _, _, _) =
+    let (total_value_in_luna, luna_in_contract, _, bluna_in_contract, cluna_in_contract) =
         compute_total_value(&env, deps.as_ref(), &info)?;
-    let state = STATE.load(deps.storage)?;
-    // Deposit funds into a passive strategy again if applicable.
-    let mut response = Response::default();
-    //TODO revise what is it that we are depositing here into the passive strategy.
-    // After trade prob should check if we did the flashloan with bluna,cluna or just pure luna.
-    // if the flashloan returned luna, then somehow account for the liquid luna that was sitting there waiting to
-    // be withdrawn
-    response = deposit_passive_strategy(
-        &deps.as_ref(),
-        luna_in_contract,
-        state.bluna_address.clone(),
-        &state.astro_lp_address,
-        response.clone(),
-    )?;
 
     let mut conf = PROFIT.load(deps.storage)?;
 
-    // Check if total_value_in_luna increased with expected fee, otherwise cancel everything
+    // Check if total_value_in_luna increased with expected fee, otherwise cancel everything. Assuming 1 bluna = 1 cluna = 1 luna
     if total_value_in_luna < conf.last_balance + loan_fee {
         return Err(LunaVaultError::CancelLosingTrade {});
     }
@@ -214,24 +209,52 @@ pub fn after_trade(
     conf.last_balance = Uint128::zero();
     PROFIT.save(deps.storage, &conf)?;
 
+    let state = STATE.load(deps.storage)?;
+    let mut response = Response::default();
+
+    // check in which asset the flashloan was paid back
+    if luna_in_contract > Uint128::zero() {
+        // flashloan was paid back in luna, deposit back to passive strategy
+        response = deposit_passive_strategy(
+            &deps.as_ref(),
+            luna_in_contract,
+            state.bluna_address.clone(),
+            &state.astro_lp_address,
+            response.clone(),
+        )?;
+    }
+
+    if bluna_in_contract > Uint128::zero() {
+        // flashloan was paid back in bluna, burn it on Anchor
+        let bluna_hub_address =
+            query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
+
+        let bluna_unbond_msg = anchor_bluna_unbond_msg(
+            state.bluna_address.clone(),
+            bluna_hub_address,
+            bluna_in_contract,
+        )?;
+        response = response.add_message(bluna_unbond_msg);
+    }
+
+    if cluna_in_contract > Uint128::zero() {
+        // flashloan was paid back in cluna, burn it on Prism
+        let cluna_hub_address =
+            query_contract_from_mem(deps.as_ref(), &state.memory_contract, PRISM_CLUNA_HUB_ID)?;
+
+        let cluna_unbond_msg =
+            prism_cluna_unbond_msg(state.cluna_address, cluna_hub_address, cluna_in_contract)?;
+        response = response.add_message(cluna_unbond_msg);
+    }
+
     let commission_response = send_commissions(deps.as_ref(), msg_info, profit)?;
-    response = response
+    Ok(response
         // Send commission of profit to Treasury
         .add_submessages(commission_response.messages)
         .add_attributes(commission_response.attributes)
-        .add_attribute("value after commission: ", total_value_in_luna.to_string());
-
-    deposit_passive_strategy(
-        &deps.as_ref(),
-        luna_in_contract,
-        state.bluna_address,
-        &state.astro_lp_address,
-        response,
-    )
+        .add_attribute("total_value_in_luna", total_value_in_luna.to_string()))
 }
 
-///TODO potentially improve this function by passing the Asset, so that this component could be reused for other vaults
-/// Sends the commission fee which is a function of the profit made by the contract, forwarded by the profit-check contract
 fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultResult<Response> {
     let fees = FEE.load(deps.storage)?;
 
@@ -247,7 +270,7 @@ fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultRes
     let commission_msg = refund_asset.into_msg(&deps.querier, fees.treasury_addr)?;
 
     Ok(Response::new()
-        .add_attribute("treasury commission:", commission_amount.to_string())
+        .add_attribute("commission_amount", commission_amount.to_string())
         .add_message(commission_msg))
 }
 

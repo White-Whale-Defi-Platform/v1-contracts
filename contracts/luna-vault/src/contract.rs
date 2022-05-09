@@ -50,6 +50,7 @@ pub fn instantiate(
 
     let state = State {
         bluna_address: deps.api.addr_validate(&msg.bluna_address)?,
+        cluna_address: deps.api.addr_validate(&msg.cluna_address)?,
         astro_lp_address: astro_lp_address.clone(),
         astro_factory_address,
         memory_address: deps.api.addr_validate(&msg.memory_addr)?,

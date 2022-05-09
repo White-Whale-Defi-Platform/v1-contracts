@@ -54,6 +54,7 @@ pub fn compute_total_value(
         .find(|asset| asset.info == astroport::asset::token_asset_info(state.bluna_address.clone()))
         .ok_or_else(|| LunaVaultError::generic_err("Failed to get bLuna asset from astro LP"))?
         .amount;
+    //todo fix cluna query value yada yada
     let cluna_value_in_luna = Uint128::zero();
 
     let total_deposits_in_luna =
