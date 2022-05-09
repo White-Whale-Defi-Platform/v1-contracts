@@ -4,15 +4,13 @@ use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 use cw2::{get_contract_version, set_contract_version};
 use semver::Version;
 
+use crate::serde_option::serde_option;
+use crate::state::{State, ADMIN, STATE};
+use crate::{commands, queries, UnbondHandlerError, UnbondHandlerResult};
 use white_whale::luna_vault::luna_unbond_handler::msg::{
     ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg,
 };
 use white_whale::luna_vault::luna_unbond_handler::{EXPIRATION_TIME_KEY, OWNER_KEY};
-use white_whale::luna_vault::msg::VaultQueryMsg;
-
-use crate::serde_option::serde_option;
-use crate::state::{State, ADMIN, STATE};
-use crate::{commands, queries, UnbondHandlerError, UnbondHandlerResult};
 
 // version info for migration info
 pub(crate) const CONTRACT_NAME: &str = "crates.io:luna-unbond-handler";
@@ -36,16 +34,14 @@ pub fn instantiate(
     if let Some(owner) = msg.owner {
         state.owner = Some(deps.api.addr_validate(&owner)?);
 
-        let expires_in: u64 = deps.querier.query_wasm_smart(
-            info.sender.clone(),
-            &VaultQueryMsg::UnbondHandlerExpirationTime {},
-        )?;
-
         let expiration_time = env
             .block
             .time
             .seconds()
-            .checked_add(expires_in)
+            .checked_add(
+                msg.expires_in
+                    .ok_or(UnbondHandlerError::WrongExpirationTime {})?,
+            )
             .ok_or(UnbondHandlerError::WrongExpirationTime {})?;
 
         state.expiration_time = Some(expiration_time);

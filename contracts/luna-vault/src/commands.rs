@@ -304,7 +304,10 @@ fn unbond(
     // Share with fee deducted.
     let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
     let refund_amount: Uint128 = total_value_in_luna * share_ratio;
-    attrs.push(("post_fee_unbonded_amount", refund_amount.to_string()));
+    attrs.push((
+        "post_fee_unbonded_amount",
+        refund_amount.checked_sub(treasury_fee)?.to_string(),
+    ));
 
     let sender_addr = deps.api.addr_validate(&sender)?;
 
@@ -335,6 +338,8 @@ fn unbond(
     });
 
     //todo withdraw shares from LP
+    //withdraw();
+
     let bluna_amount = Uint128::zero();
 
     // Check if there's a handler assigned to the user
@@ -403,6 +408,7 @@ fn unbond(
                     msg: to_binary(&InstantiateMsg {
                         owner: Some(sender_addr.to_string()),
                         memory_contract: state.memory_address.to_string(),
+                        expires_in: Some(query_unbond_handler_expiration_time(deps.storage)?),
                     })?,
                     funds: vec![],
                     label: "White Whale Unbond Handler".to_string(),

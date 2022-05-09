@@ -255,6 +255,7 @@ fn after_withdraw(deps: DepsMut, env: Env, triggered_by_addr: String) -> UnbondH
     let bluna_hub_address =
         query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
 
+    // check if there are pending unbond requests for this handler. If not, clear the unbond handler to make it reusable
     if query_unbond_requests(
         deps.as_ref(),
         bluna_hub_address,
