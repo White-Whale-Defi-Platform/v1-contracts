@@ -1,3 +1,4 @@
+use astroport::querier::query_token_balance;
 use cosmwasm_std::{
     attr, from_binary, to_binary, Addr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo,
     ReplyOn, Response, SubMsg, Uint128, WasmMsg,
@@ -281,6 +282,7 @@ fn unbond(
     amount: Uint128,
     sender: String, // human who sent the vluna to us
 ) -> VaultResult<Response> {
+    let state = STATE.load(deps.storage)?;
     let profit = PROFIT.load(deps.storage)?;
     if profit.last_balance != Uint128::zero() {
         return Err(LunaVaultError::DepositDuringLoan {});
@@ -300,14 +302,8 @@ fn unbond(
     // Calculate share of pool and requested pool value
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
     let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
-    let (total_value_in_luna, _, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
     // Share with fee deducted.
     let share_ratio: Decimal = Decimal::from_ratio(amount - treasury_fee, total_share);
-    let refund_amount: Uint128 = total_value_in_luna * share_ratio;
-    attrs.push((
-        "post_fee_unbonded_amount",
-        refund_amount.checked_sub(treasury_fee)?.to_string(),
-    ));
 
     let sender_addr = deps.api.addr_validate(&sender)?;
 
@@ -337,10 +333,43 @@ fn unbond(
         funds: vec![],
     });
 
-    //todo withdraw shares from LP
-    //withdraw();
+    // withdraw shares from the LP, sending the Luna to the withdraw user and the bLuna to the unbond handler
+    let bluna_luna_lp_token = get_lp_token_address(&deps.as_ref(), state.astro_lp_address.clone())?;
+    let bluna_luna_lp_amount = query_token_balance(
+        &deps.querier,
+        bluna_luna_lp_token,
+        env.contract.address.clone(),
+    )?;
 
-    let bluna_amount = Uint128::zero();
+    let refund_shares_amount = share_ratio * bluna_luna_lp_amount;
+
+    // get underlying bluna/luna amount with given shares
+    let underlying_assets: [Asset; 2] = deps.querier.query_wasm_smart(
+        state.astro_lp_address,
+        &astroport::pair_stable_bluna::QueryMsg::Share {
+            amount: refund_shares_amount,
+        },
+    )?;
+
+    let luna_asset_info = AssetInfo::NativeToken {
+        denom: LUNA_DENOM.to_string(),
+    };
+
+    let luna_amount = underlying_assets
+        .iter()
+        .find(|asset| asset.info == luna_asset_info)
+        .ok_or(LunaVaultError::NotLunaToken {})?;
+
+    let luna_send_msg = luna_amount
+        .clone()
+        .into_msg(&deps.querier, sender_addr.clone())?;
+
+    let bluna_asset = underlying_assets
+        .iter()
+        .find(|asset| asset.info != luna_asset_info)
+        .ok_or_else(|| {
+            LunaVaultError::generic_err("Failed to get non-uluna asset when unbonding from LP")
+        })?;
 
     // Check if there's a handler assigned to the user
     if let Some(unbond_handler) =
@@ -364,7 +393,7 @@ fn unbond(
 
         // send bluna to unbond handler
         let unbond_msg =
-            unbond_bluna_with_handler_msg(deps.storage, bluna_amount, &unbond_handler)?;
+            unbond_bluna_with_handler_msg(deps.storage, bluna_asset.amount, &unbond_handler)?;
 
         response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
     } else {
@@ -394,7 +423,8 @@ fn unbond(
             UNBOND_HANDLER_EXPIRATION_TIMES.save(deps.storage, first.clone(), &expiration_time)?;
 
             // send bluna to unbond handler
-            let unbond_msg = unbond_bluna_with_handler_msg(deps.storage, bluna_amount, first)?;
+            let unbond_msg =
+                unbond_bluna_with_handler_msg(deps.storage, bluna_asset.amount, first)?;
 
             response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
         } else {
@@ -423,7 +453,7 @@ fn unbond(
                 deps.storage,
                 &UnbondDataCache {
                     owner: sender_addr,
-                    bluna_amount,
+                    bluna_amount: bluna_asset.amount,
                 },
             )?;
             response = response.add_submessage(unbond_handler_instantiation_msg);
@@ -431,7 +461,7 @@ fn unbond(
     }
 
     Ok(response
-        .add_messages(vec![burn_msg, treasury_fee_msg])
+        .add_messages(vec![burn_msg, treasury_fee_msg, luna_send_msg])
         .add_attributes(attrs))
 }
 
