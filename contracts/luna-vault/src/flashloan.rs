@@ -54,46 +54,20 @@ pub fn handle_flashloan(
     // Init response
     let mut response = Response::new().add_attribute("Action", "Flashloan");
 
-    //TODO
-    // Withdraw funds from Passive Strategy if needed
-    // FEE_BUFFER as buffer for fees and taxes
-    /*    if (requested_asset.amount + tax_buffer) > luna_available {
-        // Attempt to remove some money from anchor
-        let to_withdraw = (requested_asset.amount + tax_buffer) - luna_available;
-        let aust_exchange_rate = query_aust_exchange_rate(
-            env.clone(),
-            deps.as_ref(),
-            state.anchor_money_market_address.to_string(),
-        )?;
+    // If we need too, withdraw from the various passive strategies, initially defined as the bLuna-Luna LP. This method will return both assets and assumes no desired assets as-is
+    // TODO: Add a flag to this method so that a user can specify if they want luna or bluna, we can expand this later with an enum to offer a quick way to get any variant of luna via swapp ;-)
+    // TODO: NOTE: Check the clone usage, added it to fixup tests
+    let _ = withdraw_passive_strategy(
+        &deps.as_ref(),
+        requested_asset.amount,
+        AssetInfo::NativeToken {
+            denom: LUNA_DENOM.to_string(),
+        },
+        &get_lp_token_address(&deps.as_ref(), state.astro_lp_address.clone())?,
+        &state.astro_lp_address,
+        response.clone(),
+    )?;
 
-        let withdraw_msg = anchor_withdraw_msg(
-            state.bluna_address,
-            state.anchor_money_market_address,
-            to_withdraw * aust_exchange_rate.inv().unwrap(),
-        )?;
-
-        // Add msg to response and update withdrawn value
-        response = response
-            .add_message(withdraw_msg)
-            .add_attribute("Anchor withdrawal", to_withdraw.to_string())
-            .add_attribute("ust_aust_rate", aust_exchange_rate.to_string());
-    }*/
-    // pool_info.luna_cap ? instead of tax_cap
-    if (requested_asset.amount + tax_buffer) > luna_available {
-        // If we need too, withdraw from the various passive strategies, initially defined as the bLuna-Luna LP. This method will return both assets and assumes no desired assets as-is
-        // TODO: Add a flag to this method so that a user can specify if they want luna or bluna, we can expand this later with an enum to offer a quick way to get any variant of luna via swapp ;-)
-        // TODO: NOTE: Check the clone usage, added it to fixup tests
-        let _ = withdraw_passive_strategy(
-            &deps.as_ref(),
-            requested_asset.amount,
-            AssetInfo::NativeToken {
-                denom: LUNA_DENOM.to_string(),
-            },
-            &get_lp_token_address(&deps.as_ref(), state.astro_lp_address.clone())?,
-            &state.astro_lp_address,
-            response.clone(),
-        )?;
-    }
 
     // If caller not whitelisted, calculate flashloan fee
 
