@@ -1,10 +1,11 @@
+use std::fmt;
+
 use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, Deps, Env, Event, Reply, StdError,
     StdResult, Storage, SubMsgExecutionResponse, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use schemars::JsonSchema;
-use std::fmt;
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
@@ -173,10 +174,13 @@ pub fn unbond_bluna_with_handler_msg<T: Clone + fmt::Debug + PartialEq + JsonSch
 /// Builds message to withdraw luna from a handler triggering the withdraw_unbonded action
 pub fn withdraw_luna_from_handler_msg<T: Clone + fmt::Debug + PartialEq + JsonSchema>(
     unbond_handler: Addr,
+    triggered_by: Addr,
 ) -> StdResult<CosmosMsg<T>> {
     Ok(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: unbond_handler.to_string(),
-        msg: to_binary(&UnbondHandlerWithdrawMsg {})?,
+        msg: to_binary(&UnbondHandlerWithdrawMsg {
+            triggered_by_addr: triggered_by.to_string(),
+        })?,
         funds: vec![],
     }))
 }
