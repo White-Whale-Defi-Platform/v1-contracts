@@ -183,6 +183,9 @@ pub fn execute(
             commands::provide_liquidity(deps, env, info, asset)
         }
         ExecuteMsg::WithdrawUnbonded {} => commands::withdraw_unbonded(deps, info, false, None),
+        ExecuteMsg::WithdrawUnbondedFlashloan {} => {
+            commands::withdraw_unbonded_from_flashloan(deps, info, env)
+        }
         ExecuteMsg::SetAdmin { admin } => commands::set_admin(deps, info, admin),
         ExecuteMsg::SetFee {
             flash_loan_fee,

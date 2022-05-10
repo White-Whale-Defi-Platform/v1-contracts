@@ -40,6 +40,8 @@ pub enum ExecuteMsg {
     ProvideLiquidity { asset: Asset },
     /// Send back unbonded luna to the user
     WithdrawUnbonded {},
+    /// Withdraws the vault's unbonded bluna or cluna from anchor/prism
+    WithdrawUnbondedFlashloan {},
     /// Sets the withdraw fee and flash loan fee
     SetFee {
         flash_loan_fee: Option<Fee>,

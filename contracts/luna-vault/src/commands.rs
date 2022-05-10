@@ -7,12 +7,17 @@ use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg};
 use terraswap::asset::{Asset, AssetInfo};
 use terraswap::querier::query_supply;
 
+use white_whale::anchor::anchor_withdraw_unbonded_msg;
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::luna_vault::luna_unbond_handler::msg::InstantiateMsg;
 use white_whale::luna_vault::msg::{Cw20HookMsg, UnbondHandlerMsg};
-use white_whale::memory::LIST_SIZE_LIMIT;
+use white_whale::memory::queries::query_contract_from_mem;
+use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, LIST_SIZE_LIMIT, PRISM_CLUNA_HUB_ID};
+use white_whale::prism::prism_withdraw_unbonded_msg;
+use white_whale::query::prism::PrismQuery;
 use white_whale::query::terraswap::query_asset_balance;
+use white_whale::query::{anchor, prism};
 
 use crate::contract::{VaultResult, INSTANTIATE_UNBOND_HANDLER_REPLY_ID};
 use crate::error::LunaVaultError;
@@ -812,4 +817,53 @@ pub(crate) fn handle_unbond_handler_msg(
             ]))
         }
     }
+}
+
+/// Withdraws luna from Anchor or Prism. To be used after burning bluna or cluna returned to the vault with a flashloan
+pub fn withdraw_unbonded_from_flashloan(
+    deps: DepsMut,
+    msg_info: MessageInfo,
+    env: Env,
+) -> VaultResult<Response> {
+    let state = STATE.load(deps.storage)?;
+    // Check if sender is in whitelist, i.e. bot or bot proxy
+    if !state.whitelisted_contracts.contains(&msg_info.sender) {
+        return Err(LunaVaultError::NotWhitelisted {});
+    }
+
+    let mut response = Response::new().add_attribute("action", "withdraw_unbonded_from_flashloan");
+
+    // get the amount of withdrawable luna from anchor
+    let bluna_hub_address =
+        query_contract_from_mem(deps.as_ref(), &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
+
+    let withdrawable_from_anchor = anchor::query_withdrawable_unbonded(
+        deps.as_ref(),
+        bluna_hub_address.clone(),
+        env.contract.address.clone(),
+    )?
+    .withdrawable;
+    if !withdrawable_from_anchor.is_zero() {
+        // withdraw if there's withdrawable luna
+        let withdraw_unbonded_msg = anchor_withdraw_unbonded_msg(bluna_hub_address)?;
+        response = response.add_message(withdraw_unbonded_msg);
+    }
+
+    // get the amount of withdrawable luna from prism
+    let cluna_hub_address =
+        query_contract_from_mem(deps.as_ref(), &state.memory_address, PRISM_CLUNA_HUB_ID)?;
+
+    let withdrawable_from_prism = prism::query_withdrawable_unbonded(
+        deps.as_ref(),
+        cluna_hub_address.clone(),
+        env.contract.address,
+    )?
+    .withdrawable;
+    if !withdrawable_from_prism.is_zero() {
+        // withdraw if there's withdrawable luna
+        let withdraw_unbonded_msg = prism_withdraw_unbonded_msg(cluna_hub_address)?;
+        response = response.add_message(withdraw_unbonded_msg);
+    }
+
+    Ok(response)
 }
