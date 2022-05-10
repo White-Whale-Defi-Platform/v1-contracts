@@ -77,7 +77,8 @@ pub fn handle_flashloan(
     // Init response
     let mut response = Response::new().add_attribute("Action", "Flashloan");
 
-    // withdraw from passive strategy, initially defined as the bLuna-Luna LP. This returns luna + bluna
+    // withdraw from passive strategy, initially defined as the bLuna-Luna LP. This returns the requested
+    // amount of luna and deposits the remaining bluna shares taken from the LP directly into the single-sided Astroport LP
     withdraw_passive_strategy(
         &deps.as_ref(),
         requested_asset.amount,
@@ -88,51 +89,6 @@ pub fn handle_flashloan(
         &state.astro_lp_address,
         response.clone(),
     )?;
-
-    // swap bluna for luna on astroport
-    let bluna_asset_info = pool_info.asset_infos[2].to_normal(deps.api)?;
-    let bluna_address = match bluna_asset_info {
-        AssetInfo::Token { contract_addr } => Ok(deps.api.addr_validate(contract_addr)?),
-        AssetInfo::NativeToken { .. } => Err(LunaVaultError::generic_err("Not bluna")),
-    }?;
-
-    let bluna_luna_pool_address: astroport::asset::PairInfo = deps.querier.query_wasm_smart(
-        state.astro_factory_address,
-        &astroport::factory::QueryMsg::Pair {
-            asset_infos: [
-                astroport::asset::AssetInfo::Token {
-                    contract_addr: bluna_address.clone(),
-                },
-                astroport::asset::AssetInfo::NativeToken {
-                    denom: LUNA_DENOM.to_string(),
-                },
-            ],
-        },
-    )?;
-
-    let bluna_amount = query_token_balance(
-        &deps.querier,
-        bluna_address.clone(),
-        env.contract.address.clone(),
-    )?;
-
-    let swap_bluna_msg = WasmMsg::Execute {
-        contract_addr: bluna_luna_pool_address.contract_addr.into_string(),
-        msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
-            offer_asset: astroport::asset::Asset {
-                amount: bluna_amount,
-                info: astroport::asset::AssetInfo::Token {
-                    contract_addr: bluna_address,
-                },
-            },
-            belief_price: None,
-            max_spread: None,
-            to: None,
-        })?,
-        funds: vec![],
-    }
-    .into();
-    response = response.add_message(swap_bluna_msg);
 
     // If caller not whitelisted, calculate flashloan fee
     let loan_fee: Uint128 = if whitelisted {
