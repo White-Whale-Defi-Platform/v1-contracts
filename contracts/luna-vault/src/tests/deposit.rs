@@ -201,7 +201,7 @@ fn test_init_with_non_default_vault_lp_token() {
                 })
                 .unwrap(),
                 funds: vec![],
-                label: "White Whale Stablecoin Vault LP".to_string(),
+                label: "White Whale Luna Vault LP".to_string(),
             }
             .into(),
             gas_limit: None,

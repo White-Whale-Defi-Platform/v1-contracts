@@ -10,14 +10,14 @@ use white_whale::luna_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 pub fn instantiate_msg(
     token_code_id: u64,
     war_chest: String,
-    anchor_addr: String,
+    astro_addr: String,
     bluna_address: String,
     cluna_address: String,
 ) -> VaultInstantiateMsg {
     VaultInstantiateMsg {
         bluna_address: bluna_address.clone(),
         cluna_address: cluna_address.clone(),
-        astro_lp_address: anchor_addr,
+        astro_lp_address: astro_addr,
         astro_factory_address: "astro_factory_address".to_string(),
         treasury_addr: war_chest,
         memory_addr: "memory".to_string(),

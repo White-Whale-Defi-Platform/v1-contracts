@@ -135,7 +135,9 @@ impl Querier for WasmMockQuerier {
 
 impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
+        print!("Request hit the mock querier \n {:?}", request);
         match &request {
+
             // A custom handler for TerraQueries such as TaxCaps or Rates
             QueryRequest::Custom(TerraQueryWrapper { route, query_data }) => {
                 if route == &TerraRoute::Treasury {
@@ -185,6 +187,7 @@ impl WasmMockQuerier {
             // Or for more quick multi-contract mocking consider using the contract_addr
             // or directly parsing the message if it is unique
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
+                print!("Smart Query Perform with addr {:?} and address {:?}", contract_addr, msg);
                 // Handle calls for Profit Check; LastBalance
                 if contract_addr == &String::from("test_mm") {
                     println!("{:?}", request);
@@ -223,7 +226,8 @@ impl WasmMockQuerier {
                     )));
                 }
                 // Handle calls for Pair Info
-                if contract_addr == &String::from("anchor") {
+                if contract_addr == &String::from("astro") || contract_addr == &String::from("anchor") {
+                    print!("Handling call for astro LP token with name {:?}", contract_addr);
                     if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
                         let msg_pool = PoolResponse {
                             assets: [
@@ -248,7 +252,7 @@ impl WasmMockQuerier {
                     let msg_balance = PairInfo {
                         asset_infos: [
                             AssetInfo::NativeToken {
-                                denom: "whale".to_string(),
+                                denom: "astro".to_string(),
                             },
                             AssetInfo::NativeToken {
                                 denom: "uusd".to_string(),

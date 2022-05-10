@@ -21,7 +21,7 @@ pub fn instantiate_msg() -> InstantiateMsg {
     vault_msg(
         3,
         "warchest".to_string(),
-        "anchor".to_string(),
+        "astro".to_string(),
         "bluna".to_string(),
         "cluna".to_string(),
     )
