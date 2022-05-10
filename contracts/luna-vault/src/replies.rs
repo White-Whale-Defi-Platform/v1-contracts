@@ -69,23 +69,28 @@ pub fn after_unbond_handler_instantiation(
         return Err(LunaVaultError::UnbondHandlerMismatchingDataCache {});
     }
 
-    // get bluna amount from cache
-    let bluna_amount = unbond_data_cache.bluna_amount;
+    // get luna amount from cache and send to unbond handler
+    let luna_asset = unbond_data_cache.luna_asset;
+    let send_luna_to_handler_msg =
+        luna_asset.into_msg(&deps.querier, unbond_handler_contract.clone())?;
 
-    // send bluna to unbond handler
+    // get bluna amount from cache and send to unbond handler
+    let bluna_amount = unbond_data_cache.bluna_amount;
     let unbond_msg =
         unbond_bluna_with_handler_msg(deps.storage, bluna_amount, &unbond_handler_contract)?;
 
     // clear the unbond cache
     UNBOND_CACHE.remove(deps.storage);
 
-    Ok(Response::new().add_message(unbond_msg).add_attributes(vec![
-        attr("action", "unbond_handler_instantiate"),
-        attr("owner", owner_string),
-        attr(
-            "unbond_handler_contract",
-            unbond_handler_contract.to_string(),
-        ),
-        attr("expiration_time", expiration_time_string),
-    ]))
+    Ok(Response::new()
+        .add_messages(vec![send_luna_to_handler_msg, unbond_msg])
+        .add_attributes(vec![
+            attr("action", "unbond_handler_instantiate"),
+            attr("owner", owner_string),
+            attr(
+                "unbond_handler_contract",
+                unbond_handler_contract.to_string(),
+            ),
+            attr("expiration_time", expiration_time_string),
+        ]))
 }
