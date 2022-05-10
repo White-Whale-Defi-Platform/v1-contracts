@@ -14,6 +14,7 @@ use crate::tests::mock_querier::mock_dependencies;
 fn state_msg() -> ExecuteMsg {
     ExecuteMsg::UpdateState {
         bluna_address: None,
+        cluna_address: None,
         astro_lp_address: None,
         memory_address: None,
         whitelisted_contracts: None,
@@ -48,6 +49,7 @@ fn successful_set_state() {
 
     let msg = ExecuteMsg::UpdateState {
         bluna_address: Some("newbluna".to_string()),
+        cluna_address: None,
         astro_lp_address: None,
         memory_address: None,
         whitelisted_contracts: None,
