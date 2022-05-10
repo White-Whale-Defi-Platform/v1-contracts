@@ -15,7 +15,6 @@ use white_whale::luna_vault::msg::{Cw20HookMsg, UnbondHandlerMsg};
 use white_whale::memory::queries::query_contract_from_mem;
 use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, LIST_SIZE_LIMIT, PRISM_CLUNA_HUB_ID};
 use white_whale::prism::prism_withdraw_unbonded_msg;
-use white_whale::query::terraswap::query_asset_balance;
 use white_whale::query::{anchor, prism};
 
 use crate::contract::{VaultResult, INSTANTIATE_UNBOND_HANDLER_REPLY_ID};
@@ -350,48 +349,34 @@ fn unbond(
     let refund_shares_amount = share_ratio * bluna_luna_lp_amount;
 
     // get underlying bluna/luna amount with given shares
-    let underlying_assets: [Asset; 2] = deps.querier.query_wasm_smart(
-        state.astro_lp_address.clone(),
+    let underlying_assets: [astroport::asset::Asset; 2] = deps.querier.query_wasm_smart(
+        state.astro_lp_address,
         &astroport::pair_stable_bluna::QueryMsg::Share {
             amount: refund_shares_amount,
         },
     )?;
 
-    // swap the luna shares into bluna to unbond them all together
-    let luna_asset_info = AssetInfo::NativeToken {
+    let luna_asset_info = astroport::asset::AssetInfo::NativeToken {
         denom: LUNA_DENOM.to_string(),
     };
 
-    let luna_amount = underlying_assets
+    // luna amount of the LP
+    let luna_asset = underlying_assets
         .iter()
         .find(|asset| asset.info == luna_asset_info)
         .ok_or(LunaVaultError::NotLunaToken {})?
+        .clone();
+
+    // bluna amount of the LP
+    let bluna_amount = underlying_assets
+        .iter()
+        .find(|asset| asset.info != luna_asset_info)
+        .ok_or_else(|| {
+            LunaVaultError::generic_err("Failed to get non-uluna asset when unbonding from LP")
+        })?
         .amount;
 
-    let luna_asset = astroport::asset::Asset {
-        amount: luna_amount,
-        info: astroport::asset::AssetInfo::NativeToken {
-            denom: LUNA_DENOM.to_string(),
-        },
-    };
-
-    let bluna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: state.astro_lp_address.to_string(),
-        msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
-            offer_asset: luna_asset,
-            belief_price: None,
-            max_spread: None,
-            to: None,
-        })?,
-        funds: vec![],
-    });
-    response = response.add_message(bluna_purchase_msg);
-
-    // re-query value of bluna to account for the purchased bluna
-    let bluna_info = info.asset_infos[2].to_normal(deps.api)?;
-    let bluna_amount = query_asset_balance(deps.as_ref(), &bluna_info, info.contract_addr)?;
-
-    // Check if there's a handler assigned to the user
+    // Check if there's a handler assigned to the user, send luna_amount and bluna_amount + unbond msg to it
     if let Some(unbond_handler) =
         UNBOND_HANDLERS_ASSIGNED.may_load(deps.storage, sender_addr.clone())?
     {
@@ -415,7 +400,14 @@ fn unbond(
         let unbond_msg =
             unbond_bluna_with_handler_msg(deps.storage, bluna_amount, &unbond_handler)?;
 
-        response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
+        // send luna portion of LP to unbond handler
+        let send_luna_to_handler_msg = luna_asset.into_msg(&deps.querier, unbond_handler)?;
+
+        response = response.add_messages(vec![
+            unbond_handler_update_state_msg,
+            unbond_msg,
+            send_luna_to_handler_msg,
+        ]);
     } else {
         // there's no unbond handlers assigned to the user
         // check if there are handlers available to be used
@@ -445,7 +437,14 @@ fn unbond(
             // send bluna to unbond handler
             let unbond_msg = unbond_bluna_with_handler_msg(deps.storage, bluna_amount, first)?;
 
-            response = response.add_messages(vec![unbond_handler_update_state_msg, unbond_msg]);
+            // send luna portion of LP to unbond handler
+            let send_luna_to_handler_msg = luna_asset.into_msg(&deps.querier, first.clone())?;
+
+            response = response.add_messages(vec![
+                unbond_handler_update_state_msg,
+                unbond_msg,
+                send_luna_to_handler_msg,
+            ]);
         } else {
             // create a new unbond handler if there are no handlers available
             let state = STATE.load(deps.storage)?;
@@ -473,6 +472,7 @@ fn unbond(
                 &UnbondDataCache {
                     owner: sender_addr,
                     bluna_amount,
+                    luna_asset,
                 },
             )?;
             response = response.add_submessage(unbond_handler_instantiation_msg);

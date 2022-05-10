@@ -36,6 +36,7 @@ pub struct ProfitCheck {
 pub struct UnbondDataCache {
     pub owner: Addr,
     pub bluna_amount: Uint128,
+    pub luna_asset: astroport::asset::Asset,
 }
 
 pub const PROFIT: Item<ProfitCheck> = Item::new("profit");
