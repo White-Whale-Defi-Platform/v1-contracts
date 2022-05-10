@@ -140,6 +140,8 @@ pub fn check_fee(fee: Fee) -> VaultResult<Fee> {
 }
 
 pub fn get_lp_token_address(deps: &Deps, pool_address: Addr) -> VaultResult<Addr> {
+    println!("Making query");
+
     let pool_info: astroport::asset::PairInfo = deps.querier.query_wasm_smart(
         pool_address,
         &astroport::pair_stable_bluna::QueryMsg::Pair {},

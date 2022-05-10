@@ -1,10 +1,10 @@
-use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{from_binary, to_binary, Addr, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
 use cosmwasm_std::{Api, Decimal, Uint128};
 use cw20::MinterResponse;
 use terraswap::asset::AssetInfo;
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
-
+use crate::tests::mock_querier::{mock_dependencies};
 use white_whale::fee::*;
 use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::luna_vault::msg::*;
@@ -14,6 +14,10 @@ use crate::error::LunaVaultError;
 use crate::state::{State, FEE, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
 use crate::tests::common_integration::instantiate_msg as vault_msg;
+
+use astroport::asset::PairInfo;
+use astroport::factory::PairType;
+
 const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub(crate) const TREASURY_FEE: u64 = 10u64;
 
@@ -21,7 +25,7 @@ pub fn instantiate_msg() -> InstantiateMsg {
     vault_msg(
         3,
         "warchest".to_string(),
-        "astro".to_string(),
+        "warchest".to_string(),
         "bluna".to_string(),
         "cluna".to_string(),
     )
@@ -34,7 +38,7 @@ pub fn mock_instantiate(deps: DepsMut) {
     let msg = vault_msg(
         3,
         "warchest".to_string(),
-        "anchor".to_string(),
+        "astro".to_string(),
         "bluna".to_string(),
         "cluna".to_string(),
     );
@@ -75,6 +79,23 @@ pub fn mock_instantiate_no_asset_info(deps: DepsMut) {
 fn successful_initialization() {
     let mut deps = mock_dependencies(&[]);
 
+    deps.querier.with_astroport_pairs(&[(
+        &"astro".to_string(),
+        &PairInfo {
+            asset_infos: [
+                astroport::asset::AssetInfo::Token {
+                    contract_addr: Addr::unchecked("asset0000"),
+                },
+                astroport::asset::AssetInfo::NativeToken {
+                    denom: "uusd".to_string(),
+                },
+            ],
+            contract_addr: Addr::unchecked("pair0000"),
+            liquidity_token: Addr::unchecked("liquidity0000"),
+            pair_type: PairType::Xyk {},
+        },
+    )]);
+
     let msg = instantiate_msg();
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info.clone(), msg).unwrap();
@@ -114,7 +135,7 @@ fn unsuccessful_initialization_invalid_fees() {
     let msg = vault_msg(
         3,
         "warchest".to_string(),
-        "anchor".to_string(),
+        "astro".to_string(),
         "bluna".to_string(),
         "bluna".to_string(),
     );

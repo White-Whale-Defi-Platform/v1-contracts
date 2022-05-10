@@ -15,12 +15,13 @@ use astroport::pair::PoolResponse;
 use cosmwasm_storage::to_length_prefixed;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
+use std::convert::TryInto;
 use terra_cosmwasm::{
     SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute,
 };
 use terraswap::asset::{AssetInfoRaw, PairInfoRaw};
 use white_whale::query::anchor::EpochStateResponse;
-
+use crate::pool_info::PoolInfo as VaultPoolInfo;
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
 pub fn mock_dependencies(
@@ -41,6 +42,28 @@ pub struct WasmMockQuerier {
     terraswap_pair_querier: TerraswapPairQuerier,
     token_querier: TokenQuerier,
     tax_querier: TaxQuerier,
+    astroport_factory_querier: AstroportFactoryQuerier,
+}
+
+#[derive(Clone, Default)]
+pub struct AstroportFactoryQuerier {
+    pairs: HashMap<String, PairInfo>,
+}
+
+impl AstroportFactoryQuerier {
+    pub fn new(pairs: &[(&String, &PairInfo)]) -> Self {
+        AstroportFactoryQuerier {
+            pairs: pairs_to_map(pairs),
+        }
+    }
+}
+
+pub(crate) fn pairs_to_map_astro(pairs: &[(&String, &PairInfo)]) -> HashMap<String, PairInfo> {
+    let mut pairs_map: HashMap<String, PairInfo> = HashMap::new();
+    for (key, pair) in pairs.iter() {
+        pairs_map.insert(key.to_string(), (*pair).clone());
+    }
+    pairs_map
 }
 
 #[derive(Clone, Default)]
@@ -187,7 +210,7 @@ impl WasmMockQuerier {
             // Or for more quick multi-contract mocking consider using the contract_addr
             // or directly parsing the message if it is unique
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                print!("Smart Query Perform with addr {:?} and address {:?}", contract_addr, msg);
+                print!("Smart Query Perform with addr {:?}", contract_addr);
                 // Handle calls for Profit Check; LastBalance
                 if contract_addr == &String::from("test_mm") {
                     println!("{:?}", request);
@@ -225,6 +248,11 @@ impl WasmMockQuerier {
                         },
                     )));
                 }
+
+
+
+
+
                 // Handle calls for Pair Info
                 if contract_addr == &String::from("astro") || contract_addr == &String::from("anchor") {
                     print!("Handling call for astro LP token with name {:?}", contract_addr);
@@ -249,21 +277,47 @@ impl WasmMockQuerier {
                         return SystemResult::Ok(ContractResult::from(to_binary(&msg_pool)));
                     }
 
-                    let msg_balance = PairInfo {
-                        asset_infos: [
-                            AssetInfo::NativeToken {
-                                denom: "astro".to_string(),
-                            },
-                            AssetInfo::NativeToken {
-                                denom: "uusd".to_string(),
-                            },
-                        ],
-                        contract_addr: Addr::unchecked("PAIR0000"),
-                        liquidity_token: Addr::unchecked("liqtoken"),
-                        pair_type: PairType::Xyk {},
-                    };
 
-                    SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)))
+
+                    if contract_addr == &String::from("anchor") {
+                        let msg_balance = VaultPoolInfo {
+                            asset_infos: [
+                                terraswap::asset::AssetInfo::NativeToken {
+                                    denom: "astro".to_string(),
+                                },
+                                terraswap::asset::AssetInfo::NativeToken {
+                                    denom: "uusd".to_string(),
+                                },
+                                terraswap::asset::AssetInfo::NativeToken {
+                                    denom: "uusd".to_string(),
+                                },
+                                terraswap::asset::AssetInfo::NativeToken {
+                                    denom: "uusd".to_string(),
+                                },
+                            ],
+                            contract_addr: Addr::unchecked("PAIR0000"),
+                            liquidity_token: Addr::unchecked("liqtoken"),
+                        };
+                        return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)))
+
+                    }else {
+                        let mut msg_balance = PairInfo {
+                            asset_infos: [
+                                AssetInfo::NativeToken {
+                                    denom: "astro".to_string(),
+                                },
+                                AssetInfo::NativeToken {
+                                    denom: "uusd".to_string(),
+                                },
+                            ],
+                            contract_addr: Addr::unchecked("PAIR0000"),
+                            liquidity_token: Addr::unchecked("liqtoken"),
+                            pair_type: PairType::Xyk {},
+                        };
+                        return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)))
+
+                    }
+
                 } else {
                     match from_binary(msg).unwrap() {
                         // AnchorQuery::EpochState{ distributed_interest, aterra_supply} => {
@@ -276,6 +330,14 @@ impl WasmMockQuerier {
                         //     ))
                         // }
                         Cw20QueryMsg::Balance { address } => {
+                            // Handle Calls for the liquidity token, in our case we mostly only need balances
+                            // No liquidity token is actually created in mock land so we instead mock its behaviours here
+                            println!("{:?}", contract_addr);
+                            if contract_addr == &String::from("liqtoken") {
+                                return SystemResult::Ok(ContractResult::Ok(
+                                    to_binary(&Cw20BalanceResponse { balance: Default::default() }).unwrap(),
+                                ));
+                            }
                             let balances: &HashMap<String, Uint128> =
                                 match self.token_querier.balances.get(contract_addr) {
                                     Some(balances) => balances,
@@ -314,6 +376,26 @@ impl WasmMockQuerier {
                 println!("hello from raw query");
                 let key: &[u8] = key.as_slice();
                 let prefix_pair_info = to_length_prefixed(b"pair_info").to_vec();
+
+                // Fix for No such address
+                if contract_addr == &String::from("astro"){
+                    return SystemResult::Ok(ContractResult::from(to_binary(
+                                &astroport::asset::PairInfo {
+                                    asset_infos: [
+                                        astroport::asset::AssetInfo::NativeToken {
+                                            denom: "astro".to_string(),
+                                        },
+                                        astroport::asset::AssetInfo::NativeToken {
+                                            denom: "uusd".to_string(),
+                                        },
+                                    ],
+                                    contract_addr: Addr::unchecked("PAIR0000"),
+                                    liquidity_token: Addr::unchecked("liqtoken"),
+                                    pair_type: PairType::Xyk {}
+                                },
+                            )));
+                }
+
 
                 if key.to_vec() == prefix_pair_info {
                     let pair_info: PairInfo =
@@ -360,6 +442,7 @@ impl WasmMockQuerier {
             terraswap_pair_querier: TerraswapPairQuerier::default(),
             token_querier: TokenQuerier::default(),
             tax_querier: TaxQuerier::default(),
+            astroport_factory_querier: AstroportFactoryQuerier::default(),
         }
     }
 
@@ -373,4 +456,9 @@ impl WasmMockQuerier {
     //         self.base.update_balance(addr, balance.to_vec());
     //     }
     // }
+
+    // Configure the Astroport pair
+    pub fn with_astroport_pairs(&mut self, pairs: &[(&String, &PairInfo)]) {
+        self.astroport_factory_querier = AstroportFactoryQuerier::new(pairs);
+    }
 }
