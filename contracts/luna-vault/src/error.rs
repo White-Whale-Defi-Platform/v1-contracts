@@ -33,21 +33,11 @@ pub enum LunaVaultError {
     #[error("No swaps can be performed in this pool")]
     NoSwapAvailable {},
 
-    #[error("Initialization values make no sense.")]
-    InvalidInit {},
-
     #[error("The provided asset is not a native token.")]
     NotNativeToken {},
 
     #[error("The provided asset is not the luna token.")]
     NotLunaToken {},
-
-    //todo delete
-    #[error("No withdrawable {0} assets are available yet.")]
-    NoWithdrawableAssetsAvailable(String),
-
-    #[error("Burn amount must be greater than 1 micro unit.")]
-    TooSmallBurn {},
 
     #[error("Not enough funds to perform trade")]
     Broke {},

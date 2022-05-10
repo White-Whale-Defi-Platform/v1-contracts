@@ -1,7 +1,4 @@
-use cosmwasm_bignumber::{Decimal256, Uint256};
-use cosmwasm_std::{
-    to_binary, Addr, Decimal, Deps, Env, QueryRequest, StdResult, Uint128, WasmQuery,
-};
+use cosmwasm_std::{to_binary, Addr, Deps, QueryRequest, StdResult, Uint128, WasmQuery};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 

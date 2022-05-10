@@ -1,11 +1,7 @@
 use core::result::Result::Err;
 
-use cosmwasm_std::{
-    to_binary, Addr, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, StdError, Uint128,
-    WasmMsg,
-};
-use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw};
-use terraswap::querier::query_token_balance;
+use cosmwasm_std::{CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response, Uint128, WasmMsg};
+use terraswap::asset::{Asset, AssetInfo};
 
 use white_whale::anchor::anchor_bluna_unbond_msg;
 use white_whale::denom::LUNA_DENOM;
@@ -18,11 +14,9 @@ use white_whale::tax::into_msg_without_tax;
 use crate::commands::{deposit_passive_strategy, withdraw_passive_strategy};
 use crate::contract::VaultResult;
 use crate::error::LunaVaultError;
-use crate::helpers::{
-    compute_total_value, get_attribute_value_from_event, get_lp_token_address, ConversionAsset,
-};
+use crate::helpers::{compute_total_value, get_lp_token_address};
 use crate::pool_info::PoolInfoRaw;
-use crate::state::{DEPOSIT_INFO, FEE, POOL_INFO, PROFIT, STATE};
+use crate::state::{FEE, POOL_INFO, PROFIT, STATE};
 
 const ROUNDING_ERR_COMPENSATION: u32 = 10u32;
 
@@ -33,7 +27,6 @@ pub fn handle_flashloan(
     payload: FlashLoanPayload,
 ) -> VaultResult<Response> {
     let state = STATE.load(deps.storage)?;
-    let deposit_info = DEPOSIT_INFO.load(deps.storage)?;
     let fees = FEE.load(deps.storage)?;
     let whitelisted_contracts = state.whitelisted_contracts;
     let whitelisted: bool;
@@ -52,8 +45,7 @@ pub fn handle_flashloan(
 
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let total_value =
-        compute_total_value(&env, deps.as_ref(), &pool_info.clone())?.total_value_in_luna;
+    let total_value = compute_total_value(&env, deps.as_ref(), &pool_info)?.total_value_in_luna;
     let requested_asset = payload.requested_asset;
 
     // check if the request_asset is uluna

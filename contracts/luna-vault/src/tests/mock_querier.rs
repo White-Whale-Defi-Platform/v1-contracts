@@ -3,9 +3,15 @@
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{from_binary, from_slice, to_binary, Api,  Addr, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery};
+use cosmwasm_std::{
+    from_binary, from_slice, to_binary, Addr, Api, Binary, Coin, ContractResult, Decimal,
+    OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
+};
 
 use crate::tests::anchor_mock::mock_epoch_state;
+use astroport::asset::{Asset, AssetInfo, PairInfo};
+use astroport::factory::PairType;
+use astroport::pair::PoolResponse;
 use cosmwasm_storage::to_length_prefixed;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
@@ -13,9 +19,6 @@ use terra_cosmwasm::{
     SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute,
 };
 use terraswap::asset::{AssetInfoRaw, PairInfoRaw};
-use astroport::asset::{PairInfo, AssetInfo, Asset};
-use astroport::factory::PairType;
-use astroport::pair::PoolResponse;
 use white_whale::query::anchor::EpochStateResponse;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies

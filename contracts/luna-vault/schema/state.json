@@ -7,8 +7,9 @@
     "astro_factory_address",
     "astro_lp_address",
     "bluna_address",
+    "cluna_address",
     "memory_address",
-    "unbonding_period",
+    "unbond_handler_code_id",
     "whitelisted_contracts"
   ],
   "properties": {
@@ -34,10 +35,13 @@
     "bluna_address": {
       "$ref": "#/definitions/Addr"
     },
+    "cluna_address": {
+      "$ref": "#/definitions/Addr"
+    },
     "memory_address": {
       "$ref": "#/definitions/Addr"
     },
-    "unbonding_period": {
+    "unbond_handler_code_id": {
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0

@@ -150,7 +150,6 @@ fn stablecoin_vault_fees_are_allocated() {
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
         aust_token_instance.to_string(),
-
     );
 
     // Next setup the vault with the gov contract as the 'owner'
@@ -387,7 +386,6 @@ fn for_big_sums_anchor_deposit_or_withdraw_is_called_and_fees_are_allocated() {
         anchor_addr.to_string(),
         aust_token_instance.to_string(),
         aust_token_instance.to_string(),
-
     );
 
     // Next setup the vault with the gov contract as the 'owner'

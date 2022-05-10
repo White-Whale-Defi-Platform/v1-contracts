@@ -18,14 +18,12 @@ const INSTANTIATE_REPLY_ID: u8 = 1u8;
 pub(crate) const TREASURY_FEE: u64 = 10u64;
 
 pub fn instantiate_msg() -> InstantiateMsg {
-    // TODO: Update, maybe this should be a blank message ??
     vault_msg(
         3,
         "warchest".to_string(),
         "anchor".to_string(),
         "bluna".to_string(),
         "cluna".to_string(),
-
     )
 }
 
@@ -119,7 +117,6 @@ fn unsuccessful_initialization_invalid_fees() {
         "anchor".to_string(),
         "bluna".to_string(),
         "bluna".to_string(),
-
     );
 
     let info = mock_info(TEST_CREATOR, &[]);
@@ -290,7 +287,6 @@ fn test_init_with_non_default_vault_lp_token() {
         "anchor".to_string(),
         "bluna".to_string(),
         "cluna".to_string(),
-
     );
 
     // Prepare mock env

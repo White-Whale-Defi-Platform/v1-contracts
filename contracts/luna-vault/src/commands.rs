@@ -15,7 +15,6 @@ use white_whale::luna_vault::msg::{Cw20HookMsg, UnbondHandlerMsg};
 use white_whale::memory::queries::query_contract_from_mem;
 use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, LIST_SIZE_LIMIT, PRISM_CLUNA_HUB_ID};
 use white_whale::prism::prism_withdraw_unbonded_msg;
-use white_whale::query::prism::PrismQuery;
 use white_whale::query::terraswap::query_asset_balance;
 use white_whale::query::{anchor, prism};
 
@@ -379,7 +378,7 @@ fn unbond(
     let bluna_purchase_msg = CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: state.astro_lp_address.to_string(),
         msg: to_binary(&astroport::pair::ExecuteMsg::Swap {
-            offer_asset: luna_asset.clone(),
+            offer_asset: luna_asset,
             belief_price: None,
             max_spread: None,
             to: None,
@@ -390,7 +389,7 @@ fn unbond(
 
     // re-query value of bluna to account for the purchased bluna
     let bluna_info = info.asset_infos[2].to_normal(deps.api)?;
-    let bluna_amount = query_asset_balance(deps.as_ref(), &bluna_info, info.contract_addr.clone())?;
+    let bluna_amount = query_asset_balance(deps.as_ref(), &bluna_info, info.contract_addr)?;
 
     // Check if there's a handler assigned to the user
     if let Some(unbond_handler) =
@@ -617,10 +616,12 @@ pub fn remove_from_whitelist(
 }
 
 /// Updates the contract state
+#[allow(clippy::too_many_arguments)]
 pub fn update_state(
     deps: DepsMut,
     info: MessageInfo,
     bluna_address: Option<String>,
+    cluna_address: Option<String>,
     astro_lp_address: Option<String>,
     memory_address: Option<String>,
     whitelisted_contracts: Option<Vec<String>>,
@@ -637,6 +638,10 @@ pub fn update_state(
     if let Some(bluna_address) = bluna_address {
         state.bluna_address = api.addr_validate(&bluna_address)?;
         attrs.push(("new bluna_address", bluna_address));
+    }
+    if let Some(cluna_address) = cluna_address {
+        state.cluna_address = api.addr_validate(&cluna_address)?;
+        attrs.push(("new cluna_address", cluna_address));
     }
     if let Some(astro_lp_address) = astro_lp_address {
         state.astro_lp_address = api.addr_validate(&astro_lp_address)?;
@@ -707,7 +712,9 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
             astro_generator_address.clone(),
             &astroport::generator::QueryMsg::Config {},
         )?;
-    let astro_token_address = deps.api.addr_validate(&*astro_generator_config.reward_token_addr)?;
+    let astro_token_address = deps
+        .api
+        .addr_validate(&*astro_generator_config.reward_token_addr)?;
     let astro_pending = astroport::asset::Asset {
         amount: pending_tokens.pending,
         info: astroport::asset::AssetInfo::Token {

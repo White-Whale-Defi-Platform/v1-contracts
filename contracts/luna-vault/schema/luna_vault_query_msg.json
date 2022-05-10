@@ -107,6 +107,7 @@
       "additionalProperties": false
     },
     {
+      "description": "queries anchor for withdrawable unbonded amount",
       "type": "object",
       "required": [
         "withdrawable_unbonded"
@@ -127,6 +128,7 @@
       "additionalProperties": false
     },
     {
+      "description": "queries anchor for unbonded requests",
       "type": "object",
       "required": [
         "unbond_requests"
@@ -140,22 +142,6 @@
           "properties": {
             "address": {
               "type": "string"
-            },
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint32",
-              "minimum": 0.0
-            },
-            "start_from": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
             }
           }
         }
@@ -163,31 +149,14 @@
       "additionalProperties": false
     },
     {
+      "description": "queries the expiration time for unbond handlers",
       "type": "object",
       "required": [
-        "all_history"
+        "unbond_handler_expiration_time"
       ],
       "properties": {
-        "all_history": {
-          "type": "object",
-          "properties": {
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint32",
-              "minimum": 0.0
-            },
-            "start_from": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint64",
-              "minimum": 0.0
-            }
-          }
+        "unbond_handler_expiration_time": {
+          "type": "object"
         }
       },
       "additionalProperties": false

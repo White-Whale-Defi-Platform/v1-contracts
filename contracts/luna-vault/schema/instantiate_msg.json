@@ -14,7 +14,7 @@
     "token_code_id",
     "treasury_addr",
     "treasury_fee",
-    "unbonding_period"
+    "unbond_handler_code_id"
   ],
   "properties": {
     "asset_info": {
@@ -54,7 +54,7 @@
     "treasury_fee": {
       "$ref": "#/definitions/Decimal"
     },
-    "unbonding_period": {
+    "unbond_handler_code_id": {
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0

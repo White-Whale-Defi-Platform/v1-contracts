@@ -202,6 +202,7 @@ pub fn execute(
         ExecuteMsg::SwapRewards {} => commands::swap_rewards(deps, env, info),
         ExecuteMsg::UpdateState {
             bluna_address,
+            cluna_address,
             astro_lp_address,
             memory_address,
             whitelisted_contracts,
@@ -210,6 +211,7 @@ pub fn execute(
             deps,
             info,
             bluna_address,
+            cluna_address,
             astro_lp_address,
             memory_address,
             whitelisted_contracts,
@@ -223,7 +225,6 @@ pub fn execute(
     }
 }
 
-/// This just stores the result for future query
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
     let res = unwrap_reply(msg.clone())?;
@@ -242,13 +243,6 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> VaultResult<Response> {
         }
         _ => Ok(Response::default()),
     }
-}
-
-fn to_binary<T>(data: &T) -> VaultResult<Binary>
-where
-    T: Serialize + ?Sized,
-{
-    Ok(cosmwasm_std::to_binary(data)?)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -274,4 +268,11 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> VaultResult<Binary> {
             &queries::query_unbond_handler_expiration_time(deps.storage)?,
         ),
     }
+}
+
+fn to_binary<T>(data: &T) -> VaultResult<Binary>
+where
+    T: Serialize + ?Sized,
+{
+    Ok(cosmwasm_std::to_binary(data)?)
 }

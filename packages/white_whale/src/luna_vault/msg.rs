@@ -57,6 +57,7 @@ pub enum ExecuteMsg {
     /// Update the internal State struct
     UpdateState {
         bluna_address: Option<String>,
+        cluna_address: Option<String>,
         astro_lp_address: Option<String>,
         memory_address: Option<String>,
         whitelisted_contracts: Option<Vec<String>>,
