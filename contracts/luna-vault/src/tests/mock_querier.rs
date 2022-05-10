@@ -392,7 +392,7 @@ impl WasmMockQuerier {
                                     contract_addr: Addr::unchecked("PAIR0000"),
                                     liquidity_token: Addr::unchecked("liqtoken"),
                                     pair_type: PairType::Xyk {}
-                                },
+                                }
                             )));
                 }
 

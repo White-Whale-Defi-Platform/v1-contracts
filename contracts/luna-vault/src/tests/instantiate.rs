@@ -13,7 +13,8 @@ use crate::contract::{execute, instantiate, query};
 use crate::error::LunaVaultError;
 use crate::state::{State, FEE, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
-use crate::tests::common_integration::instantiate_msg as vault_msg;
+use crate::tests::common_integration::{instantiate_msg as vault_msg};
+use white_whale::luna_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 
 use astroport::asset::PairInfo;
 use astroport::factory::PairType;
@@ -25,7 +26,7 @@ pub fn instantiate_msg() -> InstantiateMsg {
     vault_msg(
         3,
         "warchest".to_string(),
-        "warchest".to_string(),
+        "astro".to_string(),
         "bluna".to_string(),
         "cluna".to_string(),
     )
@@ -106,10 +107,10 @@ fn successful_initialization() {
     assert_eq!(
         state,
         State {
-            bluna_address: deps.api.addr_validate("test_aust").unwrap(),
-            cluna_address: deps.api.addr_validate("cluna_hub").unwrap(),
+            bluna_address: deps.api.addr_validate("bluna").unwrap(),
+            cluna_address: deps.api.addr_validate("cluna").unwrap(),
             astro_lp_address: deps.api.addr_validate("astro").unwrap(),
-            astro_factory_address: Addr::unchecked("astro_factory".to_string()),
+            astro_factory_address: Addr::unchecked("astro_factory_address".to_string()),
             memory_address: deps.api.addr_validate("memory").unwrap(),
             whitelisted_contracts: vec![],
             allow_non_whitelisted: false,
@@ -132,16 +133,30 @@ fn successful_initialization() {
 fn unsuccessful_initialization_invalid_fees() {
     let mut deps = mock_dependencies(&[]);
 
-    let msg = vault_msg(
-        3,
-        "warchest".to_string(),
-        "astro".to_string(),
-        "bluna".to_string(),
-        "bluna".to_string(),
-    );
+
+
+    let msg = VaultInstantiateMsg {
+        bluna_address: "bluna".to_string(),
+        cluna_address: "cluna".to_string(),
+        astro_lp_address: "astro".to_string(),
+        astro_factory_address: "astro_factory_address".to_string(),
+        treasury_addr: "warchest".to_string(),
+        memory_addr: "memory".to_string(),
+        asset_info: AssetInfo::NativeToken {
+            denom: "uluna".to_string(),
+        },
+        token_code_id: 3,
+        treasury_fee: Decimal::percent(10000u64),
+        flash_loan_fee: Decimal::permille(5000u64),
+        commission_fee: Decimal::permille(8000u64),
+        vault_lp_token_name: None,
+        vault_lp_token_symbol: None,
+        unbond_handler_code_id: 0,
+    };
 
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
+    println!("{:?}",res);
     match res {
         Err(LunaVaultError::InvalidFee {}) => (),
         _ => panic!("Must return LunaVaultError::InvalidFee"),
@@ -302,13 +317,24 @@ fn test_init_with_non_default_vault_lp_token() {
     let custom_token_symbol = String::from("MyLP");
 
     // Define a custom Init Msg with the custom token info provided
-    let msg = vault_msg(
-        3,
-        "warchest".to_string(),
-        "anchor".to_string(),
-        "bluna".to_string(),
-        "cluna".to_string(),
-    );
+    let msg = VaultInstantiateMsg {
+        bluna_address: "bluna".to_string(),
+        cluna_address: "cluna".to_string(),
+        astro_lp_address: "astro".to_string(),
+        astro_factory_address: "astro_factory_address".to_string(),
+        treasury_addr: "warchest".to_string(),
+        memory_addr: "memory".to_string(),
+        asset_info: AssetInfo::NativeToken {
+            denom: "uluna".to_string(),
+        },
+        token_code_id: 3,
+        treasury_fee: Decimal::percent(1u64),
+        flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
+        vault_lp_token_name: Some(custom_token_name.clone()),
+        vault_lp_token_symbol: Some(custom_token_symbol.clone()),
+        unbond_handler_code_id: 0,
+    };
 
     // Prepare mock env
     let env = mock_env();
