@@ -14,6 +14,30 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "withdrawable_unbonded"
+      ],
+      "properties": {
+        "withdrawable_unbonded": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "unbond_requests"
+      ],
+      "properties": {
+        "unbond_requests": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }

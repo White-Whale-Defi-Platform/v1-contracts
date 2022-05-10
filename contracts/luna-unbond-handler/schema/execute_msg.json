@@ -23,7 +23,15 @@
       ],
       "properties": {
         "withdraw_unbonded": {
-          "type": "object"
+          "type": "object",
+          "required": [
+            "triggered_by_addr"
+          ],
+          "properties": {
+            "triggered_by_addr": {
+              "type": "string"
+            }
+          }
         }
       },
       "additionalProperties": false
