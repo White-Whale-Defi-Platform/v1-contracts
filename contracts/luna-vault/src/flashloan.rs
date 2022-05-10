@@ -142,6 +142,7 @@ pub fn after_trade(
     loan_fee: Uint128,
 ) -> VaultResult<Response> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
+
     let total_value = compute_total_value(&env, deps.as_ref(), &info)?;
     let mut conf = PROFIT.load(deps.storage)?;
 
@@ -183,7 +184,6 @@ pub fn after_trade(
         )?;
         response = response.add_message(bluna_unbond_msg);
     }
-
     if total_value.cluna_value_in_luna > Uint128::zero() {
         // flashloan was paid back in cluna, burn it on Prism
         let cluna_hub_address =

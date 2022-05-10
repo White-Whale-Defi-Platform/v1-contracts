@@ -94,7 +94,6 @@ pub fn instantiate(
     };
 
     FEE.save(deps.storage, &fee_config)?;
-    println!("Start");
 
     let pool_info: &PoolInfoRaw = &PoolInfoRaw {
         contract_addr: env.contract.address.clone(),
@@ -116,7 +115,6 @@ pub fn instantiate(
             .to_raw(deps.api)?, // 3 - cluna
         ],
     };
-    println!("Start");
 
     POOL_INFO.save(deps.storage, pool_info)?;
 

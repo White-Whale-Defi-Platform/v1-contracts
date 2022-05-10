@@ -5,6 +5,8 @@ use cosmwasm_std::{Api, Decimal};
 use crate::contract::{execute, instantiate, query};
 use crate::state::{State, STATE};
 use cw20::MinterResponse;
+use terraswap::asset::AssetInfo;
+use white_whale::luna_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 
 use crate::tests::common_integration::instantiate_msg as vault_msg;
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
@@ -163,13 +165,25 @@ fn test_init_with_non_default_vault_lp_token() {
     let custom_token_name = String::from("My LP Token");
     let custom_token_symbol = String::from("MyLP");
 
-    let msg = vault_msg(
-        3,
-        "warchest".to_string(),
-        "anchor".to_string(),
-        "bluna".to_string(),
-        "cluna".to_string(),
-    );
+    // Define a custom Init Msg with the custom token info provided
+    let msg = VaultInstantiateMsg {
+        bluna_address: "bluna".to_string(),
+        cluna_address: "cluna".to_string(),
+        astro_lp_address: "astro".to_string(),
+        astro_factory_address: "astro_factory_address".to_string(),
+        treasury_addr: "warchest".to_string(),
+        memory_addr: "memory".to_string(),
+        asset_info: AssetInfo::NativeToken {
+            denom: "uluna".to_string(),
+        },
+        token_code_id: 3,
+        treasury_fee: Decimal::percent(1u64),
+        flash_loan_fee: Decimal::permille(5u64),
+        commission_fee: Decimal::permille(8u64),
+        vault_lp_token_name: Some(custom_token_name.clone()),
+        vault_lp_token_symbol: Some(custom_token_symbol.clone()),
+        unbond_handler_code_id: 0,
+    };
 
     // Prepare mock env
     let env = mock_env();

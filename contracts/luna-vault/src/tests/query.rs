@@ -48,7 +48,7 @@ pub fn test_vault_value_query() {
 
     let q_res: ValueResponse =
         from_binary(&query(deps.as_ref(), env, QueryMsg::VaultValue {}).unwrap()).unwrap();
-    assert_eq!(q_res.total_luna_value, Uint128::new(1000))
+    assert_eq!(q_res.total_luna_value, Uint128::new(3000))
 }
 
 #[test]

@@ -38,7 +38,7 @@ fn successful_handle_callback_without_anchor_deposit() {
 
     let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
     // 1 msg (commission)
-    assert_eq!(1, res.messages.len());
+    assert_eq!(4, res.messages.len());
 }
 // TODO: TEST is Broken with error
 // called `Result::unwrap()` on an `Err` value: Std(ParseErr { target_type: "astroport::pair::SimulationResponse", msg: "missing field `return_amount`" })

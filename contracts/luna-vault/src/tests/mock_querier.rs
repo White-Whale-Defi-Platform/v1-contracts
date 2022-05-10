@@ -20,8 +20,13 @@ use terra_cosmwasm::{
     SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute,
 };
 use terraswap::asset::{AssetInfoRaw, PairInfoRaw};
-use white_whale::query::anchor::EpochStateResponse;
+use thiserror::private::DisplayAsDisplay;
+use white_whale::astroport_helper::SimulationResponse;
+
+use white_whale::query::anchor::{AnchorQuery, EpochStateResponse, UnbondRequestsResponse};
+use white_whale::query::anchor::AnchorQuery::UnbondRequests;
 use crate::pool_info::PoolInfo as VaultPoolInfo;
+
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
 pub fn mock_dependencies(
@@ -149,7 +154,7 @@ impl Querier for WasmMockQuerier {
                 return SystemResult::Err(SystemError::InvalidRequest {
                     error: format!("Parsing query request: {}", e),
                     request: bin_request.into(),
-                })
+                });
             }
         };
         self.handle_query(&request)
@@ -210,10 +215,8 @@ impl WasmMockQuerier {
             // Or for more quick multi-contract mocking consider using the contract_addr
             // or directly parsing the message if it is unique
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
-                print!("Smart Query Perform with addr {:?}", contract_addr);
                 // Handle calls for Profit Check; LastBalance
                 if contract_addr == &String::from("test_mm") {
-                    println!("{:?}", request);
 
                     // Handle Anchor EpochStateQuery
                     if msg == &Binary::from(r#"{"epoch_state":{}}"#.as_bytes()) {
@@ -233,7 +236,6 @@ impl WasmMockQuerier {
                 }
                 // Handle calls for Profit Check; LastBalance
                 if contract_addr == &String::from("bluna") {
-                    println!("{:?}", request);
 
                     // Handle Anchor EpochStateQuery
                     if msg == &Binary::from(r#"{"epoch_state":{}}"#.as_bytes()) {
@@ -242,6 +244,7 @@ impl WasmMockQuerier {
                         )));
                     }
 
+
                     return SystemResult::Ok(ContractResult::from(to_binary(
                         &Cw20BalanceResponse {
                             balance: Uint128::zero(),
@@ -249,13 +252,27 @@ impl WasmMockQuerier {
                     )));
                 }
 
-
-
+                // Handle the memory contract
+                // Becuase of another handler in this file, all queried contracts come back with contract_from_memory
+                // This is a crude v1 impl for mocking, eventually this should be changed to have multiple
+                // Makes it so that ANY functionality within a memory queryied contract that needs to be covered can and should be covered here
+                if contract_addr == &String::from("contract_from_memory") {
+                    // if msg == &Binary::from(r#"{"unbond_requests":{}}"#.as_bytes()) {
+                    return SystemResult::Ok(ContractResult::Ok(
+                        to_binary(&UnbondRequestsResponse {
+                            address: "".to_string(),
+                            requests: vec![],
+                        }).unwrap()
+                    ));
+                    // }
+                }
 
 
                 // Handle calls for Pair Info
                 if contract_addr == &String::from("astro") || contract_addr == &String::from("anchor") {
                     print!("Handling call for astro LP token with name {:?}", contract_addr);
+
+
                     if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
                         let msg_pool = PoolResponse {
                             assets: [
@@ -278,7 +295,6 @@ impl WasmMockQuerier {
                     }
 
 
-
                     if contract_addr == &String::from("anchor") {
                         let msg_balance = VaultPoolInfo {
                             asset_infos: [
@@ -298,46 +314,90 @@ impl WasmMockQuerier {
                             contract_addr: Addr::unchecked("PAIR0000"),
                             liquidity_token: Addr::unchecked("liqtoken"),
                         };
-                        return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)))
+                        return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)));
+                    } else {
+                        if msg == &Binary::from(r#"{"pair":{}}"#.as_bytes()) {
+                            println!("Were looking for pair");
+                            let mut msg_balance = PairInfo {
+                                asset_infos: [
+                                    AssetInfo::Token {
+                                        contract_addr: Addr::unchecked("bluna"),
+                                    },
+                                    AssetInfo::NativeToken {
+                                        denom: "uusd".to_string(),
+                                    },
+                                ],
+                                contract_addr: Addr::unchecked("PAIR0000"),
+                                liquidity_token: Addr::unchecked("liqtoken"),
+                                pair_type: PairType::Xyk {},
+                            };
+                            return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)));
 
-                    }else {
-                        let mut msg_balance = PairInfo {
-                            asset_infos: [
-                                AssetInfo::NativeToken {
-                                    denom: "astro".to_string(),
+                        }
+
+                        if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
+                            println!("Were looking for pool");
+                            let myvac = [
+                                Asset {
+                                    amount: Uint128::new(1000u128),
+                                    info: AssetInfo::Token {
+                                        contract_addr: Addr::unchecked("bluna"),
+                                    },
                                 },
-                                AssetInfo::NativeToken {
-                                    denom: "uusd".to_string(),
+                                Asset {
+                                    amount: Uint128::new(1000u128),
+                                    info: AssetInfo::NativeToken {
+                                        denom: "uusd".to_string(),
+                                    },
                                 },
-                            ],
-                            contract_addr: Addr::unchecked("PAIR0000"),
-                            liquidity_token: Addr::unchecked("liqtoken"),
-                            pair_type: PairType::Xyk {},
+                            ];
+                            return SystemResult::Ok(ContractResult::from(to_binary(&myvac)));
+
+                        }
+                        // By now we are expecting either query pools or simulation
+
+                        // Note this is an interesting one
+                        // I know exactly what 'Binary[12,12,12,12]' combo I wanted and was soooo confused as I could not read what the message was
+                        // in the end I do as_display and to_string to as least give me something simple to compare too
+                        if msg.as_display().to_string() == String::from("eyJzaGFyZSI6eyJhbW91bnQiOiIwIn19") {
+                            let myvac = [
+                                Asset {
+                                    amount: Uint128::new(1000u128),
+                                    info: AssetInfo::Token {
+                                        contract_addr: Addr::unchecked("bluna"),
+                                    },
+                                },
+                                Asset {
+                                    amount: Uint128::new(1000u128),
+                                    info: AssetInfo::NativeToken {
+                                        denom: "uusd".to_string(),
+                                    },
+                                },
+                            ];
+                            return SystemResult::Ok(ContractResult::from(to_binary(&myvac)));
+                        }
+
+                        // Only Simulation or a query I have not encountered/mocked in this contract left
+                        let msg: SimulationResponse = SimulationResponse {
+                            return_amount: Default::default(),
+                            spread_amount: Default::default(),
+                            commission_amount: Default::default(),
                         };
-                        return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)))
-
+                        return SystemResult::Ok(ContractResult::from(to_binary(&msg)));
                     }
-
                 } else {
                     match from_binary(msg).unwrap() {
-                        // AnchorQuery::EpochState{ distributed_interest, aterra_supply} => {
-
-                        //     return SystemResult::Ok(ContractResult::Ok(
-                        //         to_binary(&EpochStateResponse{
-                        //             exchange_rate: Decimal256::percent(120),
-                        //             aterra_supply: Uint256::from(1000000u64)
-                        //         }).unwrap()
-                        //     ))
-                        // }
                         Cw20QueryMsg::Balance { address } => {
                             // Handle Calls for the liquidity token, in our case we mostly only need balances
                             // No liquidity token is actually created in mock land so we instead mock its behaviours here
                             println!("{:?}", contract_addr);
-                            if contract_addr == &String::from("liqtoken") {
+                            if contract_addr == &String::from("liqtoken") || contract_addr == &String::from("cluna") {
                                 return SystemResult::Ok(ContractResult::Ok(
-                                    to_binary(&Cw20BalanceResponse { balance: Default::default() }).unwrap(),
+                                    to_binary(&Cw20BalanceResponse { balance: Uint128::zero() }).unwrap(),
                                 ));
                             }
+
+
                             let balances: &HashMap<String, Uint128> =
                                 match self.token_querier.balances.get(contract_addr) {
                                     Some(balances) => balances,
@@ -348,7 +408,7 @@ impl WasmMockQuerier {
                                                 contract_addr
                                             ),
                                             request: msg.as_slice().into(),
-                                        })
+                                        });
                                     }
                                 };
 
@@ -359,7 +419,7 @@ impl WasmMockQuerier {
                                         to_binary(&Cw20BalanceResponse {
                                             balance: Uint128::zero(),
                                         })
-                                        .unwrap(),
+                                            .unwrap(),
                                     ));
                                 }
                             };
@@ -377,23 +437,10 @@ impl WasmMockQuerier {
                 let key: &[u8] = key.as_slice();
                 let prefix_pair_info = to_length_prefixed(b"pair_info").to_vec();
 
-                // Fix for No such address
-                if contract_addr == &String::from("astro"){
-                    return SystemResult::Ok(ContractResult::from(to_binary(
-                                &astroport::asset::PairInfo {
-                                    asset_infos: [
-                                        astroport::asset::AssetInfo::NativeToken {
-                                            denom: "astro".to_string(),
-                                        },
-                                        astroport::asset::AssetInfo::NativeToken {
-                                            denom: "uusd".to_string(),
-                                        },
-                                    ],
-                                    contract_addr: Addr::unchecked("PAIR0000"),
-                                    liquidity_token: Addr::unchecked("liqtoken"),
-                                    pair_type: PairType::Xyk {}
-                                }
-                            )));
+                if contract_addr == &String::from("memory") {
+                    return SystemResult::Ok(ContractResult::Ok(
+                        to_binary(&"contract_from_memory".to_string()).unwrap(),
+                    ));
                 }
 
 
@@ -405,7 +452,7 @@ impl WasmMockQuerier {
                                 return SystemResult::Err(SystemError::InvalidRequest {
                                     error: format!("PairInfo is not found for {}", contract_addr),
                                     request: key.into(),
-                                })
+                                });
                             }
                         };
 
