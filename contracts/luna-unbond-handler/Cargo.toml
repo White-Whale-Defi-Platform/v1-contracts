@@ -37,4 +37,14 @@ terraswap = "2.4.0"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "0.16.7" }
+luna-vault = { version = "0.1.0", path = "../luna-vault" }
+cw20-base = { version = "0.8", features = ["library"] }
+memory = { version = "0.1.0", path = "../treasury/memory" }
+anchor_basset_hub = {git ="https://github.com/Anchor-Protocol/anchor-bAsset-contracts.git", rev = "486f1cd495325798f884e19880180a62566b5e48", package = "anchor_basset_hub"}
+basset = {git ="https://github.com/Anchor-Protocol/anchor-bAsset-contracts.git", rev = "486f1cd495325798f884e19880180a62566b5e48", package = "basset"}
+treasury = { version = "0.1.0", path = "../treasury/treasury" }
+
 cw-multi-test = { version = "0.8"}
+terra-mocks = {git ="https://github.com/terra-money/cosmwasm-contracts.git", rev = "b25f4ac2d7bddaa3a18838cfe51d18e1ae855dcd", package = "terra-mocks"}
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="e0dcab33c0a414c6cfb2c24b78ddc606f574325f", package = "terra-multi-test"}
+

@@ -49,6 +49,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "anchor_airdrop_registry"
+version = "1.0.0"
+source = "git+https://github.com/Anchor-Protocol/anchor-bAsset-contracts.git?rev=486f1cd495325798f884e19880180a62566b5e48#486f1cd495325798f884e19880180a62566b5e48"
+dependencies = [
+ "basset",
+ "cosmwasm-std 0.16.7",
+ "cosmwasm-storage 0.16.7",
+ "cw-storage-plus 0.8.1",
+ "cw2 0.8.1",
+ "cw20",
+ "cw20-base",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "anchor_basset_hub"
+version = "1.0.0"
+source = "git+https://github.com/Anchor-Protocol/anchor-bAsset-contracts.git?rev=486f1cd495325798f884e19880180a62566b5e48#486f1cd495325798f884e19880180a62566b5e48"
+dependencies = [
+ "anchor_airdrop_registry",
+ "anchor_basset_token",
+ "basset",
+ "cosmwasm-std 0.16.7",
+ "cosmwasm-storage 0.16.7",
+ "cw-storage-plus 0.8.1",
+ "cw20",
+ "cw20-legacy",
+ "rand 0.5.6",
+ "schemars",
+ "serde",
+ "signed_integer 0.1.0 (git+https://github.com/Anchor-Protocol/anchor-bAsset-contracts.git?rev=486f1cd495325798f884e19880180a62566b5e48)",
+ "snafu",
+ "terra-cosmwasm",
+]
+
+[[package]]
+name = "anchor_basset_token"
+version = "1.0.0"
+source = "git+https://github.com/Anchor-Protocol/anchor-bAsset-contracts.git?rev=486f1cd495325798f884e19880180a62566b5e48#486f1cd495325798f884e19880180a62566b5e48"
+dependencies = [
+ "basset",
+ "cosmwasm-std 0.16.7",
+ "cosmwasm-storage 0.16.7",
+ "cw-storage-plus 0.8.1",
+ "cw2 0.8.1",
+ "cw20",
+ "cw20-legacy",
+ "schemars",
+ "serde",
+ "snafu",
+]
+
+[[package]]
 name = "anyhow"
 version = "1.0.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -185,6 +239,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "basset"
+version = "0.1.0"
+source = "git+https://github.com/Anchor-Protocol/anchor-bAsset-contracts.git?rev=486f1cd495325798f884e19880180a62566b5e48#486f1cd495325798f884e19880180a62566b5e48"
+dependencies = [
+ "cosmwasm-std 0.16.7",
+ "cosmwasm-storage 0.16.7",
+ "cw20",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "thiserror",
+]
+
+[[package]]
 name = "bigint"
 version = "4.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -309,6 +377,15 @@ name = "cfg-if"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
+
+[[package]]
+name = "cloudabi"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ddfc5b9aa5d4507acaf872de71051dfd0e309860e88966e1051e462a077aac4f"
+dependencies = [
+ "bitflags",
+]
 
 [[package]]
 name = "clru"
@@ -1220,6 +1297,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c8cbd1169bd7b4a0a20d92b9af7a7e0422888bd38a6f5ec29c1fd8c1558a272e"
 
 [[package]]
+name = "fuchsia-cprng"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06f77d526c1a601b7c4cdd98f54b5eaabffc14d5f2f0296febdc7f357c6d3ba"
+
+[[package]]
 name = "generic-array"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1482,6 +1565,8 @@ dependencies = [
 name = "luna-unbond-handler"
 version = "0.1.0"
 dependencies = [
+ "anchor_basset_hub",
+ "basset",
  "cosmwasm-schema",
  "cosmwasm-std 0.16.7",
  "cosmwasm-storage 0.16.7",
@@ -1490,17 +1575,23 @@ dependencies = [
  "cw-storage-plus 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "cw2 0.8.1",
  "cw20",
+ "cw20-base",
+ "luna-vault",
+ "memory",
  "schemars",
  "semver",
  "serde",
+ "terra-mocks",
+ "terra-multi-test 0.9.1 (git+https://github.com/astroport-fi/terra-plus?rev=e0dcab33c0a414c6cfb2c24b78ddc606f574325f)",
  "terraswap",
  "thiserror",
+ "treasury",
  "white-whale",
 ]
 
 [[package]]
 name = "luna-vault"
-version = "0.1.1"
+version = "0.1.0"
 dependencies = [
  "astroport",
  "cosmwasm-bignumber",
@@ -1518,7 +1609,7 @@ dependencies = [
  "schemars",
  "semver",
  "serde",
- "signed_integer",
+ "signed_integer 0.1.0",
  "terra-cosmwasm",
  "terra-mocks",
  "terra-multi-test 0.8.0",
@@ -1734,7 +1825,7 @@ dependencies = [
  "lazy_static",
  "num-traits",
  "quick-error",
- "rand",
+ "rand 0.7.3",
  "rand_chacha",
  "rand_xorshift",
  "regex-syntax",
@@ -1834,6 +1925,19 @@ dependencies = [
 
 [[package]]
 name = "rand"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c618c47cd3ebd209790115ab837de41425723956ad3ce2e6a7f09890947cacb9"
+dependencies = [
+ "cloudabi",
+ "fuchsia-cprng",
+ "libc",
+ "rand_core 0.3.1",
+ "winapi",
+]
+
+[[package]]
+name = "rand"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a6b1679d49b24bbfe0c803429aa1874472f50d9b363131f0e89fc356b544d03"
@@ -1854,6 +1958,21 @@ dependencies = [
  "ppv-lite86",
  "rand_core 0.5.1",
 ]
+
+[[package]]
+name = "rand_core"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a6fdeb83b075e8266dcc8762c22776f6877a63111121f5f8c7411e5be7eed4b"
+dependencies = [
+ "rand_core 0.4.2",
+]
+
+[[package]]
+name = "rand_core"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9c33a3c44ca05fa6f1807d8e6743f3824e8509beca625669633be0acbdf509dc"
 
 [[package]]
 name = "rand_core"
@@ -2176,6 +2295,19 @@ dependencies = [
  "cosmwasm-std 0.16.7",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "signed_integer"
+version = "0.1.0"
+source = "git+https://github.com/Anchor-Protocol/anchor-bAsset-contracts.git?rev=486f1cd495325798f884e19880180a62566b5e48#486f1cd495325798f884e19880180a62566b5e48"
+dependencies = [
+ "cosmwasm-std 0.16.7",
+ "cosmwasm-storage 0.16.7",
+ "cw20",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
 ]
 
 [[package]]

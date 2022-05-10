@@ -13,7 +13,7 @@ use white_whale::luna_vault::luna_unbond_handler::msg::{
 use white_whale::luna_vault::luna_unbond_handler::{EXPIRATION_TIME_KEY, OWNER_KEY};
 
 // version info for migration info
-pub(crate) const CONTRACT_NAME: &str = "crates.io:luna-unbond-handler";
+pub(crate) const CONTRACT_NAME: &str = "crates.io:ww-luna-unbond-handler";
 pub(crate) const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]

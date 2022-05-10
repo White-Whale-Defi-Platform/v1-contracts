@@ -1,3 +1,4 @@
+use cosmwasm_std::testing::mock_info;
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env},
     Addr,
@@ -42,4 +43,24 @@ fn does_update_owner() {
             memory_contract: Addr::unchecked(TEST_MEMORY_CONTRACT),
         }
     )
+}
+
+#[test]
+fn unauthorized_update_state() {
+    let mut deps = mock_dependencies(&[]);
+    mock_instantiate(deps.as_mut());
+
+    execute(
+        deps.as_mut(),
+        mock_env(),
+        mock_info("unauthorized", &[]),
+        ExecuteMsg::UpdateState {
+            // modify owner
+            owner: Some("new_owner".into()),
+            // keep remaining fields the same
+            expiration_time: None,
+            memory_contract: None,
+        },
+    )
+    .unwrap_err();
 }
