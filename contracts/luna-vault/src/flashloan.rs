@@ -52,8 +52,8 @@ pub fn handle_flashloan(
 
     // Do we have enough funds?
     let pool_info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value, luna_available, _, _, _) =
-        compute_total_value(&env, deps.as_ref(), &pool_info.clone())?;
+    let total_value =
+        compute_total_value(&env, deps.as_ref(), &pool_info.clone())?.total_value_in_luna;
     let requested_asset = payload.requested_asset;
 
     // check if the request_asset is uluna
@@ -132,7 +132,8 @@ pub fn before_trade(deps: DepsMut, env: Env) -> Result<Vec<(&str, String)>, Luna
 
     // Index 0 = total_value
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    profit_check.last_balance = compute_total_value(&env, deps.as_ref(), &info)?.0;
+    profit_check.last_balance =
+        compute_total_value(&env, deps.as_ref(), &info)?.total_value_in_luna;
     PROFIT.save(deps.storage, &profit_check)?;
 
     Ok(vec![(
@@ -149,17 +150,15 @@ pub fn after_trade(
     loan_fee: Uint128,
 ) -> VaultResult<Response> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_value_in_luna, luna_in_contract, _, bluna_in_contract, cluna_in_contract) =
-        compute_total_value(&env, deps.as_ref(), &info)?;
-
+    let total_value = compute_total_value(&env, deps.as_ref(), &info)?;
     let mut conf = PROFIT.load(deps.storage)?;
 
     // Check if total_value_in_luna increased with expected fee, otherwise cancel everything. Assuming 1 bluna = 1 cluna = 1 luna
-    if total_value_in_luna < conf.last_balance + loan_fee {
+    if total_value.total_value_in_luna < conf.last_balance + loan_fee {
         return Err(LunaVaultError::CancelLosingTrade {});
     }
 
-    let profit = total_value_in_luna - conf.last_balance;
+    let profit = total_value.total_value_in_luna - conf.last_balance;
 
     conf.last_profit = profit;
     conf.last_balance = Uint128::zero();
@@ -169,37 +168,40 @@ pub fn after_trade(
     let mut response = Response::default();
 
     // check in which asset the flashloan was paid back
-    if luna_in_contract > Uint128::zero() {
+    if total_value.luna_amount > Uint128::zero() {
         // flashloan was paid back in luna, deposit back to passive strategy
         response = deposit_passive_strategy(
             &deps.as_ref(),
-            luna_in_contract,
+            total_value.luna_amount,
             state.bluna_address.clone(),
             &state.astro_lp_address,
             response.clone(),
         )?;
     }
 
-    if bluna_in_contract > Uint128::zero() {
+    if total_value.bluna_value_in_luna > Uint128::zero() {
         // flashloan was paid back in bluna, burn it on Anchor
         let bluna_hub_address =
-            query_contract_from_mem(deps.as_ref(), &state.memory_contract, ANCHOR_BLUNA_HUB_ID)?;
+            query_contract_from_mem(deps.as_ref(), &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
 
         let bluna_unbond_msg = anchor_bluna_unbond_msg(
             state.bluna_address.clone(),
             bluna_hub_address,
-            bluna_in_contract,
+            total_value.bluna_value_in_luna,
         )?;
         response = response.add_message(bluna_unbond_msg);
     }
 
-    if cluna_in_contract > Uint128::zero() {
+    if total_value.cluna_value_in_luna > Uint128::zero() {
         // flashloan was paid back in cluna, burn it on Prism
         let cluna_hub_address =
-            query_contract_from_mem(deps.as_ref(), &state.memory_contract, PRISM_CLUNA_HUB_ID)?;
+            query_contract_from_mem(deps.as_ref(), &state.memory_address, PRISM_CLUNA_HUB_ID)?;
 
-        let cluna_unbond_msg =
-            prism_cluna_unbond_msg(state.cluna_address, cluna_hub_address, cluna_in_contract)?;
+        let cluna_unbond_msg = prism_cluna_unbond_msg(
+            state.cluna_address,
+            cluna_hub_address,
+            total_value.cluna_value_in_luna,
+        )?;
         response = response.add_message(cluna_unbond_msg);
     }
 
@@ -208,7 +210,10 @@ pub fn after_trade(
         // Send commission of profit to Treasury
         .add_submessages(commission_response.messages)
         .add_attributes(commission_response.attributes)
-        .add_attribute("total_value_in_luna", total_value_in_luna.to_string()))
+        .add_attribute(
+            "total_value_in_luna",
+            total_value.total_value_in_luna.to_string(),
+        ))
 }
 
 fn send_commissions(deps: Deps, _info: MessageInfo, profit: Uint128) -> VaultResult<Response> {

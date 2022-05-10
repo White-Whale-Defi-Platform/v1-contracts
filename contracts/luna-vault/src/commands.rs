@@ -77,7 +77,8 @@ pub fn provide_liquidity(
     let deposit: Uint128 = asset.amount;
 
     // Get total value in Vault
-    let (total_deposits_in_luna, _, _, _, _) = compute_total_value(&env, deps.as_ref(), &info)?;
+    let total_deposits_in_luna =
+        compute_total_value(&env, deps.as_ref(), &info)?.total_value_in_luna;
     // Get total supply of vLuna tokens and calculate share
     let total_share = query_supply(&deps.querier, info.liquidity_token.clone())?;
 

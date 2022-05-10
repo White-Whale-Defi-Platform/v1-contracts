@@ -6,13 +6,17 @@ use cosmwasm_std::{
 };
 use cw20::Cw20ExecuteMsg;
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 use white_whale::denom::LUNA_DENOM;
 use white_whale::fee::Fee;
 use white_whale::luna_vault::luna_unbond_handler::msg::Cw20HookMsg::Unbond as UnbondHandlerUnbondMsg;
 use white_whale::luna_vault::luna_unbond_handler::msg::ExecuteMsg;
 use white_whale::luna_vault::luna_unbond_handler::msg::ExecuteMsg::WithdrawUnbonded as UnbondHandlerWithdrawMsg;
+use white_whale::memory::queries::query_contract_from_mem;
+use white_whale::memory::{ANCHOR_BLUNA_HUB_ID, PRISM_CLUNA_HUB_ID};
 use white_whale::query::terraswap::query_asset_balance;
+use white_whale::query::{anchor, prism};
 use white_whale::tax::compute_tax;
 
 use crate::contract::VaultResult;
@@ -20,13 +24,21 @@ use crate::error::LunaVaultError;
 use crate::pool_info::PoolInfoRaw;
 use crate::state::{FEE, STATE};
 
+/// Represents the total value in the vault
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct TotalValue {
+    pub total_value_in_luna: Uint128,
+    pub luna_amount: Uint128,
+    pub astroport_lp_value_in_luna: Uint128,
+    pub bluna_value_in_luna: Uint128,
+    pub cluna_value_in_luna: Uint128,
+    pub bluna_value_burning_in_luna: Uint128,
+    pub cluna_value_burning_in_luna: Uint128,
+}
+
 /// compute total vault value of deposits in LUNA and return a tuple with those values.
 /// (total, luna, astro lp, bluna, cluna)
-pub fn compute_total_value(
-    _env: &Env,
-    deps: Deps,
-    info: &PoolInfoRaw,
-) -> VaultResult<(Uint128, Uint128, Uint128, Uint128, Uint128)> {
+pub fn compute_total_value(_env: &Env, deps: Deps, info: &PoolInfoRaw) -> VaultResult<TotalValue> {
     let state = STATE.load(deps.storage)?;
     // get liquid Luna in the vault
     let luna_info = info.asset_infos[0].to_normal(deps.api)?;
@@ -59,15 +71,43 @@ pub fn compute_total_value(
     let cluna_info = info.asset_infos[3].to_normal(deps.api)?;
     let cluna_value_in_luna = query_asset_balance(deps, &cluna_info, info.contract_addr.clone())?;
 
-    let total_deposits_in_luna =
-        luna_amount + astroport_lp_value_in_luna + bluna_value_in_luna + cluna_value_in_luna;
-    Ok((
-        total_deposits_in_luna,
+    // amount of bluna burning on Anchor
+    let bluna_hub_address =
+        query_contract_from_mem(deps, &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
+    let bluna_value_burning_in_luna =
+        anchor::query_unbond_requests(deps, bluna_hub_address, info.contract_addr.clone())?
+            .requests
+            .iter()
+            .fold(Uint128::zero(), |acc, unbond_request| {
+                acc + unbond_request.1 // pending unbond amount
+            });
+
+    // amount of cluna burning on Prism
+    let cluna_hub_address =
+        query_contract_from_mem(deps, &state.memory_address, PRISM_CLUNA_HUB_ID)?;
+    let cluna_value_burning_in_luna =
+        prism::query_unbond_requests(deps, cluna_hub_address, info.contract_addr.clone())?
+            .requests
+            .iter()
+            .fold(Uint128::zero(), |acc, unbond_request| {
+                acc + unbond_request.1 // pending unbond amount
+            });
+
+    let total_deposits_in_luna = luna_amount
+        + astroport_lp_value_in_luna
+        + bluna_value_in_luna
+        + cluna_value_in_luna
+        + bluna_value_burning_in_luna
+        + cluna_value_burning_in_luna;
+    Ok(TotalValue {
+        total_value_in_luna: total_deposits_in_luna,
         luna_amount,
         astroport_lp_value_in_luna,
         bluna_value_in_luna,
         cluna_value_in_luna,
-    ))
+        bluna_value_burning_in_luna,
+        cluna_value_burning_in_luna,
+    })
 }
 
 pub fn get_withdraw_fee(deps: Deps, amount: Uint128) -> VaultResult<Uint128> {

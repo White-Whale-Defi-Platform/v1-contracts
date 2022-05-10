@@ -31,7 +31,7 @@ pub fn try_query_pool_state(env: Env, deps: Deps) -> VaultResult<PoolResponse> {
     let assets: [Asset; 4] = info.query_pools(deps, info.contract_addr.clone())?;
     let total_share: Uint128 = query_supply(&deps.querier, info.liquidity_token.clone())?;
 
-    let (total_value_in_luna, _, _, _, _) = compute_total_value(&env, deps, &info)?;
+    let total_value_in_luna = compute_total_value(&env, deps, &info)?.total_value_in_luna;
 
     Ok(PoolResponse {
         assets,
@@ -56,7 +56,7 @@ pub fn query_fees(deps: Deps) -> VaultResult<FeeResponse> {
 /// Queries total luna value in vault
 pub fn query_total_value(env: Env, deps: Deps) -> VaultResult<ValueResponse> {
     let info: PoolInfoRaw = POOL_INFO.load(deps.storage)?;
-    let (total_luna_value, _, _, _, _) = compute_total_value(&env, deps, &info)?;
+    let total_luna_value = compute_total_value(&env, deps, &info)?.total_value_in_luna;
     Ok(ValueResponse { total_luna_value })
 }
 
