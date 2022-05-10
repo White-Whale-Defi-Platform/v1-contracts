@@ -168,6 +168,7 @@ fn test_init_with_non_default_vault_lp_token() {
         "warchest".to_string(),
         "anchor".to_string(),
         "bluna".to_string(),
+        "cluna".to_string(),
     );
 
     // Prepare mock env

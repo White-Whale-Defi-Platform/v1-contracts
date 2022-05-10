@@ -702,12 +702,12 @@ pub fn swap_rewards(deps: DepsMut, env: Env, msg_info: MessageInfo) -> VaultResu
     })?;
 
     // get ASTRO token address
-    let astro_generator_config: astroport::generator::ConfigResponse =
+    let astro_generator_config: astroport::generator_proxy::ConfigResponse =
         deps.querier.query_wasm_smart(
             astro_generator_address.clone(),
             &astroport::generator::QueryMsg::Config {},
         )?;
-    let astro_token_address = astro_generator_config.astro_token;
+    let astro_token_address = deps.api.addr_validate(&*astro_generator_config.reward_token_addr)?;
     let astro_pending = astroport::asset::Asset {
         amount: pending_tokens.pending,
         info: astroport::asset::AssetInfo::Token {

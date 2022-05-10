@@ -197,6 +197,8 @@ mod integration_tests {
             treasury_addr.to_string(),
             anchor_addr.to_string(),
             aust_token_instance.to_string(),
+            aust_token_instance.to_string(),
+
         );
 
         // Next setup the vault with the gov contract as the 'owner'
@@ -391,6 +393,8 @@ mod integration_tests {
             treasury_addr.to_string(),
             anchor_addr.to_string(),
             aust_token_instance.to_string(),
+            aust_token_instance.to_string(),
+
         );
 
         // Next setup the vault with the gov contract as the 'owner'

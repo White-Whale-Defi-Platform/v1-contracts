@@ -24,6 +24,8 @@ pub fn instantiate_msg() -> InstantiateMsg {
         "warchest".to_string(),
         "anchor".to_string(),
         "bluna".to_string(),
+        "cluna".to_string(),
+
     )
 }
 
@@ -36,6 +38,7 @@ pub fn mock_instantiate(deps: DepsMut) {
         "warchest".to_string(),
         "anchor".to_string(),
         "bluna".to_string(),
+        "cluna".to_string(),
     );
 
     let info = mock_info(TEST_CREATOR, &[]);
@@ -85,6 +88,7 @@ fn successful_initialization() {
         state,
         State {
             bluna_address: deps.api.addr_validate("test_aust").unwrap(),
+            cluna_address: deps.api.addr_validate("cluna_hub").unwrap(),
             astro_lp_address: deps.api.addr_validate("astro").unwrap(),
             astro_factory_address: Addr::unchecked("astro_factory".to_string()),
             memory_address: deps.api.addr_validate("memory").unwrap(),
@@ -114,6 +118,8 @@ fn unsuccessful_initialization_invalid_fees() {
         "warchest".to_string(),
         "anchor".to_string(),
         "bluna".to_string(),
+        "bluna".to_string(),
+
     );
 
     let info = mock_info(TEST_CREATOR, &[]);
@@ -283,6 +289,8 @@ fn test_init_with_non_default_vault_lp_token() {
         "warchest".to_string(),
         "anchor".to_string(),
         "bluna".to_string(),
+        "cluna".to_string(),
+
     );
 
     // Prepare mock env

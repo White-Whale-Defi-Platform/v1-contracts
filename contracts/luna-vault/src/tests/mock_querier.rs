@@ -3,10 +3,7 @@
 
 use cosmwasm_bignumber::{Decimal256, Uint256};
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{
-    from_binary, from_slice, to_binary, Api, Binary, Coin, ContractResult, Decimal, OwnedDeps,
-    Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
-};
+use cosmwasm_std::{from_binary, from_slice, to_binary, Api,  Addr, Binary, Coin, ContractResult, Decimal, OwnedDeps, Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery};
 
 use crate::tests::anchor_mock::mock_epoch_state;
 use cosmwasm_storage::to_length_prefixed;
@@ -15,8 +12,10 @@ use std::collections::HashMap;
 use terra_cosmwasm::{
     SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute,
 };
-use terraswap::asset::{Asset, AssetInfo, AssetInfoRaw, PairInfo, PairInfoRaw};
-use terraswap::pair::PoolResponse;
+use terraswap::asset::{AssetInfoRaw, PairInfoRaw};
+use astroport::asset::{PairInfo, AssetInfo, Asset};
+use astroport::factory::PairType;
+use astroport::pair::PoolResponse;
 use white_whale::query::anchor::EpochStateResponse;
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
@@ -221,7 +220,7 @@ impl WasmMockQuerier {
                     )));
                 }
                 // Handle calls for Pair Info
-                if contract_addr == &String::from("PAIR0000") {
+                if contract_addr == &String::from("anchor") {
                     if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
                         let msg_pool = PoolResponse {
                             assets: [
@@ -252,8 +251,9 @@ impl WasmMockQuerier {
                                 denom: "uusd".to_string(),
                             },
                         ],
-                        contract_addr: "PAIR0000".to_string(),
-                        liquidity_token: "Liqtoken".to_string(),
+                        contract_addr: Addr::unchecked("PAIR0000"),
+                        liquidity_token: Addr::unchecked("liqtoken"),
+                        pair_type: PairType::Xyk {},
                     };
 
                     SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)))
