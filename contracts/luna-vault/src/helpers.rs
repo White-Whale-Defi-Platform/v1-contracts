@@ -1,5 +1,6 @@
 use std::fmt;
 
+use astroport::asset::Asset;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Coin, CosmosMsg, Decimal, Deps, Env, Event, Reply, StdError,
     StdResult, Storage, SubMsgExecutionResponse, Uint128, WasmMsg,
@@ -246,4 +247,56 @@ impl ConversionAsset for terraswap::asset::AssetInfo {
             }
         })
     }
+}
+
+/// Gets the amount of shares to withdraw from a given `lp_address` so that the `lp0 + lp1` = `total_amount`.
+pub fn get_split_share_amount(
+    deps: &Deps,
+    lp_address: Addr,
+    total_amount: Uint128,
+) -> VaultResult<Uint128> {
+    let pool_info: astroport::pair::PoolResponse = deps
+        .querier
+        .query_wasm_smart(lp_address, &astroport::pair_stable_bluna::QueryMsg::Pool {})?;
+}
+
+/// Gets the amount of shares to withdraw from a given `lp_address` to get the `requested_info` amount.
+pub fn get_share_amount(
+    deps: &Deps,
+    lp_address: Addr,
+    requested_asset: Asset,
+) -> VaultResult<Uint128> {
+    // the amount we will get from the LP pool in the form of the desired requested_token is equal to (x*z)/y = b
+    // where x = the share amount we withdraw, y = the share total, z = the pool size
+    // we can therefore get the desired share amount by rearranging to the form
+    // x = (b*y)/z
+    let pool_info: astroport::pair::PoolResponse = deps
+        .querier
+        .query_wasm_smart(lp_address, &astroport::pair_stable_bluna::QueryMsg::Pool {})?;
+
+    let pool_desired_asset = pool_info
+        .assets
+        .iter()
+        .find(|asset| asset.info == requested_asset.info)
+        .ok_or(LunaVaultError::NoSwapAvailable {})?;
+
+    // before we do x = (b * y) / z, we must account for integer division rounding down
+    // the resultant share that we withdraw must be rounded up from the calculation, or we will get 1 uluna too little.
+    // to get the correct amount (i.e., do ceiling division), we calculate the remainder of the operation and make the numerator
+    // add the difference between the denominator and remainder
+    // example: pool sizes of 35323332730080000, 2889842192163. If we did not do ceiling division, we would get 12223.2739 = 12223
+    // share to withdraw. However, this will only give us 9999 uluna, not 10000uluna. Therefore, we need to do
+    // (35323332730080000 + (2889842192163 - (35323332730080000 % 2889842192163))) / 2889842192163 which gives a perfect 12224 share amount
+    // which is the correct amount.
+    let numerator = requested_asset.amount.checked_mul(pool_info.total_share)?;
+    let denominator = pool_desired_asset.amount;
+
+    let remainder = numerator.checked_rem(denominator)?;
+
+    // add to numerator so that division is rounding up instead of down
+    let numerator = numerator.checked_add(denominator.checked_sub(remainder)?)?;
+
+    let share_to_withdraw = numerator.checked_div(denominator)?;
+
+    Ok(share_to_withdraw)
 }

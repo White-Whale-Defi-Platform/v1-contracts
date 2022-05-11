@@ -20,7 +20,7 @@ use white_whale::query::{anchor, prism};
 use crate::contract::{VaultResult, INSTANTIATE_UNBOND_HANDLER_REPLY_ID};
 use crate::error::LunaVaultError;
 use crate::helpers::{
-    check_fee, compute_total_value, get_lp_token_address, get_treasury_fee,
+    check_fee, compute_total_value, get_lp_token_address, get_share_amount, get_treasury_fee,
     unbond_bluna_with_handler_msg, update_unbond_handler_state_msg, withdraw_luna_from_handler_msg,
     ConversionAsset,
 };
@@ -185,41 +185,21 @@ pub(crate) fn withdraw_passive_strategy(
     astro_lp_address: &Addr,
     response: Response,
 ) -> VaultResult<Response> {
-    // the amount we will get from the LP pool in the form of the desired requested_token is equal to (x*z)/y = b
-    // where x = the share amount we withdraw, y = the share total, z = the pool size
-    // we can therefore get the desired share amount by rearranging to the form
-    // x = (b*y)/z
+    // convert requested_info into an Astroport asset
+    let requested_info = requested_info.to_astroport(deps)?;
+
     let pool_info: astroport::pair::PoolResponse = deps.querier.query_wasm_smart(
         astro_lp_address,
         &astroport::pair_stable_bluna::QueryMsg::Pool {},
     )?;
 
-    // convert requested_info into an Astroport asset
-    let requested_info = requested_info.to_astroport(deps)?;
+    let requested_asset = astroport::asset::Asset {
+        amount: withdraw_amount,
+        info: requested_info,
+    };
 
-    let pool_desired_asset = pool_info
-        .assets
-        .iter()
-        .find(|asset| asset.info == requested_info)
-        .ok_or(LunaVaultError::NoSwapAvailable {})?;
-
-    // before we do x = (b * y) / z, we must account for integer division rounding down
-    // the resultant share that we withdraw must be rounded up from the calculation, or we will get 1 uluna too little.
-    // to get the correct amount (i.e., do ceiling division), we calculate the remainder of the operation and make the numerator
-    // add the difference between the denominator and remainder
-    // example: pool sizes of 35323332730080000, 2889842192163. If we did not do ceiling division, we would get 12223.2739 = 12223
-    // share to withdraw. However, this will only give us 9999 uluna, not 10000uluna. Therefore, we need to do
-    // (35323332730080000 + (2889842192163 - (35323332730080000 % 2889842192163))) / 2889842192163 which gives a perfect 12224 share amount
-    // which is the correct amount.
-    let numerator = withdraw_amount.checked_mul(pool_info.total_share)?;
-    let denominator = pool_desired_asset.amount;
-
-    let remainder = numerator.checked_rem(denominator)?;
-
-    // add to numerator so that division is rounding up instead of down
-    let numerator = numerator.checked_add(denominator.checked_sub(remainder)?)?;
-
-    let share_to_withdraw = numerator.checked_div(denominator)?;
+    let share_to_withdraw =
+        get_share_amount(deps, astro_lp_address.clone(), requested_asset.clone())?;
 
     // cw20 send message that transfers the LP tokens to the pair address and withdraws liquidity
     let cw20_withdraw_liquidity_msg: CosmosMsg = WasmMsg::Execute {
@@ -237,7 +217,7 @@ pub(crate) fn withdraw_passive_strategy(
     let pool_non_desired_asset = pool_info
         .assets
         .iter()
-        .find(|asset| asset.info != requested_info)
+        .find(|asset| asset.info != requested_asset.info)
         .ok_or_else(|| {
             LunaVaultError::generic_err(
                 "Failed to get non-desired asset when providing single-sided liquidity",
@@ -255,7 +235,7 @@ pub(crate) fn withdraw_passive_strategy(
                 assets: [
                     astroport::asset::Asset {
                         amount: Uint128::zero(),
-                        info: pool_desired_asset.info.clone(),
+                        info: requested_asset.info.clone(),
                     },
                     astroport::asset::Asset {
                         amount: unwanted_amount_returned,
@@ -346,7 +326,77 @@ fn unbond(
         env.contract.address.clone(),
     )?;
 
-    let refund_shares_amount = share_ratio * bluna_luna_lp_amount;
+    let mut refund_shares_amount = share_ratio * bluna_luna_lp_amount;
+
+    let luna_asset_info = astroport::asset::AssetInfo::NativeToken {
+        denom: LUNA_DENOM.to_string(),
+    };
+
+    // reserve any pending unbonds from anchor and prism using share_ratio
+    // if there is anything unbonding, check if we can use the refund_shares_amount to withdraw
+    // otherwise, reserve from the anchor/prism unbonds
+    let bluna_hub_address =
+        query_contract_from_mem(deps.as_ref(), &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
+    let prism_hub_address =
+        query_contract_from_mem(deps.as_ref(), &state.memory_address, PRISM_CLUNA_HUB_ID)?;
+
+    let anchor_unbond_requests = anchor::query_unbond_requests(
+        deps.as_ref(),
+        bluna_hub_address,
+        env.contract.address.clone(),
+    )?
+    .requests;
+    let anchor_unbond_amount = anchor_unbond_requests.iter().map(|request| request.1).sum();
+
+    let prism_unbond_requests = prism::query_unbond_requests(
+        deps.as_ref(),
+        prism_hub_address,
+        env.contract.address.clone(),
+    )?
+    .requests;
+    let prism_unbond_amount = prism_unbond_requests.iter().map(|request| request.1).sum();
+
+    let user_anchor_unbond_amount = share_ratio * anchor_unbond_amount;
+    let user_prism_unbond_amount = share_ratio * prism_unbond_amount;
+
+    let anchor_shares_amount = get_share_amount(
+        &deps.as_ref(),
+        state.astro_lp_address.clone(),
+        astroport::asset::Asset {
+            amount: user_anchor_unbond_amount,
+            info: luna_asset_info.clone(),
+        },
+    )?;
+    let prism_shares_amount = get_share_amount(
+        &deps.as_ref(),
+        state.astro_lp_address.clone(),
+        astroport::asset::Asset {
+            amount: user_prism_unbond_amount,
+            info: luna_asset_info.clone(),
+        },
+    )?;
+
+    if refund_shares_amount + anchor_shares_amount < bluna_luna_lp_amount {
+        // we have enough shares to use instead of reserving from anchor unbonds
+        refund_shares_amount += anchor_shares_amount;
+    } else {
+        // add the difference
+        refund_shares_amount += refund_shares_amount + anchor_shares_amount - bluna_luna_lp_amount;
+
+        // todo: reserve for withdrawal from Anchor hub
+        // todo: convert the remaining shares back into luna amount
+    }
+
+    if refund_shares_amount + prism_shares_amount < bluna_luna_lp_amount {
+        // we have enough shares to use instead of reserving from prism unbonds
+        refund_shares_amount += prism_shares_amount;
+    } else {
+        // add the difference
+        refund_shares_amount += refund_shares_amount + anchor_shares_amount - bluna_luna_lp_amount;
+
+        // todo: reserve for withdrawal from Prism hub
+        // todo: convert the remaining shares back into luna amount to reserve
+    }
 
     // get underlying bluna/luna amount with given shares
     let underlying_assets: [astroport::asset::Asset; 2] = deps.querier.query_wasm_smart(
@@ -355,10 +405,6 @@ fn unbond(
             amount: refund_shares_amount,
         },
     )?;
-
-    let luna_asset_info = astroport::asset::AssetInfo::NativeToken {
-        denom: LUNA_DENOM.to_string(),
-    };
 
     // luna amount of the LP
     let luna_asset = underlying_assets
