@@ -250,14 +250,17 @@ impl ConversionAsset for terraswap::asset::AssetInfo {
 }
 
 /// Gets the amount of shares to withdraw from a given `lp_address` so that the `lp0 + lp1` = `total_amount`.
+#[allow(dead_code)]
 pub fn get_split_share_amount(
     deps: &Deps,
     lp_address: Addr,
-    total_amount: Uint128,
+    _total_amount: Uint128,
 ) -> VaultResult<Uint128> {
-    let pool_info: astroport::pair::PoolResponse = deps
+    let _pool_info: astroport::pair::PoolResponse = deps
         .querier
         .query_wasm_smart(lp_address, &astroport::pair_stable_bluna::QueryMsg::Pool {})?;
+
+    Ok(Uint128::zero())
 }
 
 /// Gets the amount of shares to withdraw from a given `lp_address` to get the `requested_info` amount.

@@ -174,6 +174,11 @@ pub fn after_trade(
 
     if total_value.bluna_value_in_luna > Uint128::zero() {
         // flashloan was paid back in bluna, burn it on Anchor
+
+        // disallow to pay flashloans back in bluna for now
+        return Err(LunaVaultError::generic_err(
+            "Can't pay back flashloan in anything but uluna",
+        ));
         let bluna_hub_address =
             query_contract_from_mem(deps.as_ref(), &state.memory_address, ANCHOR_BLUNA_HUB_ID)?;
 
@@ -186,6 +191,11 @@ pub fn after_trade(
     }
     if total_value.cluna_value_in_luna > Uint128::zero() {
         // flashloan was paid back in cluna, burn it on Prism
+
+        // disallow to pay flashloans back in bluna for now
+        return Err(LunaVaultError::generic_err(
+            "Can't pay back flashloan in anything but uluna",
+        ));
         let cluna_hub_address =
             query_contract_from_mem(deps.as_ref(), &state.memory_address, PRISM_CLUNA_HUB_ID)?;
 
