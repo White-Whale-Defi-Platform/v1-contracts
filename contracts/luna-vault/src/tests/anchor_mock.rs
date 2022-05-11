@@ -58,6 +58,7 @@ pub enum Cw20HookMsg {
     RedeemStable {},
 }
 
+#[allow(dead_code)]
 pub fn contract_anchor_mock() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         |deps, _, info, msg: MockExecuteMsg| -> VaultResult<Response> {

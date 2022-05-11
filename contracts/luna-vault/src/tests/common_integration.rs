@@ -1,6 +1,6 @@
 use crate::contract::{execute, instantiate, query, reply};
 use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
-use cosmwasm_std::{Decimal, Empty, Uint128};
+use cosmwasm_std::{Decimal, Empty};
 use terra_mocks::TerraMockQuerier;
 use terra_multi_test::{App, BankKeeper, Contract, ContractWrapper};
 use terraswap::asset::AssetInfo;

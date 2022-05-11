@@ -6,7 +6,6 @@ pub mod common_integration;
 mod flashloan;
 pub mod instantiate;
 
-mod integration_test;
 mod mock_querier;
 
 mod anchor_mock;

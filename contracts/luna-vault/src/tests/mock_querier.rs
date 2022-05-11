@@ -15,7 +15,6 @@ use astroport::pair::PoolResponse;
 use cosmwasm_storage::to_length_prefixed;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use std::collections::HashMap;
-use std::convert::TryInto;
 use terra_cosmwasm::{
     SwapResponse, TaxCapResponse, TaxRateResponse, TerraQuery, TerraQueryWrapper, TerraRoute,
 };
@@ -23,9 +22,8 @@ use terraswap::asset::{AssetInfoRaw, PairInfoRaw};
 use thiserror::private::DisplayAsDisplay;
 use white_whale::astroport_helper::SimulationResponse;
 
-use white_whale::query::anchor::{AnchorQuery, EpochStateResponse, UnbondRequestsResponse};
-use white_whale::query::anchor::AnchorQuery::UnbondRequests;
 use crate::pool_info::PoolInfo as VaultPoolInfo;
+use white_whale::query::anchor::{EpochStateResponse, UnbondRequestsResponse};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
@@ -165,7 +163,6 @@ impl WasmMockQuerier {
     pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
         print!("Request hit the mock querier \n {:?}", request);
         match &request {
-
             // A custom handler for TerraQueries such as TaxCaps or Rates
             QueryRequest::Custom(TerraQueryWrapper { route, query_data }) => {
                 if route == &TerraRoute::Treasury {
@@ -217,7 +214,6 @@ impl WasmMockQuerier {
             QueryRequest::Wasm(WasmQuery::Smart { contract_addr, msg }) => {
                 // Handle calls for Profit Check; LastBalance
                 if contract_addr == &String::from("test_mm") {
-
                     // Handle Anchor EpochStateQuery
                     if msg == &Binary::from(r#"{"epoch_state":{}}"#.as_bytes()) {
                         return SystemResult::Ok(ContractResult::from(to_binary(
@@ -236,14 +232,12 @@ impl WasmMockQuerier {
                 }
                 // Handle calls for Profit Check; LastBalance
                 if contract_addr == &String::from("bluna") {
-
                     // Handle Anchor EpochStateQuery
                     if msg == &Binary::from(r#"{"epoch_state":{}}"#.as_bytes()) {
                         return SystemResult::Ok(ContractResult::from(to_binary(
                             &mock_epoch_state(),
                         )));
                     }
-
 
                     return SystemResult::Ok(ContractResult::from(to_binary(
                         &Cw20BalanceResponse {
@@ -262,16 +256,20 @@ impl WasmMockQuerier {
                         to_binary(&UnbondRequestsResponse {
                             address: "".to_string(),
                             requests: vec![],
-                        }).unwrap()
+                        })
+                        .unwrap(),
                     ));
                     // }
                 }
 
-
                 // Handle calls for Pair Info
-                if contract_addr == &String::from("astro") || contract_addr == &String::from("anchor") {
-                    print!("Handling call for astro LP token with name {:?}", contract_addr);
-
+                if contract_addr == &String::from("astro")
+                    || contract_addr == &String::from("anchor")
+                {
+                    print!(
+                        "Handling call for astro LP token with name {:?}",
+                        contract_addr
+                    );
 
                     if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
                         let msg_pool = PoolResponse {
@@ -293,7 +291,6 @@ impl WasmMockQuerier {
                         };
                         return SystemResult::Ok(ContractResult::from(to_binary(&msg_pool)));
                     }
-
 
                     if contract_addr == &String::from("anchor") {
                         let msg_balance = VaultPoolInfo {
@@ -318,7 +315,7 @@ impl WasmMockQuerier {
                     } else {
                         if msg == &Binary::from(r#"{"pair":{}}"#.as_bytes()) {
                             println!("Were looking for pair");
-                            let mut msg_balance = PairInfo {
+                            let msg_balance = PairInfo {
                                 asset_infos: [
                                     AssetInfo::Token {
                                         contract_addr: Addr::unchecked("bluna"),
@@ -332,7 +329,6 @@ impl WasmMockQuerier {
                                 pair_type: PairType::Xyk {},
                             };
                             return SystemResult::Ok(ContractResult::from(to_binary(&msg_balance)));
-
                         }
 
                         if msg == &Binary::from(r#"{"pool":{}}"#.as_bytes()) {
@@ -352,14 +348,15 @@ impl WasmMockQuerier {
                                 },
                             ];
                             return SystemResult::Ok(ContractResult::from(to_binary(&myvac)));
-
                         }
                         // By now we are expecting either query pools or simulation
 
                         // Note this is an interesting one
                         // I know exactly what 'Binary[12,12,12,12]' combo I wanted and was soooo confused as I could not read what the message was
                         // in the end I do as_display and to_string to as least give me something simple to compare too
-                        if msg.as_display().to_string() == String::from("eyJzaGFyZSI6eyJhbW91bnQiOiIwIn19") {
+                        if msg.as_display().to_string()
+                            == String::from("eyJzaGFyZSI6eyJhbW91bnQiOiIwIn19")
+                        {
                             let myvac = [
                                 Asset {
                                     amount: Uint128::new(1000u128),
@@ -391,12 +388,16 @@ impl WasmMockQuerier {
                             // Handle Calls for the liquidity token, in our case we mostly only need balances
                             // No liquidity token is actually created in mock land so we instead mock its behaviours here
                             println!("{:?}", contract_addr);
-                            if contract_addr == &String::from("liqtoken") || contract_addr == &String::from("cluna") {
+                            if contract_addr == &String::from("liqtoken")
+                                || contract_addr == &String::from("cluna")
+                            {
                                 return SystemResult::Ok(ContractResult::Ok(
-                                    to_binary(&Cw20BalanceResponse { balance: Uint128::zero() }).unwrap(),
+                                    to_binary(&Cw20BalanceResponse {
+                                        balance: Uint128::zero(),
+                                    })
+                                    .unwrap(),
                                 ));
                             }
-
 
                             let balances: &HashMap<String, Uint128> =
                                 match self.token_querier.balances.get(contract_addr) {
@@ -419,7 +420,7 @@ impl WasmMockQuerier {
                                         to_binary(&Cw20BalanceResponse {
                                             balance: Uint128::zero(),
                                         })
-                                            .unwrap(),
+                                        .unwrap(),
                                     ));
                                 }
                             };
@@ -442,7 +443,6 @@ impl WasmMockQuerier {
                         to_binary(&"contract_from_memory".to_string()).unwrap(),
                     ));
                 }
-
 
                 if key.to_vec() == prefix_pair_info {
                     let pair_info: PairInfo =

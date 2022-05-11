@@ -8,7 +8,6 @@ use cw20::MinterResponse;
 use terraswap::asset::AssetInfo;
 use white_whale::luna_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 
-use crate::tests::common_integration::instantiate_msg as vault_msg;
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
 use white_whale::fee::*;
 use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;

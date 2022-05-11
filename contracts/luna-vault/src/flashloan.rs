@@ -135,6 +135,7 @@ pub fn before_trade(deps: DepsMut, env: Env) -> Result<Vec<(&str, String)>, Luna
 }
 
 /// Checks if balance increased after the trade
+#[allow(unreachable_code)]
 pub fn after_trade(
     deps: DepsMut,
     env: Env,

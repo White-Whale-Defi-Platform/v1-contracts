@@ -1,10 +1,10 @@
+use crate::tests::mock_querier::mock_dependencies;
 use cosmwasm_std::testing::{mock_env, mock_info};
 use cosmwasm_std::{from_binary, to_binary, Addr, DepsMut, MessageInfo, ReplyOn, SubMsg, WasmMsg};
-use cosmwasm_std::{Api, Decimal, Uint128};
+use cosmwasm_std::{Api, Decimal};
 use cw20::MinterResponse;
 use terraswap::asset::AssetInfo;
 use terraswap::token::InstantiateMsg as TokenInstantiateMsg;
-use crate::tests::mock_querier::{mock_dependencies};
 use white_whale::fee::*;
 use white_whale::luna_vault::msg::VaultQueryMsg as QueryMsg;
 use white_whale::luna_vault::msg::*;
@@ -13,7 +13,7 @@ use crate::contract::{execute, instantiate, query};
 use crate::error::LunaVaultError;
 use crate::state::{State, FEE, STATE};
 use crate::tests::common::{ARB_CONTRACT, TEST_CREATOR};
-use crate::tests::common_integration::{instantiate_msg as vault_msg};
+use crate::tests::common_integration::instantiate_msg as vault_msg;
 use white_whale::luna_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 
 use astroport::asset::PairInfo;
@@ -133,8 +133,6 @@ fn successful_initialization() {
 fn unsuccessful_initialization_invalid_fees() {
     let mut deps = mock_dependencies(&[]);
 
-
-
     let msg = VaultInstantiateMsg {
         bluna_address: "bluna".to_string(),
         cluna_address: "cluna".to_string(),
@@ -156,7 +154,7 @@ fn unsuccessful_initialization_invalid_fees() {
 
     let info = mock_info(TEST_CREATOR, &[]);
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
-    println!("{:?}",res);
+    println!("{:?}", res);
     match res {
         Err(LunaVaultError::InvalidFee {}) => (),
         _ => panic!("Must return LunaVaultError::InvalidFee"),
