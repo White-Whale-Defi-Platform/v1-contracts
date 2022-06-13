@@ -5,6 +5,8 @@ members = [
     "contracts/community-fund",
     "contracts/peg-arb",
     "contracts/stablecoin-vault",
+    "contracts/luna-unbond-handler",
+    "contracts/luna-vault",
     "contracts/emissions",
     "contracts/vesting",
     "contracts/tokenomics/airdrop",
@@ -15,7 +17,8 @@ members = [
     "contracts/treasury/dapps/astroport",
     "contracts/treasury/dapps/terraswap",
     "contracts/treasury/dapps/dapp-template",
-    "contracts/treasury/dapps/vault",
+    #"contracts/treasury/dapps/vault",
+    "contracts/treasury/dapps/buyback-dapp",
     "contracts/treasury/memory",
 ]
 

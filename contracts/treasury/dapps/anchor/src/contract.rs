@@ -44,6 +44,12 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> B
         ExecuteMsg::RedeemStable { withdraw_amount } => {
             commands::handle_redeem_stable(deps.as_ref(), env, info, withdraw_amount)
         }
+        ExecuteMsg::Unbond { bluna_amount } => {
+            commands::handle_unbond(deps.as_ref(), env, info, bluna_amount)
+        }
+        ExecuteMsg::WithdrawUnbonded {} => {
+            commands::handle_withdraw_unbonded(deps.as_ref(), env, info)
+        }
     }
 }
 

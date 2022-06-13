@@ -1,8 +1,6 @@
-use cosmwasm_std::testing::{mock_env, MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{attr, Addr, Empty, Uint128};
 use cw20::{BalanceResponse, Cw20Coin, Cw20QueryMsg};
-use terra_mocks::TerraMockQuerier;
-use terra_multi_test::{App, BankKeeper, ContractWrapper, Executor};
+use terra_multi_test::{App, AppBuilder, ContractWrapper, Executor};
 
 use white_whale::treasury::dapp_base::common_test::TEST_CREATOR;
 
@@ -39,13 +37,7 @@ pub fn init_whale_contract(app: &mut App, initial_balances: Vec<Cw20Coin>) -> Ad
 }
 
 pub fn mock_app() -> App<Empty> {
-    let env = mock_env();
-    let api = MockApi::default();
-    let bank = BankKeeper::new();
-    let custom_querier: TerraMockQuerier =
-        TerraMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, &[])]));
-
-    App::new(api, env.block, bank, MockStorage::new(), custom_querier)
+    AppBuilder::new().build()
 }
 
 /// Mint Whale tokens

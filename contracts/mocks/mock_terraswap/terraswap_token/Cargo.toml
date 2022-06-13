@@ -23,7 +23,7 @@ cw2 = { version = "0.8.0" }
 cw20 = { version = "0.8.0" } 
 cw20-legacy = { version = "0.2.0", features = ["library"]} 
 cw-storage-plus  = { version = "0.8.0" } 
-cosmwasm-std = { version = "0.16.0" }
+cosmwasm-std = { version = "0.16.7" }
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 thiserror = { version = "1.0.20" }
@@ -32,5 +32,5 @@ terraswap = "2.4.0"
 
 [dev-dependencies]
 # we only need to enable this if we use integration tests
-cosmwasm-schema = { version = "0.16.0" }
-cosmwasm-storage = { version = "0.16.0" }
+cosmwasm-schema = { version = "0.16.7" }
+cosmwasm-storage = { version = "0.16.7" }

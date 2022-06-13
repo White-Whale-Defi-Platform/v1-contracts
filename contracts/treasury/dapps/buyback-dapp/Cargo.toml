@@ -1,0 +1,50 @@
+[package]
+name = "buyback-dapp"
+version = "0.1.0"
+authors = ["0xFable", "CyberHoward", "Kerber0x"]
+edition = "2018"
+license = "MIT"
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "contract.wasm",
+  "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+
+[dependencies]
+cosmwasm-std = { version = "0.16.7", features = ["iterator"] }
+cosmwasm-storage = { version = "0.16.7", features = ["iterator"] }
+cw-controllers = { version = "0.8" }
+cw-storage-plus = { version = "0.8" }
+cw2 = { version = "0.8" }
+cw20 = {version = "0.8"}
+cw20-base = { version = "0.8", features = ["library"] }
+schemars = "0.8.3"
+serde = { version = "1.0.127", default-features = false, features = ["derive"] }
+terraswap = "2.4.0"
+thiserror = { version = "1.0.26" }
+white-whale = { version = "1.0.0", path = "../../../../packages/white_whale" }
+
+[dev-dependencies]
+cosmwasm-schema = { version = "0.16.7" }
+cw-multi-test = { version = "0.13.2"}
+terra-multi-test = {git="https://github.com/astroport-fi/terra-plus", rev="e0dcab33c0a414c6cfb2c24b78ddc606f574325f", package = "terra-multi-test"}
+terra-mocks = {git ="https://github.com/terra-money/cosmwasm-contracts.git", rev = "b25f4ac2d7bddaa3a18838cfe51d18e1ae855dcd", package = "terra-mocks"}
+terraswap = "2.4.0"
+cw20-base = { version = "0.8", features = ["library"] }
+cw20 = { version = "0.8" }
+treasury = { version = "0.1.0", path = "../../treasury" }
+memory = { version = "0.1.0", path = "../../memory" }
+terraswap-factory = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_factory" }
+terraswap-pair = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_pair" }
+terraswap-token = { version = "0.0.0", path = "../../../mocks/mock_terraswap/terraswap_token" }
+terraswap-dapp = {version = "0.1.0", path = "../terraswap"}

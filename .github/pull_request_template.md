@@ -20,4 +20,5 @@
 :white_small_square: Reviewed submitted code
 :white_small_square: Added tests to verify changes
 :white_small_square: Updated docs
+:white_small_square: Optimized compile
 :white_small_square: Verified on testnet

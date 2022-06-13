@@ -1,8 +1,6 @@
 #![cfg(test)]
 
-use cosmwasm_std::testing::{mock_env, MockApi, MockStorage};
 use cosmwasm_std::{to_binary, Addr, BlockInfo, Decimal, Empty, Timestamp, Uint128};
-use cw_multi_test::{App, BankKeeper, Contract, ContractWrapper, Executor};
 
 use white_whale::governance::msg::{ExecuteMsg, InstantiateMsg};
 
@@ -19,6 +17,7 @@ use terraswap::asset::AssetInfo;
 use white_whale::ust_vault::msg::InstantiateMsg as VaultInstantiateMsg;
 
 use cw20::{Cw20Coin, Cw20Contract, Cw20ExecuteMsg};
+use terra_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
 // Custom Vault Instant msg func which takes code ID
 pub fn instantiate_msg(token_code_id: u64) -> VaultInstantiateMsg {
@@ -64,11 +63,7 @@ pub fn contract_stablecoin_vault() -> Box<dyn Contract<Empty>> {
 }
 
 pub fn mock_app() -> App<Empty> {
-    let env = mock_env();
-    let api = MockApi::default();
-    let bank = BankKeeper::new();
-
-    App::new(api, env.block, bank, MockStorage::new())
+    AppBuilder::new().build()
 }
 
 #[test]

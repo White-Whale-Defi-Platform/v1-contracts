@@ -1,8 +1,8 @@
 use cosmwasm_std::{from_binary, to_binary, Binary, Empty, Response, StdResult, Uint128};
 use cw20::Cw20ReceiveMsg;
-use cw_multi_test::{Contract, ContractWrapper};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use terra_multi_test::{Contract, ContractWrapper};
 use terraswap::asset::{Asset, AssetInfo};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]

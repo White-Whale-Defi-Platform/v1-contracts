@@ -2,7 +2,7 @@ use cosmwasm_std::testing::{mock_env, mock_info};
 use terraswap::asset::AssetInfo;
 
 use crate::contract::execute;
-use crate::error::MemoryError;
+use white_whale::memory::error::MemoryError;
 use crate::tests::common::TEST_CREATOR;
 
 use crate::tests::instantiate::mock_instantiate;

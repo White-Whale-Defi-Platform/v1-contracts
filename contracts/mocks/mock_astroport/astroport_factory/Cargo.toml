@@ -23,8 +23,8 @@ crate-type = ["cdylib", "rlib"]
 backtraces = ["cosmwasm-std/backtraces"]
 
 [dependencies]
-astroport = {git = "https://github.com/astroport-fi/astroport-core.git", version = "1.0.0"}
-cosmwasm-std = { version = "0.16.0", features = ["iterator"] }
+astroport = {git = "https://github.com/astroport-fi/astroport-core.git", version = "2.0.0"}
+cosmwasm-std = { version = "0.16.7", features = ["iterator"] }
 cw-storage-plus = {version = "0.8.0", features = ['iterator']}
 cw2 = "0.8"
 schemars = "0.8.1"
@@ -33,7 +33,7 @@ thiserror = { version = "1.0.20" }
 protobuf = { version = "2", features = ["with-bytes"] }
 
 [dev-dependencies]
-cosmwasm-schema = "0.16.0"
+cosmwasm-schema = "0.16.7"
 terra-multi-test = {git = "https://github.com/astroport-fi/terra-plus.git", branch = "main"}
 astroport-token = {path = "../astroport_token"}
 astroport-pair = {path = "../astroport_pair"}
